@@ -658,7 +658,7 @@ declare namespace Objection {
   interface FirstMethod {
     <QB extends AnyQueryBuilder>(
       this: QB,
-    ): QB extends ArrayQueryBuilder<QB> ? MaybeSingleQueryBuilder<QB> : QB;
+    ): MaybeSingleQueryBuilder<QB>
   }
 
   type ForIdValue = MaybeCompositeId | AnyQueryBuilder;
