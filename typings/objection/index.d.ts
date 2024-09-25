@@ -1589,7 +1589,7 @@ declare namespace Objection {
     static defaultGraphOptions?: GraphOptions;
 
     static query<M extends Model>(
-      this: Constructor<M>,
+      this: ConstructorType<M>,
       trxOrKnex?: TransactionOrKnex,
     ): QueryBuilderType<M>;
 
@@ -1604,8 +1604,8 @@ declare namespace Objection {
       trxOrKnex?: TransactionOrKnex,
     ): QueryBuilderType<RM>;
 
-    static fromJson<M extends Model>(this: Constructor<M>, json: object, opt?: ModelOptions): M;
-    static fromDatabaseJson<M extends Model>(this: Constructor<M>, json: object): M;
+    static fromJson<M extends Model>(this: ConstructorType<M>, json: object, opt?: ModelOptions): M;
+    static fromDatabaseJson<M extends Model>(this: ConstructorType<M>, json: object): M;
 
     static columnNameToPropertyName(columnName: string): string;
     static propertyNameToColumnName(propertyName: string): string;
@@ -1631,14 +1631,14 @@ declare namespace Objection {
     static bindTransaction<M>(this: M, trxOrKnex: TransactionOrKnex): M;
 
     static fetchGraph<M extends Model>(
-      this: Constructor<M>,
+      this: ConstructorType<M>,
       modelOrObject: PartialModelObject<M>,
       expression: RelationExpression<M>,
       options?: FetchGraphOptions,
     ): SingleQueryBuilder<QueryBuilderType<M>>;
 
     static fetchGraph<M extends Model>(
-      this: Constructor<M>,
+      this: ConstructorType<M>,
       modelOrObject: PartialModelObject<M>[],
       expression: RelationExpression<M>,
       options?: FetchGraphOptions,
