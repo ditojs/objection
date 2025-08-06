@@ -1121,6 +1121,7 @@ declare namespace Objection {
     toKnexQuery<T extends {} = ModelObject<M>>(): Knex.QueryBuilder<T, T[]>;
     knex(knex?: Knex): Knex;
     clone(): this;
+    emptyInstance(): this;
 
     page(page: number, pageSize: number): PageQueryBuilder<this>;
     range(): PageQueryBuilder<this>;
