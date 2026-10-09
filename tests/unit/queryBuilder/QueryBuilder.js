@@ -4181,6 +4181,162 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('insert().onConflict() with ignored rows (#2320, #2597, #2661)', () => {
+    it('should merge the returned rows to the matching models', async () => {
+      mockKnexQueryResults = [
+        [
+          { id: 11, a: 1 },
+          { id: 13, a: 3 },
+        ],
+      ];
+
+      const models = [{ a: 1 }, { a: 2 }, { a: 3 }].map((it) => TestModel.fromJson(it));
+      const result = await TestModel.query().insert(models).onConflict('a').ignore();
+
+      expect(executedQueries).to.eql([
+        'insert into "Model" ("a") values (1), (2), (3) on conflict ("a") do nothing returning "id", "a"',
+      ]);
+      expect(result).to.eql(models);
+      expect(models.map((it) => it.id)).to.eql([11, undefined, 13]);
+    });
+
+    it('should match the returned rows by the conflict columns regardless of their order', async () => {
+      mockKnexQueryResults = [
+        [
+          { id: 13, a: 3 },
+          { id: 11, a: 1 },
+        ],
+      ];
+
+      const models = [{ a: 1 }, { a: 2 }, { a: 3 }].map((it) => TestModel.fromJson(it));
+      await TestModel.query().insert(models).onConflict(['a']).ignore();
+
+      expect(models.map((it) => it.id)).to.eql([11, undefined, 13]);
+    });
+
+    it('should match the returned rows by the id if no conflict columns are given', async () => {
+      mockKnexQueryResults = [[{ id: 2, b: 'db2' }]];
+
+      const models = [{ id: 1 }, { id: 2 }].map((it) => TestModel.fromJson(it));
+      await TestModel.query().insert(models).onConflict().ignore().returning('*');
+
+      expect(models[0].b).to.equal(undefined);
+      expect(models[1].b).to.equal('db2');
+    });
+
+    it('should match duplicate keys in insertion order', async () => {
+      mockKnexQueryResults = [[{ id: 11, a: 1, b: 'first' }]];
+
+      const models = [
+        { a: 1, b: 'first' },
+        { a: 1, b: 'second' },
+      ].map((it) => TestModel.fromJson(it));
+      await TestModel.query().insert(models).onConflict('a').ignore().returning('*');
+
+      expect(models.map((it) => it.id)).to.eql([11, undefined]);
+      expect(models.map((it) => it.b)).to.eql(['first', 'second']);
+    });
+
+    it('should leave the model untouched if the only row is ignored', async () => {
+      mockKnexQueryResults = [[]];
+
+      const model = TestModel.fromJson({ a: 1 });
+      const result = await TestModel.query().insert(model).onConflict('a').ignore();
+
+      expect(result).to.be(model);
+      expect(model.id).to.equal(undefined);
+    });
+
+    it('should not crash with object properties in the jsonSchema', async () => {
+      TestModel.jsonSchema = {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          a: { type: 'integer' },
+          obj: { type: 'object' },
+        },
+      };
+
+      mockKnexQueryResults = [[{ id: 12, a: 2, obj: { x: 2 } }]];
+
+      const result = await TestModel.query()
+        .insert([
+          { a: 1, obj: { x: 1 } },
+          { a: 2, obj: { x: 2 } },
+        ])
+        .onConflict('a')
+        .ignore()
+        .returning('*');
+
+      expect(result.map((it) => it.id)).to.eql([undefined, 12]);
+      expect(result.map((it) => it.obj)).to.eql([{ x: 1 }, { x: 2 }]);
+    });
+
+    it('should throw if the returned rows cannot be matched to the models', async () => {
+      mockKnexQueryResults = [[{ id: 12 }]];
+
+      const err = await TestModel.query()
+        .insert([{ a: 1 }, { a: 2 }])
+        .onConflict()
+        .ignore()
+        .catch((err) => err);
+
+      expect(err).to.be.an(Error);
+      expect(err.message).to.match(/^Could not match the rows returned by an insert/);
+    });
+
+    it('should merge the returned rows by position if all rows are returned', async () => {
+      mockKnexQueryResults = [
+        [
+          { id: 11, a: 1 },
+          { id: 12, a: 2 },
+        ],
+      ];
+
+      const result = await TestModel.query()
+        .insert([{ a: 1 }, { a: 2 }])
+        .onConflict('a')
+        .merge();
+
+      expect(result.map((it) => it.id)).to.eql([11, 12]);
+    });
+
+    it('should not change the returning clause of inserts without onConflict()', async () => {
+      mockKnexQueryResults = [[{ id: 11 }, { id: 12 }]];
+
+      const result = await TestModel.query().insert([{ a: 1 }, { a: 2 }]);
+
+      expect(executedQueries).to.eql(['insert into "Model" ("a") values (1), (2) returning "id"']);
+      expect(result.map((it) => it.id)).to.eql([11, 12]);
+    });
+
+    it('insertAndFetch() should only fetch the models that have an id', async () => {
+      mockKnexQueryResults = [[{ id: 13, a: 3 }], [{ id: 13, a: 3, b: 'fetched' }]];
+
+      const result = await TestModel.query()
+        .insertAndFetch([{ a: 1 }, { a: 3 }])
+        .onConflict('a')
+        .ignore();
+
+      expect(executedQueries).to.eql([
+        'insert into "Model" ("a") values (1), (3) on conflict ("a") do nothing returning "id", "a"',
+        'select "Model".* from "Model" where "Model"."id" in (13)',
+      ]);
+      expect(result.map((it) => it.id)).to.eql([undefined, 13]);
+      expect(result.map((it) => it.b)).to.eql([undefined, 'fetched']);
+    });
+
+    it('insertAndFetch() should not fetch anything if no model has an id', async () => {
+      mockKnexQueryResults = [[]];
+
+      const result = await TestModel.query().insertAndFetch({ a: 1 }).onConflict('a').ignore();
+
+      expect(executedQueries).to.have.length(1);
+      expect(result.a).to.equal(1);
+      expect(result.id).to.equal(undefined);
+    });
+  });
+
   describe('toFindQuery', () => {
     class Person extends Model {
       static get tableName() {
