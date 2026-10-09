@@ -146,3 +146,53 @@ class Person extends Model {
   }
 }
 ```
+
+## Typing model properties with an interface in TypeScript
+
+In TypeScript, the properties of a model are usually declared as class fields. If you'd rather describe them with an interface, for example one you also use for request bodies, declare an interface with the same name as the model class. TypeScript merges the interface into the class, so the properties are known on instances, in query results and in the arguments of methods like `insert` and `patch`:
+
+```ts
+import { Model } from 'objection';
+
+interface PersonProps {
+  id: number;
+  firstName: string;
+  lastName: string;
+  pets?: Animal[];
+}
+
+// The interface has the same name as the class and is merged into it.
+interface Person extends PersonProps {}
+
+class Person extends Model {
+  static tableName = 'persons';
+
+  static relationMappings = () => ({
+    pets: {
+      relation: Model.HasManyRelation,
+      modelClass: Animal,
+      join: {
+        from: 'persons.id',
+        to: 'animals.ownerId'
+      }
+    }
+  });
+}
+
+const people = await Person.query().where('firstName', 'Jennifer');
+console.log(people[0].lastName);
+
+await Person.query().insert({ firstName: 'Jennifer', lastName: 'Lawrence' });
+```
+
+The type-only properties of a [custom query builder](/recipes/custom-query-builder.html#extending-the-query-builder-in-typescript) can go in the merged interface too:
+
+```ts
+interface Person extends PersonProps {
+  QueryBuilderType: MyQueryBuilder<this>;
+}
+
+class Person extends Model {
+  static QueryBuilder = MyQueryBuilder;
+}
+```
