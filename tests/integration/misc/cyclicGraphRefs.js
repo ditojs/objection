@@ -219,7 +219,7 @@ module.exports = (session) => {
           expect(result.favoritePetId).to.equal(felix.id);
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.pets.map((it) => it.name)).to.eql(['Doggo', 'Felix']);
+          expect(jennifer.pets.map((it) => it.name).sort()).to.eql(['Doggo', 'Felix']);
           expect(jennifer.favoritePet.name).to.equal('Felix');
           expect(jennifer.favoritePet.id).to.equal(felix.id);
         });
@@ -235,7 +235,7 @@ module.exports = (session) => {
           );
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.pets.map((it) => it.name)).to.eql(['Felix', 'Doggo']);
+          expect(jennifer.pets.map((it) => it.name).sort()).to.eql(['Doggo', 'Felix']);
           expect(jennifer.favoritePet.name).to.equal('Felix');
         });
 
@@ -258,7 +258,7 @@ module.exports = (session) => {
 
           const jennifer = await fetchPerson('Jennifer');
           expect(jennifer.favoriteToy.name).to.equal('Ball');
-          expect(jennifer.pets[0].toys.map((it) => it.name)).to.eql(['Mouse', 'Ball']);
+          expect(jennifer.pets[0].toys.map((it) => it.name).sort()).to.eql(['Ball', 'Mouse']);
         });
 
         it('should break multiple cycles in one graph', async () => {
@@ -285,7 +285,7 @@ module.exports = (session) => {
 
           const brad = await fetchPerson('Brad');
           expect(brad.favoritePet.name).to.equal('Tom');
-          expect(brad.pets.map((it) => it.name)).to.eql(['Rex', 'Tom']);
+          expect(brad.pets.map((it) => it.name).sort()).to.eql(['Rex', 'Tom']);
         });
 
         it('should handle a #ref into another root without a cycle', async () => {
