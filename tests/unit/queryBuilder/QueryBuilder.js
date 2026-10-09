@@ -4285,6 +4285,157 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('aliased selections in withGraphJoined modifiers (#2365)', () => {
+    let Person;
+    let Animal;
+
+    beforeEach(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name'] };
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Animal,
+              join: { from: 'Person.id', to: 'Animal.ownerId' },
+            },
+          };
+        }
+      };
+
+      Animal = class Animal extends Model {
+        static get tableName() {
+          return 'Animal';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name', 'ownerId'] };
+        }
+      };
+
+      Person.knex(mockKnex);
+    });
+
+    const buildSql = (...selections) =>
+      Person.query()
+        .withGraphJoined('pets(selectPet)')
+        .modifiers({
+          selectPet: (query) => query.select('name', ...selections),
+        })
+        .toKnexQuery()
+        .toString();
+
+    const petSelections = (...aliases) =>
+      [
+        'select "Person"."id" as "id", "Person"."name" as "name"',
+        '"pets"."name" as "pets:name"',
+        ...aliases.map((alias) => `"pets"."${alias}" as "pets:${alias}"`),
+        '"pets"."id" as "pets:id" from "Person"',
+      ].join(', ');
+
+    it('should select an objection subquery aliased with as()', () => {
+      const sql = buildSql(
+        Animal.query().count().where('Animal.ownerId', ref('Person.id')).as('siblingCount'),
+      );
+
+      expect(sql).to.contain(petSelections('siblingCount'));
+      expect(sql).to.contain(
+        'select "name", (select count(*) from "Animal" where "Animal"."ownerId" = "Person"."id") as "siblingCount"',
+      );
+    });
+
+    it('should select a knex subquery aliased with as()', () => {
+      const sql = buildSql(mockKnex.count().from('Animal').as('animalCount'));
+
+      expect(sql).to.contain(petSelections('animalCount'));
+    });
+
+    it('should still select all columns of a relation if a modifier only selects aliased subqueries', () => {
+      const sql = Person.query()
+        .withGraphJoined('pets(selectPet)')
+        .modifiers({
+          selectPet: (query) => query.select(mockKnex.count().from('Animal').as('animalCount')),
+        })
+        .toKnexQuery()
+        .toString();
+
+      expect(sql).to.equal(
+        'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId", "pets"."animalCount" as "pets:animalCount" ' +
+          'from "Person" left join (select (select count(*) from "Animal") as "animalCount", "Animal".* from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
+      );
+    });
+
+    it('should still select all columns of a relation if a modifier selects * and aliased subqueries', () => {
+      const sql = Person.query()
+        .withGraphJoined('pets(selectPet)')
+        .modifiers({
+          selectPet: (query) =>
+            query.select('*', mockKnex.count().from('Animal').as('animalCount')),
+        })
+        .toKnexQuery()
+        .toString();
+
+      expect(sql).to.equal(
+        'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId", "pets"."animalCount" as "pets:animalCount" ' +
+          'from "Person" left join (select *, (select count(*) from "Animal") as "animalCount" from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
+      );
+    });
+
+    it('should still select all root columns if the root query only selects aliased subqueries', () => {
+      const sql = Person.query()
+        .select(mockKnex.count().from('Animal').as('animalCount'))
+        .withGraphJoined('pets')
+        .toKnexQuery()
+        .toString();
+
+      expect(sql).to.equal(
+        'select (select count(*) from "Animal") as "animalCount", "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
+          'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
+      );
+    });
+
+    it('should return the aliased selections in the result', () => {
+      mockKnexQueryResults = [
+        [
+          {
+            id: 1,
+            name: 'P1',
+            'pets:name': 'A1',
+            'pets:siblingCount': 2,
+            'pets:id': 10,
+          },
+        ],
+      ];
+
+      return Person.query()
+        .withGraphJoined('pets(selectPet)')
+        .modifiers({
+          selectPet: (query) =>
+            query.select(
+              'name',
+              Animal.query().count().where('Animal.ownerId', ref('Person.id')).as('siblingCount'),
+            ),
+        })
+        .then((models) => {
+          expect(executedQueries[0]).to.contain(petSelections('siblingCount'));
+          expect(models.map((it) => it.toJSON())).to.eql([
+            {
+              id: 1,
+              name: 'P1',
+              pets: [{ name: 'A1', siblingCount: 2 }],
+            },
+          ]);
+        });
+    });
+  });
+
   describe('onConflict() with graph inserts (#2156)', () => {
     let Person;
 
