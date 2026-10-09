@@ -216,6 +216,8 @@ declare namespace Objection {
     '#dbRef'?: MaybeCompositeId;
     '#ref'?: string;
     '#id'?: string;
+    '#unrelate'?: boolean;
+    '#delete'?: boolean;
   };
 
   /**

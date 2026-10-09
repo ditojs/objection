@@ -661,6 +661,16 @@ const upsertModels1: PromiseLike<Person[]> = Person.query().upsertGraph([]);
 const upsertModels2: PromiseLike<Person[]> = Person.query().upsertGraph([], {
   unrelate: true,
 });
+const upsertModel3: PromiseLike<Person> = Person.query().upsertGraph(
+  {
+    firstName: 'Name',
+    pets: [{ name: 'Pet', '#delete': true }],
+    movies: [{ '#unrelate': true }],
+  },
+  { noDelete: true },
+);
+const graphUnrelateProp: string = Person.graphUnrelateProp;
+const graphDeleteProp: string = Person.graphDeleteProp;
 
 const insertedGraphAndFetchOne: PromiseLike<Person> = Person.query().insertGraphAndFetch(
   new Person(),
