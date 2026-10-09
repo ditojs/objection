@@ -846,6 +846,8 @@ modelInstance.$setRelated(relation, relatedModels);
 
 Sets related models to a corresponding property in the object.
 
+For a `BelongsToOneRelation`, the foreign key of the object is set to the key of the related model too, e.g. `post.$setRelated('author', user)` also sets `post.authorId` to `user.id`. The foreign key is kept if the related model has no key yet or if the relation is cleared with `null`.
+
 ##### Arguments
 
 | Argument      | Type                                               | Description                                  |
