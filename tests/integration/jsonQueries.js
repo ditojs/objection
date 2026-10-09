@@ -394,6 +394,37 @@ module.exports = (session) => {
           });
         });
       });
+
+      describe('empty and special json keys', () => {
+        beforeEach(() => {
+          return BoundModel.query()
+            .truncate()
+            .then(() => {
+              return BoundModel.query().insert([
+                { id: 1, name: 'test1', jsonObject: { '': { a: 1 }, 'x, y': 1 }, jsonArray: [] },
+                { id: 2, name: 'test2', jsonObject: { '': { a: 2 }, 'x, y': 2 }, jsonArray: [] },
+              ]);
+            });
+        });
+
+        it('should be able to select and filter by empty keys', async () => {
+          const result = await BoundModel.query()
+            .select('id', ref('jsonObject:[""].a').as('a'), ref("jsonObject:['x, y']").as('xy'))
+            .where(ref("jsonObject:[''].a").castInt(), 2);
+          expect(result).to.eql([{ id: 2, a: 2, xy: 2 }]);
+        });
+
+        it('should be able to use empty keys in json where methods', async () => {
+          const result = await BoundModel.query().whereJsonSupersetOf('jsonObject:[""]', { a: 1 });
+          expectIdsEqual(result, [1]);
+        });
+
+        it('should be able to patch empty keys', async () => {
+          await BoundModel.query().findById(1).patch({ 'jsonObject:[""].a': 3 });
+          const item = await BoundModel.query().findById(1);
+          expect(item.jsonObject).to.eql({ '': { a: 3 }, 'x, y': 1 });
+        });
+      });
     });
 
     describe('QueryBuilder JSON queries', () => {
