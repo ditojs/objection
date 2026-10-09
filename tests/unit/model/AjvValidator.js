@@ -337,6 +337,71 @@ describe('AjvValidator', () => {
       expect(validate({ b: 'str' })).to.be(true);
       expect(validate({ b: 'str', c: 'str' })).to.be(false);
     });
+
+    it('should remove required fields in inner properties of nullable objects', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          address: {
+            type: ['object', 'null'],
+            required: ['city'],
+            properties: {
+              city: { type: 'string' },
+              zip: { type: 'string' },
+              inner: {
+                type: 'object',
+                required: ['a'],
+                properties: { a: { type: 'string' } },
+              },
+            },
+          },
+        },
+      };
+      const validate = patchValidator(schema);
+      expect(validate.schema.properties.address.required).to.be(undefined);
+      expect(validate.schema.properties.address.properties.inner.required).to.be(undefined);
+      expect(validate({ address: { zip: '123', inner: {} } })).to.be(true);
+      expect(validate({ address: null })).to.be(true);
+      expect(validate({ address: { zip: 123 } })).to.be(false);
+    });
+
+    it('should remove required fields in inner properties of untyped schemas', () => {
+      const schema = {
+        required: ['address'],
+        properties: {
+          address: {
+            required: ['city'],
+            properties: {
+              city: { type: 'string' },
+              zip: { type: 'string' },
+            },
+          },
+        },
+      };
+      const validate = patchValidator(schema);
+      expect(validate.schema.required).to.be(undefined);
+      expect(validate.schema.properties.address.required).to.be(undefined);
+      expect(validate({ address: { zip: '123' } })).to.be(true);
+      expect(validate({ address: { zip: 123 } })).to.be(false);
+    });
+
+    it('should keep properties named like schema keywords in untyped schemas', () => {
+      const schema = {
+        properties: {
+          required: { type: 'string' },
+          not: { type: 'string' },
+          anyOf: { type: 'string' },
+          properties: { type: 'string' },
+        },
+      };
+      const validate = patchValidator(schema);
+      expect(validate.schema.properties).to.eql(schema.properties);
+      expect(validate({ required: 'a', not: 'b', anyOf: 'c', properties: 'd' })).to.be(true);
+      expect(validate({ required: 1 })).to.be(false);
+      expect(validate({ not: 1 })).to.be(false);
+      expect(validate({ anyOf: 1 })).to.be(false);
+      expect(validate({ properties: 1 })).to.be(false);
+    });
   });
 
   describe('patch validation with field expression keys', () => {
