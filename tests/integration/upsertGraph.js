@@ -1583,6 +1583,62 @@ module.exports = (session) => {
         });
       }
 
+      it('should ignore the relations and properties of #unrelate and #delete models', () => {
+        const upsert = {
+          id: 2,
+          model1Relation2: [
+            {
+              idCol: 1,
+              '#unrelate': true,
+              // Neither updated, nor are the relations upserted.
+              model2Prop1: 'not updated',
+              model2Relation1: [{ id: 4 }, { model1Prop1: 'not inserted' }],
+            },
+            {
+              idCol: 2,
+              '#delete': true,
+              model2Relation1: [{ model1Prop1: 'not inserted' }],
+            },
+          ],
+        };
+
+        return transaction(session.knex, async (trx) => {
+          await Model1.query(trx).upsertGraph(upsert, { fetchStrategy });
+
+          const root = await Model1.query(trx).findById(2).withGraphFetched('model1Relation2');
+          expect(root.model1Relation2).to.eql([]);
+
+          const model2 = omitIrrelevantProps(
+            await Model2.query(trx).withGraphFetched('model2Relation1(orderById)'),
+          );
+
+          expect(model2).to.eql([
+            {
+              idCol: 1,
+              model1Id: null,
+              model2Prop1: 'hasMany 1',
+
+              model2Relation1: [
+                {
+                  id: 4,
+                  model1Id: null,
+                  model1Prop1: 'manyToMany 1',
+                },
+                {
+                  id: 5,
+                  model1Id: null,
+                  model1Prop1: 'manyToMany 2',
+                },
+              ],
+            },
+          ]);
+
+          const model1Ids = (await trx('Model1')).map((it) => it.id).sort((a, b) => a - b);
+          // Rows 6 and 7 still exist, nothing was inserted.
+          expect(model1Ids).to.eql([1, 2, 3, 4, 5, 6, 7]);
+        });
+      });
+
       it('should relate and unrelate some models if `unrelate` and `relate` are arrays of relation paths', () => {
         const upsert = {
           // the root gets updated because it has an id
