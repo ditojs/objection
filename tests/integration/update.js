@@ -334,6 +334,19 @@ module.exports = (session) => {
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
           });
       });
+
+      it('should apply `select` to the fetch query', async () => {
+        const model = Model1.fromJson({ model1Prop1: 'updated text' });
+        const fetchedModel = await Model1.query()
+          .updateAndFetchById(2, model)
+          .select('id', 'model1Prop1');
+
+        expect(fetchedModel).to.equal(model);
+        expect(fetchedModel.id).to.equal(2);
+        expect(fetchedModel.model1Prop1).to.equal('updated text');
+        expect(fetchedModel).to.not.have.property('model1Prop2');
+        expect(fetchedModel).to.not.have.property('model1Id');
+      });
     });
 
     describe('.$query().update()', () => {
