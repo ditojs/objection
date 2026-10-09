@@ -7,6 +7,8 @@ const {
   camelCase,
   snakeCaseKeys,
   camelCaseKeys,
+  snakeCaseMappers,
+  knexSnakeCaseMappers,
 } = require('../../lib/utils/identifierMapping');
 
 const { range } = require('lodash');
@@ -135,7 +137,10 @@ describe('utils', () => {
       testUnderscoreBeforeNumbers('fööBäR', 'föö_bä_r');
 
       testUnderscoreBeforeNumbers('foo1bar2', 'foo_1bar_2');
-      testUnderscoreBeforeNumbers('foo_1bar_2', 'foo_1bar_2', 'foo1bar2');
+      // Existing underscores before digits are doubled by default (kept for
+      // backwards compatibility, see `noDoubleUnderscores`).
+      testUnderscoreBeforeNumbers('foo_1bar_2', 'foo__1bar__2', 'foo1bar2');
+      testUnderscoreBeforeNumbers('test_2_tables', 'test__2_tables', 'test2Tables');
       testUnderscoreBeforeNumbers('Foo', 'foo', 'foo');
       testUnderscoreBeforeNumbers('FooBar', 'foo_bar', 'fooBar');
       testUnderscoreBeforeNumbers('märkäLänttiÄäliö', 'märkä_läntti_ääliö');
@@ -172,6 +177,31 @@ describe('utils', () => {
         'foo_bar.spam_baz.trolo_lolo',
       );
 
+      test('foo_Bar', 'foo__bar', 'fooBar');
+
+      testNoDoubleUnderscores('foo', 'foo');
+      testNoDoubleUnderscores('fooBar', 'foo_bar');
+      testNoDoubleUnderscores('foo_bar', 'foo_bar', 'fooBar');
+      testNoDoubleUnderscores('foo_Bar', 'foo_bar', 'fooBar');
+      testNoDoubleUnderscores('foo__bar', 'foo__bar', 'fooBar');
+      testNoDoubleUnderscores('foo1Bar2', 'foo1_bar2');
+      testNoDoubleUnderscores('foo_1', 'foo_1', 'foo1');
+
+      testNoDoubleUnderscores('foo1Bar2', 'foo_1_bar_2', null, { underscoreBeforeDigits: true });
+      testNoDoubleUnderscores('foo_1bar_2', 'foo_1bar_2', 'foo1bar2', {
+        underscoreBeforeDigits: true,
+      });
+      testNoDoubleUnderscores('test_2_tables', 'test_2_tables', 'test2Tables', {
+        underscoreBeforeDigits: true,
+      });
+      testNoDoubleUnderscores('foo_BAR', 'foo_b_a_r', 'fooBAR', {
+        underscoreBetweenUppercaseLetters: true,
+      });
+      testNoDoubleUnderscores('FOO_1', 'FOO_1', 'foo1', {
+        upperCase: true,
+        underscoreBeforeDigits: true,
+      });
+
       function test(camel, snake, backToCamel) {
         backToCamel = backToCamel || camel;
 
@@ -201,6 +231,23 @@ describe('utils', () => {
         it(`${camel} --> ${snake} --> ${backToCamel}`, () => {
           expect(snakeCase(camel, opt)).to.equal(snake);
           expect(camelCase(snakeCase(camel, opt), opt)).to.equal(backToCamel);
+        });
+      }
+
+      function testNoDoubleUnderscores(camel, snake, backToCamel, extraOpt = {}) {
+        backToCamel = backToCamel || camel;
+        const opt = { noDoubleUnderscores: true, ...extraOpt };
+
+        it(`${camel} --> ${snake} --> ${backToCamel} (${JSON.stringify(opt)})`, () => {
+          expect(snakeCase(camel, opt)).to.equal(snake);
+          expect(camelCase(snakeCase(camel, opt), opt)).to.equal(backToCamel);
+
+          const mappers = snakeCaseMappers(opt);
+          expect(mappers.format({ [camel]: 1 })).to.eql({ [snake]: 1 });
+
+          const knexMappers = knexSnakeCaseMappers(opt);
+          expect(knexMappers.wrapIdentifier(camel, (id) => id)).to.equal(snake);
+          expect(knexMappers.postProcessResponse({ [snake]: 1 })).to.eql({ [backToCamel]: 1 });
         });
       }
     });
