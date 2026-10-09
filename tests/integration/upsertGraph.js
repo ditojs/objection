@@ -1558,6 +1558,31 @@ module.exports = (session) => {
         });
       });
 
+      for (const prop of ['#unrelate', '#delete']) {
+        it(`should support ${prop} on BelongsToOneRelation models`, () => {
+          const upsert = {
+            id: 2,
+            model1Relation1: { id: 3, [prop]: true },
+          };
+
+          return transaction(session.knex, async (trx) => {
+            await Model1.query(trx).upsertGraph(upsert, { fetchStrategy });
+
+            const root = await Model1.query(trx).findById(2).withGraphFetched('model1Relation1');
+            expect(root.model1Id).to.equal(null);
+            expect(root.model1Relation1).to.equal(null);
+
+            const row = await trx('Model1').where('id', 3).first();
+
+            if (prop === '#unrelate') {
+              expect(row.id).to.equal(3);
+            } else {
+              expect(row).to.equal(undefined);
+            }
+          });
+        });
+      }
+
       it('should relate and unrelate some models if `unrelate` and `relate` are arrays of relation paths', () => {
         const upsert = {
           // the root gets updated because it has an id
