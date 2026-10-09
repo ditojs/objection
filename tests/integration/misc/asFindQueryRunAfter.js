@@ -89,7 +89,12 @@ module.exports = (session) => {
       expect(hookResults).to.eql([[]]);
     });
 
-    it('should not traverse the results of the find query', async () => {
+    it('should not traverse the results of the find query', async function () {
+      if (session.isMySql()) {
+        // MySQL doesn't support `returning()`, so there are no models to traverse.
+        return this.skip();
+      }
+
       const traversed = [];
 
       await Person.query()
@@ -98,12 +103,8 @@ module.exports = (session) => {
         .returning('*')
         .traverse((model) => traversed.push(model.id));
 
-      if (session.isPostgres()) {
-        expect(traversed).to.eql([2]);
-      } else {
-        expect(traversed).to.eql([]);
-      }
-
+      // Only the patched rows are traversed, not the rows of the hook's find query.
+      expect(traversed).to.eql([2]);
       expect(hookResults[0].map((it) => it.id)).to.eql([2]);
     });
 
