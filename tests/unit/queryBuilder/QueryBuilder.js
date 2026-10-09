@@ -3500,6 +3500,239 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('withGraphJoined with a different joinOperation per call (#2125)', () => {
+    let Person;
+    let Animal;
+    let Movie;
+
+    // Returns an object that maps each joined table alias to its join type.
+    const joinTypes = (sql) => {
+      const types = {};
+      const regex = /(\w+(?: outer)?) join "\w+" as "([^"]+)"/g;
+      let match;
+
+      while ((match = regex.exec(sql))) {
+        types[match[2]] = match[1];
+      }
+
+      return types;
+    };
+
+    const getJoinTypes = (builder) => joinTypes(builder.toKnexQuery().toString());
+
+    beforeEach(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name', 'parentId'] };
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Animal,
+              join: { from: 'Person.id', to: 'Animal.ownerId' },
+            },
+            movies: {
+              relation: Model.ManyToManyRelation,
+              modelClass: Movie,
+              join: {
+                from: 'Person.id',
+                through: { from: 'PersonMovie.personId', to: 'PersonMovie.movieId' },
+                to: 'Movie.id',
+              },
+            },
+            parent: {
+              relation: Model.BelongsToOneRelation,
+              modelClass: Person,
+              join: { from: 'Person.parentId', to: 'Person.id' },
+            },
+          };
+        }
+      };
+
+      Animal = class Animal extends Model {
+        static get tableName() {
+          return 'Animal';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name', 'ownerId'] };
+        }
+      };
+
+      Movie = class Movie extends Model {
+        static get tableName() {
+          return 'Movie';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name'] };
+        }
+      };
+
+      Person.knex(mockKnex);
+    });
+
+    it('should use the joinOperation of each call for its relations', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+            .withGraphJoined('pets', { joinOperation: 'leftJoin' }),
+        ),
+      ).to.eql({ parent: 'inner', pets: 'left' });
+
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('pets', { joinOperation: 'leftJoin' })
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' }),
+        ),
+      ).to.eql({ parent: 'inner', pets: 'left' });
+    });
+
+    it('should use the joinOperation for both joins of many-to-many relations', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('movies', { joinOperation: 'innerJoin' })
+            .withGraphJoined('pets'),
+        ),
+      ).to.eql({ movies_join: 'inner', movies: 'inner', pets: 'left' });
+    });
+
+    it('should use the default join operation for calls without a joinOperation', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+            .withGraphJoined('pets'),
+        ),
+      ).to.eql({ parent: 'inner', pets: 'left' });
+    });
+
+    it('should use the joinOperation of defaultGraphOptions as the default', () => {
+      Person.defaultGraphOptions = { joinOperation: 'innerJoin' };
+
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent')
+            .withGraphJoined('pets', { joinOperation: 'leftJoin' }),
+        ),
+      ).to.eql({ parent: 'inner', pets: 'left' });
+    });
+
+    it('nested relations should inherit the joinOperation of the call that added them', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent.[pets, parent]', { joinOperation: 'innerJoin' })
+            .withGraphJoined('pets'),
+        ),
+      ).to.eql({
+        parent: 'inner',
+        'parent:pets': 'inner',
+        'parent:parent': 'inner',
+        pets: 'left',
+      });
+    });
+
+    it('should support recursive expressions', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent.^3', { joinOperation: 'innerJoin' })
+            .withGraphJoined('pets'),
+        ),
+      ).to.eql({
+        parent: 'inner',
+        'parent:parent': 'inner',
+        'parent:parent:parent': 'inner',
+        pets: 'left',
+      });
+    });
+
+    it('should use the last explicit joinOperation for relations passed to multiple calls', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+            .withGraphJoined('parent', { joinOperation: 'leftJoin' }),
+        ),
+      ).to.eql({ parent: 'left' });
+
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent.pets', { joinOperation: 'leftJoin' })
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' }),
+        ),
+      ).to.eql({ parent: 'inner', 'parent:pets': 'left' });
+
+      // A call without a joinOperation doesn't override the joinOperation of
+      // the relations, but its new nested relations use the default.
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+            .withGraphJoined('parent.pets'),
+        ),
+      ).to.eql({ parent: 'inner', 'parent:pets': 'left' });
+    });
+
+    it('should support aliased relations', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('pets as dogs', { joinOperation: 'innerJoin' })
+            .withGraphJoined('pets as cats'),
+        ),
+      ).to.eql({ dogs: 'inner', cats: 'left' });
+    });
+
+    it('should keep the joinOperations when cloning', () => {
+      const builder = Person.query()
+        .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+        .withGraphJoined('pets', { joinOperation: 'leftJoin' });
+
+      expect(getJoinTypes(builder.clone().withGraphJoined('movies'))).to.eql({
+        parent: 'inner',
+        pets: 'left',
+        movies_join: 'left',
+        movies: 'left',
+      });
+    });
+
+    it('should keep the joinOperations when mixed with withGraphFetched', () => {
+      expect(
+        getJoinTypes(
+          Person.query()
+            .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+            .withGraphFetched('movies')
+            .withGraphJoined('pets'),
+        ),
+      ).to.eql({ parent: 'inner', pets: 'left' });
+    });
+
+    it('should run the query with the joinOperation of each call', () => {
+      mockKnexQueryResults = [[]];
+
+      return Person.query()
+        .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+        .withGraphJoined('pets', { joinOperation: 'leftJoin' })
+        .then(() => {
+          expect(executedQueries).to.have.length(1);
+          expect(joinTypes(executedQueries[0])).to.eql({ parent: 'inner', pets: 'left' });
+        });
+    });
+  });
+
   describe('withGraphJoined without a usable primary key (#2748)', () => {
     let Person;
     let Animal;
