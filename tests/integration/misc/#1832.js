@@ -27,6 +27,32 @@ module.exports = (session) => {
               to: 'issue1832Person.id',
             },
           },
+
+          keepers: {
+            relation: Model.ManyToManyRelation,
+            modelClass: Person,
+            join: {
+              from: 'issue1832Animal.id',
+              through: {
+                from: 'issue1832AnimalKeeper.animalId',
+                to: 'issue1832AnimalKeeper.personId',
+              },
+              to: 'issue1832Person.id',
+            },
+          },
+
+          keeper: {
+            relation: Model.HasOneThroughRelation,
+            modelClass: Person,
+            join: {
+              from: 'issue1832Animal.id',
+              through: {
+                from: 'issue1832AnimalKeeper.animalId',
+                to: 'issue1832AnimalKeeper.personId',
+              },
+              to: 'issue1832Person.id',
+            },
+          },
         };
       }
     }
@@ -36,6 +62,7 @@ module.exports = (session) => {
 
     before(async () => {
       await knex.schema
+        .dropTableIfExists('issue1832AnimalKeeper')
         .dropTableIfExists('issue1832Animal')
         .dropTableIfExists('issue1832Person')
         .createTable('issue1832Person', (t) => {
@@ -46,6 +73,10 @@ module.exports = (session) => {
           t.integer('id').primary();
           t.integer('ownerId');
           t.string('name');
+        })
+        .createTable('issue1832AnimalKeeper', (t) => {
+          t.integer('animalId');
+          t.integer('personId');
         });
 
       await knex('issue1832Person').insert({ id: 1, name: 'Jennifer' });
@@ -53,10 +84,14 @@ module.exports = (session) => {
         { id: 1, ownerId: 1, name: 'Doggo' },
         { id: 2, ownerId: null, name: 'Stray' },
       ]);
+      await knex('issue1832AnimalKeeper').insert({ animalId: 1, personId: 1 });
     });
 
     after(async () => {
-      await knex.schema.dropTableIfExists('issue1832Animal').dropTableIfExists('issue1832Person');
+      await knex.schema
+        .dropTableIfExists('issue1832AnimalKeeper')
+        .dropTableIfExists('issue1832Animal')
+        .dropTableIfExists('issue1832Person');
     });
 
     beforeEach(() => {
@@ -115,6 +150,36 @@ module.exports = (session) => {
         .withGraphFetched('owner');
 
       expect(doggo.owner.name).to.equal('Jennifer');
+      expect(warnings).to.eql([]);
+    });
+
+    const expectedThroughWarning = (relation) =>
+      `Fetching relation "${relation}" of Animal: some owner models are missing the join ` +
+      'property "issue1832Animal.id", so no related models are found for them. ' +
+      'Select the column in the owner query.';
+
+    it('$fetchGraph() should warn if the id is not selected for a ManyToManyRelation', async () => {
+      const doggo = await Animal.query(knex).findById(1).select('name');
+      await doggo.$fetchGraph('keepers', { transaction: knex });
+
+      expect(doggo.keepers).to.eql([]);
+      expect(warnings).to.eql([expectedThroughWarning('keepers')]);
+    });
+
+    it('$fetchGraph() should warn if the id is not selected for a HasOneThroughRelation', async () => {
+      const doggo = await Animal.query(knex).findById(1).select('name');
+      await doggo.$fetchGraph('keeper', { transaction: knex });
+
+      expect(doggo.keeper).to.equal(null);
+      expect(warnings).to.eql([expectedThroughWarning('keeper')]);
+    });
+
+    it('should not warn if the id is selected for a ManyToManyRelation', async () => {
+      const animals = await Animal.query(knex).orderBy('id');
+      await Animal.fetchGraph(animals, '[keepers, keeper]', { transaction: knex });
+
+      expect(animals.map((it) => it.keepers.map((it) => it.name))).to.eql([['Jennifer'], []]);
+      expect(animals.map((it) => it.keeper && it.keeper.name)).to.eql(['Jennifer', null]);
       expect(warnings).to.eql([]);
     });
   });
