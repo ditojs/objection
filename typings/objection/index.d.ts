@@ -161,10 +161,7 @@ declare namespace Objection {
   type AnyModelConstructor = ModelConstructor<Model>;
   type ModifierFunction<QB extends AnyQueryBuilder> = (qb: QB, ...args: any[]) => void;
   type Modifier<QB extends AnyQueryBuilder = AnyQueryBuilder> =
-    | ModifierFunction<QB>
-    | string
-    | string[]
-    | Record<string, Expression<PrimitiveValue>>;
+    ModifierFunction<QB> | string | string[] | Record<string, Expression<PrimitiveValue>>;
   type OrderByDirection = 'asc' | 'desc' | 'ASC' | 'DESC';
   type OrderByNulls = 'first' | 'last';
 
@@ -1095,9 +1092,7 @@ declare namespace Objection {
     truncate(): Promise<void>;
     allowGraph: AllowGraphMethod<this>;
 
-    throwIfNotFound: (
-      arg?: any,
-    ) => R extends Model | undefined ? SingleQueryBuilder<this> : this;
+    throwIfNotFound: (arg?: any) => R extends Model | undefined ? SingleQueryBuilder<this> : this;
 
     returning: ReturningMethod;
     forUpdate: IdentityMethod<this>;
@@ -1367,10 +1362,7 @@ declare namespace Objection {
   }
 
   export type ValidationErrorType =
-    | 'ModelValidation'
-    | 'RelationExpression'
-    | 'UnallowedRelation'
-    | 'InvalidGraph';
+    'ModelValidation' | 'RelationExpression' | 'UnallowedRelation' | 'InvalidGraph';
 
   export class ValidationError extends Error {
     constructor(args: CreateValidationErrorArgs & { modelClass?: ModelClass<Model> });
@@ -1445,8 +1437,7 @@ declare namespace Objection {
 
   // for internal use on generic static this deduction, copied from https://github.com/microsoft/TypeScript/issues/5863#issuecomment-1483978415
   type ConstructorType<T = unknown, Static extends Record<string, any> = PrototypeType<T>> = (
-    | ConstructorFunctionType<T>
-    | PrototypeType<T>
+    ConstructorFunctionType<T> | PrototypeType<T>
   ) & {
     [Key in keyof Static]: Static[Key];
   };
@@ -1865,14 +1856,7 @@ declare namespace Objection {
    * @see https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.1.1
    */
   export type JSONSchemaTypeName =
-    | 'string'
-    | 'number'
-    | 'integer'
-    | 'boolean'
-    | 'object'
-    | 'array'
-    | 'null'
-    | string;
+    'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null' | string;
 
   export type JSONSchemaType = JSONSchemaArray[] | boolean | number | null | object | string;
 
