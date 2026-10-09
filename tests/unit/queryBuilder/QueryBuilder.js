@@ -655,6 +655,50 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('returning', () => {
+    it('should pass the options to knex', () => {
+      const knex = Knex({ client: 'mssql' });
+      const options = { includeTriggerModifications: true };
+      const expected = knex('Model').insert({ a: 1 }).returning(['id', 'a'], options).toString();
+
+      expect(expected).to.contain('#out');
+
+      for (const args of [
+        ['id', 'a', options],
+        [['id', 'a'], options],
+      ]) {
+        const sql = TestModel.query(knex)
+          .insert({ a: 1 })
+          .returning(...args)
+          .toKnexQuery()
+          .toString();
+
+        expect(sql).to.equal(expected);
+      }
+    });
+
+    it('should work without options', () => {
+      const sql = TestModel.query()
+        .update({ a: 1 })
+        .returning(['id', 'a'])
+        .toKnexQuery()
+        .toString();
+
+      expect(sql).to.equal('update "Model" set "a" = 1 returning "id", "a"');
+    });
+
+    it('should keep the options when cloned', () => {
+      const sql = TestModel.query(Knex({ client: 'mssql' }))
+        .insert({ a: 1 })
+        .returning('id', { includeTriggerModifications: true })
+        .clone()
+        .toKnexQuery()
+        .toString();
+
+      expect(sql).to.contain('#out');
+    });
+  });
+
   it('should convert array query result into Model instances', () => {
     mockKnexQueryResults = [[{ a: 1 }, { a: 2 }]];
 

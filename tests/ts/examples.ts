@@ -798,6 +798,15 @@ const rowsInsertReturning: PromiseLike<Person[]> = Person.query()
   .insert([{ firstName: 'Jack' }])
   .returning('*');
 
+// `returning` accepts knex's options as the second argument.
+const rowsInsertReturningWithOptions: PromiseLike<Person[]> = Person.query()
+  .insert([{ firstName: 'Jack' }])
+  .returning(['id', 'firstName'], { includeTriggerModifications: true });
+
+const rowsUpdateReturningWithOptions: PromiseLike<Person[]> = Person.query()
+  .update({})
+  .returning('*', { includeTriggerModifications: true });
+
 // `returning` should change the return value of `relate` from number to T[]
 const numRelated: PromiseLike<number> = Person.relatedQuery('pets').for(1).relate(2);
 
