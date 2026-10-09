@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.5.0
+
+### What's new
+
+- Add the `mapNestedKeys` option to `knexSnakeCaseMappers()` and `knexIdentifierMapping()`, which also converts the keys of objects nested one level down, e.g. the column names in the rows of knex's `nestTables: true` option on MySQL: `knexSnakeCaseMappers({ mapNestedKeys: true })` [#2273](https://github.com/Vincit/objection.js/issues/2273)
+- The relation mapping's `beforeInsert(model, context, owner)` hook receives the owner model as a third argument. With `insertGraph()` / `upsertGraph()` it's the parent object from the input graph, which may not be inserted yet, and it's `undefined` when the query was started from ids or several owners. [#2240](https://github.com/Vincit/objection.js/issues/2240)
+
+### Types
+
+- Add the opt-in `TypedRelationMappings<M>` helper: used with `satisfies` on `relationMappings`, it checks that the mappings use relation properties of the model, a relation type matching their cardinality, and the right `modelClass` [ditojs#16](https://github.com/ditojs/objection/issues/16)
+- Add `Generated<T>` to mark columns the database fills in, e.g. `id!: Generated<number>`, and the `Insertable<M>` / `InsertableGraph<M>` types for insert data, which leave them optional [ditojs#16](https://github.com/ditojs/objection/issues/16)
+- Add `isOneToOne()` to the `Relation` typings and docs. It's the safe way to check for relations to a single model, as `HasOneRelation` and `HasOneThroughRelation` extend the many-relations.
+
 ## 3.4.1
 
 ### Fixes
