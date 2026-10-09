@@ -1,6 +1,6 @@
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner2-direct.svg)](https://stand-with-ukraine.pp.ua)
 
-[![Tests](https://github.com/Vincit/objection.js/actions/workflows/test.yml/badge.svg)](https://github.com/Vincit/objection.js)
+[![Tests](https://github.com/ditojs/objection/actions/workflows/test.yml/badge.svg)](https://github.com/ditojs/objection/actions)
 [![Join the chat at https://gitter.im/Vincit/objection.js](https://badges.gitter.im/Vincit/objection.js.svg)](https://gitter.im/Vincit/objection.js?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # [Objection.js](https://vincit.github.io/objection.js)
@@ -9,7 +9,7 @@ Objection.js is an [ORM](https://en.wikipedia.org/wiki/Object-relational_mapping
 
 Even though ORM is the best commonly known acronym to describe objection, a more accurate description is to call it **a relational query builder**. You get all the benefits of an SQL query builder but also a powerful set of tools for working with relations.
 
-Objection.js is built on an SQL query builder called [knex](http://knexjs.org). All databases supported by knex are supported by objection.js. **SQLite3**, **Postgres** and **MySQL** are [thoroughly tested](https://github.com/Vincit/objection.js/actions).
+Objection.js is built on an SQL query builder called [knex](http://knexjs.org). All databases supported by knex are supported by objection.js. **SQLite3**, **Postgres** and **MySQL** are [thoroughly tested](https://github.com/ditojs/objection/actions).
 
 What objection.js gives you:
 
@@ -17,7 +17,7 @@ What objection.js gives you:
 - **Simple and fun way to [fetch, insert, update and delete](https://vincit.github.io/objection.js/guide/query-examples.html) objects using the full power of SQL**
 - **Powerful mechanisms for [eager loading](https://vincit.github.io/objection.js/guide/query-examples.html#eager-loading), [inserting](https://vincit.github.io/objection.js/guide/query-examples.html#graph-inserts) and [upserting](https://vincit.github.io/objection.js/guide/query-examples.html#graph-upserts) object graphs**
 - **Easy to use [transactions](https://vincit.github.io/objection.js/guide/transactions.html)**
-- **Official [TypeScript](https://github.com/Vincit/objection.js/blob/main/typings/objection/index.d.ts) support**
+- **Official [TypeScript](https://github.com/ditojs/objection/blob/main/typings/objection/index.d.ts) support**
 - **Optional [JSON schema](https://vincit.github.io/objection.js/guide/validation.html) validation**
 - **A way to [store complex documents](https://vincit.github.io/objection.js/guide/documents.html) as single rows**
 

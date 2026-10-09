@@ -30,8 +30,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/vincit/objection.js.git"
+    "url": "git+https://github.com/ditojs/objection.git"
   },
+  "bugs": {
+    "url": "https://github.com/ditojs/objection/issues"
+  },
+  "homepage": "https://github.com/ditojs/objection",
   "engines": {
     "node": ">=14.0.0"
   },
