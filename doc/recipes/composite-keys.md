@@ -9,6 +9,8 @@ Here's a list of methods that may help working with composite keys:
 - [findById](/api/query-builder/find-methods.html#findbyid)
 - [findByIds](/api/query-builder/find-methods.html#findbyids)
 - [deleteById](/api/query-builder/mutate-methods.html#deletebyid)
+- [updateById](/api/query-builder/mutate-methods.html#updatebyid)
+- [patchById](/api/query-builder/mutate-methods.html#patchbyid)
 - [updateAndFetchById](/api/query-builder/mutate-methods.html#updateandfetchbyid)
 - [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid)
 - [\$id](/api/model/instance-methods.html#id)
