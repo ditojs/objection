@@ -166,6 +166,23 @@ class Person extends objection.Model {
         to: 'pet.id',
       },
     } as RelationMapping<Animal>,
+
+    ownedPets: {
+      modelClass: Animal,
+      relation: objection.Model.HasManyRelation,
+
+      beforeInsert(pet, context, owner) {
+        const ownerOrUndefined: objection.Model | undefined = owner;
+        if (owner instanceof Person) {
+          pet.name = `${owner.firstName}'s pet`;
+        }
+      },
+
+      join: {
+        from: 'person.id',
+        to: 'pet.ownerId',
+      },
+    } as RelationMapping<Animal>,
   });
 }
 
