@@ -15,7 +15,8 @@ As mentioned, this method uses multiple queries to fetch the related objects. Ob
 **Limitations:**
 
 - Relations cannot be referenced in the root query because they are not joined.
-- `limit` and `page` methods will work incorrectly when applied to a relation using `modifyGraph` or `modifiers` because they will be applied on a query that fetches relations for multiple parents. You can use `limit` and `page` for the root query.
+- `limit` and `page` methods will work incorrectly when applied to a relation using `modifyGraph` or `modifiers` because they will be applied on a query that fetches relations for multiple parents. You can use `limit` and `page` for the root query. To limit the related items per parent, set the `maxBatchSize` [graph option](/api/types/#type-graphoptions) to `1` so that each parent gets its own query.
+- `first` doesn't limit the related items per parent when applied to a relation using `modifyGraph` or `modifiers`: all matching related items are still assigned to the parents, or with `useLimitInFirst`, the whole query is limited to one item. Use `limit(1)` together with `maxBatchSize: 1` instead.
 
 See the [eager loading](/guide/query-examples.html#eager-loading) section for more examples and [RelationExpression](/api/types/#type-relationexpression) for more info about the relation expression language.
 
