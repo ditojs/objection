@@ -92,6 +92,10 @@ describe('integration tests', () => {
         require('./jsonQueries')(session);
         require('./jsonRelations')(session);
       }
+
+      if (session.isMySql()) {
+        require('./jsonQueriesMySql')(session);
+      }
     });
 
     return session;
