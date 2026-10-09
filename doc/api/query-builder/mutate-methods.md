@@ -825,6 +825,18 @@ See [knex documentation](https://knexjs.org/guide/query-builder.html#onconflict)
 
 See [knex documentation](https://knexjs.org/guide/query-builder.html#ignore)
 
+`insert()` and `insertAndFetch()` still return all the input models when rows are ignored. Rows returned by the database are merged into the models by the columns passed to `onConflict()` (or the identifiers if no columns are passed), so ignored models never receive another row's values. Ignored models keep their input values, and an ignored model without an explicit identifier gets no `id` and isn't fetched by `insertAndFetch()`. On MySQL there is no `returning`, so objection can't tell which rows were ignored.
+
+```js
+const people = await Person.query()
+  .insert([{ email: 'existing@example.com' }, { email: 'new@example.com' }])
+  .onConflict('email')
+  .ignore();
+
+console.log(people[0].id); // undefined, the row was ignored
+console.log(people[1].id); // the id of the inserted row
+```
+
 ##### Return value
 
 | Type                                | Description                        |
