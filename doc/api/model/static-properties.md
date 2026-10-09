@@ -490,6 +490,38 @@ NOTE: You cannot use any of the model's properties as `dbRefProp`. For example i
 
 Defaults to '#dbRef'.
 
+## `static` graphUnrelateProp
+
+```js
+class Person extends Model {
+  static get graphUnrelateProp() {
+    return '#unrelate';
+  }
+}
+```
+
+Name of the property used to mark a related model in an `upsertGraph` graph to be unrelated. See [this section](/guide/query-examples.html#graph-upserts) for more information.
+
+NOTE: You cannot use any of the model's properties as `graphUnrelateProp`. For example if your model has a property `unrelate`, you cannot set `graphUnrelateProp = 'unrelate'`.
+
+Defaults to `'#unrelate'`.
+
+## `static` graphDeleteProp
+
+```js
+class Person extends Model {
+  static get graphDeleteProp() {
+    return '#delete';
+  }
+}
+```
+
+Name of the property used to mark a related model in an `upsertGraph` graph to be deleted. See [this section](/guide/query-examples.html#graph-upserts) for more information.
+
+NOTE: You cannot use any of the model's properties as `graphDeleteProp`. For example if your model has a property `delete`, you cannot set `graphDeleteProp = 'delete'`.
+
+Defaults to `'#delete'`.
+
 ## `static` propRefRegex
 
 ```js

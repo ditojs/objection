@@ -1368,3 +1368,55 @@ await Person.query().upsertGraph(
 ```
 
 You can disable updates, inserts, deletes etc. for the whole [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) operation or for individual relations by using the `noUpdate`, `noInsert`, `noDelete` etc. options. See [UpsertGraphOptions](/api/types/#type-upsertgraphoptions) docs for more info.
+
+If you need to unrelate or delete individual models without listing all the other models of a relation, you can mark them with the special properties `#unrelate` and `#delete`. This is especially useful together with the `noDelete` and `noUnrelate` options, which keep all models that are missing from the graph intact. The names of the special properties can be changed using the [graphUnrelateProp](/api/model/static-properties.html#static-graphunrelateprop) and [graphDeleteProp](/api/model/static-properties.html#static-graphdeleteprop) static properties.
+
+```js
+await Person.query().upsertGraph(
+  {
+    id: 1,
+
+    // Unrelate the parent. This doesn't delete it.
+    parent: {
+      id: 2,
+      '#unrelate': true
+    },
+
+    // Only Kat the Cat gets deleted. Doggo is not listed but is kept
+    // because of the `noDelete` option.
+    pets: [
+      {
+        id: 2,
+        '#delete': true
+      }
+    ],
+
+    movies: [
+      {
+        // Wanderlust gets unrelated. Horrible Bosses is kept.
+        id: 2,
+        '#unrelate': true
+      },
+      {
+        // An existing movie that isn't currently related to Jennifer.
+        // It will get related.
+        id: 1253
+      }
+    ]
+  },
+  {
+    relate: true,
+    noDelete: true
+  }
+);
+```
+
+The special properties work like this:
+
+- `#unrelate` and `#delete` take precedence over the `unrelate`, `noUnrelate` and `noDelete` options. A model marked with `#delete` is deleted even if `unrelate` or `noDelete` is set for its relation, and a model marked with `#unrelate` is unrelated even if `noUnrelate` is set.
+- If both `#unrelate` and `#delete` are set, the model is unrelated.
+- The marked model itself is not updated and its relations are ignored, so nothing inside its graph gets inserted, updated, related, unrelated or deleted. Like other deletes, the delete is not recursive (unless you have defined `ON DELETE CASCADE` or other hooks in the db).
+- Only models that are currently related to the parent model are unrelated or deleted. Marked models that don't exist or are related to a different model are ignored. They are never inserted or related, even with the `relate` or `insertMissing` options.
+- Only the value `true` marks a model. Other values are ignored and the properties are never written to the database.
+- The special properties can't be used for the root models of the graph. A `ValidationError` is thrown if a root model is marked.
+- The special properties only have an effect in [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph). Marked related models are skipped by [insertGraph](/api/query-builder/mutate-methods.html#insertgraph).
