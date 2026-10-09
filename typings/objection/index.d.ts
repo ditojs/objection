@@ -613,6 +613,7 @@ declare namespace Objection {
     (table: TableRef<QB>, leftCol: ColumnRef, op: Operator, rightCol: ColumnRef): QB;
     (table: TableRef<QB>, leftCol: ColumnRef, rightCol: ColumnRef): QB;
     (table: TableRef<QB>, cb: CallbackVoid<Knex.JoinClause>): QB;
+    (table: TableRef<QB>, columns: { [leftCol: string]: ColumnRef }): QB;
     (table: TableRef<QB>, raw: Raw): QB;
     (raw: Raw): QB;
   }
@@ -625,6 +626,7 @@ declare namespace Objection {
 
   interface AggregateMethod<QB extends AnyQueryBuilder> {
     (column: ColumnRef): QB;
+    (aliasToColumnDict: { [alias: string]: ColumnRef }): QB;
   }
 
   interface CountMethod<QB extends AnyQueryBuilder> {
@@ -1129,8 +1131,8 @@ declare namespace Objection {
     page(page: number, pageSize: number): PageQueryBuilder<this>;
     range(): PageQueryBuilder<this>;
     range(start: number, end: number): PageQueryBuilder<this>;
-    offset(offset: number): this;
-    limit(limit: number): this;
+    offset(offset: number, options?: boolean | { skipBinding?: boolean }): this;
+    limit(limit: number, options?: boolean | { skipBinding?: boolean }): this;
     resultSize(): Promise<number>;
 
     runBefore: RunBeforeMethod<this>;
