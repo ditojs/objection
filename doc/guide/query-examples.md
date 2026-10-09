@@ -983,7 +983,7 @@ await Person.query().insertGraph(
 );
 ```
 
-Jennifer can't be inserted before Felix because of `favoritePetId`, and Felix can't be inserted before Jennifer because of `ownerId`. [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) resolves cycles like this by inserting Jennifer without `favoritePetId` and updating it once Felix has been inserted. The update is a normal [patch](/api/query-builder/mutate-methods.html#patch) query (one per model), so `$beforeUpdate` and `$afterUpdate` hooks are called for it.
+Jennifer can't be inserted before Felix because of `favoritePetId`, and Felix can't be inserted before Jennifer because of `ownerId`. [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) resolves cycles like this by inserting Jennifer without `favoritePetId` and updating it once Felix has been inserted. The update is a normal [patch](/api/query-builder/mutate-methods.html#patch) query (one per updated model), so `$beforeUpdate` and `$afterUpdate` hooks are called for it.
 
 This only works if the foreign key column is nullable (or the constraint is deferrable). If it isn't, the database rejects the insert of Jennifer, possibly after other models of the graph have already been inserted. Use a [transaction](/guide/transactions.html) to roll those back in that case.
 
