@@ -305,12 +305,13 @@ const { snakeCaseMappers } = require('objection');
 
 Function for adding snake_case to camelCase conversion to objection models. Better documented [here](/recipes/snake-case-to-camel-case-conversion.html). The `snakeCaseMappers` function accepts an options object. The available options are:
 
-| Option                            | Type    | Default | Description                                                                                                                                                                                                                                                                  |
-| --------------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| upperCase                         | boolean | `false` | Set to `true` if your columns are UPPER_SNAKE_CASED.                                                                                                                                                                                                                         |
-| underscoreBeforeDigits            | boolean | `false` | When `true`, will place an underscore before digits (`foo1Bar2` becomes `foo_1_bar_2`). When `false`, `foo1Bar2` becomes `foo1_bar2`.                                                                                                                                        |
-| underscoreBetweenUppercaseLetters | boolean | `false` | When `true`, will place underscores between consecutive uppercase letters (`fooBAR` becomes `foo_b_a_r`). When `false`, `fooBAR` will become `foo_bar`.                                                                                                                      |
-| noDoubleUnderscores               | boolean | `false` | When `true`, will never insert an underscore directly after an existing one (with `underscoreBeforeDigits`, `foo_1` stays `foo_1` instead of becoming `foo__1`; `foo_Bar` becomes `foo_bar` instead of `foo__bar`). Underscores already present in the input are kept as is. |
+| Option                            | Type    | Default | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| upperCase                         | boolean | `false` | Set to `true` if your columns are UPPER_SNAKE_CASED.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| underscoreBeforeDigits            | boolean | `false` | When `true`, will place an underscore before digits (`foo1Bar2` becomes `foo_1_bar_2`). When `false`, `foo1Bar2` becomes `foo1_bar2`.                                                                                                                                                                                                                                                                                                                                 |
+| underscoreBetweenUppercaseLetters | boolean | `false` | When `true`, will place underscores between consecutive uppercase letters (`fooBAR` becomes `foo_b_a_r`). When `false`, `fooBAR` will become `foo_bar`.                                                                                                                                                                                                                                                                                                               |
+| noDoubleUnderscores               | boolean | `false` | When `true`, will never insert an underscore directly after an existing one (with `underscoreBeforeDigits`, `foo_1` stays `foo_1` instead of becoming `foo__1`; `foo_Bar` becomes `foo_bar` instead of `foo__bar`). Underscores already present in the input are kept as is.                                                                                                                                                                                          |
+| preserveJsonKeys                  | boolean | `false` | When `true`, only the column part of [field expressions](/api/types/#type-fieldexpression) used as property names, e.g. in `patch({ 'jsonColumn:someKey': value })`, is converted and the JSON path is kept as written (`json_column:someKey`). When `false`, the JSON keys are converted too (`json_column:some_key`). Keys of objects stored in JSON columns are never converted. Enabling this changes which JSON keys existing field expression updates write to. |
 
 ##### Examples
 
@@ -334,6 +335,21 @@ class Person extends Model {
     return snakeCaseMappers({ upperCase: true });
   }
 }
+```
+
+To only convert the column part of field expressions and keep their JSON keys as written
+
+```js
+const { Model, snakeCaseMappers } = require('objection');
+
+class Person extends Model {
+  static get columnNameMappers() {
+    return snakeCaseMappers({ preserveJsonKeys: true });
+  }
+}
+
+// update "persons" set "json_column" = jsonb_set("json_column", '{someKey}', '1', true)
+await Person.query().patch({ 'jsonColumn:someKey': 1 });
 ```
 
 ## knexSnakeCaseMappers

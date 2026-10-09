@@ -1292,6 +1292,13 @@ class Interview extends objection.Model {
   static idColumn = ['interviewer', 'interviewee'];
 }
 
+class JsonKeysModel extends objection.Model {
+  static columnNameMappers = objection.snakeCaseMappers({
+    upperCase: true,
+    preserveJsonKeys: true,
+  });
+}
+
 async () => {
   // findById with composite key
   const interview: Interview | undefined = await Interview.query().findById([10, 11]);

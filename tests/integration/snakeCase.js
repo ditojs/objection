@@ -1,4 +1,5 @@
-const { Model, snakeCaseMappers } = require('../../');
+const Knex = require('knex');
+const { Model, ref, snakeCaseMappers, knexSnakeCaseMappers } = require('../../');
 const Promise = require('bluebird');
 const expect = require('chai').expect;
 
@@ -217,6 +218,89 @@ module.exports = (session) => {
                 },
               ]);
             });
+        });
+
+        describe('json field expressions', () => {
+          const latitudeRef = 'person_address:cityCoordinates.latitudeCoordinate';
+
+          class PreservingPerson extends Person {
+            static get columnNameMappers() {
+              return snakeCaseMappers({ preserveJsonKeys: true });
+            }
+          }
+
+          function fetchMatti() {
+            return session.knex('person').where('first_name', 'Matti').first();
+          }
+
+          it('patch maps json keys of field expressions by default', async () => {
+            await Person.query(session.knex)
+              .where('first_name', 'Matti')
+              .patch({ 'personAddress:personCity': 'Helsinki' });
+
+            const { person_address } = await fetchMatti();
+            expect(person_address.personCity).to.equal('Jalasjärvi');
+            expect(person_address.person_city).to.equal('Helsinki');
+          });
+
+          it('patch only maps the column part with `preserveJsonKeys: true`', async () => {
+            const numUpdated = await PreservingPerson.query(session.knex)
+              .where(ref(latitudeRef), 61)
+              .patch({ 'personAddress:cityCoordinates.latitudeCoordinate': 30 });
+
+            expect(numUpdated).to.equal(1);
+            const { person_address } = await fetchMatti();
+            expect(person_address).to.eql({
+              personCity: 'Jalasjärvi',
+              cityCoordinates: { latitudeCoordinate: 30, longitudeCoordinate: 23 },
+            });
+
+            const result = await PreservingPerson.query(session.knex)
+              .select('first_name', ref(latitudeRef).castInt().as('latitude'))
+              .whereJsonSupersetOf('person_address:cityCoordinates', { latitudeCoordinate: 30 });
+
+            expect(result.map((it) => it.toJSON())).to.eql([{ firstName: 'Matti', latitude: 30 }]);
+          });
+
+          it('knexSnakeCaseMappers never maps json keys of field expressions', async () => {
+            const knex = Knex({ ...session.knex.client.config, ...knexSnakeCaseMappers() });
+
+            class KnexPerson extends Model {
+              static get tableName() {
+                return 'person';
+              }
+
+              static get jsonAttributes() {
+                return ['personAddress'];
+              }
+            }
+
+            try {
+              const numUpdated = await KnexPerson.query(knex)
+                .where(ref('personAddress:cityCoordinates.latitudeCoordinate'), 61)
+                .patch({ 'personAddress:cityCoordinates.latitudeCoordinate': 30 });
+
+              expect(numUpdated).to.equal(1);
+              const { person_address } = await fetchMatti();
+              expect(person_address.cityCoordinates).to.eql({
+                latitudeCoordinate: 30,
+                longitudeCoordinate: 23,
+              });
+
+              const result = await KnexPerson.query(knex)
+                .select(
+                  'firstName',
+                  ref('personAddress:cityCoordinates.latitudeCoordinate').as('latitudeValue'),
+                )
+                .whereNotNull('personAddress');
+
+              expect(result.map((it) => it.toJSON())).to.eql([
+                { firstName: 'Matti', latitudeValue: 30 },
+              ]);
+            } finally {
+              await knex.destroy();
+            }
+          });
         });
       }
 

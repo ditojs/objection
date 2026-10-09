@@ -1574,6 +1574,12 @@ declare namespace Objection {
     underscoreBeforeDigits?: boolean;
     underscoreBetweenUppercaseLetters?: boolean;
     noDoubleUnderscores?: boolean;
+    /**
+     * Only convert the column part of field expressions like
+     * `jsonColumn:someKey` and keep their JSON keys as written.
+     * Only used by `snakeCaseMappers`.
+     */
+    preserveJsonKeys?: boolean;
   }
 
   export interface ColumnNameMappers {
