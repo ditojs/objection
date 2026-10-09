@@ -331,6 +331,53 @@ console.log(people[0].movies.length);
 
 A top-level relation can be either joined or fetched, but not both. Passing the same relation to both methods, even when only a nested relation is different (for example `withGraphJoined('pets')` and `withGraphFetched('pets.toys')`), throws an error. The `*` expression can't be used when mixing the methods. [modifyGraph](/api/query-builder/eager-methods.html#modifygraph) works with both joined and fetched relations.
 
+To add relations without caring whether they are joined or fetched, for example in reusable modifiers, use [withGraph](/api/query-builder/eager-methods.html#withgraph). It keeps the algorithm of the relations that are already loaded.
+
+## withGraph()
+
+```js
+queryBuilder = queryBuilder.withGraph(relationExpression, graphOptions);
+```
+
+With `graphOptions.algorithm` set to `'fetch'` or `'join'`, this is the same as [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) or [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined).
+
+Without an `algorithm`, the relations are added to the graph without choosing an algorithm, which is useful when the graph is extended in different places, for example in modifiers:
+
+- Top-level relations that are already joined or fetched keep their algorithm, including their nested relations.
+- New top-level relations use the algorithm of the most recent `withGraphJoined`, `withGraphFetched` or `withGraph` call with an `algorithm`, and are fetched if there was none. Child queries inherit it from their parent query.
+
+Unlike passing the same relation to both [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined) and [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched), this never throws for relations that are already loaded. All other options are passed on, and [modifiers](/api/query-builder/other-methods.html#modifiers), [modifyGraph](/api/query-builder/eager-methods.html#modifygraph) and [clearWithGraph](/api/query-builder/eager-methods.html#clearwithgraph) work the same way. `clearWithGraph` also forgets the most recently used algorithm.
+
+##### Arguments
+
+| Argument           | Type                                                      | Description                                                                         |
+| ------------------ | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| relationExpression | [RelationExpression](/api/types/#type-relationexpression) | The relation expression describing which relations to load.                         |
+| options            | [GraphOptions](/api/types/#type-graphoptions)             | Optional options, plus `algorithm`: `'fetch'` or `'join'`. Other values throw.      |
+
+##### Return value
+
+| Type                                | Description                        |
+| ----------------------------------- | ---------------------------------- |
+| [QueryBuilder](/api/query-builder/) | `this` query builder for chaining. |
+
+In TypeScript, the result type is narrowed like with [withGraphFetched](/api/query-builder/eager-methods.html#typescript).
+
+##### Examples
+
+```js
+const people = await Person.query()
+  .withGraphJoined('pets')
+  .withGraphFetched('movies')
+  // `pets.toys` is joined and `movies.actors` fetched, like their parents.
+  // `children` is fetched, as `withGraphFetched` was used most recently.
+  .withGraph('[pets.toys, movies.actors, children]');
+```
+
+```js
+const people = await Person.query().withGraph('pets', { algorithm: 'join' });
+```
+
 ## graphExpressionObject()
 
 ```js

@@ -363,6 +363,20 @@ internal queries.
 | ------- | -------------------------------------------------------- |
 | boolean | `true` if the query performs an internal helper operation. |
 
+## isJoinChildQuery()
+
+```js
+const isJoinChildQuery = queryBuilder.isJoinChildQuery();
+```
+
+Returns `true` for the queries that are created for relations loaded using [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined), for example the queries passed to the modifiers of joined relations. These queries are only used to build the joins and are never executed themselves. The queries of relations loaded using [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) return `false`, also when both methods are mixed in the same query.
+
+##### Return value
+
+| Type    | Description                                                  |
+| ------- | ------------------------------------------------------------ |
+| boolean | `true` if the query was created for a joined relation.       |
+
 ## hasWheres()
 
 ```js
