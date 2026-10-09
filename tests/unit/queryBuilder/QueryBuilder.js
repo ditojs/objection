@@ -9,6 +9,7 @@ const _ = require('lodash'),
   { resetDeprecations } = require('../../../lib/utils/deprecate'),
   ref = objection.ref,
   raw = objection.raw,
+  val = objection.val,
   Model = objection.Model,
   QueryBuilder = objection.QueryBuilder,
   QueryBuilderBase = objection.QueryBuilderBase;
@@ -2370,6 +2371,46 @@ describe('QueryBuilder', () => {
     );
     expect(toSql(TestModel.query().whereJsonHasAll('content:a', ['b']))).to.equal(
       `select "Model".* from "Model" where "content"#>'{a}' ?& array['b']`,
+    );
+  });
+
+  it('json where methods should support ref(), val() and raw() on the right side', () => {
+    const toSql = (builder) => builder.toKnexQuery().toString();
+
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content:a', ref('other:b')))).to.equal(
+      `select "Model".* from "Model" where ( "content"#>'{a}' )::jsonb @> ( "other"#>'{b}' )::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonSubsetOf('content', ref('Model.other')))).to.equal(
+      `select "Model".* from "Model" where ( "content" )::jsonb <@ ( "Model"."other" )::jsonb`,
+    );
+    expect(
+      toSql(
+        TestModel.query()
+          .whereJsonSupersetOf('a', 'b')
+          .orWhereJsonNotSubsetOf('content', ref("other:x'?")),
+      ),
+    ).to.equal(
+      `select "Model".* from "Model" where ( "a" )::jsonb @> ( "b" )::jsonb or not ( "content" )::jsonb <@ ( "other"#>'{x''?}' )::jsonb`,
+    );
+    expect(
+      toSql(TestModel.query().whereJsonSupersetOf('content', val({ a: '?' }).castJson())),
+    ).to.equal(
+      `select "Model".* from "Model" where ( "content" )::jsonb @> ( CAST('{"a":"?"}' AS jsonb) )::jsonb`,
+    );
+    expect(
+      toSql(TestModel.query().whereJsonSupersetOf('content', raw('?::jsonb', '[1]'))),
+    ).to.equal(
+      `select "Model".* from "Model" where ( "content" )::jsonb @> ( '[1]'::jsonb )::jsonb`,
+    );
+    expect(
+      toSql(
+        TestModel.query().whereJsonSupersetOf(
+          'content',
+          TestModel.query().select('other').limit(1),
+        ),
+      ),
+    ).to.equal(
+      `select "Model".* from "Model" where ( "content" )::jsonb @> ( (select "other" from "Model" limit 1) )::jsonb`,
     );
   });
 

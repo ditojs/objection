@@ -900,6 +900,41 @@ module.exports = (session) => {
             });
         });
 
+        it('should find subset where the right side is a ref()', async () => {
+          expectIdsEqual(
+            await BoundModel.query().whereJsonSupersetOf('jsonObject:a', ref('jsonObject:b')),
+            [7],
+          );
+          expectIdsEqual(
+            await BoundModel.query().whereJsonSubsetOf(
+              'jsonObject:b',
+              ref('ModelJson.jsonObject:a'),
+            ),
+            [7],
+          );
+          expectIdsEqual(
+            await BoundModel.query().whereJsonNotSupersetOf('jsonObject', ref('jsonObject:a')),
+            [6, 7],
+          );
+        });
+
+        it('should find subset where the right side is a val() or raw()', async () => {
+          expectIdsEqual(
+            await BoundModel.query().whereJsonSupersetOf(
+              'jsonObject:objectField',
+              val({}).castJson(),
+            ),
+            [1],
+          );
+          expectIdsEqual(
+            await BoundModel.query().orWhereJsonSupersetOf(
+              'jsonObject:objectField',
+              raw('?::jsonb', JSON.stringify(complexJsonObj.jsonObject.objectField)),
+            ),
+            [1],
+          );
+        });
+
         it('should find subset where both sides are references', () => {
           return BoundModel.query()
             .where(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
