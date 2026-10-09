@@ -2037,7 +2037,7 @@ describe('Model', () => {
     expect(model1.manyToMany).to.eql([{ id: 2 }]);
   });
 
-  describe('$setRelated with BelongsToOneRelation foreign keys (#2001)', () => {
+  describe('$setRelated / $appendRelated foreign keys (#2001)', () => {
     let Post;
     let User;
 
@@ -2055,6 +2055,28 @@ describe('Model', () => {
           relation: Model.BelongsToOneRelation,
           modelClass: User,
           join: { from: ['Post.authorA', 'Post.authorB'], to: ['User.a', 'User.b'] },
+        },
+      };
+
+      User.relationMappings = {
+        posts: {
+          relation: Model.HasManyRelation,
+          modelClass: Post,
+          join: { from: 'User.id', to: 'Post.authorId' },
+        },
+        latestPost: {
+          relation: Model.HasOneRelation,
+          modelClass: Post,
+          join: { from: 'User.id', to: 'Post.authorId' },
+        },
+        likedPosts: {
+          relation: Model.ManyToManyRelation,
+          modelClass: Post,
+          join: {
+            from: 'User.id',
+            through: { from: 'Like.userId', to: 'Like.postId' },
+            to: 'Post.id',
+          },
         },
       };
     });
@@ -2091,6 +2113,38 @@ describe('Model', () => {
 
       expect(post.author).to.equal(null);
       expect(post.authorId).to.equal(1);
+    });
+
+    it('should set the foreign keys of the related models of a HasManyRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      user.$setRelated('posts', [Post.fromJson({ authorId: 1 }), Post.fromJson({})]);
+
+      expect(user.posts.map((post) => post.authorId)).to.eql([2, 2]);
+
+      user.$appendRelated('posts', Post.fromJson({ authorId: 3 }));
+      expect(user.posts.map((post) => post.authorId)).to.eql([2, 2, 2]);
+    });
+
+    it('should set the foreign key of the related model of a HasOneRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      user.$setRelated('latestPost', Post.fromJson({ authorId: 1 }));
+
+      expect(user.latestPost.authorId).to.equal(2);
+    });
+
+    it("should keep the related models' foreign keys if the owner has no key yet", () => {
+      const user = User.fromJson({ name: 'new' });
+      user.$setRelated('posts', [Post.fromJson({ authorId: 1 })]);
+
+      expect(user.posts[0].authorId).to.equal(1);
+    });
+
+    it('should not set any keys for ManyToManyRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      user.$setRelated('likedPosts', [Post.fromJson({ id: 5, authorId: 1 })]);
+
+      expect(user.likedPosts[0].toJSON()).to.eql({ id: 5, authorId: 1 });
+      expect(user.toJSON()).to.eql({ id: 2, likedPosts: [{ id: 5, authorId: 1 }] });
     });
   });
 
