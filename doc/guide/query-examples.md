@@ -967,7 +967,23 @@ await Person.query().insertGraph(
 
 Note that you need to also set the `allowRefs` option to `true` for this to work.
 
-The query above will insert only one movie (the 'Silver Linings Playbook') but both 'Jennifer' and 'Bradley' will have the movie related to them through the many-to-many relation `movies`. The `#id` can be any string. There are no format or length requirements for them. It is quite easy to create circular dependencies using `#id` and `#ref`. Luckily [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) detects them and rejects the query with a clear error message.
+The query above will insert only one movie (the 'Silver Linings Playbook') but both 'Jennifer' and 'Bradley' will have the movie related to them through the many-to-many relation `movies`. The `#id` can be any string. There are no format or length requirements for them.
+
+It is quite easy to create circular dependencies using `#id` and `#ref`, for example when a `BelongsToOneRelation` refers to a model that is inserted through a `HasManyRelation` of the same model:
+
+```js
+await Person.query().insertGraph(
+  {
+    firstName: 'Jennifer',
+    pets: [{ '#id': 'felix', name: 'Felix' }],
+    // `favoritePet` is a `BelongsToOneRelation` (`Person.favoritePetId`).
+    favoritePet: { '#ref': 'felix' },
+  },
+  { allowRefs: true },
+);
+```
+
+Jennifer can't be inserted before Felix because of `favoritePetId`, and Felix can't be inserted before Jennifer because of `ownerId`. [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) resolves cycles like this by inserting Jennifer without `favoritePetId` and updating it once Felix has been inserted. This only works if the foreign key column is nullable (or the constraint is deferrable). The update is a normal [patch](/api/query-builder/mutate-methods.html#patch) query, so `$beforeUpdate` and `$afterUpdate` hooks are called for it. Cycles that can't be resolved this way, for example ones created using only `#ref{}` property references, are rejected with a clear error message.
 
 You can refer to the properties of other models anywhere in the graph using expressions of format `#ref{<id>.<property>}` as long as the reference doesn't create a circular dependency. For example:
 
