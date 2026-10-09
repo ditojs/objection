@@ -278,6 +278,75 @@ module.exports = (session) => {
       });
     });
 
+    describe('.query().updateById()', () => {
+      beforeEach(() => {
+        return session.populate([
+          {
+            id: 1,
+            model1Prop1: 'hello 1',
+          },
+          {
+            id: 2,
+            model1Prop1: 'hello 2',
+            model1Prop2: 2,
+          },
+          {
+            id: 3,
+            model1Prop1: 'hello 3',
+          },
+        ]);
+      });
+
+      it('should update a model by id and return the number of updated rows', async () => {
+        const model = Model1.fromJson({ model1Prop1: 'updated text' });
+        const numUpdated = await Model1.query().updateById(2, model);
+
+        expect(numUpdated).to.equal(1);
+        expect(model.$beforeUpdateCalled).to.equal(1);
+        expect(model.$beforeUpdateOptions).to.eql({});
+        expect(model.$afterUpdateCalled).to.equal(1);
+        expect(model.$afterUpdateOptions).to.eql({});
+
+        const rows = await session.knex('Model1').orderBy('id');
+        expect(rows).to.have.length(3);
+        expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
+        expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text', model1Prop2: 2 });
+        expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
+      });
+
+      it('should return 0 if the model does not exist', async () => {
+        const numUpdated = await Model1.query().updateById(1000, { model1Prop1: 'updated text' });
+        expect(numUpdated).to.equal(0);
+      });
+
+      it('should throw a NotFoundError with throwIfNotFound() if the model does not exist', async () => {
+        let error;
+
+        try {
+          await Model1.query().updateById(1000, { model1Prop1: 'updated text' }).throwIfNotFound();
+        } catch (err) {
+          error = err;
+        }
+
+        expect(error).to.be.a(Model1.NotFoundError);
+      });
+
+      it('should throw a clear error if undefined is passed as id', async () => {
+        let error;
+
+        try {
+          await Model1.query().updateById(undefined, { model1Prop1: 'updated text' });
+        } catch (err) {
+          error = err;
+        }
+
+        expect(error.message).to.equal('undefined was passed to updateById');
+
+        const rows = await session.knex('Model1').where('model1Prop1', 'updated text');
+        expect(rows).to.have.length(0);
+      });
+    });
+
     describe('.query().updateAndFetchById()', () => {
       beforeEach(() => {
         return session.populate([
