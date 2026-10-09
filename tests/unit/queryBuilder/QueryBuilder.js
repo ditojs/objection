@@ -3033,6 +3033,26 @@ describe('QueryBuilder', () => {
         });
     });
 
+    it('should keep the joined operation first when it is added in a runBefore context hook', () => {
+      mockKnexQueryResults = [flatRows(), movieRows()];
+
+      const builder = Person.query().select(raw('1 as one')).withGraphFetched('movies');
+
+      // Unlike `runBefore()`, a context hook adds the operation to the root of
+      // the builder. If the fetched operation built first, its selection of
+      // `id` would stop the join from selecting all columns for the raw select.
+      builder.internalContext().runBefore.push((_, builder) => {
+        // The internal context is shared with the fetch queries.
+        if (builder.modelClass() === Person) {
+          builder.withGraphJoined('pets');
+        }
+      });
+
+      return builder.then(() => {
+        expect(executedQueries[0]).to.equal(joinQuery.replace('select ', 'select 1 as one, '));
+      });
+    });
+
     it('should fetch the relations of all models produced by the join', () => {
       mockKnexQueryResults = [flatRows(), [{ id: 1, name: 'P1', parentId: null }], movieRows()];
 
