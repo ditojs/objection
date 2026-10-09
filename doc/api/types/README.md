@@ -60,6 +60,7 @@ This page contains the documentation of all other types and classes than [Model]
 | -------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | shallow  | boolean             | If `true`, relations are ignored. Default is `false`.                                                                                                                                                                                                                                 |
 | virtuals | boolean<br>string[] | If `false`, virtual attributes are omitted from the output. Default is `true`. You can also pass an array of property names and only those virtual properties get picked. You can even pass in property/function names that are not included in the static `virtualAttributes` array. |
+| format   | Object              | Custom formatting options passed as the second argument to [\$formatJson](/api/model/instance-methods.html#formatjson) of the model and all nested models. |
 
 ## `type` GraphOptions
 
