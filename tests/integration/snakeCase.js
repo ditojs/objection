@@ -1,6 +1,5 @@
 const Knex = require('knex');
 const { Model, ref, snakeCaseMappers, knexSnakeCaseMappers } = require('../../');
-const Promise = require('bluebird');
 const expect = require('chai').expect;
 
 module.exports = (session) => {

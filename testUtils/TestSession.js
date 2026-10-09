@@ -1,7 +1,8 @@
 const _ = require('lodash');
 const path = require('path');
-const Promise = require('bluebird');
 const knexUtils = require('../lib/utils/knexUtils');
+const { map: promiseMap } = require('../lib/utils/promiseUtils');
+const { delay } = require('./testUtils');
 const { Model, transaction, snakeCaseMappers, ref } = require('../');
 
 const chai = require('chai');
@@ -340,7 +341,7 @@ class TestSession {
         .then(() => trx('model3').delete())
         .then(() => this.models.Model1.query(trx).insertGraph(data))
         .then(() => {
-          return Promise.resolve(['Model1', 'model2', 'model3', 'Model1Model2']).map((table) => {
+          return promiseMap(['Model1', 'model2', 'model3', 'Model1Model2'], (table) => {
             const idCol = (
               _.find(this.models, (it) => it.getTableName() === table) || {
                 getIdColumn: () => 'id',
@@ -404,11 +405,11 @@ TestSession.staticInitCalled = false;
 TestSession.unhandledRejectionHandlers = [];
 TestSession.hookCounter = 0;
 
-// Creates a hook that waits for `delay` milliseconds and then
+// Creates a hook that waits for `ms` milliseconds and then
 // increments a `${name}Called` property. The hook is asynchronous
 // every other time it is called so that the synchronous path is
 // also tested.
-function createHook(name, delay, extraAction) {
+function createHook(name, ms, extraAction) {
   const hook = (model, args) => {
     // Increment the property so that it can be checked in the tests.
     inc(model, `${name}Called`);
@@ -423,7 +424,7 @@ function createHook(name, delay, extraAction) {
     if (TestSession.hookCounter++ % 2 === 0) {
       return hook(this, args);
     } else {
-      return Promise.delay(delay).then(() => hook(this, args));
+      return delay(ms).then(() => hook(this, args));
     }
   };
 }
@@ -433,7 +434,7 @@ function inc(obj, key) {
 }
 
 function registerUnhandledRejectionHandler() {
-  Promise.onPossiblyUnhandledRejection((error) => {
+  process.on('unhandledRejection', (error) => {
     if (_.isEmpty(TestSession.unhandledRejectionHandlers)) {
       console.error(error.stack);
     }

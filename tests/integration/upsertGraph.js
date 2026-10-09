@@ -1,10 +1,10 @@
 const expect = require('expect.js');
 const chai = require('chai');
-const Promise = require('bluebird');
 const { raw, transaction, ValidationError } = require('../../');
 const { createRejectionReflection } = require('../../testUtils/testUtils');
 const { FetchStrategy } = require('../../lib/queryBuilder/graph/GraphOptions');
 const mockKnexFactory = require('../../testUtils/mockKnex');
+const { map: promiseMap } = require('../../lib/utils/promiseUtils');
 
 module.exports = (session) => {
   const Model1 = session.unboundModels.Model1;
@@ -3936,7 +3936,7 @@ module.exports = (session) => {
             'model1Relation2[0].model2Relation1[1].model1Prop1',
           ];
 
-          return Promise.map(fails, (fail) => {
+          return promiseMap(fails, (fail) => {
             return transaction(session.knex, (trx) =>
               Model1.query(trx).upsertGraph(fail, { fetchStrategy }),
             ).catch((err) => createRejectionReflection(err));
@@ -4297,7 +4297,7 @@ module.exports = (session) => {
 
           const errorKeys = ['model1Prop2', 'model1Relation1.model1Prop2'];
 
-          return Promise.map(fails, (fail) => {
+          return promiseMap(fails, (fail) => {
             return transaction(session.knex, (trx) =>
               Model1.query(trx).upsertGraph(fail, { update: true, fetchStrategy }),
             ).catch((err) => createRejectionReflection(err));
