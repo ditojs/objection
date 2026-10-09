@@ -1,5 +1,63 @@
 # Changelog
 
+## 3.2.0
+
+Objection is now maintained at [ditojs/objection](https://github.com/ditojs/objection).
+
+### What's new
+
+- Support mixing `withGraphJoined()` and `withGraphFetched()` in the same query. Before, the last method called silently decided the algorithm for all relations. A top-level relation can only be loaded with one of them. [#2269](https://github.com/Vincit/objection.js/issues/2269)
+- Add `none()` to make a query match no rows [#2184](https://github.com/Vincit/objection.js/issues/2184)
+- `upsertGraph()`: mark individual related models with `#unrelate` or `#delete` [#2410](https://github.com/Vincit/objection.js/pull/2410)
+- Return rows from `relate()` with `returning()` [#2044](https://github.com/Vincit/objection.js/issues/2044)
+- Apply `select()` to the fetch query of `updateAndFetch()`, `patchAndFetch()` and their `ById` variants [#1938](https://github.com/Vincit/objection.js/issues/1938)
+- Add a `noDoubleUnderscores` option to the snake case mappers [#2805](https://github.com/Vincit/objection.js/issues/2805)
+- Pass `format` options from `toJSON()` / `$toJson()` to `$formatJson()` of the model and all nested models [#2033](https://github.com/Vincit/objection.js/pull/2033)
+- Support `$defs` in JSON schemas [#2576](https://github.com/Vincit/objection.js/pull/2576)
+
+### Fixes
+
+- **Behaviour change:** throw when `for()` is used outside of `relatedQuery()`. It was silently ignored before, so `Model.query().for(1).delete()` deleted **every row** of the table. [#2185](https://github.com/Vincit/objection.js/issues/2185)
+- **Behaviour change:** throw when `for()` is called after a write method on a `relatedQuery()`. Before, `update()`, `patch()` and `delete()` silently did nothing, and `insert()` and `relate()` wrote `NULL` foreign keys.
+- Fix validators being shared between models with the same `uniqueTag()` but different schemas [#2540](https://github.com/Vincit/objection.js/issues/2540)
+- Fix `orderBy()` with refs and raws as array items [#2252](https://github.com/Vincit/objection.js/issues/2252)
+- Clear an `orderBy` added at build time, e.g. by a relation's `modify`, from the `resultSize()` and `page()` count query [#2747](https://github.com/Vincit/objection.js/issues/2747)
+- Support `Model.ref()` references in relation join mappings [#1873](https://github.com/Vincit/objection.js/issues/1873)
+- Reference the bare column in JSON where methods when no JSON path is given, so Postgres can use GIN indexes [#2008](https://github.com/Vincit/objection.js/issues/2008)
+- Fix subqueries in join builders on MySQL (`parentQuery.isUpdate is not a function`) [#2407](https://github.com/Vincit/objection.js/pull/2407)
+- Make `union()` deduplicate regardless of array size [#2811](https://github.com/Vincit/objection.js/issues/2811)
+- Serialize relation modifiers and aliases before the recursion marker in `RelationExpression.toString()` [#2812](https://github.com/Vincit/objection.js/issues/2812)
+
+### Types
+
+- Fix `first()` infinite type recursion in custom query builder methods [#2637](https://github.com/Vincit/objection.js/issues/2637)
+- Keep nested relation data type-checked when inserting model data interfaces [#2190](https://github.com/Vincit/objection.js/issues/2190)
+- Keep custom query builder types after `throwIfNotFound()`
+- Add a `QueryBuilder` constructor typing for custom query builders [#2306](https://github.com/Vincit/objection.js/issues/2306)
+- Allow `null` and readonly arrays for `idColumn`, readonly arrays for `jsonAttributes` [#2693](https://github.com/Vincit/objection.js/issues/2693), [#2745](https://github.com/Vincit/objection.js/issues/2745)
+- Allow `bigint` values in where methods [#2318](https://github.com/Vincit/objection.js/issues/2318)
+- Support object joins, `limit()` / `offset()` with `skipBinding`, and aliased aggregates [#2189](https://github.com/Vincit/objection.js/issues/2189)
+- Fix `tableNameFor()` and `tableRefFor()` return and argument types [#2790](https://github.com/Vincit/objection.js/pull/2790)
+- Add `knexIdentifierMapping` [#1947](https://github.com/Vincit/objection.js/issues/1947)
+- Add `tableName()`, `tableRef()` and `emptyInstance()` to `QueryBuilder` [#2792](https://github.com/Vincit/objection.js/pull/2792), [#2794](https://github.com/Vincit/objection.js/pull/2794)
+- Add the column list overload of `with()` [#2749](https://github.com/Vincit/objection.js/issues/2749)
+- Fix generic static `this` for `query()`, `fromJson()` and `fetchGraph()` [#2700](https://github.com/Vincit/objection.js/pull/2700)
+
+### Docs
+
+- Document what `afterInsert()` receives as `result` [#2342](https://github.com/Vincit/objection.js/issues/2342)
+- Document that `withGraphJoined()` requires a primary key [#2748](https://github.com/Vincit/objection.js/issues/2748)
+- Document the `skipUndefined()` deprecation [#2149](https://github.com/Vincit/objection.js/issues/2149)
+- Use `declare` for the query builder type properties in the custom query builder and plugin recipes, which fail with TS2612 on ES2022+ targets
+- Fix the koa-ts example typings [#2361](https://github.com/Vincit/objection.js/issues/2361)
+- Clarify `whereNotColumn()` [#2808](https://github.com/Vincit/objection.js/pull/2808)
+
+### Other
+
+- Drop Node 14 from CI. Objection still supports it, but knex 3 requires Node 16+.
+
+Thanks to everyone whose pull requests made it into this release: @amit-meshbey, @androvonx95, @bilalakbar, @Bolt4243, @cesumilo, @falkenhawk, @geeksilva97, @IlyaSemenov, @kapouer, @kartikdp, @LiahMartens, @max-kahnt-keylight, @nickbouldien, @nickfuryoc, @ralcorta and @salisbury-espinosa.
+
 ## 3.1.5
 
 ### What's new
