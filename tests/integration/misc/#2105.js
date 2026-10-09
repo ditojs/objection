@@ -66,14 +66,14 @@ module.exports = (session) => {
     });
 
     it('should still set values to undefined if explicitly told to do so', () => {
-      Person.query()
+      return Person.query()
         .where('lastName', 'Doe')
         .first()
         .then((person) => {
-          person.$set({ lastName: undefined });
+          return person.$set({ lastName: undefined });
         })
         .then((person) => {
-          expect(person.firstName).to.eql('Jane');
+          expect(person.firstName).to.eql('John');
           expect(person.lastName).to.eql(undefined);
         });
     });
