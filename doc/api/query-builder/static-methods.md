@@ -6,7 +6,7 @@
 const builder = QueryBuilder.forClass(modelClass);
 ```
 
-Create QueryBuilder for a Model subclass. You rarely need to call this. Query builders are created using the [Model.query()](/api/model/static-methods.html#query) and other query methods.
+Create QueryBuilder for a Model subclass. You rarely need to call this. Query builders are created using the [Model.query()](/api/model/static-methods.html#static-query) and other query methods.
 
 ##### Arguments
 

@@ -364,13 +364,13 @@ See the [migration guide](/release-notes/migration.md).
 
 - `relatedQuery` can now be used for more than just subqueries. See the examples [here](/guide/query-examples.html#relation-queries).
 
-- modifiers can now take arguments and are a lot more useful. See [this recipe](https://vincit.github.io/objection.js/recipes/modifiers.html) for more info.
+- modifiers can now take arguments and are a lot more useful. See [this recipe](/recipes/modifiers.html) for more info.
 
 - Objection now uses the [db-errors](https://github.com/Vincit/db-errors) library by default to wrap the database errors.
 
 - `insertMissing` `upsertGraph` option now works as expected with `relate: true`: items that are not found in the database are inserted.
 
-- Brand new typings written from scratch with many improvements and finally a support for [custom query builders](/recipes/custom-query-builder.html#custom-query-builder)
+- Brand new typings written from scratch with many improvements and finally a support for [custom query builders](/recipes/custom-query-builder.html)
 
 - A bunch of improvements and bug fixes for `upsertGraph`, including a huge speedup in some cases due to less data fetching.
 
@@ -533,8 +533,8 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- Make [Model.fetchTableMetadata](#fetchtablemetadata) and [Model.tableMetadata](#tablemetadata) methods public. [#871](https://github.com/Vincit/objection.js/issues/871)
-- Add [onBuildKnex](#onbuildknex) query builder hook. [#807](https://github.com/Vincit/objection.js/issues/807)
+- Make [Model.fetchTableMetadata](/api/model/static-methods.html#static-fetchtablemetadata) and [Model.tableMetadata](/api/model/static-methods.html#static-tablemetadata) methods public. [#871](https://github.com/Vincit/objection.js/issues/871)
+- Add [onBuildKnex](/api/query-builder/other-methods.html#onbuildknex) query builder hook. [#807](https://github.com/Vincit/objection.js/issues/807)
 
 ## 1.1.4
 
@@ -567,7 +567,7 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- Optional [object notation](#relationexpression-object-notation) for relation expressions.
+- Optional [object notation](/api/types/#relationexpression-object-notation) for relation expressions.
 - fix [#855](https://github.com/Vincit/objection.js/issues/855)
 - fix [#858](https://github.com/Vincit/objection.js/issues/858)
 
@@ -575,7 +575,7 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- Added public [Relation.joinModelClass](#relation) accessor
+- Added public [Relation.joinModelClass](/api/types/#class-relation) accessor
 - Don't call `returning` on sqlite (prevents a warning message added in knex 0.14.4)
 - fix [#844](https://github.com/Vincit/objection.js/issues/844)
 - Small documentation updates
@@ -585,21 +585,21 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- The static [`relatedQuery`](#relatedquery) method.
+- The static [`relatedQuery`](/api/model/static-methods.html#static-relatedquery) method.
 - New reflection methods:
-  [`isFind`](#isfind),
-  [`isInsert`](#isinsert),
-  [`isUpdate`](#isupdate),
-  [`isDelete`](#isdelete),
-  [`isRelate`](#isrelate),
-  [`isUnrelate`](#isunrelate),
-  [`hasWheres`](#haswheres),
-  [`hasSelects`](#hasselects),
-  [`hasEager`](#haseager),
-  [`has`](#has).
-  [`clear`](#clear).
-  [`columnNameToPropertyName`](#columnnametopropertyname),
-  [`propertyNameToColumnName`](#propertynametocolumnname).
+  [`isFind`](/api/query-builder/other-methods.html#isfind),
+  [`isInsert`](/api/query-builder/other-methods.html#isinsert),
+  [`isUpdate`](/api/query-builder/other-methods.html#isupdate),
+  [`isDelete`](/api/query-builder/other-methods.html#isdelete),
+  [`isRelate`](/api/query-builder/other-methods.html#isrelate),
+  [`isUnrelate`](/api/query-builder/other-methods.html#isunrelate),
+  [`hasWheres`](/api/query-builder/other-methods.html#haswheres),
+  [`hasSelects`](/api/query-builder/other-methods.html#hasselects),
+  `hasEager`,
+  [`has`](/api/query-builder/other-methods.html#has).
+  [`clear`](/api/query-builder/other-methods.html#clear).
+  [`columnNameToPropertyName`](/api/model/static-methods.html#static-columnnametopropertyname),
+  [`propertyNameToColumnName`](/api/model/static-methods.html#static-propertynametocolumnname).
 - `ManyToMany` extras now work consistently in queries and filters. [#760](https://github.com/Vincit/objection.js/issues/760)
 
 ### Breaking changes
@@ -608,9 +608,9 @@ See the [migration guide](/release-notes/migration.md).
 
 - Node 6.0.0 is now the minimum. Objection will not work on node < 6.0.0.
 
-- [`ValidationError`](#validationerror) overhaul. This is a big one, so read this carefully! There are three things to check when you migrate to 1.0:
+- [`ValidationError`](/api/types/#class-validationerror) overhaul. This is a big one, so read this carefully! There are three things to check when you migrate to 1.0:
 
-  1. The [`createValidationError`](#createvalidationerror) and [`ValidationError`](#validationerror) interfaces have changed.
+  1. The [`createValidationError`](/api/model/static-methods.html#static-createvalidationerror) and [`ValidationError`](/api/types/#class-validationerror) interfaces have changed.
      If you have overridden the `createValidationError` method in your project, or you create custom `ValidationError` instances
      you need migrate to the interfaces.
   2. The model validation errors (jsonSchema violations) have remained pretty much the same but there are couple of differences. Before, the
@@ -618,13 +618,13 @@ See the [migration guide](/release-notes/migration.md).
      validation errors are key paths like `foo.bar[2].spam`. Another tiny difference is the order of validation errors for each key in
      `error.data`. Let's say a property `spam` failed for your model and `error.data.spam` contains an array of objects that describe
      the failures. Before, the first failed validation was the last item in the array, now it is the first item.
-  3. All [`ValidationErrors`](#validationerror) now have a `type` field. Before all [`ValidationErrors`](#validationerror) but the model
+  3. All [`ValidationErrors`](/api/types/#class-validationerror) now have a `type` field. Before all [`ValidationErrors`](/api/types/#class-validationerror) but the model
      validation errors (errors like "invalid relation expression", or "cyclic model graph") had no type, and could only be identified
      based on the existence of some weird key in `error.data`. The `error.data` is now removed from those errors and the `type` should be
      used instead. The message from the data is now stored in `error.message`.
 
-- Removed deprecated methods `whereRef`, `whereJsonField` and `whereJsonEquals`. The [`ref`](#ref) helper can be used to replace the
-  `whereRef` calls. [`ref`](#ref) and [`lit`](#lit) can be used to replace the removed json methods.
+- Removed deprecated methods `whereRef`, `whereJsonField` and `whereJsonEquals`. The [`ref`](/api/objection/#ref) helper can be used to replace the
+  `whereRef` calls. [`ref`](/api/objection/#ref) and `lit` can be used to replace the removed json methods.
 
 - `ManyToMany` extras now work consistently in queries and filters. [#760](https://github.com/Vincit/objection.js/issues/760). This is not
   a breaking change per se, but can cause some queries to fail with a "ambiguous identifier" error because the join table is now joined
@@ -632,7 +632,7 @@ See the [migration guide](/release-notes/migration.md).
 
 ### Changes
 
-- `isFindQuery` is renamed to [`isFind`](https://vincit.github.io/objection.js/#isfind) and deprecated.
+- `isFindQuery` is renamed to [`isFind`](/api/query-builder/other-methods.html#isfind) and deprecated.
 
 ## 0.9.4
 
@@ -648,7 +648,7 @@ See the [migration guide](/release-notes/migration.md).
 ### What's new
 
 - Add beforeInsert hook for relations. [#649](https://github.com/Vincit/objection.js/issues/649) [#19](https://github.com/Vincit/objection.js/issues/19)
-- Add [`relatedFindQueryMutates`](#relatedfindquerymutates) and [`relatedInsertQueryMutates`](#relatedinsertquerymutates) configs as well as [`$setRelated`](#_s_setrelated) and [`$appendRelated`](#_s_appendrelated) helpers. [#599](https://github.com/Vincit/objection.js/issues/599)
+- Add `relatedFindQueryMutates` and `relatedInsertQueryMutates` configs as well as [`$setRelated`](/api/model/instance-methods.html#setrelated) and [`$appendRelated`](/api/model/instance-methods.html#appendrelated) helpers. [#599](https://github.com/Vincit/objection.js/issues/599)
 - Fixed [#648](https://github.com/Vincit/objection.js/issues/648)
 
 ## 0.9.2
@@ -661,25 +661,25 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- [`castTo`](https://vincit.github.io/objection.js/#castto) method for setting the model class of query result rows.
-- [`onError`](https://vincit.github.io/objection.js/#onerror) `QueryBuilder` method.
-- [`knexSnakeCaseMappers`](https://vincit.github.io/objection.js/#objection-knexsnakecasemappers) and [`snakeCaseMappers`](https://vincit.github.io/objection.js/#objection-snakecasemappers) for snake_case to camelCase conversions.
+- [`castTo`](/api/query-builder/other-methods.html#castto) method for setting the model class of query result rows.
+- [`onError`](/api/query-builder/other-methods.html#onerror) `QueryBuilder` method.
+- [`knexSnakeCaseMappers`](/api/objection/#knexsnakecasemappers) and [`snakeCaseMappers`](/api/objection/#snakecasemappers) for snake_case to camelCase conversions.
 
 ## 0.9.0
 
 ### What's new
 
-- Relations can now be defined using keys inside JSON columns. See the examples [here](https://vincit.github.io/objection.js/#relationmappings).
-- [`lit`](https://vincit.github.io/objection.js/#lit) helper function [#275](https://github.com/Vincit/objection.js/issues/275)
-- Fixes for [`upsertGraph`](https://vincit.github.io/objection.js/#upsertgraph) when using composite keys. [#517](https://github.com/Vincit/objection.js/issues/517)
-- Added `noDelete`, `noUpdate`, `noInsert`, `noRelate` and `noUnrelate` options for `upsertGraph`. See [UpsertGraphOptions docs](#upsertgraphoptions) for more info.
+- Relations can now be defined using keys inside JSON columns. See the examples [here](/api/model/static-properties.html#static-relationmappings).
+- `lit` helper function [#275](https://github.com/Vincit/objection.js/issues/275)
+- Fixes for [`upsertGraph`](/api/query-builder/mutate-methods.html#upsertgraph) when using composite keys. [#517](https://github.com/Vincit/objection.js/issues/517)
+- Added `noDelete`, `noUpdate`, `noInsert`, `noRelate` and `noUnrelate` options for `upsertGraph`. See [UpsertGraphOptions docs](/api/types/#type-upsertgraphoptions) for more info.
 - `insertGraph` now accepts an options object just like `upsertGraph`. `relate` option can be used instead of `#dbRef`. [#586](https://github.com/Vincit/objection.js/issues/586)
 
 ### Breaking changes
 
 - Instance update/patch with `returning` now return a single object instead of an array. [#423](https://github.com/Vincit/objection.js/issues/423)
 
-- Because of the support for JSON relations [the `Relation` class](https://vincit.github.io/objection.js/#relation)
+- Because of the support for JSON relations [the `Relation` class](/api/types/#class-relation)
   has changed a bit.
 
 ## 0.8.8
@@ -695,7 +695,7 @@ See the [migration guide](/release-notes/migration.md).
 ### What's new
 
 - `throwIfNotFound` now also throws when update or delete doesn't change any rows.
-- [`mixin`](#mixin) and [`compose`](#compose) helpers for applying multiple plugins. [#475](https://github.com/Vincit/objection.js/issues/475) [#473](https://github.com/Vincit/objection.js/issues/473)
+- [`mixin`](/api/objection/#mixin) and [`compose`](/api/objection/#compose) helpers for applying multiple plugins. [#475](https://github.com/Vincit/objection.js/issues/475) [#473](https://github.com/Vincit/objection.js/issues/473)
 - Typing updates [#474](https://github.com/Vincit/objection.js/issues/474) [#479](https://github.com/Vincit/objection.js/issues/479)
 - `upsertGraph` now validates patched models correctly. [#477](https://github.com/Vincit/objection.js/issues/477)
 
@@ -703,7 +703,7 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- Finally: the first version of [`upsertGraph`](#graph-upserts) method! Please open issues about bugs, WTFs and missing features.
+- Finally: the first version of [`upsertGraph`](/guide/query-examples.html#graph-upserts) method! Please open issues about bugs, WTFs and missing features.
 - Strip readonly virtual properties in fromJson & friends [#432](https://github.com/Vincit/objection.js/issues/432)
 - Fixed [#439](https://github.com/Vincit/objection.js/issues/439)
 
@@ -711,31 +711,31 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- Add [`Model.useLimitInFirst`](https://vincit.github.io/objection.js/#uselimitinfirst) configuration flag.
+- Add [`Model.useLimitInFirst`](/api/model/static-properties.html#static-uselimitinfirst) configuration flag.
 
 ## 0.8.4
 
 ### What's new
 
-- New shorthand methods [`joinEager`](https://vincit.github.io/objection.js/#joineager), [`naiveEager`](https://vincit.github.io/objection.js/#naiveeager),
-  [`mergeJoinEager`](https://vincit.github.io/objection.js/#mergejoineager) and [`mergeNaiveEager`](https://vincit.github.io/objection.js/#mergenaiveeager).
-- New shorthand method [`findOne`](https://vincit.github.io/objection.js/#findone)
-- New reflection method [`isFindQuery`](https://vincit.github.io/objection.js/#isfind)
+- New shorthand methods `joinEager`, `naiveEager`,
+  `mergeJoinEager` and `mergeNaiveEager`.
+- New shorthand method [`findOne`](/api/query-builder/find-methods.html#findone)
+- New reflection method [`isFindQuery`](/api/query-builder/other-methods.html#isfind)
 - ManyToMany extra properties can now be updated [#413](https://github.com/Vincit/objection.js/issues/413)
 
 ## 0.8.3
 
 ### What's new
 
-- [`NaiveEagerAlogrithm`](https://vincit.github.io/objection.js/#eager)
-- [Aliases in relation expressions](https://vincit.github.io/objection.js/#relationexpression) [#402](https://github.com/Vincit/objection.js/issues/402)
+- `NaiveEagerAlogrithm`
+- [Aliases in relation expressions](/api/types/#type-relationexpression) [#402](https://github.com/Vincit/objection.js/issues/402)
 - New lazily evaluated `raw` function. [#275](https://github.com/Vincit/objection.js/issues/275)
 
 ## 0.8.2
 
 ### What's new
 
-- [`Model.namedFilters`](https://vincit.github.io/objection.js/#namedfilters) object for defining shared filters that can be used by name in eager expressions.
+- `Model.namedFilters` object for defining shared filters that can be used by name in eager expressions.
 - Full support for views and table aliases in eager, join, joinRelation etc. [#181](https://github.com/Vincit/objection.js/issues/181)
 - Fix `bindTransaction` bug with `ManyToManyRelation` junction tables [#395](https://github.com/Vincit/objection.js/issues/395)
 
@@ -743,7 +743,7 @@ See the [migration guide](/release-notes/migration.md).
 
 ### What's new
 
-- [`throwIfNotFound`](https://vincit.github.io/objection.js/#throwifnotfound) method for making empty query results throw an exception.
+- [`throwIfNotFound`](/api/query-builder/other-methods.html#throwifnotfound) method for making empty query results throw an exception.
 - fix error when passing model instance to a `where` method. [#387](https://github.com/Vincit/objection.js/issues/387)
 
 ## 0.8.0
@@ -754,7 +754,7 @@ See the [migration guide](/release-notes/migration.md).
 - Objection is no longer transpiled. One of the implications is that you can use a github
   link in package.json to test experimental versions.
 - `count` can now be called without arguments [#364](https://github.com/Vincit/objection.js/issues/364)
-- A new [`getRelations`](#getrelations) method for plugin development and other reflection greatness.
+- A new [`getRelations`](/api/model/static-methods.html#static-getrelations) method for plugin development and other reflection greatness.
 
 ### Breaking changes
 
@@ -799,13 +799,13 @@ Person.prototype.fullName = function () {
   See the [ESNext example project](https://github.com/Vincit/objection.js/tree/0.8.0/examples/express-es7) as an example of
   how to setup babel.
 
-- The default value of [`pickJsonSchemaProperties`](#pickjsonschemaproperties) was changed to `false`. Before, all properties that
+- The default value of [`pickJsonSchemaProperties`](/api/model/static-properties.html#static-pickjsonschemaproperties) was changed to `false`. Before, all properties that
   were not listed in `jsonSchema` were removed before `insert`, `patch` or `update` (if `jsonSchma` was defined). Starting from
   this version you need to explicitly set the value to `true`. You may have been used this feature by accident.
   If you have weird problems after the update, try setting `objection.Model.pickJsonSchemaProperties = true;` to see
   if it helps.
 
-- [`relate`](#pickjsonschemaproperties) and [`unrelate`](#pickjsonschemaproperties) methods now return the result of the
+- [`relate`](/api/query-builder/mutate-methods.html#relate) and [`unrelate`](/api/query-builder/mutate-methods.html#unrelate) methods now return the result of the
   underlying query (`patch` in case of `HasManyRelation`, `HasOneRelation`, and `BelongsToOneRelation`. `insert` otherwise).
   Before the method input was always returned.
 
@@ -836,7 +836,7 @@ Person.prototype.fullName = function () {
 
 ### What's new
 
-- [`joinRelation`](https://vincit.github.io/objection.js/#joinrelation) now accepts [`RelationExpressions`](https://vincit.github.io/objection.js/#relationexpression) and can join multiple and nested relations.
+- `joinRelation` now accepts [`RelationExpressions`](/api/types/#type-relationexpression) and can join multiple and nested relations.
 
 ## 0.7.6
 
@@ -887,10 +887,10 @@ Person.prototype.fullName = function () {
 - many to many extras can now be aliased. [#223](https://github.com/Vincit/objection.js/issues/223)
 - zero values are now allowed in relation columns. [#228](https://github.com/Vincit/objection.js/issues/228)
 - active transaction can now be accessed in `$before/$after` hooks through `queryContext.transaction` property.
-- Validation can now be easily modified through a new [`Validator`](#validator) interface. [#241](https://github.com/Vincit/objection.js/issues/241) [#199](https://github.com/Vincit/objection.js/issues/199)
+- Validation can now be easily modified through a new [`Validator`](/api/types/#class-validator) interface. [#241](https://github.com/Vincit/objection.js/issues/241) [#199](https://github.com/Vincit/objection.js/issues/199)
 - fix a `JoinEager` problem where an empty result for a relation caused the following relations to be empty. [#292](https://github.com/Vincit/objection.js/issues/292)
 - `ref(fieldExpression)` syntax to reduce need for knex.raw and updating single attribute inside JSON column. [#270](https://github.com/Vincit/objection.js/issues/270)
-- [mergeEager](https://vincit.github.io/objection.js/#mergeeager) method.
+- mergeEager method.
 
 ### Breaking changes
 
@@ -915,13 +915,13 @@ Person.prototype.fullName = function () {
 
 ### What's new
 
-- Eager loading can now be done using joins and zero extra queries. See [`eagerAlgorithm`](#eageralgorithm), [`defaultEagerAlgorithm`](#defaulteageralgorithm) and [`eager`](#eager) for more info.
+- Eager loading can now be done using joins and zero extra queries. See `eagerAlgorithm`, `defaultEagerAlgorithm` and `eager` for more info.
 - `#ref` in graph inserts can now contain extra properties for many-to-many relations [#156](https://github.com/Vincit/objection.js/issues/156)
 - `#dbRef` can now be used to refer to existing rows from a `insertWithRelated` graph.
-- [`modelPaths`](#modelpaths) attribute for cleaner way to point to models in relationMappings.
-- [`pickJsonSchemaProperties`](#pickjsonschemaproperties) config parameter [#110](https://github.com/Vincit/objection.js/issues/110)
-- [`insertGraphAndFetch`](#insertgraphandfetch) with `insertWithRelatedAndFetch` alias. [#172](https://github.com/Vincit/objection.js/issues/172)
-- Added [`$beforeDelete`](#_s_beforedelete) and [`$afterDelete`](#_s_afterdelete) hooks [#112](https://github.com/Vincit/objection.js/issues/112)
+- [`modelPaths`](/api/model/static-properties.html#static-modelpaths) attribute for cleaner way to point to models in relationMappings.
+- [`pickJsonSchemaProperties`](/api/model/static-properties.html#static-pickjsonschemaproperties) config parameter [#110](https://github.com/Vincit/objection.js/issues/110)
+- [`insertGraphAndFetch`](/api/query-builder/mutate-methods.html#insertgraphandfetch) with `insertWithRelatedAndFetch` alias. [#172](https://github.com/Vincit/objection.js/issues/172)
+- Added [`$beforeDelete`](/api/model/instance-methods.html#beforedelete) and [`$afterDelete`](/api/model/instance-methods.html#afterdelete) hooks [#112](https://github.com/Vincit/objection.js/issues/112)
 - Old values can now be accessed from `$beforeUpdate`, `$afterUpdate`, `$beforeValidate` and `$afterValidate` hooks [#185](https://github.com/Vincit/objection.js/issues/185)
 - Support length property [#168](https://github.com/Vincit/objection.js/issues/168)
 - Make sure operations are executed in the order they are called [#180](https://github.com/Vincit/objection.js/issues/180)
@@ -932,7 +932,7 @@ Person.prototype.fullName = function () {
 ### Breaking changes
 
 - Undefined values as query method arguments now throw an exception. Before they were just silently ignored
-  and for example `delete().where('id', undefined)` caused the entire table to be deleted. [skipUndefined](https://vincit.github.io/objection.js/#skipundefined)
+  and for example `delete().where('id', undefined)` caused the entire table to be deleted. [skipUndefined](/api/query-builder/other-methods.html#skipundefined)
   method can be called for a query builder to handle the undefined values the old way.
 
 - Deprecated method `dumpSql` is now removed.
@@ -944,7 +944,7 @@ Person.prototype.fullName = function () {
 
 ### What's new
 
-- [Virtual attributes](#virtualattributes)
+- [Virtual attributes](/api/model/static-properties.html#static-virtualattributes)
 
 ## 0.5.4
 
@@ -965,30 +965,30 @@ Person.prototype.fullName = function () {
 
 ### What's new
 
-- [\$afterGet](#afterget) hook.
+- \$afterGet hook.
 
 ## 0.5.0
 
 ### What's new
 
-- [joinRelation](#joinrelation) family of query builder methods.
+- joinRelation family of query builder methods.
 - `HasOneRelation` for creating inverse one-to-one relations.
 - Relations have been renamed `OneToOneRelation` --> `BelongsToOneRelation`, `OneToManyRelation` --> `HasManyRelation`.
   The old names work, but have been deprecated.
-- [withSchema](#withschema) now works as expected and sets the schema of all queries executed by the query builder the
+- [withSchema](/api/query-builder/find-methods.html#withschema) now works as expected and sets the schema of all queries executed by the query builder the
   method is called for.
-- [filterEager](#filtereager) method for better eager query filtering.
-- [extra properties](#relationmappings) feature for selecting/inserting columns from/to the join table in many-to-many relations.
+- filterEager method for better eager query filtering.
+- [extra properties](/api/model/static-properties.html#static-relationmappings) feature for selecting/inserting columns from/to the join table in many-to-many relations.
 - Eager query recursion depth can be controlled like so: `parent.^5`.
 
 ## 0.4.0
 
 ### What's new
 
-- Query context feature. See [#51](https://github.com/Vincit/objection.js/issues/51) and [these docs](#context) for more info.
+- Query context feature. See [#51](https://github.com/Vincit/objection.js/issues/51) and [these docs](/api/query-builder/other-methods.html#context) for more info.
 - Composite key support.
-- [findById](#findbyid), [deleteById](#deletebyid), [whereComposite](#wherecomposite) and
-  [whereInComposite](#whereincomposite) query builder methods.
+- [findById](/api/query-builder/find-methods.html#findbyid), [deleteById](/api/query-builder/mutate-methods.html#deletebyid), [whereComposite](/api/query-builder/find-methods.html#wherecomposite) and
+  [whereInComposite](/api/query-builder/find-methods.html#whereincomposite) query builder methods.
 
 ### Breaking changes
 
@@ -999,8 +999,8 @@ There are a few known corner cases that may break:
 
 - You can now define a model for the join table of `ManyToMany` relations in `relationMappings`. This is optional,
   but may be needed if you already have a model for a `ManyToMany` relation _and_ you use `snake_case`
-  to `camelCase` conversion for the column names. See the documentation on the [through](#relationthrough)
-  property of [relationMappings](#relationmappings).
+  to `camelCase` conversion for the column names. See the documentation on the [through](/api/types/#type-relationthrough)
+  property of [relationMappings](/api/model/static-properties.html#static-relationmappings).
 
 - The repo no longer contains the actual built javascript. Only the ES7 code that is transpiled when the code is
   published to npm. Therefore you can no longer specify a git hash to package.json to use for example the
@@ -1030,13 +1030,13 @@ There are a few known corner cases that may break:
 
 ### What's new
 
-- [insertWithRelated](https://vincit.github.io/objection.js/QueryBuilder.html#insertWithRelated) method for
+- insertWithRelated method for
   inserting model trees
-- [insertAndFetch](https://vincit.github.io/objection.js/QueryBuilder.html#insertAndFetch),
-  [updateAndFetchById](https://vincit.github.io/objection.js/QueryBuilder.html#updateAndFetchById) and
-  [patchAndFetchById](https://vincit.github.io/objection.js/QueryBuilder.html#patchAndFetchById) helper methods
-- Filters for [eager expressions](#eager-queries)
-- [New alternative way to use transactions](#transaction-object)
+- [insertAndFetch](/api/query-builder/mutate-methods.html#insertandfetch),
+  [updateAndFetchById](/api/query-builder/mutate-methods.html#updateandfetchbyid) and
+  [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid) helper methods
+- Filters for eager expressions
+- [New alternative way to use transactions](/guide/transactions.html)
 - Many performance updates related to cloning, serializing and deserializing model trees.
 
 ### Breaking changes

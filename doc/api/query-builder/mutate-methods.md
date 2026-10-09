@@ -154,7 +154,7 @@ This generates an SQL `update` query. While there's also the [update](/api/query
 :::
 
 ::: warning
-[raw](/api/objection/#raw), [lit](/api/objection/#lit), subqueries and other "query properties" in the patch object are not validated. Also fields specified using [FieldExpressions](/api/types/#type-fieldexpression) are not validated.
+[raw](/api/objection/#raw), subqueries and other "query properties" in the patch object are not validated. Also fields specified using [FieldExpressions](/api/types/#type-fieldexpression) are not validated.
 :::
 
 ##### Arguments

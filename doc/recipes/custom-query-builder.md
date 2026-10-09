@@ -1,6 +1,6 @@
 # Custom query builder (extending the query builder)
 
-You can extend the [QueryBuilder](/api/query-builder/) returned by [query()](/api/model/static-methods.html#static-query), [relatedQuery()](/api/model/static-methods.html#static-relatedquery), [\$relatedQuery()](/api/model/instance-methods.html#relatedquery) and [\$query()](/api/model/instance-methods.html#query) methods (and all other methods that create a [QueryBuilder](/api/query-builder/)) by setting the model class's static [QueryBuilder](/api/model/static-methods.html#static-querybuilder) property.
+You can extend the [QueryBuilder](/api/query-builder/) returned by [query()](/api/model/static-methods.html#static-query), [relatedQuery()](/api/model/static-methods.html#static-relatedquery), [\$relatedQuery()](/api/model/instance-methods.html#relatedquery) and [\$query()](/api/model/instance-methods.html#query) methods (and all other methods that create a [QueryBuilder](/api/query-builder/)) by setting the model class's static [QueryBuilder](/api/model/static-properties.html#static-querybuilder) property.
 
 ```js
 // MyQueryBuilder.js
@@ -29,7 +29,7 @@ Now you can do this:
 await Person.query().where('id', 1).myCustomMethod(1).where('foo', 'bar');
 ```
 
-If you want to set the custom query builder for all model classes you can just set the [QueryBuilder](/api/model/static-methods.html#static-querybuilder) property of the [Model](/api/model/) base class. A cleaner option would be to create your own Model subclass, set its [QueryBuilder](/api/query-builder/) property and inherit all your models from the custom Model class.
+If you want to set the custom query builder for all model classes you can just set the [QueryBuilder](/api/model/static-properties.html#static-querybuilder) property of the [Model](/api/model/) base class. A cleaner option would be to create your own Model subclass, set its [QueryBuilder](/api/query-builder/) property and inherit all your models from the custom Model class.
 
 ```js
 // BaseModel.js

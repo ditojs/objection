@@ -6,7 +6,7 @@ _NOTE:_ The following patterns don't work if you have a large amount of tenants 
 
 ## Model binding pattern
 
-If you have a different database for each tenant, a useful pattern is to add a middleware that adds the models to `req.models` hash and then _always_ use the models through `req.models` instead of requiring them directly. What [bindKnex](/api/model/static-properties.html#static-bindknex) method actually does is that it creates an anonymous subclass of the model class and sets its knex connection. That way the database connection doesn't change for the other requests that are currently being executed.
+If you have a different database for each tenant, a useful pattern is to add a middleware that adds the models to `req.models` hash and then _always_ use the models through `req.models` instead of requiring them directly. What [bindKnex](/api/model/static-methods.html#static-bindknex) method actually does is that it creates an anonymous subclass of the model class and sets its knex connection. That way the database connection doesn't change for the other requests that are currently being executed.
 
 ```js
 const Knex = require('knex');

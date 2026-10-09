@@ -274,7 +274,7 @@ console.log(numDeleted, 'people were deleted');
 delete from "persons" where lower("firstName") like '%ennif%'
 ```
 
-You can always use [subqueries](/recipes/subqueries.html), [raw](/api/objection/#raw), [ref](/api/objection/#ref), [lit](/api/objection/#lit) and all query building methods with [delete](/api/query-builder/mutate-methods.html#delete) queries, just like with every query in objection. With some databases, you cannot use joins with deletes (db restriction, not objection). You can replace joins with subqueries like this:
+You can always use [subqueries](/recipes/subqueries.html), [raw](/api/objection/#raw), [ref](/api/objection/#ref) and all query building methods with [delete](/api/query-builder/mutate-methods.html#delete) queries, just like with every query in objection. With some databases, you cannot use joins with deletes (db restriction, not objection). You can replace joins with subqueries like this:
 
 ```js
 // This query deletes all people that have a pet named "Fluffy".
@@ -697,7 +697,7 @@ Examples of expressions that would cause an error:
 - `'[pets, children.children]'`
 - `'notEvenAnExistingRelation'`
 
-In addition to the [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) and [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined) methods, relations can be fetched using the [fetchGraph](/api/model/static-properties.html#static-fetchgraph) and
+In addition to the [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) and [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined) methods, relations can be fetched using the [fetchGraph](/api/model/static-methods.html#static-fetchgraph) and
 [\$fetchGraph](/api/model/instance-methods.html#fetchgraph) methods.
 
 [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) uses multiple queries to load the related items. Note that [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) used to be called `eager`.). [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined) uses joins and only performs one single query to fetch the whole relation graph. This doesn't mean that `withGraphJoined` is faster though. See the performance discussion [here](/api/query-builder/eager-methods.html#withgraphfetched). You should only use `withGraphJoined` if you actually need the joins to be able to reference the nested tables. When in doubt use [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched).
@@ -764,7 +764,7 @@ const people = await Person.query().withGraphFetched('[pets, children.^3]');
 console.log(people[0].children[0].children[0].children[0].firstName);
 ```
 
-Relations can be modified using the [modifyGraph](/api/query-builder/other-methods.html#modifygraph) method:
+Relations can be modified using the [modifyGraph](/api/query-builder/eager-methods.html#modifygraph) method:
 
 ```js
 const people = await Person.query()
