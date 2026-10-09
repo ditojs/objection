@@ -210,6 +210,16 @@ declare namespace Objection {
   };
 
   /**
+   * Like PartialModelObject, but relation properties are not allowed. Unlike
+   * PartialModelObject, this doesn't depend on the relation types, so query
+   * builders for models with narrowed relations (see WithGraphModel) remain
+   * assignable to the query builders for the plain models.
+   */
+  type PartialModelProps<T extends Model> = {
+    [K in DataPropertyNames<T>]?: Defined<T[K]> extends Model | Model[] ? never : Expression<T[K]>;
+  };
+
+  /**
    * Additional optional parameters that may be used in graphs.
    */
   type GraphParameters = {
@@ -442,7 +452,7 @@ declare namespace Objection {
     (raw: Raw): QB;
     <QBA extends AnyQueryBuilder>(qb: QBA): QB;
 
-    (obj: PartialModelObject<ModelType<QB>>): QB;
+    (obj: PartialModelProps<ModelType<QB>>): QB;
     // We must allow any keys in the object. The previous type
     // is kind of useless, but maybe one day vscode and other
     // tools can autocomplete using it.
