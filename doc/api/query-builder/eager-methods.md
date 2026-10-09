@@ -204,6 +204,37 @@ console.log(people[0].children[9].children.length); // --> 10
 
 The person has 10 children and they all have 10 children. The query above will return 100 database rows but will generate only three database queries when using `withGraphFetched` and only one query when using `withGraphJoined`.
 
+##### TypeScript
+
+Relations are usually declared as optional properties, since they are only set when fetched. When the relation expression is a literal, `withGraphFetched`, `withGraphJoined`, [fetchGraph](/api/model/static-methods.html#static-fetchgraph) and [\$fetchGraph](/api/model/instance-methods.html#fetchgraph) narrow the result type, so that the fetched relations become required, at every level of the expression:
+
+```ts
+class Person extends Model {
+  firstName!: string;
+  parent?: Person | null;
+  pets?: Animal[];
+  children?: Person[];
+}
+
+const people = await Person.query().withGraphFetched('[pets.owner, children.pets]');
+
+people[0].pets[0].owner.firstName; // `pets` and `owner` are not optional.
+people[0].children[0].pets.length;
+people[0].parent; // Not fetched, still `Person | null | undefined`.
+```
+
+The narrowing works with string and object notation, and with modifiers like `pets(onlyDogs)`. It is kept by `first()`, `findById()`, `findOne()`, `throwIfNotFound()`, `page()` and the other query builder methods, and multiple `withGraphFetched` calls are merged, like objection merges the expressions. Custom query builders are kept too, as long as the model declares its query builder type with `this`, as in the [custom query builder recipe](/recipes/custom-query-builder.html#extending-the-query-builder-in-typescript): `declare QueryBuilderType: MyQueryBuilder<this>`.
+
+The narrowed types remain assignable to the declared ones, so existing type annotations like `Person[]` or `QueryBuilder<Person>` keep working.
+
+**Limitations:**
+
+- Only literal expressions are narrowed. An expression of type `string` (e.g. a variable or a function argument) leaves the result type as it was.
+- Nodes the type-level parser doesn't understand are skipped instead of reported: aliased relations (`pets as dogs`), `*` and recursion (`children.^`, where `children` itself is still narrowed) are not narrowed, and unknown relation names are ignored.
+- A relation declared as `Person | null` stays nullable, while one declared as `parent?: Person` becomes `Person`. Declare to-one relations that may be missing as `| null`.
+- The narrowing is part of the model type, so methods that return `this` types carry it over: the result of `person.$query()` claims to have the relations that were fetched on `person`, even though `$query()` doesn't fetch them.
+- In generic code, e.g. a function that takes `query: QB` with `QB extends QueryBuilder<Person>`, `query.withGraphFetched('pets')` returns a different type than `QB`. Pass `string` as type argument to opt out of the narrowing and keep `QB`: `query.withGraphFetched<string>('pets')`.
+
 ## withGraphJoined()
 
 ```js
@@ -239,6 +270,8 @@ Note that while [withGraphJoined](/api/query-builder/eager-methods.html#withgrap
 | Type                                | Description                        |
 | ----------------------------------- | ---------------------------------- |
 | [QueryBuilder](/api/query-builder/) | `this` query builder for chaining. |
+
+In TypeScript, the result type is narrowed to include the fetched relations, see [withGraphFetched](/api/query-builder/eager-methods.html#typescript).
 
 ##### Examples
 
