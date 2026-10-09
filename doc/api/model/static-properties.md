@@ -118,7 +118,7 @@ Composite id can be specified by giving an array of column names.
 
 Defaults to 'id'.
 
-You can return `null` in order to tell objection there is no primary key. This may be useful in models of join tables.
+You can return `null` in order to tell objection there is no primary key. This may be useful in models of join tables. Such models can be inserted, queried, patched, updated and deleted using `where` clauses, but methods that need an identifier, like [findById](/api/query-builder/find-methods.html#findbyid), [deleteById](/api/query-builder/mutate-methods.html#deletebyid) or [\$query](/api/model/instance-methods.html#query), throw an error. [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined) also requires a primary key.
 
 ## `static` jsonSchema
 
