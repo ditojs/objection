@@ -1047,7 +1047,7 @@ Person.query()
   .orderBy(raw('random()'));
 
 // ReferenceBuilder:
-// @see http://vincit.github.io/objection.js/#ref75
+// @see https://ditojs.github.io/objection/api/objection/#ref
 // https://github.com/Vincit/objection.js/blob/main/doc/includes/API.md#global-query-building-helpers
 Person.query()
   .select([

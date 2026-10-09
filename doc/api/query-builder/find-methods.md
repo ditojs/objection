@@ -83,7 +83,7 @@ queryBuilder = queryBuilder.findOne(...whereArgs);
 
 Shorthand for `where(...whereArgs).first()`.
 
-NOTE: [`.first()`](https://vincit.github.io/objection.js/api/query-builder/other-methods.html#first) doesn't add `limit 1` to the query by default. You can override the [Model.useLimitInFirst](/api/model/static-properties.html#static-uselimitinfirst) property to change this behaviour.
+NOTE: [`.first()`](/api/query-builder/other-methods.html#first) doesn't add `limit 1` to the query by default. You can override the [Model.useLimitInFirst](/api/model/static-properties.html#static-uselimitinfirst) property to change this behaviour.
 
 ##### Arguments
 
