@@ -248,6 +248,8 @@ class Person extends Model {
 
 Called after a model has been inserted into the database.
 
+At this point, the model only contains the values returned by the database from the `insert` statement, in addition to the input values. This is also the case for `insertAndFetch`, which fetches the rows after the hook has run. See [afterInsert](/api/model/static-methods.html#static-afterinsert) for details.
+
 You can return a promise from this function if you need to do asynchronous stuff.
 
 ##### Arguments
