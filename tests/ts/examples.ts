@@ -1,4 +1,5 @@
 import Ajv from 'ajv';
+import * as dbErrors from 'db-errors';
 import { Knex, knex } from 'knex';
 import * as objection from '../../';
 import {
@@ -1223,6 +1224,69 @@ const plugin2 = {} as any as objection.Plugin;
   }
 
   if (e instanceof objection.ConstraintViolationError) {
+  }
+};
+
+// DB errors can be used as types.
+() => {
+  const err: unknown = null;
+
+  if (err instanceof objection.UniqueViolationError) {
+    const columns: string[] = err.columns;
+    const typed: objection.UniqueViolationError = err;
+    const fromDbErrors: dbErrors.UniqueViolationError = typed;
+    const constraintError: objection.ConstraintViolationError = typed;
+    const dbError: objection.DBError = constraintError;
+  }
+
+  if (err instanceof objection.NotNullViolationError) {
+    const column: string = err.column;
+  }
+
+  if (err instanceof objection.ForeignKeyViolationError) {
+    const constraint: string = err.constraint;
+  }
+
+  if (err instanceof objection.CheckViolationError) {
+    const table: string = err.table;
+  }
+
+  if (err instanceof objection.DataError) {
+    const dataError: objection.DataError = err;
+  }
+
+  function handleUniqueViolation(error: objection.UniqueViolationError): string[] {
+    return error.columns;
+  }
+
+  function handleNotNullViolation(error: objection.NotNullViolationError): string {
+    return error.column;
+  }
+
+  function handleForeignKeyViolation(error: objection.ForeignKeyViolationError): string {
+    return error.table;
+  }
+
+  function handleCheckViolation(error: objection.CheckViolationError): string {
+    return error.constraint;
+  }
+
+  function handleDataError(error: objection.DataError): Error {
+    return error.nativeError;
+  }
+
+  function handleConstraintViolation(error: objection.ConstraintViolationError): string {
+    return error.name;
+  }
+
+  function handleDBError(error: DBError): Error {
+    return error.nativeError;
+  }
+
+  class UserExists extends Error {
+    constructor(public error: objection.UniqueViolationError) {
+      super('User exists');
+    }
   }
 };
 

@@ -35,13 +35,15 @@ declare namespace Objection {
   const transaction: transaction;
   const initialize: initialize;
 
-  const DBError: typeof dbErrors.DBError;
-  const DataError: typeof dbErrors.DataError;
-  const CheckViolationError: typeof dbErrors.CheckViolationError;
-  const UniqueViolationError: typeof dbErrors.UniqueViolationError;
-  const ConstraintViolationError: typeof dbErrors.ConstraintViolationError;
-  const ForeignKeyViolationError: typeof dbErrors.ForeignKeyViolationError;
-  const NotNullViolationError: typeof dbErrors.NotNullViolationError;
+  // Import aliases re-export both the value and the type side of the classes,
+  // so they can be used with `instanceof` as well as in type annotations.
+  export import DBError = dbErrors.DBError;
+  export import DataError = dbErrors.DataError;
+  export import CheckViolationError = dbErrors.CheckViolationError;
+  export import UniqueViolationError = dbErrors.UniqueViolationError;
+  export import ConstraintViolationError = dbErrors.ConstraintViolationError;
+  export import ForeignKeyViolationError = dbErrors.ForeignKeyViolationError;
+  export import NotNullViolationError = dbErrors.NotNullViolationError;
 
   export interface RawBuilder extends Aliasable {}
 
