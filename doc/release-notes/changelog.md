@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.4.0
+
+### What's new
+
+- Support models without a primary key: return `null` from `idColumn`, e.g. for join table models. Methods that need an identifier, like `findById()`, `deleteById()` and `$query()`, throw an error. [#2305](https://github.com/Vincit/objection.js/issues/2305)
+
+### Fixes
+
+- `insertGraph()` / `upsertGraph()` with `relate: true` silently dropped `HasManyRelation` / `HasOneRelation` children whose composite id contains the foreign key, and deleted the existing ones without inserting them again [#2544](https://github.com/Vincit/objection.js/issues/2544)
+- Required properties given as query properties, e.g. `raw()`, `val()`, `ref()` or subqueries, failed validation [#2199](https://github.com/Vincit/objection.js/issues/2199)
+- `upsertGraph()` treated JSON arrays and objects as unchanged when they loosely equal the current value, e.g. `false` and `[]` [#1874](https://github.com/Vincit/objection.js/issues/1874)
+- Many-to-many and has-one-through relations whose join table is also the related table failed with SQL errors in `withGraphFetched()`, `$relatedQuery()` and `relatedQuery()`. `unrelate()` and patching join table extras on such relations throw an error instead of modifying the wrong rows. [#1803](https://github.com/Vincit/objection.js/issues/1803)
+- Patch validation rejected valid patches when an `anyOf` / `oneOf` option only consisted of `required` [#1681](https://github.com/Vincit/objection.js/issues/1681)
+- Throw `UniqueViolationError` for primary key violations on MSSQL [#2688](https://github.com/Vincit/objection.js/issues/2688)
+- `$fetchGraph()` / `fetchGraph()` / `$relatedQuery()` warn once when owner models are missing a join property, e.g. a foreign key left out of a partial `select()`. The relation silently came back empty. [#1832](https://github.com/Vincit/objection.js/issues/1832)
+- `withGraphJoined()` checks column aliases against the identifier length limit of the database (MySQL 256, MSSQL 128, SQLite none) instead of always the 63 of Postgres [#2242](https://github.com/Vincit/objection.js/issues/2242)
+- `withGraphFetched()` / `$fetchGraph()` warn once when related models are missing a join property, e.g. snake_case relation mappings with `knexSnakeCaseMappers()`. They were silently dropped. [#2258](https://github.com/Vincit/objection.js/issues/2258)
+- `insertGraph()` / `upsertGraph()` warn once per unknown option, e.g. a misspelled `noInset`. The option is ignored, and will throw in 4.0. [ditojs#84](https://github.com/ditojs/objection/issues/84)
+
+### Types
+
+- Add the `only` option to `from()`, `table()` and `into()`, e.g. for Postgres `ONLY` [#2182](https://github.com/Vincit/objection.js/issues/2182)
+
+### Docs
+
+- `first()` doesn't limit the related items per parent in `modifyGraph()` [#1647](https://github.com/Vincit/objection.js/issues/1647)
+- `runAfter()` in the queries of fetched relations can't replace the related models [#2647](https://github.com/Vincit/objection.js/issues/2647)
+- `page()` and `range()` need an `orderBy()` with a unique tiebreaker to avoid repeated or skipped rows [#2575](https://github.com/Vincit/objection.js/issues/2575)
+- Typing model properties with a merged interface [#2237](https://github.com/Vincit/objection.js/issues/2237)
+- The `through` mapping of relations whose join table is also the related table [#1803](https://github.com/Vincit/objection.js/issues/1803)
+
+### Other
+
+- **Breaking for old knex:** the knex peer dependency is `>=2.3.0` instead of `>=1.0.1`. Some fixes of 3.3.0 don't work with older knex versions. CI now also tests knex 2.3.0. [ditojs#95](https://github.com/ditojs/objection/issues/95)
+- Tests no longer use bluebird, lodash and uuid
+
 ## 3.3.0
 
 ### Security
