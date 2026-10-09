@@ -846,7 +846,13 @@ modelInstance.$setRelated(relation, relatedModels);
 
 Sets related models to a corresponding property in the object.
 
-For a `BelongsToOneRelation`, the foreign key of the object is set to the key of the related model too, e.g. `post.$setRelated('author', user)` also sets `post.authorId` to `user.id`. The foreign key is kept if the related model has no key yet or if the relation is cleared with `null`.
+The foreign keys are kept in sync with the related models:
+
+- `BelongsToOneRelation`: the foreign key of the object is set to the key of the related model, e.g. `post.$setRelated('author', user)` also sets `post.authorId` to `user.id`.
+- `HasOneRelation` and `HasManyRelation`: the foreign keys of the related models are set to the key of the object, e.g. `user.$setRelated('posts', posts)` sets `authorId` of each post to `user.id`.
+- `ManyToManyRelation` and `HasOneThroughRelation`: nothing is set, as the keys live in the join table.
+
+Foreign keys are kept if the model they would be copied from has no key yet, and if the relation is cleared with `null` or `[]`.
 
 ##### Arguments
 
@@ -879,7 +885,7 @@ console.log(person.children[0]);
 modelInstance.$appendRelated(relation, relatedModels);
 ```
 
-Appends related models to a corresponding property in the object.
+Appends related models to a corresponding property in the object. The foreign keys are kept in sync like with [\$setRelated](/api/model/instance-methods.html#setrelated).
 
 ##### Arguments
 
