@@ -1519,6 +1519,45 @@ module.exports = (session) => {
         });
       });
 
+      it('should apply #unrelate and #delete per model when mixed with default deletes', () => {
+        const upsert = {
+          id: 2,
+          model1Relation2: [
+            {
+              idCol: 1,
+              // unrelate id=4 with `#unrelate: true` special prop
+              // delete missing id=5 (default behaviour)
+              model2Relation1: [{ id: 4, '#unrelate': true }],
+            },
+            {
+              idCol: 2,
+              // `#unrelate` takes precedence over `#delete`
+              // keep id=7
+              model2Relation1: [{ id: 6, '#unrelate': true, '#delete': true }, { id: 7 }],
+            },
+          ],
+        };
+
+        return transaction(session.knex, async (trx) => {
+          await Model1.query(trx).upsertGraph(upsert, { fetchStrategy });
+
+          const result = omitIrrelevantProps(
+            await Model1.query(trx)
+              .findById(2)
+              .withGraphFetched('model1Relation2(orderById).model2Relation1(orderById)'),
+          );
+
+          expect(result.model1Relation2.map((it) => it.model2Relation1.map((it) => it.id))).to.eql([
+            [],
+            [7],
+          ]);
+
+          const model1Ids = (await trx('Model1')).map((it) => it.id).sort((a, b) => a - b);
+          // Rows 4 and 6 were unrelated, row 5 was deleted.
+          expect(model1Ids).to.eql([1, 2, 3, 4, 6, 7]);
+        });
+      });
+
       it('should relate and unrelate some models if `unrelate` and `relate` are arrays of relation paths', () => {
         const upsert = {
           // the root gets updated because it has an id
