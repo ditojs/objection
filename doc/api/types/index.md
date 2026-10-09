@@ -36,6 +36,21 @@ This page contains the documentation of all other types and classes than [Model]
 | filter       | function([QueryBuilder](/api/query-builder/))<br>string<br>object                                  | Alias for modify.                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | beforeInsert | function([Model](/api/model/),&nbsp;[QueryContext](/api/query-builder/other-methods.html#context)) | Optional insert hook that is called for each inserted join table model instance. This function can be async.                                                                                                                                                                                                                                                                                                                         |
 
+If the join table is also the related table, `from` must be the column that is joined to the `to` property of the `RelationJoin`, and `to` the column that is joined to its `from` property. For example, to relate a form to the manager of the user that filled it in:
+
+```js
+join: {
+  from: 'forms.employeeId',
+  through: {
+    from: 'users.managerUsername',
+    to: 'users.id'
+  },
+  to: 'users.username'
+}
+```
+
+Such relations can be fetched, and the related rows can be updated, patched and deleted, but `unrelate` and updating `extra` properties are not supported.
+
 ## `type` ModelOptions
 
 | Property       | Type    | Description                                                                                                                                                                                                 |
