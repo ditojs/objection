@@ -1674,6 +1674,42 @@ module.exports = (session) => {
         });
       });
 
+      it('should give #unrelate and #delete precedence over the unrelate and noUnrelate options', () => {
+        return transaction(session.knex, async (trx) => {
+          // `#delete` overrides `unrelate: true`. Missing id=5 is unrelated.
+          await Model1.query(trx).upsertGraph(
+            {
+              id: 2,
+              model1Relation2: [
+                { idCol: 1, model2Relation1: [{ id: 4, '#delete': true }] },
+                { idCol: 2 },
+              ],
+            },
+            { fetchStrategy, unrelate: true, noDelete: true },
+          );
+
+          // `#unrelate` overrides `noUnrelate: true`. Missing id=7 is kept.
+          await Model1.query(trx).upsertGraph(
+            {
+              id: 2,
+              model1Relation2: [{ idCol: 2, model2Relation1: [{ id: 6, '#unrelate': true }] }],
+            },
+            { fetchStrategy, noUnrelate: true, noDelete: true },
+          );
+
+          const result = await Model2.query(trx)
+            .whereIn('id_col', [1, 2])
+            .orderBy('id_col')
+            .withGraphFetched('model2Relation1(orderById)');
+
+          expect(result.map((it) => it.model2Relation1.map((it) => it.id))).to.eql([[], [7]]);
+
+          const model1Ids = (await trx('Model1')).map((it) => it.id).sort((a, b) => a - b);
+          // Row 4 was deleted, rows 5 and 6 were unrelated.
+          expect(model1Ids).to.eql([1, 2, 3, 5, 6, 7]);
+        });
+      });
+
       it('should relate and unrelate some models if `unrelate` and `relate` are arrays of relation paths', () => {
         const upsert = {
           // the root gets updated because it has an id
