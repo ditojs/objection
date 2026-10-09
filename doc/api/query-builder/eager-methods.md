@@ -266,7 +266,7 @@ Calls without a `joinOperation` use the default, which is the `joinOperation` of
 
 **Limitations:**
 
-- `limit`, `page` and `range` methods will work incorrectly because they will limit the result set that contains all the result rows in a flattened format. For example the result set of the eager expression children.children will have 10 \* 10 \* 10 rows assuming that you fetched 10 models that all had 10 children that all had 10 children.
+- `limit`, `page` and `range` methods will work incorrectly because they will limit the result set that contains all the result rows in a flattened format. For example the result set of the eager expression children.children will have 10 \* 10 \* 10 rows assuming that you fetched 10 models that all had 10 children that all had 10 children. The `total` count of `page` and `range` and the result of [resultSize](/api/query-builder/other-methods.html#resultsize) are not affected by this, as they count the distinct root models.
 - All models in the relation expression, including the root model, need a primary key. The flat result rows are grouped into a graph using the [idColumn](/api/model/static-properties.html#static-idcolumn) values, so the `idColumn` must exist in the table and uniquely identify the rows. If the `idColumn` is `null` or doesn't exist in the table, the rows can't be told apart, and `withGraphJoined` throws an error instead of returning a wrong result. Use [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) for models without a primary key.
 
 **About performance:**

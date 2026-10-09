@@ -1435,6 +1435,128 @@ describe('QueryBuilder', () => {
       .catch(done);
   });
 
+  describe('resultSize with withGraphJoined', () => {
+    let Person;
+    let Animal;
+
+    const metadataQuery = (table) =>
+      `select * from information_schema.columns where table_name = '${table}' and table_catalog = current_database() and table_schema = current_schema()`;
+
+    beforeEach(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Animal,
+              join: { from: 'Person.id', to: 'Animal.ownerId' },
+            },
+          };
+        }
+      };
+
+      Animal = class Animal extends Model {
+        static get tableName() {
+          return 'Animal';
+        }
+      };
+
+      Person.knex(mockKnex);
+    });
+
+    it('resultSize should fetch the table metadata and count the distinct root models', () => {
+      mockKnexQueryResults = [[], [], [{ count: '2' }]];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .where('pets.name', 'like', 'A%')
+        .orderBy('Person.id')
+        .limit(1)
+        .resultSize()
+        .then((res) => {
+          expect(res).to.equal(2);
+          expect(executedQueries).to.eql([
+            metadataQuery('Person'),
+            metadataQuery('Animal'),
+            'select count(*) as "count" from (select distinct "Person"."id" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" where "pets"."name" like \'A%\') as "temp"',
+          ]);
+        });
+    });
+
+    it('resultSize should count the distinct composite ids of the root models', () => {
+      class CompositePerson extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static get idColumn() {
+          return ['id', 'tenantId'];
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Animal,
+              join: {
+                from: ['Person.id', 'Person.tenantId'],
+                to: ['Animal.ownerId', 'Animal.tenantId'],
+              },
+            },
+          };
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'tenantId', 'name'] };
+        }
+      }
+
+      Animal.tableMetadata = () => ({ columns: ['id', 'ownerId', 'tenantId'] });
+      CompositePerson.knex(mockKnex);
+      mockKnexQueryResults = [[{ count: '3' }]];
+
+      return CompositePerson.query()
+        .withGraphJoined('pets')
+        .resultSize()
+        .then((res) => {
+          expect(res).to.equal(3);
+          expect(executedQueries).to.eql([
+            'select count(*) as "count" from (select distinct "Person"."id", "Person"."tenantId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" and "pets"."tenantId" = "Person"."tenantId") as "temp"',
+          ]);
+        });
+    });
+
+    it('page should count the distinct root models in the total count query', () => {
+      Person.tableMetadata = () => ({ columns: ['id', 'name'] });
+      Animal.tableMetadata = () => ({ columns: ['id', 'name', 'ownerId'] });
+      mockKnexQueryResults = [
+        [
+          { id: 1, name: 'P1', 'pets:id': 10, 'pets:name': 'A10', 'pets:ownerId': 1 },
+          { id: 1, name: 'P1', 'pets:id': 11, 'pets:name': 'A11', 'pets:ownerId': 1 },
+          { id: 2, name: 'P2', 'pets:id': null, 'pets:name': null, 'pets:ownerId': null },
+        ],
+        [{ count: '2' }],
+      ];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .orderBy('Person.id')
+        .page(0, 10)
+        .then((res) => {
+          expect(res.total).to.equal(2);
+          expect(res.results).to.have.length(2);
+          expect(executedQueries).to.eql([
+            'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" order by "Person"."id" asc limit 10',
+            'select count(*) as "count" from (select distinct "Person"."id" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id") as "temp"',
+          ]);
+        });
+    });
+  });
+
   describe('orderBy added at build time', () => {
     class TestModelRelated extends Model {
       static get tableName() {
@@ -3034,6 +3156,11 @@ describe('QueryBuilder', () => {
       '"pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
       'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"';
 
+    // `resultSize()` counts the distinct root models of the joined query.
+    const countJoinQuery =
+      'select distinct "Person"."id" ' +
+      'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"';
+
     const flatRows = () => [
       { id: 1, name: 'P1', parentId: null, 'pets:id': 10, 'pets:name': 'A10', 'pets:ownerId': 1 },
       { id: 1, name: 'P1', parentId: null, 'pets:id': 11, 'pets:name': 'A11', 'pets:ownerId': 1 },
@@ -3545,7 +3672,7 @@ describe('QueryBuilder', () => {
           expect(executedQueries).to.eql([
             `${joinQuery} where "pets"."name" = 'A10' limit 10`,
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
-            `select count(*) as "count" from (${joinQuery} where "pets"."name" = 'A10') as "temp"`,
+            `select count(*) as "count" from (${countJoinQuery} where "pets"."name" = 'A10') as "temp"`,
           ]);
 
           expect(res.total).to.equal(2);
@@ -3562,7 +3689,7 @@ describe('QueryBuilder', () => {
         .resultSize()
         .then((count) => {
           expect(executedQueries).to.eql([
-            `select count(*) as "count" from (${joinQuery}) as "temp"`,
+            `select count(*) as "count" from (${countJoinQuery}) as "temp"`,
           ]);
           expect(count).to.equal(2);
         });
