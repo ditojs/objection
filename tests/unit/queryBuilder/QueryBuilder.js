@@ -5338,6 +5338,70 @@ describe('QueryBuilder', () => {
     }
   });
 
+  describe('withGraphJoined identifier length limit (#2242)', () => {
+    const longColumn = 'c'.repeat(100);
+    let Person;
+
+    beforeEach(() => {
+      class Pet extends Model {
+        static get tableName() {
+          return 'Pet';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'ownerId', longColumn] };
+        }
+      }
+
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id'] };
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Pet,
+              join: { from: 'Person.id', to: 'Pet.ownerId' },
+            },
+          };
+        }
+      };
+    });
+
+    const build = (client) =>
+      Person.query(Knex({ client, useNullAsDefault: true }))
+        .withGraphJoined('pets')
+        .toKnexQuery()
+        .toString();
+
+    it('should throw for aliases over the postgres limit, suggesting `minimize`', () => {
+      expect(() => build('pg')).to.throwException((err) => {
+        expect(err.message).to.equal(
+          `identifier pets:${longColumn} is over 63 characters long and would be truncated by the database engine. Use the \`minimize\` option of withGraphJoined() to shorten the aliases.`,
+        );
+      });
+    });
+
+    it('should use the limit of the database', () => {
+      expect(build('mysql')).to.contain(`pets:${longColumn}`);
+      expect(build('mssql')).to.contain(`pets:${longColumn}`);
+    });
+
+    it('should still throw over the mssql limit', () => {
+      Person.relationMappings.pets.modelClass.tableMetadata = () => ({
+        columns: ['id', 'ownerId', 'c'.repeat(130)],
+      });
+
+      expect(() => build('mssql')).to.throwException(/is over 128 characters long/);
+    });
+  });
+
   describe('mssql constraint violations (#2688)', () => {
     // The shape of the errors of the `tedious` driver used by knex for mssql.
     const createMsSqlError = (number, message) => {
