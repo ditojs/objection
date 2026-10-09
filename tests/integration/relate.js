@@ -132,6 +132,21 @@ module.exports = (session) => {
                 });
             });
         });
+
+        if (session.isPostgres()) {
+          it('should return the patched rows with returning()', async () => {
+            const result = await model1
+              .$relatedQuery('model1Relation1')
+              .relate(model2.id)
+              .returning('*');
+
+            expect(result).to.have.length(1);
+            expect(result[0]).to.be.a(Model1);
+            expect(result[0].id).to.equal(1);
+            expect(result[0].model1Id).to.equal(model2.id);
+            expect(result[0].model1Prop1).to.equal('hello 1');
+          });
+        }
       });
 
       describe('has many relation', () => {
@@ -248,6 +263,23 @@ module.exports = (session) => {
               expect(rows[2].model1_id).to.equal(1);
             });
         });
+
+        if (session.isPostgres()) {
+          it('should return the patched rows with returning()', async () => {
+            const model = await Model1.query().findById(1);
+            const result = await model
+              .$relatedQuery('model1Relation2')
+              .relate([2, 3])
+              .returning('*');
+
+            expect(result).to.have.length(2);
+            expect(result[0]).to.be.a(Model2);
+            expect(_.sortBy(result, 'idCol').map((it) => _.pick(it, 'idCol', 'model1Id'))).to.eql([
+              { idCol: 2, model1Id: 1 },
+              { idCol: 3, model1Id: 1 },
+            ]);
+          });
+        }
       });
 
       describe('many to many relation', () => {
@@ -356,6 +388,26 @@ module.exports = (session) => {
             expect(sql).to.equal(
               'insert into "Model1Model2" ("model1Id", "model2Id") values (?, ?) on conflict ("model1Id") do nothing returning "model1Id"',
             );
+          });
+
+          it('should return the inserted join rows with returning()', async () => {
+            const model = await Model2.query().findById(1);
+            const result = await model
+              .$relatedQuery('model2Relation1')
+              .relate([5, 6])
+              .returning('*');
+
+            expect(result).to.have.length(2);
+            expect(result.every((it) => typeof it.id === 'number')).to.equal(true);
+            expect(
+              _.sortBy(result, 'model1Id').map((it) => _.pick(it, 'model1Id', 'model2Id')),
+            ).to.eql([
+              { model1Id: 5, model2Id: 1 },
+              { model1Id: 6, model2Id: 1 },
+            ]);
+
+            const rows = await session.knex('Model1Model2').orderBy('id');
+            expect(rows).to.have.length(6);
           });
         }
 

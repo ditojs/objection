@@ -540,7 +540,11 @@ the case of a many-to-many relation, creates a join row to the join table.
 
 On Postgres multiple items can be related by giving an array of identifiers.
 
-The return value of the query is the number of affected items.
+The return value of the query is the number of affected items. On Postgres you
+can chain [returning('\*')](/api/query-builder/find-methods.html#returning) to get
+the affected rows instead: the inserted join table rows for many-to-many
+relations, the updated related rows for has-many relations and the updated owner
+rows for belongs-to-one relations.
 
 ##### Arguments
 
@@ -648,6 +652,17 @@ const numRelatedRows = await Movie.relatedQuery('actors')
   });
 
 console.log(`${numRelatedRows} rows were related`);
+```
+
+On Postgres, `returning` can be used to get the inserted join rows instead of the count:
+
+```js
+const joinRows = await Person.relatedQuery('movies')
+  .for(123)
+  .relate([50, 60])
+  .returning('*');
+
+console.log(joinRows[0].personId, joinRows[0].movieId);
 ```
 
 ## unrelate()

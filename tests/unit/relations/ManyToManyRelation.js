@@ -1568,6 +1568,36 @@ describe('ManyToManyRelation', () => {
         );
       });
     });
+
+    it('should return the inserted join rows when returning() is used', () => {
+      mockKnexQueryResults = [
+        [
+          { id: 1, ownerId: 666, relatedId: 10 },
+          { id: 2, ownerId: 666, relatedId: 20 },
+        ],
+      ];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      let builder = QueryBuilder.forClass(RelatedModel)
+        .relateOperationFactory((builder) => {
+          return relation.relate(builder, RelationOwner.create(owner));
+        })
+        .relate([10, 20])
+        .returning('*');
+
+      return builder.then((result) => {
+        expect(executedQueries).to.have.length(1);
+        expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
+        expect(executedQueries[0]).to.eql(
+          'insert into "JoinModel" ("ownerId", "relatedId") values (666, 10), (666, 20) returning *',
+        );
+
+        expect(result).to.have.length(2);
+        expect(result[0]).to.be.a(relation.joinModelClass);
+        expect(result[0].toJSON()).to.eql({ id: 1, ownerId: 666, relatedId: 10 });
+        expect(result[1].toJSON()).to.eql({ id: 2, ownerId: 666, relatedId: 20 });
+      });
+    });
   });
 
   describe('unrelate', () => {
