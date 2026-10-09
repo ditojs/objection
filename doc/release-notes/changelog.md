@@ -1,5 +1,58 @@
 # Changelog
 
+## 3.3.0
+
+### Security
+
+- Escape keys in JSON field expressions. A `'` in a key used in `ref()`, a patch or update with field expression keys, or the `whereJson*` methods broke out of the SQL string literal, allowing SQL injection when keys come from user input. [#2077](https://github.com/Vincit/objection.js/issues/2077)
+
+### What's new
+
+- `withGraphFetched()` / `withGraphJoined()` narrow the result types: fetched relations become required on the result. Generic helpers with an explicit `QB` return type need `withGraphFetched<string>()`. [ditojs#25](https://github.com/ditojs/objection/pull/25)
+- Add `withGraph()` with algorithm-agnostic merging, and `isJoinChildQuery()` [ditojs#63](https://github.com/ditojs/objection/issues/63)
+- Add `patchById()` and `updateById()` [#1415](https://github.com/Vincit/objection.js/issues/1415)
+- `insertGraph()` / `upsertGraph()` resolve cyclic `#ref` dependencies by deferring `BelongsToOne` foreign keys [#1482](https://github.com/Vincit/objection.js/issues/1482)
+- Add a `preserveJsonKeys` option to `snakeCaseMappers()` to map only the column part of field expressions [#1089](https://github.com/Vincit/objection.js/issues/1089)
+- Support empty keys in JSON field expressions, e.g. `col:[""]` [#2680](https://github.com/Vincit/objection.js/pull/2680)
+- `whereJson*` methods accept `ref()`, `val()`, `raw()` and subqueries on the right side
+- Pass `returning()` options, e.g. `includeTriggerModifications`, on to knex [#2309](https://github.com/Vincit/objection.js/issues/2309)
+
+### Fixes
+
+- Group the user's where clauses when adding a relation's owner condition. `$relatedQuery(...).where(a).orWhere(b).delete()` / `patch()` affected **other owners' rows**, and finds returned them. [#2191](https://github.com/Vincit/objection.js/issues/2191), [#1909](https://github.com/Vincit/objection.js/issues/1909)
+- `findByIds([])` / `whereInComposite()` with an empty array and composite ids produced invalid SQL, and **matched every row on SQLite** [#1914](https://github.com/Vincit/objection.js/issues/1914)
+- `onConflict().ignore()`: inserted rows were assigned to the wrong models, `$setDatabaseJson` could crash, and `insertAndFetch()` fetched undefined ids [#2320](https://github.com/Vincit/objection.js/issues/2320), [#2597](https://github.com/Vincit/objection.js/issues/2597), [#2661](https://github.com/Vincit/objection.js/issues/2661)
+- `asFindQuery()` in many-to-many update and delete hooks lost its filters [#2266](https://github.com/Vincit/objection.js/issues/2266)
+- Patch validation: `not` schemas stay intact [#1681](https://github.com/Vincit/objection.js/issues/1681), and nested `required` is stripped for nullable and untyped objects [#1664](https://github.com/Vincit/objection.js/issues/1664)
+- `resultSize()` and `page()` count root models with `withGraphJoined()` [#2329](https://github.com/Vincit/objection.js/issues/2329), [#2143](https://github.com/Vincit/objection.js/issues/2143)
+- Keep aliased subquery and raw selections in `withGraphJoined()` modifiers [#2365](https://github.com/Vincit/objection.js/issues/2365)
+- Map column names in `whereJson*` methods with `knexSnakeCaseMappers`
+- Match `table.*` selections through knex identifier mapping [#2288](https://github.com/Vincit/objection.js/issues/2288)
+- Use the keys of modified `graphExpressionObject()` results [#2793](https://github.com/Vincit/objection.js/issues/2793)
+- Track internally selected columns on the query builder, so `runAfter()` hooks never see them [ditojs#45](https://github.com/ditojs/objection/issues/45)
+- **Behaviour change:** many-to-many `unrelate()` / `patch()` only modify the join rows matching the filters, not all join rows of the matching related rows [#1853](https://github.com/Vincit/objection.js/issues/1853). The generated SQL of these operations changes. On MySQL, the join table filter avoids `ER_CANT_UPDATE_USED_TABLE_IN_SF_OR_TRG` [#2127](https://github.com/Vincit/objection.js/issues/2127), and `unrelate()` returns `0` instead of `[]` when nothing matches. Ported from [#2406](https://github.com/Vincit/objection.js/pull/2406).
+- **Behaviour change:** `asFindQuery()` in hooks no longer applies the `runAfter()` callbacks of the original query, including those of `throwIfNotFound()` and `traverse()`, and returns `[]` instead of `[undefined]` for a `findById()` that finds nothing [#2093](https://github.com/Vincit/objection.js/issues/2093)
+- **Behaviour change:** field expression keys in patch objects, e.g. `'meta:a.b'`, are validated against the nested schema, so patches that passed before can fail validation [#1666](https://github.com/Vincit/objection.js/issues/1666)
+- **Behaviour change:** the `joinOperation` option of `withGraphJoined()` applies per call, no longer to all relations of the query [#2125](https://github.com/Vincit/objection.js/issues/2125)
+- **Behaviour change:** `withGraphJoined()` throws when it can't identify rows, e.g. for a model without a primary key, instead of silently merging them [#2748](https://github.com/Vincit/objection.js/issues/2748), [#2737](https://github.com/Vincit/objection.js/issues/2737)
+- `insertGraph()` / `upsertGraph()` warn when `onConflict()`, `ignore()` or `merge()` is used. The clause is ignored, and will throw in 4.0. [#2156](https://github.com/Vincit/objection.js/issues/2156)
+
+### Types
+
+- Export the db-errors classes as types [#2499](https://github.com/Vincit/objection.js/issues/2499)
+
+### Docs
+
+- The docs moved to VitePress and are hosted at [ditojs.github.io/objection](https://ditojs.github.io/objection/)
+- Document `relatedFindQueryMutates` / `relatedInsertQueryMutates` [#2356](https://github.com/Vincit/objection.js/issues/2356)
+- Document running code after a transaction commits [#2582](https://github.com/Vincit/objection.js/issues/2582)
+
+### Other
+
+- Update knex to 3.3 in development, which fixes inverted bindings in `delete()` with `joinRelated()` [#2799](https://github.com/Vincit/objection.js/issues/2799)
+
+Thanks to @falkenhawk and Marcin L for the many-to-many work in [#2406](https://github.com/Vincit/objection.js/pull/2406), @kapouer for [#2680](https://github.com/Vincit/objection.js/pull/2680) and @cesumilo for [#2625](https://github.com/Vincit/objection.js/pull/2625), which led to `preserveJsonKeys`.
+
 ## 3.2.0
 
 Objection is now maintained at [ditojs/objection](https://github.com/ditojs/objection).
