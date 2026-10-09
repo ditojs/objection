@@ -974,6 +974,39 @@ describe('QueryBuilder', () => {
           expect(executedQueries).to.eql(['delete from "Model" where "Model"."ownerId" in (1)']);
         });
     });
+
+    it('should work when called after other methods on a relatedQuery find query', () => {
+      return Person.relatedQuery('pets')
+        .where('a', 1)
+        .for(1)
+        .then(() => {
+          expect(executedQueries).to.eql([
+            'select "Model".* from "Model" where "Model"."ownerId" in (1) and "a" = 1',
+          ]);
+        });
+    });
+
+    const writeQueries = {
+      insert: (query) => query.insert({ a: 1 }),
+      insertGraph: (query) => query.insertGraph({ a: 1 }),
+      update: (query) => query.update({ a: 1 }),
+      patch: (query) => query.patch({ a: 1 }),
+      delete: (query) => query.delete(),
+      relate: (query) => query.relate(2),
+      unrelate: (query) => query.unrelate(),
+    };
+
+    for (const [name, create] of Object.entries(writeQueries)) {
+      it(`should throw when called after ${name}() on a relatedQuery`, () => {
+        expect(() => {
+          create(Person.relatedQuery('pets')).for(1);
+        }).to.throwException((err) => {
+          expect(err.message).to.equal(
+            'for() must be called before insert, update, patch, delete, relate or unrelate on queries created using the static relatedQuery method',
+          );
+        });
+      });
+    }
   });
 
   it('should be able to execute same query multiple times', () => {
