@@ -42,3 +42,28 @@ import { Model, ModelClass } from '../../';
   const concretes: Concrete[] = await Concrete.query();
   const concrete: Concrete = Concrete.fromJson({});
 })();
+
+// idColumn can be null (no primary key), and idColumn and jsonAttributes
+// can be readonly arrays.
+(async () => {
+  class JoinTable extends Model {
+    static tableName = 'join_table';
+    static idColumn = null;
+  }
+
+  class CompositeKey extends Model {
+    static tableName = 'composite_key';
+    static idColumn = ['a', 'b'] as const;
+    static jsonAttributes = ['data'] as const;
+  }
+
+  class GetterKey extends Model {
+    static get idColumn() {
+      return null;
+    }
+  }
+
+  await JoinTable.query();
+  await CompositeKey.query().returning(CompositeKey.idColumn);
+  await CompositeKey.query().returning(['a', 'b'] as const);
+})();
