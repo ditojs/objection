@@ -444,6 +444,31 @@ describe('BelongsToOneRelation', () => {
           done();
         });
     });
+
+    it('should not apply returning() to the relate query', () => {
+      mockKnexQueryResults = [[{ id: 1, a: 'str1', rid: 2 }]];
+
+      let owner = OwnerModel.fromJson({ id: 666 });
+      let related = [RelatedModel.fromJson({ a: 'str1', rid: 2 })];
+
+      let builder = QueryBuilder.forClass(RelatedModel)
+        .insertOperationFactory((builder) => {
+          return relation.insert(builder, RelationOwner.create(owner));
+        })
+        .insert(related)
+        .returning('*');
+
+      return builder.then((result) => {
+        expect(executedQueries).to.have.length(2);
+        expect(executedQueries[0]).to.equal(
+          'insert into "RelatedModel" ("a", "rid") values (\'str1\', 2) returning *',
+        );
+        expect(executedQueries[1]).to.equal(
+          'update "OwnerModel" set "relatedId" = 2 where "OwnerModel"."id" in (666)',
+        );
+        expect(result).to.eql([{ a: 'str1', id: 1, rid: 2 }]);
+      });
+    });
   });
 
   describe('update', () => {
@@ -900,6 +925,30 @@ describe('BelongsToOneRelation', () => {
         .catch(() => {
           done();
         });
+    });
+
+    it('should return the patched owner rows when returning() is used', () => {
+      mockKnexQueryResults = [[{ id: 666, relatedId: 10 }]];
+      let owner = OwnerModel.fromJson({ id: 666 });
+
+      let builder = QueryBuilder.forClass(RelatedModel)
+        .relateOperationFactory((builder) => {
+          return relation.relate(builder, RelationOwner.create(owner));
+        })
+        .relate(10)
+        .returning('*');
+
+      return builder.then((result) => {
+        expect(executedQueries).to.have.length(1);
+        expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
+        expect(executedQueries[0]).to.eql(
+          'update "OwnerModel" set "relatedId" = 10 where "OwnerModel"."id" in (666) returning *',
+        );
+
+        expect(result).to.have.length(1);
+        expect(result[0]).to.be.a(OwnerModel);
+        expect(result[0].toJSON()).to.eql({ id: 666, relatedId: 10 });
+      });
     });
   });
 

@@ -787,6 +787,14 @@ const rowsInsertReturning: PromiseLike<Person[]> = Person.query()
   .insert([{ firstName: 'Jack' }])
   .returning('*');
 
+// `returning` should change the return value of `relate` from number to T[]
+const numRelated: PromiseLike<number> = Person.relatedQuery('pets').for(1).relate(2);
+
+const rowsRelateReturning: PromiseLike<Animal[]> = Person.relatedQuery('pets')
+  .for(1)
+  .relate(2)
+  .returning('*');
+
 // Executing a query builder should be equivalent to treating it
 // as a promise directly, regardless of query builder return type:
 
