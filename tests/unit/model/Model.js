@@ -2037,6 +2037,63 @@ describe('Model', () => {
     expect(model1.manyToMany).to.eql([{ id: 2 }]);
   });
 
+  describe('$setRelated with BelongsToOneRelation foreign keys (#2001)', () => {
+    let Post;
+    let User;
+
+    beforeEach(() => {
+      User = modelClass('User');
+      Post = modelClass('Post');
+
+      Post.relationMappings = {
+        author: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: User,
+          join: { from: 'Post.authorId', to: 'User.id' },
+        },
+        compositeAuthor: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: User,
+          join: { from: ['Post.authorA', 'Post.authorB'], to: ['User.a', 'User.b'] },
+        },
+      };
+    });
+
+    it('should set the foreign key', () => {
+      const post = Post.fromJson({ authorId: 1 });
+      post.$setRelated('author', User.fromJson({ id: 2 }));
+
+      expect(post.author.id).to.equal(2);
+      expect(post.authorId).to.equal(2);
+    });
+
+    it('should set composite foreign keys', () => {
+      const post = Post.fromJson({});
+      post.$setRelated('compositeAuthor', [User.fromJson({ a: 1, b: 2 })]);
+
+      expect(post.authorA).to.equal(1);
+      expect(post.authorB).to.equal(2);
+    });
+
+    it("should keep the foreign key if the related model doesn't have the key yet", () => {
+      const post = Post.fromJson({ authorId: 1 });
+      post.$setRelated('author', User.fromJson({ name: 'new' }));
+
+      expect(post.authorId).to.equal(1);
+
+      post.$setRelated('compositeAuthor', User.fromJson({ a: 1 }));
+      expect(post.authorA).to.equal(undefined);
+    });
+
+    it('should keep the foreign key when the relation is cleared', () => {
+      const post = Post.fromJson({ authorId: 1 });
+      post.$setRelated('author', null);
+
+      expect(post.author).to.equal(null);
+      expect(post.authorId).to.equal(1);
+    });
+  });
+
   it('appendRelated should append related model instances', () => {
     let Model1 = modelClass('Model1');
     let Model2 = modelClass('Model2');
