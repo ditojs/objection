@@ -2511,13 +2511,22 @@ describe('QueryBuilder', () => {
       expect(
         toSql(Model.query(knex).whereJsonSupersetOf('jsonCol:someKey', { innerKey: 1 })),
       ).to.equal(
-        `select "model".* from "model" where ( "jsonCol"#>'{someKey}' )::jsonb @> '{"innerKey":1}'::jsonb`,
+        `select "model".* from "model" where ( "${col}"#>'{someKey}' )::jsonb @> '{"innerKey":1}'::jsonb`,
       );
       expect(toSql(Model.query(knex).whereJsonHasAny('jsonCol:someKey', 'fooBar'))).to.equal(
-        `select "model".* from "model" where "jsonCol"#>'{someKey}' ?| array['fooBar']`,
+        `select "model".* from "model" where "${col}"#>'{someKey}' ?| array['fooBar']`,
       );
       expect(toSql(Model.query(knex).whereJsonIsObject('jsonCol:someKey'))).to.equal(
-        `select "model".* from "model" where ( "jsonCol"#>'{someKey}' )::jsonb @> '{}'::jsonb`,
+        `select "model".* from "model" where ( "${col}"#>'{someKey}' )::jsonb @> '{}'::jsonb`,
+      );
+      expect(toSql(Model.query(knex).whereJsonNotObject('model.jsonCol:someKey'))).to.equal(
+        `select "model".* from "model" where (not ( "model"."${col}"#>'{someKey}' )::jsonb @> '{}'::jsonb or ("model"."${col}"#>>'{someKey}')::TEXT is NULL)`,
+      );
+      expect(toSql(Model.query(knex).whereJsonSubsetOf('jsonCol', 'model.jsonCol:a'))).to.equal(
+        `select "model".* from "model" where ( "${col}" )::jsonb <@ ( "model"."${col}"#>'{a}' )::jsonb`,
+      );
+      expect(toSql(Model.query(knex).whereJsonHasAll('jsonCol', ['a', 'b']))).to.equal(
+        `select "model".* from "model" where "${col}" ?& array['a','b']`,
       );
       expect(toSql(Model.query(knex).patch({ 'jsonCol:[0][innerKey]': 1, otherCol: 2 }))).to.equal(
         `update "model" set "json_col" = jsonb_set("json_col", '${patchPath}', '1', true), "other_col" = 2`,
