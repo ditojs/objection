@@ -787,6 +787,20 @@ Create a clone of this builder.
 | ----------------------------------- | -------------------------- |
 | [QueryBuilder](/api/query-builder/) | Clone of the query builder |
 
+## emptyInstance()
+
+```js
+const builder = queryBuilder.emptyInstance();
+```
+
+Creates a new, empty query builder of the same class for the same model class. Unlike [clone](/api/query-builder/other-methods.html#clone), none of the query's operations (`where`, `select`, `first` etc.) are copied, but a query created using [relatedQuery](/api/model/static-methods.html#static-relatedquery) or [\$relatedQuery](/api/model/instance-methods.html#relatedquery) stays bound to the same relation.
+
+This is mostly useful in custom query builders and plugins.
+
+| Type                                | Description                       |
+| ----------------------------------- | --------------------------------- |
+| [QueryBuilder](/api/query-builder/) | A new, empty query builder        |
+
 ## execute()
 
 ```js

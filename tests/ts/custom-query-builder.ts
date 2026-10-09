@@ -49,6 +49,12 @@ const pets: CustomQueryBuilder<Animal, Animal | undefined> = new Person()
   .first()
   .someCustomMethod();
 
+const emptyPeople: CustomQueryBuilder<Person, Person[]> = Person.query()
+  .someCustomMethod()
+  .where('firstName', 'lol')
+  .emptyInstance()
+  .someCustomMethod();
+
 const numUpdated: CustomQueryBuilder<Person, number> = Person.query()
   .someCustomMethod()
   .patch({ firstName: 'test' })
