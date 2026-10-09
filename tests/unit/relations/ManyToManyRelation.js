@@ -1649,6 +1649,193 @@ describe('ManyToManyRelation', () => {
     });
   });
 
+  describe('mysql', () => {
+    beforeEach(() => {
+      useClient('mysql');
+    });
+
+    it('unrelate should fetch the related ids before deleting the join rows', () => {
+      mockKnexQueryResults = [[{ rid: 5 }, { rid: 6 }], 2];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .unrelateOperationFactory((builder) => {
+          return relation.unrelate(builder, RelationOwner.create(owner));
+        })
+        .unrelate()
+        .whereIn('code', [55, 66, 77])
+        .then((result) => {
+          expect(result).to.equal(2);
+          expect(executedQueries).to.eql([
+            'select `RelatedModel`.`rid` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` in (55, 66, 77)',
+            'delete from `JoinModel` where `JoinModel`.`relatedId` in (5, 6) and `JoinModel`.`ownerId` in (666)',
+          ]);
+        });
+    });
+
+    it('unrelate should fetch the related ids before deleting the join rows (composite key)', () => {
+      mockKnexQueryResults = [
+        [
+          { cid: 1, did: 2 },
+          { cid: 3, did: 4 },
+        ],
+        2,
+      ];
+      let owner = OwnerModel.fromJson({ aid: 11, bid: 22 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .unrelateOperationFactory((builder) => {
+          return compositeKeyRelation.unrelate(builder, RelationOwner.create(owner));
+        })
+        .unrelate()
+        .where('someColumn', 100)
+        .then((result) => {
+          expect(result).to.equal(2);
+          expect(executedQueries).to.eql([
+            'select `RelatedModel`.`cid`, `RelatedModel`.`did` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`cid` = `JoinModel`.`relatedCId` and `RelatedModel`.`did` = `JoinModel`.`relatedDId` where (`JoinModel`.`ownerAId`, `JoinModel`.`ownerBId`) in ((11, 22)) and `someColumn` = 100',
+            'delete from `JoinModel` where (`JoinModel`.`relatedCId`, `JoinModel`.`relatedDId`) in ((1, 2), (3, 4)) and (`JoinModel`.`ownerAId`, `JoinModel`.`ownerBId`) in ((11, 22))',
+          ]);
+        });
+    });
+
+    it('unrelate should return the count of the delete query if no related rows match', () => {
+      mockKnexQueryResults = [[], 0];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .unrelateOperationFactory((builder) => {
+          return relation.unrelate(builder, RelationOwner.create(owner));
+        })
+        .unrelate()
+        .where('code', 55)
+        .then((result) => {
+          expect(result).to.equal(0);
+          expect(executedQueries).to.eql([
+            'select `RelatedModel`.`rid` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55',
+            'delete from `JoinModel` where 1 = 0 and `JoinModel`.`ownerId` in (666)',
+          ]);
+        });
+    });
+
+    it('patch should fetch the related ids before patching the join table extras', () => {
+      mockKnexQueryResults = [1, [{ rid: 5 }], 1];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .patchOperationFactory((builder) => {
+          return relation.patch(builder, RelationOwner.create(owner));
+        })
+        .patch({ a: 'str1', extra2: 'extraVal' })
+        .where('code', 55)
+        .then((result) => {
+          expect(result).to.equal(1);
+          expect(executedQueries).to.eql([
+            "update `RelatedModel` set `a` = 'str1' where `RelatedModel`.`id` in (select * from (select `RelatedModel`.`id` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) as `mysql_subquery_fix`)",
+            'select `RelatedModel`.`rid` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55',
+            "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`relatedId` in (5) and `JoinModel`.`ownerId` in (666)",
+          ]);
+        });
+    });
+
+    it('delete should not fetch the related ids', () => {
+      mockKnexQueryResults = [3];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .deleteOperationFactory((builder) => {
+          return relation.delete(builder, RelationOwner.create(owner));
+        })
+        .delete()
+        .where('code', 55)
+        .then((result) => {
+          expect(result).to.equal(3);
+          expect(executedQueries).to.eql([
+            'delete from `RelatedModel` where `RelatedModel`.`id` in (select * from (select `RelatedModel`.`id` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) as `mysql_subquery_fix`)',
+          ]);
+        });
+    });
+  });
+
+  describe('sqlite', () => {
+    beforeEach(() => {
+      useClient('sqlite3');
+    });
+
+    it('unrelate should use the join table row ids', () => {
+      mockKnexQueryResults = [2];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .unrelateOperationFactory((builder) => {
+          return relation.unrelate(builder, RelationOwner.create(owner));
+        })
+        .unrelate()
+        .whereIn('code', [55, 66, 77])
+        .then((result) => {
+          expect(result).to.equal(2);
+          expect(executedQueries).to.eql([
+            'delete from `JoinModel` where `JoinModel`.`_rowid_` in (select `JoinModel`.`_rowid_` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` in (55, 66, 77)) and `JoinModel`.`ownerId` in (666)',
+          ]);
+        });
+    });
+
+    it('patch should use the join table row ids for the join table extras', () => {
+      mockKnexQueryResults = [1, 1];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .patchOperationFactory((builder) => {
+          return relation.patch(builder, RelationOwner.create(owner));
+        })
+        .patch({ a: 'str1', extra2: 'extraVal' })
+        .where('code', 55)
+        .then((result) => {
+          expect(result).to.equal(1);
+          expect(executedQueries).to.eql([
+            "update `RelatedModel` set `a` = 'str1' where `RelatedModel`.`_rowid_` in (select `RelatedModel`.`_rowid_` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55)",
+            "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`_rowid_` in (select `JoinModel`.`_rowid_` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) and `JoinModel`.`ownerId` in (666)",
+          ]);
+        });
+    });
+
+    it('delete should use the related table row ids', () => {
+      mockKnexQueryResults = [3];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .deleteOperationFactory((builder) => {
+          return relation.delete(builder, RelationOwner.create(owner));
+        })
+        .delete()
+        .where('code', 55)
+        .then((result) => {
+          expect(result).to.equal(3);
+          expect(executedQueries).to.eql([
+            'delete from `RelatedModel` where `RelatedModel`.`_rowid_` in (select `RelatedModel`.`_rowid_` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55)',
+          ]);
+        });
+    });
+  });
+
+  function useClient(client) {
+    const knex = knexMocker(
+      Knex({ client, useNullAsDefault: true }),
+      function (mock, oldImpl, args) {
+        executedQueries.push(this.toString());
+
+        // Unlike the default mock, allow falsy results such as a count of 0.
+        let result = mockKnexQueryResults.length ? mockKnexQueryResults.shift() : [];
+        let promise = Promise.resolve(result);
+
+        return promise.then.apply(promise, args);
+      },
+    );
+
+    OwnerModel.knex(knex);
+    RelatedModel.knex(knex);
+    JoinModel.knex(knex);
+  }
+
   function createModifiedRelation(modify) {
     relation = new ManyToManyRelation('nameOfOurRelation', OwnerModel);
     relation.setMapping({
