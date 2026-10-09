@@ -2483,6 +2483,153 @@ describe('QueryBuilder', () => {
     );
   });
 
+  describe('json field expressions on other databases (ditojs#113)', () => {
+    const message =
+      'JSON field expressions and the whereJson*() methods of objection are only supported ' +
+      'on PostgreSQL. Use the JSON methods of knex like whereJsonPath() or jsonExtract() ' +
+      'with other databases.';
+
+    const knexes = {};
+    const query = (client) => {
+      knexes[client] = knexes[client] || Knex({ client, useNullAsDefault: true });
+      return TestModel.query(knexes[client]);
+    };
+    const toSql = (builder) => builder.toKnexQuery().toString();
+
+    let warnings;
+    let originalWarn;
+
+    beforeEach(() => {
+      resetDeprecations();
+      warnings = [];
+      originalWarn = console.warn;
+      console.warn = (message) => warnings.push(message);
+    });
+
+    afterEach(() => {
+      console.warn = originalWarn;
+      resetDeprecations();
+    });
+
+    it('should not change the json where methods on postgres', () => {
+      expect(toSql(query('pg').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+        `select "Model".* from "Model" where ( "content" )::jsonb @> '{"a":1}'::jsonb`,
+      );
+      expect(toSql(query('pg').orWhereJsonNotSubsetOf('content', [1]))).to.equal(
+        `select "Model".* from "Model" where not ( "content" )::jsonb <@ '[1]'::jsonb`,
+      );
+    });
+
+    it('should pass the simple json superset and subset methods on to knex on mysql', () => {
+      expect(toSql(query('mysql').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+        'select `Model`.* from `Model` where json_contains(`content`,\'{\\"a\\":1}\')',
+      );
+      expect(toSql(query('mysql').andWhereJsonSupersetOf('Model.content', [1]))).to.equal(
+        "select `Model`.* from `Model` where json_contains(`Model`.`content`,'[1]')",
+      );
+      expect(toSql(query('mysql').whereJsonSubsetOf('content', [1]))).to.equal(
+        "select `Model`.* from `Model` where json_contains('[1]',`content`)",
+      );
+      expect(
+        toSql(
+          query('mysql')
+            .where('id', 1)
+            .orWhereJsonSupersetOf('content', [1])
+            .whereJsonNotSupersetOf('content', [2])
+            .orWhereJsonNotSupersetOf('content', [3])
+            .orWhereJsonSubsetOf('content', [4])
+            .whereJsonNotSubsetOf('content', [5])
+            .orWhereJsonNotSubsetOf('content', [6]),
+        ),
+      ).to.equal(
+        'select `Model`.* from `Model` where `id` = 1' +
+          " or (json_contains(`content`,'[1]'))" +
+          " and not json_contains(`content`,'[2]')" +
+          " or (not json_contains(`content`,'[3]'))" +
+          " or (json_contains('[4]',`content`))" +
+          " and not json_contains('[5]',`content`)" +
+          " or (not json_contains('[6]',`content`))",
+      );
+      expect(warnings).to.eql([]);
+    });
+
+    it('should only pass the json superset and subset methods on to knex on mysql', () => {
+      expect(toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+        'select `Model`.* from `Model` where ( `content` )::jsonb @> \'{"a":1}\'::jsonb',
+      );
+      expect(warnings).to.eql([message]);
+    });
+
+    it('should not pass other forms of the json where methods on to knex', () => {
+      expect(toSql(query('mysql').whereJsonSupersetOf('content:a', { a: 1 }))).to.equal(
+        "select `Model`.* from `Model` where ( `content`#>'{a}' )::jsonb @> '{\\\"a\\\":1}'::jsonb",
+      );
+      expect(toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).to.equal(
+        'select `Model`.* from `Model` where ( `content` )::jsonb @> ( `other` )::jsonb',
+      );
+      expect(toSql(query('mysql').whereJsonSubsetOf('content', ref('other')))).to.equal(
+        'select `Model`.* from `Model` where ( `content` )::jsonb <@ ( `other` )::jsonb',
+      );
+      expect(toSql(query('mysql').whereJsonSupersetOf('content', raw('?', '[1]')))).to.equal(
+        "select `Model`.* from `Model` where ( `content` )::jsonb @> ( '[1]' )::jsonb",
+      );
+      // knex's version doesn't have the same semantics for empty objects and arrays.
+      expect(toSql(query('mysql').whereJsonIsObject('content'))).to.equal(
+        "select `Model`.* from `Model` where ( `content` )::jsonb @> '{}'::jsonb",
+      );
+      expect(toSql(query('mysql').orWhereJsonIsArray('content'))).to.equal(
+        "select `Model`.* from `Model` where ( `content` )::jsonb @> '[]'::jsonb",
+      );
+      expect(warnings).to.eql([message]);
+    });
+
+    for (const client of ['mysql', 'sqlite3']) {
+      it(`should warn once about json field expressions on ${client}`, () => {
+        toSql(query(client).orderBy(ref('content:a.b'), 'desc'));
+        expect(warnings).to.eql([message]);
+
+        toSql(query(client).select(ref('content:a').castInt().as('a')));
+        toSql(query(client).patch({ 'content:a': 1 }));
+        toSql(query(client).whereJsonHasAny('content', ['a']));
+        toSql(query(client).whereJsonNotObject('content'));
+        expect(warnings).to.eql([message]);
+      });
+
+      for (const [title, createQuery] of Object.entries({
+        'ref() with a field expression': (client) =>
+          query(client).orderBy(ref('content:a.b'), 'desc'),
+        'a field expression in a patch': (client) => query(client).patch({ 'content:a': 1 }),
+        'whereJsonHasAny()': (client) => query(client).whereJsonHasAny('content', ['a']),
+        'whereJsonNotArray()': (client) => query(client).whereJsonNotArray('content'),
+      })) {
+        it(`should warn about ${title} on ${client}`, () => {
+          toSql(createQuery(client));
+          expect(warnings).to.eql([message]);
+        });
+      }
+
+      it(`should not warn about plain refs on ${client}`, () => {
+        toSql(
+          query(client)
+            .select(ref('Model.content').as('c'), ref('id').castText())
+            .where(ref('content'), 1)
+            .orderBy(ref('Model.id')),
+        );
+        toSql(query(client).patch({ content: ref('other') }));
+        expect(warnings).to.eql([]);
+      });
+    }
+
+    it('should not warn on postgres', () => {
+      toSql(query('pg').orderBy(ref('content:a.b'), 'desc'));
+      toSql(query('pg').patch({ 'content:a': 1 }));
+      toSql(query('pg').whereJsonSupersetOf('content:a', { a: 1 }));
+      toSql(query('pg').whereJsonHasAny('content', ['a']));
+      toSql(query('pg').whereJsonNotObject('content'));
+      expect(warnings).to.eql([]);
+    });
+  });
+
   describe('json paths with special characters in keys', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
     // The native SQL that is sent to Postgres, with `$n` placeholders.

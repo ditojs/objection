@@ -4,7 +4,7 @@ You can use the [ref](/api/objection/#ref) function from the main module to refe
 
 See [FieldExpression](/api/types/#type-fieldexpression) for more information about how to refer to json fields.
 
-Json queries currently only work with postgres.
+Json queries currently only work with postgres. Using json field expressions (`ref('column:path')`, `'column:path'` keys in `patch()` and `update()`) or the `whereJson*()` methods of objection with another database logs a warning, as the generated SQL is Postgres-only. Use the JSON methods of knex instead, like [whereJsonPath()](https://knexjs.org/guide/query-builder.html#wherejsonpath) and [jsonExtract()](https://knexjs.org/guide/query-builder.html#jsonextract). On those databases, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array are passed on to knex, which supports them on MySQL.
 
 ```js
 const { ref } = require('objection');
