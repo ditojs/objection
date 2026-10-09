@@ -1,7 +1,6 @@
 const _ = require('lodash');
 const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 
 const { KnexTimeoutError } = require('knex');
 const { raw, ref, val, fn, Model, QueryBuilderOperation } = require('../..');

@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 const { createRejectionReflection } = require('../../../testUtils/testUtils');
+const { try: promiseTry } = require('../../../lib/utils/promiseUtils');
 
 module.exports = (session) => {
   describe('using unbound models by passing a knex to query', () => {
@@ -402,7 +402,7 @@ module.exports = (session) => {
 
     it('should fail with a descriptive error message if knex is not provided', () => {
       return Promise.all([
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query()
             .findById(1)
             .withGraphFetched(
@@ -410,7 +410,7 @@ module.exports = (session) => {
             );
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query()
             .findById(1)
             .withGraphJoined(
@@ -418,19 +418,19 @@ module.exports = (session) => {
             );
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query();
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query().where('id', 1);
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query().joinRelated('model1Relation1');
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query(session.knex)
             .findById(1)
             .then((model) => {
@@ -438,7 +438,7 @@ module.exports = (session) => {
             });
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query(session.knex)
             .findById(2)
             .then((model) => {
@@ -446,7 +446,7 @@ module.exports = (session) => {
             });
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query(session.knex)
             .findById(1)
             .then((model) => {
@@ -454,7 +454,7 @@ module.exports = (session) => {
             });
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model2.query(session.knex)
             .findById(2)
             .then((model) => {
@@ -462,7 +462,7 @@ module.exports = (session) => {
             });
         }).catch((err) => createRejectionReflection(err)),
 
-        Promise.try(() => {
+        promiseTry(() => {
           return Model1.query(session.knex)
             .findById(1)
             .then((model) => {

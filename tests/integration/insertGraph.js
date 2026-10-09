@@ -2,7 +2,6 @@ const _ = require('lodash');
 const chai = require('chai');
 const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 const { transaction, ValidationError, Model } = require('../../');
 const { resetDeprecations } = require('../../lib/utils/deprecate');
 

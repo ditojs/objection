@@ -1,6 +1,5 @@
 const _ = require('lodash');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 const { Model, ref, val, raw } = require('../../');
 
 function expectIdsEqual(resultArray, expectedIds) {

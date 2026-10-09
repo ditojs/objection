@@ -1,9 +1,8 @@
 const _ = require('lodash');
 const chai = require('chai');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 const { inheritModel } = require('../../lib/model/inheritModel');
-const { expectPartialEqual: expectPartEql } = require('./../../testUtils/testUtils');
+const { expectPartialEqual: expectPartEql, delay } = require('./../../testUtils/testUtils');
 const { Model, QueryBuilder, ValidationError, raw } = require('../../');
 const { isPostgres, isSqlite } = require('../../lib/utils/knexUtils');
 const mockKnexFactory = require('../../testUtils/mockKnex');
@@ -717,7 +716,7 @@ module.exports = (session) => {
 
         model.$beforeUpdate = function () {
           let self = this;
-          return Promise.delay(1).then(() => {
+          return delay(1).then(() => {
             self.model1Prop1 = 'updated text';
           });
         };

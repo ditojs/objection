@@ -1,9 +1,9 @@
 const _ = require('lodash');
 const chai = require('chai');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 const { ValidationError, raw, ref } = require('../..');
 const mockKnexFactory = require('../../testUtils/mockKnex');
+const { map: promiseMap } = require('../../lib/utils/promiseUtils');
 
 module.exports = (session) => {
   const Model1 = session.models.Model1;
@@ -960,7 +960,7 @@ module.exports = (session) => {
     });
 
     it('should work with zero id', () => {
-      return Promise.map(
+      return promiseMap(
         ['withGraphFetched', 'withGraphJoined'],
         (method) => {
           return session
@@ -2737,7 +2737,7 @@ module.exports = (session) => {
       };
 
       it('should join the joined relations and fetch the fetched relations', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query()
             .where('Model1.id', 1)
             .modifyGraph('model1Relation2', (builder) => {
@@ -2799,7 +2799,7 @@ module.exports = (session) => {
       });
 
       it('should filter by the joined relation while the fetched relation is complete', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query().where('model1Relation1.model1Prop1', 'hello 2');
           query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
 
@@ -2817,7 +2817,7 @@ module.exports = (session) => {
       });
 
       it('should filter a joined has-many relation without affecting the fetched relation', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query().where('model1Relation2.model2_prop1', 'hejsan 2');
           query = callInOrder(query, order, 'model1Relation2', 'model1Relation1.model1Relation1');
 
@@ -2832,7 +2832,7 @@ module.exports = (session) => {
       });
 
       it('should work with explicit selects that omit the identifier', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query().select('Model1.model1Prop1').where('Model1.id', 1);
           query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
 
@@ -2860,7 +2860,7 @@ module.exports = (session) => {
           ),
         ];
 
-        return Promise.map(queries, (createQuery) => {
+        return promiseMap(queries, (createQuery) => {
           let runAfterModels = null;
 
           return createQuery()
@@ -2885,7 +2885,7 @@ module.exports = (session) => {
       });
 
       it('page should work', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query().whereNotNull('model1Relation1.id').orderBy('Model1.id');
           query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
 
@@ -2917,7 +2917,7 @@ module.exports = (session) => {
       });
 
       it('withGraph() should merge nested relations into both operations', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query().where('Model1.id', 1);
           query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
 
@@ -2942,7 +2942,7 @@ module.exports = (session) => {
       });
 
       it('withGraph() should add new relations with the most recently used algorithm', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           let query = Model1.query().where('Model1.id', 1);
           query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
 
@@ -2962,7 +2962,7 @@ module.exports = (session) => {
       });
 
       it('isJoinChildQuery() should tell the child queries of both algorithms apart', () => {
-        return Promise.map(orders, (order) => {
+        return promiseMap(orders, (order) => {
           const childQueries = [];
           let query = Model1.query()
             .where('Model1.id', 1)
@@ -2986,7 +2986,7 @@ module.exports = (session) => {
 
     describe('QueryBuilder.orderBy', () => {
       it('orderBy should work for the root query', () => {
-        return Promise.map(['withGraphFetched', 'withGraphJoined'], (method) => {
+        return promiseMap(['withGraphFetched', 'withGraphJoined'], (method) => {
           return Model1.query()
             .select('Model1.model1Prop1')
             .modifyGraph('model1Relation1', (builder) => {
@@ -3244,7 +3244,7 @@ module.exports = (session) => {
 
     describe('aliases', () => {
       it('aliases in eager expressions should work', () => {
-        return Promise.map(
+        return promiseMap(
           ['withGraphFetched', 'withGraphJoined'],
           (method) => {
             return Model1.query()
@@ -3381,7 +3381,7 @@ module.exports = (session) => {
       });
 
       it('alias method should work', () => {
-        return Promise.map(
+        return promiseMap(
           ['withGraphFetched', 'withGraphJoined'],
           (method) => {
             return Model1.query()
@@ -3593,7 +3593,7 @@ module.exports = (session) => {
         it('should work with a lot of data', function () {
           this.timeout(30000);
 
-          return Promise.map(
+          return promiseMap(
             ['withGraphFecthed', 'withGraphJoined'],
             (method) => {
               let t1 = Date.now();

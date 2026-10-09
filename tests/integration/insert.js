@@ -1,9 +1,9 @@
 const _ = require('lodash');
 const chai = require('chai');
 const expect = require('expect.js');
-const Promise = require('bluebird');
 const { inheritModel } = require('../../lib/model/inheritModel');
 const { ValidationError, UniqueViolationError } = require('../../');
+const { delay } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   let Model1 = session.models.Model1;
@@ -531,7 +531,7 @@ module.exports = (session) => {
 
         model.$beforeInsert = function () {
           let self = this;
-          return Promise.delay(1).then(() => {
+          return delay(1).then(() => {
             self.model1Prop1 = 'hello 3';
           });
         };
