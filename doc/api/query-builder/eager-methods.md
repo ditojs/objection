@@ -254,7 +254,15 @@ There are two methods that can be used to load relations eagerly: [withGraphFetc
 
 As mentioned, this method uses [SQL joins](https://www.postgresql.org/docs/12/tutorial-join.html) to join all the relations defined in the `relationExpression` and then parses the result into a graph of model instances equal to the one you get from `withGraphFetched`. The main benefit of this is that you can filter the query based on the relations. See the examples.
 
-By default left join is used but you can define the join type using the [joinOperation](/api/types/#type-graphoptions) option.
+By default left join is used but you can define the join type using the [joinOperation](/api/types/#type-graphoptions) option. The `joinOperation` only applies to the relations of the call it's passed to, including their nested relations, so multiple `withGraphJoined` calls can use different join types:
+
+```js
+const people = await Person.query()
+  .withGraphJoined('parent', { joinOperation: 'innerJoin' })
+  .withGraphJoined('pets.toys', { joinOperation: 'leftJoin' });
+```
+
+Calls without a `joinOperation` use the default, which is the `joinOperation` of [defaultGraphOptions](/api/model/static-properties.html#static-defaultgraphoptions) or `leftJoin`. If a relation is passed to multiple calls with a `joinOperation`, the last one is used for it. All other options are shared by all `withGraphJoined` calls of the query.
 
 **Limitations:**
 

@@ -1810,6 +1810,44 @@ module.exports = (session) => {
           });
       });
 
+      it('should use the join type of each withGraphJoined call (#2125)', () => {
+        const summarize = (models) =>
+          models.map((model) => ({
+            id: model.id,
+            model1Relation1: model.model1Relation1.id,
+            model1Relation2: model.model1Relation2.map((it) => it.idCol).sort(),
+          }));
+
+        // Only `Model1` instances that have a `model1Relation1` should be
+        // returned, with all their `model1Relation2` relations, if any.
+        const expected = [
+          { id: 1, model1Relation1: 2, model1Relation2: [1, 2] },
+          { id: 2, model1Relation1: 3, model1Relation2: [] },
+          { id: 3, model1Relation1: 4, model1Relation2: [] },
+          { id: 6, model1Relation1: 7, model1Relation2: [3] },
+          { id: 8, model1Relation1: 9, model1Relation2: [] },
+        ];
+
+        return Promise.all([
+          Model1.query()
+            .withGraphJoined('model1Relation1', { joinOperation: 'innerJoin' })
+            .withGraphJoined('model1Relation2', { joinOperation: 'leftJoin' })
+            .orderBy('Model1.id'),
+          Model1.query()
+            .withGraphJoined('model1Relation2', { joinOperation: 'leftJoin' })
+            .withGraphJoined('model1Relation1', { joinOperation: 'innerJoin' })
+            .orderBy('Model1.id'),
+          Model1.query()
+            .withGraphJoined('model1Relation1', { joinOperation: 'innerJoin' })
+            .withGraphJoined('model1Relation2')
+            .orderBy('Model1.id'),
+        ]).then((results) => {
+          for (const models of results) {
+            expect(summarize(models)).to.eql(expected);
+          }
+        });
+      });
+
       it('should be able to change the separator', () => {
         return Model1.query()
           .select('Model1.id', 'Model1.model1Prop1')
