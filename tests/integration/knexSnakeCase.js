@@ -291,6 +291,36 @@ module.exports = (session) => {
               ]);
             });
         });
+
+        it('json where methods', async () => {
+          const firstNames = (result) => result.map((it) => it.firstName).sort();
+          const coordinates = { latitudeCoordinate: 61 };
+          const fieldExpression = 'personAddress:cityCoordinates';
+
+          expect(
+            firstNames(await Person.query(knex).whereJsonSupersetOf(fieldExpression, coordinates)),
+          ).to.eql(['Matti']);
+          expect(
+            firstNames(await Person.query(knex).whereJsonSubsetOf('person.personAddress', {})),
+          ).to.eql([]);
+          expect(
+            firstNames(
+              await Person.query(knex).whereJsonSupersetOf('personAddress', 'person.personAddress'),
+            ),
+          ).to.eql(['Matti']);
+          expect(
+            firstNames(
+              await Person.query(knex).whereJsonHasAny(fieldExpression, 'latitudeCoordinate'),
+            ),
+          ).to.eql(['Matti']);
+          expect(firstNames(await Person.query(knex).whereJsonIsObject(fieldExpression))).to.eql([
+            'Matti',
+          ]);
+          expect(firstNames(await Person.query(knex).whereJsonNotObject(fieldExpression))).to.eql([
+            'Seppo',
+            'Teppo',
+          ]);
+        });
       }
 
       it('$relatedQuery', () => {
