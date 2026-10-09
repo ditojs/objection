@@ -1832,6 +1832,29 @@ describe('ManyToManyRelation', () => {
           ]);
         });
     });
+
+    it('unrelate should support joins with subqueries', () => {
+      mockKnexQueryResults = [[{ rid: 5 }], 1];
+      let owner = OwnerModel.fromJson({ oid: 666 });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .unrelateOperationFactory((builder) => {
+          return relation.unrelate(builder, RelationOwner.create(owner));
+        })
+        .unrelate()
+        .join('Other', (join) => {
+          join
+            .on('Other.id', 'RelatedModel.otherId')
+            .andOnIn('Other.code', OwnerModel.query().select('code'));
+        })
+        .then((result) => {
+          expect(result).to.equal(1);
+          expect(executedQueries).to.eql([
+            'select `RelatedModel`.`rid` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` inner join `Other` on `Other`.`id` = `RelatedModel`.`otherId` and `Other`.`code` in (select `code` from `OwnerModel`) where `JoinModel`.`ownerId` in (666)',
+            'delete from `JoinModel` where `JoinModel`.`relatedId` in (5) and `JoinModel`.`ownerId` in (666)',
+          ]);
+        });
+    });
   });
 
   describe('sqlite', () => {
