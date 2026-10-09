@@ -18,8 +18,16 @@ module.exports = (session) => {
                 from: 'Model1.model1Id',
                 to: 'Model1.id',
               },
-              beforeInsert(model, ctx) {
+              beforeInsert(model, ctx, owner) {
                 model.model1Prop2 = ctx.belongsToOneValue;
+                if (ctx.owners) {
+                  ctx.owners.push({
+                    relation: 'model1Relation1',
+                    model,
+                    owner,
+                    ownerId: owner && owner.id,
+                  });
+                }
               },
             },
 
@@ -39,8 +47,16 @@ module.exports = (session) => {
                 from: 'Model1.id',
                 to: 'model2.model1_id',
               },
-              beforeInsert(model, ctx) {
+              beforeInsert(model, ctx, owner) {
                 model.model2Prop2 = ctx.hasManyValue;
+                if (ctx.owners) {
+                  ctx.owners.push({
+                    relation: 'model1Relation2',
+                    model,
+                    owner,
+                    ownerId: owner && owner.id,
+                  });
+                }
               },
             },
 
@@ -59,8 +75,16 @@ module.exports = (session) => {
                 },
                 to: 'model2.id_col',
               },
-              beforeInsert(model, ctx) {
+              beforeInsert(model, ctx, owner) {
                 model.model2Prop2 = ctx.manyToManyValue;
+                if (ctx.owners) {
+                  ctx.owners.push({
+                    relation: 'model1Relation3',
+                    model,
+                    owner,
+                    ownerId: owner && owner.id,
+                  });
+                }
               },
             },
           };
@@ -369,6 +393,127 @@ module.exports = (session) => {
                   });
                 });
             });
+        });
+      });
+
+      describe('owner argument', () => {
+        let root;
+        let owners;
+
+        beforeEach(() => {
+          owners = [];
+          return Model1.query()
+            .findOne({ model1Prop1: 'root' })
+            .then((model) => {
+              root = model;
+            });
+        });
+
+        it('$relatedQuery().insert() belongs to one relation', async () => {
+          await root
+            .$relatedQuery('model1Relation1')
+            .insert({ model1Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(root);
+        });
+
+        it('$relatedQuery().insert() has many relation', async () => {
+          await root
+            .$relatedQuery('model1Relation2')
+            .insert({ model2Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(root);
+        });
+
+        it('$relatedQuery().insert() many to many relation', async () => {
+          await root
+            .$relatedQuery('model1Relation3')
+            .insert({ model2Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(root);
+        });
+
+        it('relatedQuery().for(model).insert()', async () => {
+          await Model1.relatedQuery('model1Relation3')
+            .for(root)
+            .insert({ model2Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(root);
+        });
+
+        it('relatedQuery().for(id).insert() passes undefined', async () => {
+          await Model1.relatedQuery('model1Relation2')
+            .for(root.id)
+            .insert({ model2Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(undefined);
+        });
+
+        it('relatedQuery().for([model1, model2]).insert() passes undefined', async () => {
+          const other = await Model1.query().insert({ model1Prop1: 'other' });
+
+          await Model1.relatedQuery('model1Relation1')
+            .for([root, other])
+            .insert({ model1Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(undefined);
+        });
+
+        it('$relatedQuery().insertGraph()', async () => {
+          await root
+            .$relatedQuery('model1Relation2')
+            .insertGraph({ model2Prop1: 'new' })
+            .context({ owners });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner).to.equal(root);
+        });
+
+        it('insertGraph()', async () => {
+          const parent = await Model1.query()
+            .context({ owners })
+            .insertGraph({
+              model1Prop1: 'parent',
+              model1Relation1: { model1Prop1: 'child1' },
+              model1Relation2: [{ model2Prop1: 'child2' }],
+              model1Relation3: [{ model2Prop1: 'child3' }],
+            });
+
+          const ownerOf = (relation) => owners.find((it) => it.relation === relation);
+
+          expect(owners).to.have.length(3);
+          expect(ownerOf('model1Relation1').owner).to.equal(parent);
+          expect(ownerOf('model1Relation2').owner).to.equal(parent);
+          expect(ownerOf('model1Relation3').owner).to.equal(parent);
+          // The owner of a belongs to one relation is inserted after the related model.
+          expect(ownerOf('model1Relation1').ownerId).to.equal(undefined);
+          // The owner of a has many relation is inserted before the related models.
+          expect(ownerOf('model1Relation2').ownerId).to.equal(parent.id);
+        });
+
+        it('upsertGraph()', async () => {
+          await Model1.query()
+            .context({ owners })
+            .upsertGraph({
+              id: root.id,
+              model1Relation2: [{ model2Prop1: 'child' }],
+            });
+
+          expect(owners).to.have.length(1);
+          expect(owners[0].owner.id).to.equal(root.id);
+          expect(owners[0].ownerId).to.equal(root.id);
         });
       });
     });

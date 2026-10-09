@@ -406,6 +406,46 @@ describe('HasManyRelation', () => {
       });
     });
 
+    it('should pass the owner to the beforeInsert hook', () => {
+      mockKnexQueryResults = [[1]];
+
+      const calls = [];
+      relation.beforeInsert = (model, ctx, owner) => calls.push({ model, ctx, owner });
+
+      let owner = OwnerModel.fromJson({ oid: 666 });
+      let related = RelatedModel.fromJson({ a: 'str1' });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .insertOperationFactory((builder) => {
+          return relation.insert(builder, RelationOwner.create(owner));
+        })
+        .context({ foo: 'bar' })
+        .insert(related)
+        .then(() => {
+          expect(calls).to.have.length(1);
+          expect(calls[0].model).to.equal(related);
+          expect(calls[0].ctx.foo).to.equal('bar');
+          expect(calls[0].owner).to.equal(owner);
+        });
+    });
+
+    it('should pass an undefined owner to the beforeInsert hook if the owner is an id', () => {
+      mockKnexQueryResults = [[1]];
+
+      const calls = [];
+      relation.beforeInsert = (model, ctx, owner) => calls.push({ model, ctx, owner });
+
+      return QueryBuilder.forClass(RelatedModel)
+        .insertOperationFactory((builder) => {
+          return relation.insert(builder, RelationOwner.create(666));
+        })
+        .insert({ a: 'str1' })
+        .then(() => {
+          expect(calls).to.have.length(1);
+          expect(calls[0].owner).to.equal(undefined);
+        });
+    });
+
     it('should accept json object array', () => {
       mockKnexQueryResults = [[1, 2]];
 

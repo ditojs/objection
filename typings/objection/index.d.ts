@@ -1488,6 +1488,11 @@ declare namespace Objection {
     model: M,
     context: QueryContext,
   ) => Promise<void> | void;
+  type RelationMappingBeforeInsertHook<M extends Model> = (
+    model: M,
+    context: QueryContext,
+    owner?: Model,
+  ) => Promise<void> | void;
   type StringOrReferenceBuilder = string | ReferenceBuilder;
   type RelationMappingColumnRef = StringOrReferenceBuilder | StringOrReferenceBuilder[];
 
@@ -1497,7 +1502,7 @@ declare namespace Objection {
     join: RelationJoin;
     modify?: Modifier<QueryBuilderType<M>>;
     filter?: Modifier<QueryBuilderType<M>>;
-    beforeInsert?: RelationMappingHook<M>;
+    beforeInsert?: RelationMappingBeforeInsertHook<M>;
   }
 
   export interface RelationJoin {
