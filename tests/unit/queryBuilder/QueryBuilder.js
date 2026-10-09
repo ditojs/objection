@@ -2804,6 +2804,27 @@ describe('QueryBuilder', () => {
     expect(TestModel.query().alias('t').select('foo').hasSelection('Model.foo')).to.equal(false);
   });
 
+  it('aggregate selections (#2219)', () => {
+    const aliases = (query) =>
+      query.findOperation(/count|sum/).aggregateSelections.map((selection) => selection.name);
+
+    expect(aliases(TestModel.query().count())).to.eql([]);
+    expect(aliases(TestModel.query().count('id'))).to.eql([]);
+    expect(aliases(TestModel.query().count('* as n'))).to.eql(['n']);
+    expect(aliases(TestModel.query().count('Model.id AS n'))).to.eql(['n']);
+    expect(aliases(TestModel.query().count('id', { as: 'n' }))).to.eql(['n']);
+    expect(aliases(TestModel.query().count({ n: 'id', m: ['a', 'b'] }))).to.eql(['n', 'm']);
+    expect(aliases(TestModel.query().sum('x as total'))).to.eql(['total']);
+    expect(TestModel.query().select('id').findOperation('select').aggregateSelections).to.equal(
+      null,
+    );
+
+    // The columns passed to aggregates still count as selected outside of
+    // `withGraphJoined()`.
+    expect(TestModel.query().count('id').hasSelection('id')).to.equal(true);
+    expect(TestModel.query().count('* as n').hasSelection('foo')).to.equal(true);
+  });
+
   it('parseRelationExpression', () => {
     expect(QueryBuilder.parseRelationExpression('[foo, bar.baz]')).to.eql({
       $name: null,
