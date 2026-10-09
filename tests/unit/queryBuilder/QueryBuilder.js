@@ -5285,6 +5285,73 @@ describe('QueryBuilder', () => {
       expect(query.toFindQuery().toKnexQuery().toSQL().sql).to.equal(sql);
     }
   });
+
+  describe('mssql constraint violations (#2688)', () => {
+    // The shape of the errors of the `tedious` driver used by knex for mssql.
+    const createMsSqlError = (number, message) => {
+      const err = new Error(message);
+      err.code = 'EREQUEST';
+      err.originalError = Object.assign(new Error(message), { info: { number, class: 14 } });
+      return err;
+    };
+
+    const insertWithError = (error) => {
+      const knex = knexMocker(Knex({ client: 'mssql' }), (mock, oldImpl, args) => {
+        const promise = Promise.reject(error);
+        return promise.then.apply(promise, args);
+      });
+      return TestModel.query(knex).insert({ a: 1 });
+    };
+
+    const expectError = async (error, ErrorClass) => {
+      let thrown;
+
+      try {
+        await insertWithError(error);
+      } catch (err) {
+        thrown = err;
+      }
+
+      expect(thrown).to.be.a(ErrorClass);
+      return thrown;
+    };
+
+    it('should throw a UniqueViolationError for primary key violations', async () => {
+      const err = await expectError(
+        createMsSqlError(
+          2627,
+          "Violation of PRIMARY KEY constraint 'user_pkey'. Cannot insert duplicate key in object 'dbo.user'. The duplicate key value is (1).",
+        ),
+        objection.UniqueViolationError,
+      );
+
+      expect(err.client).to.equal('mssql');
+      expect(err.table).to.equal('user');
+      expect(err.schema).to.equal('dbo');
+      expect(err.constraint).to.equal('user_pkey');
+    });
+
+    it('should still throw a UniqueViolationError for unique key violations', async () => {
+      const err = await expectError(
+        createMsSqlError(
+          2627,
+          "Violation of UNIQUE KEY constraint 'user_email_unique'. Cannot insert duplicate key in object 'dbo.user'. The duplicate key value is (a@b.c).",
+        ),
+        objection.UniqueViolationError,
+      );
+
+      expect(err.constraint).to.equal('user_email_unique');
+    });
+
+    it('should throw a DBError for other errors', async () => {
+      const err = await expectError(
+        createMsSqlError(2627, 'Some other message.'),
+        objection.DBError,
+      );
+
+      expect(err).to.not.be.a(objection.UniqueViolationError);
+    });
+  });
 });
 
 const operationBuilder = QueryBuilder.forClass(Model);
