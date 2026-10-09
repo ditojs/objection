@@ -320,6 +320,12 @@ See [knex documentation](https://knexjs.org/guide/query-builder.html#column)
 
 See [knex documentation](https://knexjs.org/guide/query-builder.html#from)
 
+On PostgreSQL, pass `{ only: true }` as the second argument to query only the given table, without the tables that inherit from it (`FROM ONLY`). This also works for updates and deletes:
+
+```js
+await Person.query().from(Person.tableName, { only: true }).delete();
+```
+
 ##### Return value
 
 | Type                                | Description                        |
