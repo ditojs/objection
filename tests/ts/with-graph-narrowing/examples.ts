@@ -90,6 +90,18 @@ async function nullableRelations() {
   a[0].parent?.pets.length;
   // @ts-expect-error
   a[0].parent.id;
+
+  // Fetching only removes `undefined`, and never adds or removes `null`: the
+  // declaration decides. `parent?: Person | null` becomes `Person | null`,
+  // `program?: Program` becomes `Program`.
+  const b = await Person.query().withGraphFetched('[parent, program]');
+  type _b1 = Expect<Equal<(typeof b)[number]['parent'], Person | null>>;
+  type _b2 = Expect<Equal<(typeof b)[number]['program'], Program>>;
+  const c = await Person.query().findById(1).throwIfNotFound().withGraphFetched('parent');
+  type _c = Expect<Equal<(typeof c)['parent'], Person | null>>;
+  const d = await person.$fetchGraph({ parent: true, program: true });
+  type _d1 = Expect<Equal<(typeof d)['parent'], Person | null>>;
+  type _d2 = Expect<Equal<(typeof d)['program'], Program>>;
 }
 
 async function objectExpressions() {
@@ -230,6 +242,14 @@ async function resultKinds() {
   i.pets.length;
   const j = await Person.query().withGraphFetched('pets').throwIfNotFound();
   j[0].pets.length;
+  // `first()` on single results and `none()` keep the result kind.
+  const j2 = await Person.query().findById(1).withGraphFetched('pets').first();
+  type _j2 = Expect<Equal<undefined extends typeof j2 ? true : false, true>>;
+  j2?.pets.length;
+  const j3 = await Person.query().withGraphFetched('pets').none();
+  j3[0].pets.length;
+  const j4 = await Person.query().none().findById(1).withGraphFetched('pets');
+  j4?.pets.length;
 
   // Pages.
   const k = await Person.query().withGraphFetched('pets').page(0, 10);
