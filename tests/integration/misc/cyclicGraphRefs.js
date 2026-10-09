@@ -601,7 +601,11 @@ module.exports = (session) => {
         Item.knex(knex);
       });
 
-      it('should fail in the database and roll back inside a transaction', async () => {
+      // MySQL without strict mode stores 0 for the missing value instead of
+      // rejecting the insert.
+      const itUnlessMySql = session.isMySql() ? it.skip : it;
+
+      itUnlessMySql('should fail in the database and roll back inside a transaction', async () => {
         let error;
 
         try {
