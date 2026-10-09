@@ -301,6 +301,42 @@ describe('AjvValidator', () => {
         true,
       );
     });
+
+    function patchValidator(schema) {
+      return new AjvValidator({}).getValidator(modelClass('test', schema), schema, true);
+    }
+
+    it('should keep required fields inside not', () => {
+      const schema = {
+        oneOf: [{ not: { required: ['a'] } }],
+        properties: {
+          a: { type: 'string' },
+          b: { type: 'string' },
+        },
+      };
+      const validate = patchValidator(schema);
+      expect(validate.schema.oneOf).to.eql([{ not: { required: ['a'] } }]);
+      expect(validate({ b: 'str' })).to.be(true);
+      expect(validate({ a: 'str' })).to.be(false);
+    });
+
+    it('should keep top-level not schemas intact', () => {
+      const schema = {
+        type: 'object',
+        required: ['a'],
+        not: { required: ['b', 'c'] },
+        properties: {
+          a: { type: 'string' },
+          b: { type: 'string' },
+          c: { type: 'string' },
+        },
+      };
+      const validate = patchValidator(schema);
+      expect(validate.schema.required).to.be(undefined);
+      expect(validate.schema.not).to.eql({ required: ['b', 'c'] });
+      expect(validate({ b: 'str' })).to.be(true);
+      expect(validate({ b: 'str', c: 'str' })).to.be(false);
+    });
   });
 
   describe('patch validation with field expression keys', () => {
