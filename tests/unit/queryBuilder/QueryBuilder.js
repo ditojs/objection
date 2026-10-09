@@ -1774,6 +1774,38 @@ describe('QueryBuilder', () => {
     );
   });
 
+  it('json where methods should reference the bare column if no json path is given', () => {
+    const toSql = (builder) => builder.toKnexQuery().toString();
+
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+      `select "Model".* from "Model" where ( "content" )::jsonb @> '{"a":1}'::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonSubsetOf('Model.content', { a: 1 }))).to.equal(
+      `select "Model".* from "Model" where ( "Model"."content" )::jsonb <@ '{"a":1}'::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonNotSupersetOf('content', 'other'))).to.equal(
+      `select "Model".* from "Model" where not ( "content" )::jsonb @> ( "other" )::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonIsArray('content'))).to.equal(
+      `select "Model".* from "Model" where ( "content" )::jsonb @> '[]'::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonHasAny('content', ['a', 'b']))).to.equal(
+      `select "Model".* from "Model" where "content" ?| array['a','b']`,
+    );
+    // `#>>'{}'` extracts json scalars as text and maps json null to NULL,
+    // so it must be kept when extracting as text.
+    expect(toSql(TestModel.query().whereJsonNotObject('content'))).to.equal(
+      `select "Model".* from "Model" where (not ( "content" )::jsonb @> '{}'::jsonb or ("content"#>>'{}')::TEXT is NULL)`,
+    );
+    // Json paths are still extracted as before.
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content:a.b', { a: 1 }))).to.equal(
+      `select "Model".* from "Model" where ( "content"#>'{a,b}' )::jsonb @> '{"a":1}'::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonHasAll('content:a', ['b']))).to.equal(
+      `select "Model".* from "Model" where "content"#>'{a}' ?& array['b']`,
+    );
+  });
+
   it('first should not add limit(1) by default', () => {
     return TestModel.query()
       .first()
