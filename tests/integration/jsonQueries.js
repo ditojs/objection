@@ -1,9 +1,9 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const { Model, ref, val, raw } = require('../../');
+const { cloneDeep } = require('../../testUtils/testUtils');
 
 function expectIdsEqual(resultArray, expectedIds) {
-  expectArraysEqual(_(resultArray).map('id').sort().value(), expectedIds);
+  expectArraysEqual(resultArray.map((it) => it.id).sort(), expectedIds);
 }
 
 function expectArraysEqual(arr1, arr2) {
@@ -64,7 +64,7 @@ module.exports = (session) => {
             .orderBy('foo', 'desc')
             .then((result) => {
               expect(result).to.have.length(4);
-              expect(_.first(result)).eql({ foo: 4 });
+              expect(result[0]).eql({ foo: 4 });
             });
         });
 
@@ -74,7 +74,7 @@ module.exports = (session) => {
             .orderBy('foo')
             .then((result) => {
               expect(result).to.have.length(4);
-              expect(_.first(result)).eql({ foo: 1, bar: null });
+              expect(result[0]).eql({ foo: 1, bar: null });
             });
         });
 
@@ -95,7 +95,7 @@ module.exports = (session) => {
             .then((result) => {
               expect(result).to.have.length(4);
               // foo is always name of the last row of the table (quite a nonsense query)
-              expect(_.first(result)).eql({ foo: 'test4', firstArrayItem: 4 });
+              expect(result[0]).eql({ foo: 'test4', firstArrayItem: 4 });
             });
         });
 
@@ -150,7 +150,7 @@ module.exports = (session) => {
             .then((result) => {
               expect(result).to.have.length(4);
               // null is first
-              expect(_.first(result).name).to.equal('test1');
+              expect(result[0].name).to.equal('test1');
             });
         });
 
@@ -162,7 +162,7 @@ module.exports = (session) => {
             .orderBy('foo')
             .then((result) => {
               expect(result).to.have.length(3);
-              expect(_.first(result)).to.eql({ id: 2, foo: 2 });
+              expect(result[0]).to.eql({ id: 2, foo: 2 });
             });
         });
 
@@ -174,7 +174,7 @@ module.exports = (session) => {
             .orderBy('foo')
             .then((result) => {
               expect(result).to.have.length(3);
-              expect(_.first(result)).to.eql({ id: 2, foo: 2 });
+              expect(result[0]).to.eql({ id: 2, foo: 2 });
             });
         });
 
@@ -191,7 +191,7 @@ module.exports = (session) => {
             .orderBy('foo')
             .then((result) => {
               expect(result).to.have.length(3);
-              expect(_.first(result)).to.eql({ id: 2, foo: 2 });
+              expect(result[0]).to.eql({ id: 2, foo: 2 });
             });
         });
       });
@@ -440,7 +440,7 @@ module.exports = (session) => {
             {
               id: 1,
               name: 'test1',
-              jsonObject: _.mapValues(_.invert(keys), () => ({ a: 1 })),
+              jsonObject: Object.fromEntries(Object.values(keys).map((key) => [key, { a: 1 }])),
               jsonArray: [],
             },
             { id: 2, name: 'test2', jsonObject: { x: { a: 2 } }, jsonArray: [] },
@@ -470,8 +470,14 @@ module.exports = (session) => {
               .patch({ [`${expr(key)}.a`]: 3 });
             const items = await BoundModel.query().orderBy('id');
             expect(items[0].jsonObject[key]).to.eql({ a: 3 });
-            expect(_.omit(items[0].jsonObject, key)).to.eql(
-              _.mapValues(_.invert(_.omit(keys, name)), () => ({ a: 1 })),
+            expect(
+              Object.fromEntries(Object.entries(items[0].jsonObject).filter(([k]) => k !== key)),
+            ).to.eql(
+              Object.fromEntries(
+                Object.entries(keys)
+                  .filter(([n]) => n !== name)
+                  .map(([, k]) => [k, { a: 1 }]),
+              ),
             );
             expect(items[1].jsonObject).to.eql({ x: { a: 2 } });
           });
@@ -586,7 +592,7 @@ module.exports = (session) => {
           ],
         };
 
-        complexJsonObj.jsonObject.jsonArray = _.cloneDeep(complexJsonObj.jsonArray);
+        complexJsonObj.jsonObject.jsonArray = cloneDeep(complexJsonObj.jsonArray);
 
         return BoundModel.query()
           .delete()
@@ -630,7 +636,7 @@ module.exports = (session) => {
 
       it('should have test data', () => {
         return BoundModel.query().then((all) => {
-          expect(_.find(all, { name: 'complex line' }).jsonObject.stringField).to.be(
+          expect(all.find((it) => it.name === 'complex line').jsonObject.stringField).to.be(
             complexJsonObj.jsonObject.stringField,
           );
         });
@@ -975,7 +981,7 @@ module.exports = (session) => {
         });
 
         it('should not find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField that has additional key', () => {
-          let obj = _.cloneDeep(complexJsonObj.jsonObject.objectField);
+          let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
           obj.otherKey = 'Im here too!';
 
           return BoundModel.query()
@@ -986,7 +992,7 @@ module.exports = (session) => {
         });
 
         it('should not find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField that has additional key', () => {
-          let obj = _.cloneDeep(complexJsonObj.jsonObject.objectField);
+          let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
           obj.otherKey = 'Im here too!';
 
           return BoundModel.query()
@@ -1225,7 +1231,7 @@ module.exports = (session) => {
         });
 
         it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField that has additional key', () => {
-          let obj = _.cloneDeep(complexJsonObj.jsonObject.objectField);
+          let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
           obj.otherKey = 'Im here too!';
 
           return BoundModel.query()
@@ -1236,7 +1242,7 @@ module.exports = (session) => {
         });
 
         it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField that has additional key', () => {
-          let obj = _.cloneDeep(complexJsonObj.jsonObject.objectField);
+          let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
           obj.otherKey = 'Im here too!';
 
           return BoundModel.query()

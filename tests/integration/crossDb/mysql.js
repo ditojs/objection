@@ -1,7 +1,7 @@
-const _ = require('lodash');
 const Knex = require('knex');
 const { Model } = require('../../../');
 const expect = require('expect.js');
+const { cloneDeep } = require('../../../testUtils/testUtils');
 
 module.exports = (session) => {
   describe('mysql', () => {
@@ -12,7 +12,7 @@ module.exports = (session) => {
     before(async function () {
       await session.knex.raw('CREATE DATABASE IF NOT EXISTS objection_test_2');
 
-      const db2Config = _.cloneDeep(session.opt.knexConfig);
+      const db2Config = cloneDeep(session.opt.knexConfig);
       db2Config.connection.database = 'objection_test_2';
       db2Knex = Knex(db2Config);
 

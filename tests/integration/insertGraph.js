@@ -1,9 +1,9 @@
-const _ = require('lodash');
 const chai = require('chai');
 const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
 const { transaction, ValidationError, Model } = require('../../');
 const { resetDeprecations } = require('../../lib/utils/deprecate');
+const { cloneDeep, sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   let Model1 = session.models.Model1;
@@ -217,7 +217,7 @@ module.exports = (session) => {
             });
           })
           .then((inserted) => {
-            inserted.model1Relation2 = _.sortBy(inserted.model1Relation2, 'idCol');
+            inserted.model1Relation2 = sortBy(inserted.model1Relation2, 'idCol');
 
             expect(inserted.toJSON()).to.eql({
               id: 4,
@@ -230,7 +230,7 @@ module.exports = (session) => {
             return Model1.query().withGraphFetched('model1Relation2').where('id', inserted.id);
           })
           .then((inserted) => {
-            inserted[0].model1Relation2 = _.sortBy(inserted[0].model1Relation2, 'idCol');
+            inserted[0].model1Relation2 = sortBy(inserted[0].model1Relation2, 'idCol');
 
             expect(inserted[0]).to.eql({
               id: 4,
@@ -260,7 +260,7 @@ module.exports = (session) => {
 
       const testValidation = (modifyGraph, expectedProperty) => {
         return (done) => {
-          const graph = _.cloneDeep(insertion);
+          const graph = cloneDeep(insertion);
           modifyGraph(graph);
 
           transaction(Model1, Model2, (Model1, Model2) => {
@@ -817,11 +817,11 @@ module.exports = (session) => {
               return parent.$relatedQuery('model1Relation3');
             })
             .then((models) => {
-              let insertion = _.find(models, { model2Prop1: 'howdy' });
+              let insertion = models.find((it) => it.model2Prop1 === 'howdy');
               return insertion.$relatedQuery('model2Relation1').withGraphFetched(eagerExpr);
             })
             .then((models) => {
-              let model = _.find(models, { model1Prop1: 'root' });
+              let model = models.find((it) => it.model1Prop1 === 'root');
               return check(model);
             });
         });
@@ -836,11 +836,11 @@ module.exports = (session) => {
       expect(model.model1Relation1).to.have.property('model1Relation3');
       expect(model).to.have.property('model1Relation2');
 
-      model.model1Relation1.model1Relation3 = _.sortBy(
+      model.model1Relation1.model1Relation3 = sortBy(
         model.model1Relation1.model1Relation3,
         'model2Prop1',
       );
-      model.model1Relation2 = _.sortBy(model.model1Relation2, 'model2Prop1');
+      model.model1Relation2 = sortBy(model.model1Relation2, 'model2Prop1');
 
       expect(model.model1Prop1).to.equal('root');
       shouldCheckHooks && checkHooks(model);
@@ -872,7 +872,7 @@ module.exports = (session) => {
 
       return knex(Model2.getTableName()).then((rows) => {
         // Check that the reference model was only inserted once.
-        expect(_.filter(rows, { model2_prop1: 'child1' })).to.have.length(1);
+        expect(rows.filter((it) => it.model2_prop1 === 'child1')).to.have.length(1);
       });
     }
 

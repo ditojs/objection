@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const { inheritModel } = require('../../lib/model/inheritModel');
 const { expectPartialEqual: expectPartEql, delay } = require('./../../testUtils/testUtils');
@@ -172,7 +171,11 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(_.map(rows, 'model1Prop1').sort()).to.eql(['hello 1', 'hello 2', 'hello 3']);
+            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              'hello 1',
+              'hello 2',
+              'hello 3',
+            ]);
             done();
           })
           .catch(done);
@@ -199,7 +202,11 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(_.map(rows, 'model1Prop1').sort()).to.eql(['hello 1', 'hello 2', 'hello 3']);
+            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              'hello 1',
+              'hello 2',
+              'hello 3',
+            ]);
             done();
           })
           .catch(done);
@@ -223,7 +230,11 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(_.map(rows, 'model1Prop1').sort()).to.eql(['hello 1', 'hello 2', 'hello 3']);
+            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              'hello 1',
+              'hello 2',
+              'hello 3',
+            ]);
           });
       });
 
@@ -270,7 +281,11 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(_.map(rows, 'model1Prop1').sort()).to.eql(['hello 1', 'hello 2', 'hello 3']);
+            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              'hello 1',
+              'hello 2',
+              'hello 3',
+            ]);
             done();
           })
           .catch(done);
@@ -623,8 +638,8 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model1.query().then((parents) => {
-            parent1 = _.find(parents, { id: 1 });
-            parent2 = _.find(parents, { id: 3 });
+            parent1 = parents.find((it) => it.id === 1);
+            parent2 = parents.find((it) => it.id === 3);
           });
         });
 
@@ -716,8 +731,8 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model1.query().then((parents) => {
-            parent1 = _.find(parents, { id: 1 });
-            parent2 = _.find(parents, { id: 2 });
+            parent1 = parents.find((it) => it.id === 1);
+            parent2 = parents.find((it) => it.id === 2);
           });
         });
 
@@ -840,8 +855,8 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model2.query().then((parents) => {
-            parent1 = _.find(parents, { idCol: 1 });
-            parent2 = _.find(parents, { idCol: 2 });
+            parent1 = parents.find((it) => it.idCol === 1);
+            parent2 = parents.find((it) => it.idCol === 2);
           });
         });
 
@@ -955,7 +970,7 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model2.query().then((parents) => {
-            parent = _.find(parents, { idCol: 1 });
+            parent = parents.find((it) => it.idCol === 1);
           });
         });
 
