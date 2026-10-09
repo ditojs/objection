@@ -116,7 +116,7 @@ describe('AjvValidator', () => {
     it('should remove required fields from definitions', () => {
       const validator = new AjvValidator({});
       const validators = validator.getValidator(modelClass('test', schema), schema, true);
-      const definitions = Object.entries(validators.schema.definitions);
+      const definitions = Object.values(validators.schema.definitions);
 
       expect(definitions.length).to.be(2);
       definitions.forEach((d) => expect(d.required).to.be(undefined));
@@ -125,7 +125,7 @@ describe('AjvValidator', () => {
     it('should remove required fields from $defs', () => {
       const validator = new AjvValidator({ onCreateAjv: () => {} });
       const validators = validator.getValidator(modelClass('test', schemaBis), schemaBis, true);
-      const $defs = Object.entries(validators.schema.$defs);
+      const $defs = Object.values(validators.schema.$defs);
 
       expect($defs.length).to.be(2);
       $defs.forEach((d) => expect(d.required).to.be(undefined));
