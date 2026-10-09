@@ -129,15 +129,6 @@ module.exports = (session) => {
       });
 
       describe('filters on the join table (#1853)', () => {
-        beforeEach(function () {
-          if (session.isMySql()) {
-            // MySQL fetches the matching related ids in a separate query
-            // before modifying the join table, so it still modifies all join
-            // rows of the owners and the matching related rows.
-            this.skip();
-          }
-        });
-
         it('should only unrelate the join rows matching the filter', async () => {
           const model = await owner(1);
           const numDeleted = await model
@@ -207,6 +198,22 @@ module.exports = (session) => {
             [3, 3],
           ]);
         });
+
+        it('should only unrelate the join rows matching a filter on the join table', async () => {
+          const model = await owner(1);
+          const numDeleted = await model
+            .$relatedQuery('model1Relation3')
+            .unrelate()
+            .where('Model1Model2.extra1', 'dup');
+
+          expect(numDeleted).to.equal(1);
+          expect(await joinRows()).to.eql(withoutRows(1));
+          expect(await model2Rows()).to.eql([
+            [1, 101],
+            [2, 2],
+            [3, 3],
+          ]);
+        });
       });
     });
 
@@ -262,12 +269,7 @@ module.exports = (session) => {
         expect(await joinRows()).to.eql(allJoinRows);
       });
 
-      it('should only patch the join table extras of join rows matching a filter on the join table (#1853)', async function () {
-        if (session.isMySql()) {
-          // See the unrelate tests above.
-          this.skip();
-        }
-
+      it('should only patch the join table extras of join rows matching a filter on the join table (#1853)', async () => {
         const model = await owner(1);
         await model
           .$relatedQuery('model1Relation3')
