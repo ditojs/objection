@@ -4338,12 +4338,13 @@ module.exports = (session) => {
       });
 
       describe('cyclic references', () => {
-        it('should detect cycles in the graph', (done) => {
+        it('should break cycles through #ref nodes by deferring the foreign key', async () => {
           const upsert = {
             id: 1,
 
             model1Relation1: {
               '#id': 'root',
+              model1Prop1: 'self reference',
 
               model1Relation1: {
                 '#ref': 'root',
@@ -4351,17 +4352,22 @@ module.exports = (session) => {
             },
           };
 
-          Model1.bindKnex(session.knex)
+          const result = await Model1.bindKnex(session.knex)
             .query()
-            .upsertGraph(upsert, { fetchStrategy, allowRefs: true })
-            .then(() => {
-              done(new Error('should not get here'));
-            })
-            .catch((err) => {
-              expect(err.message).to.equal('the object graph contains cyclic references');
-              done();
-            })
-            .catch(done);
+            .upsertGraph(upsert, { fetchStrategy, allowRefs: true });
+
+          const inserted = result.model1Relation1;
+          expect(inserted.id).to.be.a('number');
+          expect(inserted.model1Id).to.equal(inserted.id);
+
+          const fetched = await Model1.query(session.knex)
+            .findById(1)
+            .withGraphFetched('model1Relation1.model1Relation1');
+
+          expect(fetched.model1Id).to.equal(inserted.id);
+          expect(fetched.model1Relation1.model1Prop1).to.equal('self reference');
+          expect(fetched.model1Relation1.model1Id).to.equal(inserted.id);
+          expect(fetched.model1Relation1.model1Relation1.id).to.equal(inserted.id);
         });
 
         it('cycle detection should consider already inserted nodes', () => {
