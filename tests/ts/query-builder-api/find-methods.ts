@@ -20,6 +20,10 @@ import { Person } from '../fixtures/person';
   await Person.query().findOne('age', '>', 20);
   await Person.query().findOne(raw('random() < 0.5'));
 
+  const nonePeople: Person[] = await Person.query().where('age', '>', 20).none();
+  const nonePerson: Person | undefined = await Person.query().none().findById(1);
+  const noneCount: number = await Person.query().none().patch({ firstName: 'Jennifer' });
+
   await Person.query()
     .alias('p')
     .where('p.id', 1)
