@@ -1,0 +1,35 @@
+/* Objection's golden accent color, ported from the VuePress theme. */
+:root {
+  --vp-c-brand-1: #9a6b0c;
+  --vp-c-brand-2: #b07d14;
+  --vp-c-brand-3: #c8932a;
+  --vp-c-brand-soft: rgba(224, 178, 77, 0.16);
+  --vp-button-brand-text: #1e1e1e;
+  --vp-button-brand-hover-text: #1e1e1e;
+  --vp-button-brand-active-text: #1e1e1e;
+}
+
+/* The dark palette of the VuePress theme. */
+.dark {
+  --vp-c-bg: #1e1e1e;
+  --vp-c-bg-alt: #252525;
+  --vp-c-bg-elv: #252525;
+  --vp-c-bg-soft: #2b2b2b;
+  --vp-c-divider: #383838;
+  --vp-c-gutter: #141414;
+  --vp-c-text-1: #dddddd;
+  --vp-c-brand-1: #e0b24d;
+  --vp-c-brand-2: #e8c272;
+  --vp-c-brand-3: #e0b24d;
+  --vp-c-brand-soft: rgba(224, 178, 77, 0.16);
+  --vp-code-block-bg: #252525;
+  --vp-code-bg: #2f2f2f;
+}
+
+.vp-doc h5 {
+  font-size: 14px;
+}
+
+.dark .vp-doc .custom-block code {
+  background-color: rgba(0, 0, 0, 0.15);
+}

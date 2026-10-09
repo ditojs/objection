@@ -48,7 +48,7 @@ git clone git@github.com:<your-account>/objection.js.git objection
 
 6. **Run `npm test` in objection's root to see if everything works.**
 
-7. **Run `npm run docs:dev` and goto http://localhost:8080 to see the generated documentation site when you change the markdown files in the `doc` folder.**
+7. **Run `npm run docs:dev` and go to `http://localhost:5173/objection/` to see the generated documentation site when you change the markdown files in the `doc` folder.**
 
 You can run the tests on a subset of databases by setting the `DATABASES` env variable
 

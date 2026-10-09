@@ -1,7 +1,3 @@
----
-sidebar: auto
----
-
 # Types
 
 This page contains the documentation of all other types and classes than [Model](/api/model/) and [QueryBuilder](/api/query-builder/). There are two types of items on this page:

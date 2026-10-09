@@ -12,4 +12,5 @@ profiling
 npm-debug.log*
 .vscode
 /**/yarn.lock
-/**/.vuepress/dist
+doc/.vitepress/cache
+doc/.vitepress/dist
