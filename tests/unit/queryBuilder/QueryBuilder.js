@@ -604,6 +604,55 @@ describe('QueryBuilder', () => {
           ]);
         });
     });
+
+    describe('empty array of values for composite id', () => {
+      const clients = {
+        pg: [
+          'select "Model".* from "Model" where 1 = 0',
+          'select "Model".* from "Model" where 1 = 1',
+        ],
+        sqlite3: [
+          'select `Model`.* from `Model` where 1 = 0',
+          'select `Model`.* from `Model` where 1 = 1',
+        ],
+        mssql: [
+          'select [Model].* from [Model] where 1 = 0',
+          'select [Model].* from [Model] where 1 = 1',
+        ],
+      };
+
+      for (const [client, [whereInSql, whereNotInSql]] of Object.entries(clients)) {
+        const knex = Knex({ client, useNullAsDefault: true });
+
+        it(`whereInComposite should match nothing (${client})`, () => {
+          const sql = TestModel.query(knex)
+            .whereInComposite(['A.a', 'B.b'], [])
+            .toKnexQuery()
+            .toString();
+
+          expect(sql).to.equal(whereInSql);
+        });
+
+        it(`whereNotInComposite should match everything (${client})`, () => {
+          const sql = TestModel.query(knex)
+            .whereNotInComposite(['A.a', 'B.b'], [])
+            .toKnexQuery()
+            .toString();
+
+          expect(sql).to.equal(whereNotInSql);
+        });
+      }
+
+      it('findByIds([]) should match nothing for composite id', () => {
+        TestModel.idColumn = ['a', 'b'];
+
+        return TestModel.query()
+          .findByIds([])
+          .then(() => {
+            expect(executedQueries).to.eql(['select "Model".* from "Model" where 1 = 0']);
+          });
+      });
+    });
   });
 
   it('should convert array query result into Model instances', () => {
