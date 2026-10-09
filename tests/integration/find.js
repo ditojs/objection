@@ -1170,6 +1170,17 @@ module.exports = (session) => {
                 expect(result.count).to.eql(4);
               });
           });
+
+          it('with column list', () => {
+            return Model1.query()
+              .with('subquery', ['subId'], Model1.query().select('id'))
+              .select('subId')
+              .from('subquery')
+              .orderBy('subId')
+              .then((results) => {
+                expect(results.map((it) => it.subId)).to.eql([1, 2]);
+              });
+          });
         }
 
         if (session.isPostgres()) {
