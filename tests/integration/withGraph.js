@@ -2494,6 +2494,167 @@ module.exports = (session) => {
         });
     });
 
+    describe('mixing withGraphJoined and withGraphFetched', () => {
+      const orders = [
+        ['withGraphJoined', 'withGraphFetched'],
+        ['withGraphFetched', 'withGraphJoined'],
+      ];
+
+      const callInOrder = (builder, order, joined, fetched) => {
+        for (const method of order) {
+          builder = builder[method](method === 'withGraphJoined' ? joined : fetched);
+        }
+
+        return builder;
+      };
+
+      it('should join the joined relations and fetch the fetched relations', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query()
+            .where('Model1.id', 1)
+            .modifyGraph('model1Relation2', (builder) => {
+              builder.orderBy('id_col');
+            });
+
+          query = callInOrder(
+            query,
+            order,
+            'model1Relation1.model1Relation1',
+            'model1Relation2.model2Relation1',
+          );
+
+          return query
+            .modifyGraph('model1Relation2.model2Relation1', (builder) => {
+              builder.orderBy('Model1.id');
+            })
+            .then((models) => {
+              expect(models).to.have.length(1);
+
+              chai.expect(models[0].toJSON()).to.containSubset({
+                id: 1,
+                model1Prop1: 'hello 1',
+
+                model1Relation1: {
+                  id: 2,
+                  model1Prop1: 'hello 2',
+
+                  model1Relation1: {
+                    id: 3,
+                    model1Prop1: 'hello 3',
+                  },
+                },
+
+                model1Relation2: [
+                  {
+                    idCol: 1,
+                    model2Prop1: 'hejsan 1',
+                    model2Relation1: [],
+                  },
+                  {
+                    idCol: 2,
+                    model2Prop1: 'hejsan 2',
+                    model2Relation1: [
+                      { id: 5, model1Prop1: 'hello 5', aliasedExtra: 'extra 5' },
+                      { id: 6, model1Prop1: 'hello 6', aliasedExtra: 'extra 6' },
+                    ],
+                  },
+                ],
+              });
+
+              expect(models[0]).to.be.a(Model1);
+              expect(models[0].model1Relation1).to.be.a(Model1);
+              expect(models[0].model1Relation2[0]).to.be.a(Model2);
+              expect(models[0].model1Relation2).to.have.length(2);
+              expect(models[0].model1Relation1.model1Relation1.model1Relation1).to.equal(undefined);
+            });
+        });
+      });
+
+      it('should filter by the joined relation while the fetched relation is complete', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query().where('model1Relation1.model1Prop1', 'hello 2');
+          query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
+
+          return query
+            .modifyGraph('model1Relation2', (builder) => {
+              builder.orderBy('id_col');
+            })
+            .then((models) => {
+              expect(models).to.have.length(1);
+              expect(models[0].id).to.equal(1);
+              expect(models[0].model1Relation1.id).to.equal(2);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+            });
+        });
+      });
+
+      it('should filter a joined has-many relation without affecting the fetched relation', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query().where('model1Relation2.model2_prop1', 'hejsan 2');
+          query = callInOrder(query, order, 'model1Relation2', 'model1Relation1.model1Relation1');
+
+          return query.then((models) => {
+            expect(models).to.have.length(1);
+            expect(models[0].id).to.equal(1);
+            expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([2]);
+            expect(models[0].model1Relation1.id).to.equal(2);
+            expect(models[0].model1Relation1.model1Relation1.id).to.equal(3);
+          });
+        });
+      });
+
+      it('should work with explicit selects that omit the identifier', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query().select('Model1.model1Prop1').where('Model1.id', 1);
+          query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
+
+          return query
+            .modifyGraph('model1Relation2', (builder) => {
+              builder.orderBy('id_col');
+            })
+            .then((models) => {
+              expect(models).to.have.length(1);
+              expect(models[0].id).to.equal(undefined);
+              expect(models[0].model1Prop1).to.equal('hello 1');
+              expect(models[0].model1Relation1.id).to.equal(2);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+            });
+        });
+      });
+
+      it('page should work', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query().whereNotNull('model1Relation1.id').orderBy('Model1.id');
+          query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
+
+          return query
+            .modifyGraph('model1Relation2', (builder) => {
+              builder.orderBy('id_col');
+            })
+            .page(0, 2)
+            .then((res) => {
+              expect(res.total).to.equal(5);
+              expect(res.results.map((it) => it.id)).to.eql([1, 2]);
+              expect(res.results.map((it) => it.model1Relation1.id)).to.eql([2, 3]);
+              expect(res.results[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+              expect(res.results[1].model1Relation2).to.eql([]);
+            });
+        });
+      });
+
+      it('should fail if the same relation is both joined and fetched', () => {
+        expect(() => {
+          Model1.query()
+            .withGraphJoined('model1Relation1')
+            .withGraphFetched('model1Relation1.model1Relation1');
+        }).to.throwException((err) => {
+          expect(err.message).to.equal(
+            'relation `model1Relation1` cannot be loaded with both withGraphJoined and withGraphFetched',
+          );
+        });
+      });
+    });
+
     describe('QueryBuilder.orderBy', () => {
       it('orderBy should work for the root query', () => {
         return Promise.map(['withGraphFetched', 'withGraphJoined'], (method) => {

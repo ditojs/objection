@@ -2585,6 +2585,517 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('mixing withGraphJoined and withGraphFetched', () => {
+    const {
+      JoinEagerOperation,
+    } = require('../../../lib/queryBuilder/operations/eager/JoinEagerOperation');
+    const {
+      WhereInEagerOperation,
+    } = require('../../../lib/queryBuilder/operations/eager/WhereInEagerOperation');
+
+    let Person;
+    let Animal;
+    let Movie;
+
+    const joinQuery =
+      'select "Person"."id" as "id", "Person"."name" as "name", "Person"."parentId" as "parentId", ' +
+      '"pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
+      'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"';
+
+    const flatRows = () => [
+      { id: 1, name: 'P1', parentId: null, 'pets:id': 10, 'pets:name': 'A10', 'pets:ownerId': 1 },
+      { id: 1, name: 'P1', parentId: null, 'pets:id': 11, 'pets:name': 'A11', 'pets:ownerId': 1 },
+      { id: 2, name: 'P2', parentId: 1, 'pets:id': null, 'pets:name': null, 'pets:ownerId': null },
+    ];
+
+    const movieRows = () => [
+      { id: 100, name: 'M100', personId: 1 },
+      { id: 101, name: 'M101', personId: 2 },
+    ];
+
+    const expectedGraph = [
+      {
+        id: 1,
+        name: 'P1',
+        parentId: null,
+        pets: [
+          { id: 10, name: 'A10', ownerId: 1 },
+          { id: 11, name: 'A11', ownerId: 1 },
+        ],
+        movies: [{ id: 100, name: 'M100', personId: 1 }],
+      },
+      {
+        id: 2,
+        name: 'P2',
+        parentId: 1,
+        pets: [],
+        movies: [{ id: 101, name: 'M101', personId: 2 }],
+      },
+    ];
+
+    const toJson = (models) => models.map((it) => it.toJSON());
+
+    const countOps = (builder, OperationClass) => {
+      let count = 0;
+      builder.forEachOperation(OperationClass, () => ++count);
+      return count;
+    };
+
+    beforeEach(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name', 'parentId'] };
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Animal,
+              join: { from: 'Person.id', to: 'Animal.ownerId' },
+            },
+            movies: {
+              relation: Model.HasManyRelation,
+              modelClass: Movie,
+              join: { from: 'Person.id', to: 'Movie.personId' },
+            },
+            parent: {
+              relation: Model.BelongsToOneRelation,
+              modelClass: Person,
+              join: { from: 'Person.parentId', to: 'Person.id' },
+            },
+          };
+        }
+      };
+
+      Animal = class Animal extends Model {
+        static get tableName() {
+          return 'Animal';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name', 'ownerId'] };
+        }
+      };
+
+      Movie = class Movie extends Model {
+        static get tableName() {
+          return 'Movie';
+        }
+
+        static tableMetadata() {
+          return { columns: ['id', 'name', 'personId'] };
+        }
+      };
+
+      Person.knex(mockKnex);
+    });
+
+    it('should join the joined relations and fetch the fetched relations', () => {
+      mockKnexQueryResults = [flatRows(), movieRows()];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .where('pets.name', 'like', 'A%')
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            `${joinQuery} where "pets"."name" like 'A%'`,
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+          ]);
+
+          expect(models[0]).to.be.a(Person);
+          expect(models[0].pets[0]).to.be.a(Animal);
+          expect(models[0].movies[0]).to.be.a(Movie);
+          expect(toJson(models)).to.eql(expectedGraph);
+        });
+    });
+
+    it('should not depend on the order of withGraphJoined and withGraphFetched', () => {
+      mockKnexQueryResults = [flatRows(), movieRows()];
+
+      return Person.query()
+        .withGraphFetched('movies')
+        .withGraphJoined('pets')
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            joinQuery,
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+          ]);
+
+          expect(toJson(models)).to.eql(expectedGraph);
+        });
+    });
+
+    it('should keep the joined operation before the fetched one', () => {
+      const builder = Person.query().withGraphFetched('movies').withGraphJoined('pets');
+      const eagerOps = builder._operations.filter(
+        (op) => op instanceof JoinEagerOperation || op instanceof WhereInEagerOperation,
+      );
+
+      expect(eagerOps).to.have.length(2);
+      expect(eagerOps[0]).to.be.a(JoinEagerOperation);
+      expect(eagerOps[1]).to.be.a(WhereInEagerOperation);
+    });
+
+    it('should work when withGraphJoined is called in a runBefore hook', () => {
+      mockKnexQueryResults = [flatRows(), movieRows()];
+
+      return Person.query()
+        .withGraphFetched('movies')
+        .runBefore((_, builder) => {
+          builder.withGraphJoined('pets');
+        })
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            joinQuery,
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+          ]);
+
+          expect(toJson(models)).to.eql(expectedGraph);
+        });
+    });
+
+    it('should fetch the relations of all models produced by the join', () => {
+      mockKnexQueryResults = [flatRows(), [{ id: 1, name: 'P1', parentId: null }], movieRows()];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('[parent, movies]')
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            joinQuery,
+            'select "Person".* from "Person" where "Person"."id" in (1)',
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+          ]);
+
+          expect(models[0].parent).to.equal(null);
+          expect(models[1].parent.toJSON()).to.eql({ id: 1, name: 'P1', parentId: null });
+          expect(models[1].movies).to.have.length(1);
+        });
+    });
+
+    it('should select and omit columns needed by the fetched relations when the user selects columns', () => {
+      mockKnexQueryResults = [
+        [
+          { name: 'P1', id: 1, 'pets:id': 10, 'pets:name': 'A10', 'pets:ownerId': 1 },
+          { name: 'P2', id: 2, 'pets:id': null, 'pets:name': null, 'pets:ownerId': null },
+        ],
+        movieRows(),
+      ];
+
+      return Person.query()
+        .select('Person.name')
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            'select "Person"."name", "Person"."id" as "id", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+          ]);
+
+          // `id` is selected internally by the join and needed by the fetch,
+          // so it must survive the join but be omitted in the end.
+          expect(toJson(models)).to.eql([
+            {
+              name: 'P1',
+              pets: [{ id: 10, name: 'A10', ownerId: 1 }],
+              movies: [{ id: 100, name: 'M100', personId: 1 }],
+            },
+            {
+              name: 'P2',
+              pets: [],
+              movies: [{ id: 101, name: 'M101', personId: 2 }],
+            },
+          ]);
+        });
+    });
+
+    it('should keep the id when the user selects it explicitly', () => {
+      mockKnexQueryResults = [
+        [{ id: 1, name: 'P1', 'pets:id': null, 'pets:name': null, 'pets:ownerId': null }],
+        [],
+      ];
+
+      return Person.query()
+        .select('Person.id', 'Person.name')
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .then((models) => {
+          expect(executedQueries[1]).to.equal(
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1)',
+          );
+          expect(toJson(models)).to.eql([{ id: 1, name: 'P1', pets: [], movies: [] }]);
+        });
+    });
+
+    ['withGraphJoined', 'withGraphFetched'].forEach((first) => {
+      const second = first === 'withGraphJoined' ? 'withGraphFetched' : 'withGraphJoined';
+
+      it(`should throw if the same relation is passed to ${first} and ${second}`, () => {
+        const builder = Person.query()[first]('[pets, movies]');
+
+        expect(() => builder[second]('pets')).to.throwException((err) => {
+          expect(err.message).to.equal(
+            'relation `pets` cannot be loaded with both withGraphJoined and withGraphFetched',
+          );
+        });
+      });
+
+      it(`should throw if a sub relation of a ${first} relation is passed to ${second}`, () => {
+        const builder = Person.query()[first]('pets');
+
+        expect(() => builder[second]('pets.owner')).to.throwException((err) => {
+          expect(err.message).to.equal(
+            'relation `pets` cannot be loaded with both withGraphJoined and withGraphFetched',
+          );
+        });
+      });
+
+      it(`should throw if \`*\` is used when mixing ${first} and ${second}`, () => {
+        const builder = Person.query()[first]('*');
+
+        expect(() => builder[second]('pets')).to.throwException(/relation expression `\*`/);
+      });
+    });
+
+    it('should allow the same relation under different aliases', () => {
+      expect(() =>
+        Person.query()
+          .withGraphJoined('pets as joinedPets')
+          .withGraphFetched('pets as fetchedPets'),
+      ).to.not.throwException();
+    });
+
+    it('should merge multiple calls of the same method into one operation', () => {
+      mockKnexQueryResults = [[], []];
+
+      const builder = Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .withGraphJoined('parent')
+        .withGraphFetched('movies.foo', { maxBatchSize: 1 })
+        .withGraphFetched('movies', { maxBatchSize: 5 });
+
+      expect(countOps(builder, JoinEagerOperation)).to.equal(1);
+      expect(countOps(builder, WhereInEagerOperation)).to.equal(1);
+      expect(builder.findOperation(JoinEagerOperation).expression.toString()).to.equal(
+        '[pets, parent]',
+      );
+      expect(builder.findOperation(WhereInEagerOperation).expression.toString()).to.equal(
+        'movies.foo',
+      );
+      expect(builder.findOperation(WhereInEagerOperation).graphOptions.maxBatchSize).to.equal(5);
+      expect(builder.findOperation(JoinEagerOperation).graphOptions.maxBatchSize).to.equal(
+        undefined,
+      );
+    });
+
+    it('graphExpressionObject() should merge both expressions', () => {
+      const builder = Person.query().withGraphJoined('pets').withGraphFetched('movies');
+
+      expect(builder.graphExpressionObject()).to.eql(
+        objection.RelationExpression.create('[pets, movies]').toPojo(),
+      );
+    });
+
+    it('hasWithGraph() should consider both operations', () => {
+      expect(Person.query().withGraphJoined('pets').hasWithGraph()).to.equal(true);
+      expect(Person.query().withGraphFetched('pets').hasWithGraph()).to.equal(true);
+      expect(Person.query().modifyGraph('pets', _.noop).hasWithGraph()).to.equal(false);
+      expect(
+        Person.query().modifyGraph('pets', _.noop).withGraphJoined('pets').hasWithGraph(),
+      ).to.equal(true);
+    });
+
+    ['before', 'after'].forEach((when) => {
+      it(`modifyGraph() called ${when} the graph methods should apply to both operations`, () => {
+        mockKnexQueryResults = [flatRows(), movieRows()];
+
+        const modifyGraph = (builder) =>
+          builder
+            .modifyGraph('pets', (qb) => qb.where('name', 'A10'))
+            .modifyGraph('movies', (qb) => qb.where('name', 'M100'));
+
+        const withGraph = (builder) => builder.withGraphFetched('movies').withGraphJoined('pets');
+
+        let builder = Person.query();
+
+        if (when === 'before') {
+          builder = withGraph(modifyGraph(builder));
+        } else {
+          builder = modifyGraph(withGraph(builder));
+        }
+
+        return builder.then((models) => {
+          expect(executedQueries).to.eql([
+            'select "Person"."id" as "id", "Person"."name" as "name", "Person"."parentId" as "parentId", ' +
+              '"pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
+              'from "Person" left join (select "Animal".* from "Animal" where "name" = \'A10\') as "pets" on "pets"."ownerId" = "Person"."id"',
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2) and "name" = \'M100\'',
+          ]);
+
+          expect(models).to.have.length(2);
+        });
+      });
+    });
+
+    it('modifyGraph() between the graph methods should apply to both operations', () => {
+      mockKnexQueryResults = [flatRows(), movieRows()];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .modifyGraph('pets', (qb) => qb.where('name', 'A10'))
+        .modifyGraph('movies', (qb) => qb.where('name', 'M100'))
+        .withGraphFetched('movies')
+        .then(() => {
+          expect(executedQueries[0]).to.contain(
+            'left join (select "Animal".* from "Animal" where "name" = \'A10\') as "pets"',
+          );
+          expect(executedQueries[1]).to.equal(
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2) and "name" = \'M100\'',
+          );
+        });
+    });
+
+    it('graphModifiersAtPath() should return the modifiers once', () => {
+      const builder = Person.query()
+        .modifyGraph('pets', _.noop)
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .modifyGraph('movies', _.noop);
+
+      expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets', 'movies']);
+    });
+
+    it('clearWithGraph() should clear both operations', () => {
+      mockKnexQueryResults = [[{ id: 1 }]];
+
+      const builder = Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .clearWithGraph();
+
+      expect(builder.findOperation(JoinEagerOperation)).to.equal(null);
+      expect(builder.findOperation(WhereInEagerOperation)).to.equal(null);
+      expect(builder.hasWithGraph()).to.equal(false);
+      expect(builder.graphExpressionObject()).to.equal(null);
+
+      return builder.then(() => {
+        expect(executedQueries).to.eql(['select "Person".* from "Person"']);
+      });
+    });
+
+    it('clearWithGraphFetched() should only clear the fetched operation', () => {
+      mockKnexQueryResults = [flatRows()];
+
+      const builder = Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .clearWithGraphFetched();
+
+      expect(builder.findOperation(JoinEagerOperation)).to.not.equal(null);
+      expect(builder.findOperation(WhereInEagerOperation)).to.equal(null);
+      expect(builder.graphExpressionObject()).to.eql(
+        objection.RelationExpression.create('pets').toPojo(),
+      );
+
+      return builder.then((models) => {
+        expect(executedQueries).to.eql([joinQuery]);
+        expect(models[0].pets).to.have.length(2);
+        expect(models[0].movies).to.equal(undefined);
+      });
+    });
+
+    it('clone() should keep both operations', () => {
+      mockKnexQueryResults = [flatRows(), movieRows()];
+
+      const builder = Person.query().withGraphJoined('pets').withGraphFetched('movies');
+      const clone = builder.clone();
+
+      expect(countOps(clone, JoinEagerOperation)).to.equal(1);
+      expect(countOps(clone, WhereInEagerOperation)).to.equal(1);
+      expect(clone.graphExpressionObject()).to.eql(builder.graphExpressionObject());
+
+      // Modifying the clone should not affect the original.
+      clone.withGraphFetched('parent');
+      expect(builder.findOperation(WhereInEagerOperation).expression.toString()).to.equal('movies');
+
+      return builder.then((models) => {
+        expect(toJson(models)).to.eql(expectedGraph);
+      });
+    });
+
+    it('allowGraph() should check the union of both expressions', () => {
+      return Promise.all([
+        Person.query()
+          .allowGraph('[pets, movies]')
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .then(() => 'ok'),
+
+        Person.query()
+          .allowGraph('pets')
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .then(() => 'ok')
+          .catch((err) => err),
+
+        Person.query()
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .allowGraph('movies')
+          .then(() => 'ok')
+          .catch((err) => err),
+      ]).then(([ok, err1, err2]) => {
+        expect(ok).to.equal('ok');
+        expect(err1).to.be.a(objection.ValidationError);
+        expect(err1.type).to.equal('UnallowedRelation');
+        expect(err2).to.be.a(objection.ValidationError);
+        expect(err2.type).to.equal('UnallowedRelation');
+      });
+    });
+
+    it('page() should count with the joins and fetch the fetched relations', () => {
+      mockKnexQueryResults = [flatRows(), movieRows(), [{ count: '2' }]];
+
+      return Person.query()
+        .withGraphFetched('movies')
+        .withGraphJoined('pets')
+        .where('pets.name', 'A10')
+        .page(0, 10)
+        .then((res) => {
+          expect(executedQueries).to.eql([
+            `${joinQuery} where "pets"."name" = 'A10' limit 10`,
+            'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+            `select count(*) as "count" from (${joinQuery} where "pets"."name" = 'A10') as "temp"`,
+          ]);
+
+          expect(res.total).to.equal(2);
+          expect(toJson(res.results)).to.eql(expectedGraph);
+        });
+    });
+
+    it('resultSize() should not run the fetch queries', () => {
+      mockKnexQueryResults = [[{ count: '2' }]];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .resultSize()
+        .then((count) => {
+          expect(executedQueries).to.eql([
+            `select count(*) as "count" from (${joinQuery}) as "temp"`,
+          ]);
+          expect(count).to.equal(2);
+        });
+    });
+  });
+
   describe('context', () => {
     it('context() should merge context', () => {
       const builder = TestModel.query();
