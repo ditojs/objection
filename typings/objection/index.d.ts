@@ -1563,7 +1563,7 @@ declare namespace Objection {
     static QueryBuilder: typeof QueryBuilder;
 
     static tableName: string;
-    static idColumn: string | string[] | readonly string[];
+    static idColumn: null | string | string[] | readonly string[];
     static jsonSchema: JSONSchema;
     static relationMappings: RelationMappings | RelationMappingsThunk;
     static modelPaths: string[];
