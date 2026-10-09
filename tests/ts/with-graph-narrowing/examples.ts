@@ -311,6 +311,28 @@ async function relatedQueries() {
 
   const e = await person.$query().withGraphFetched('pets');
   type _e = Expect<Equal<(typeof e)['pets'], Animal[]>>;
+
+  // `$query()` and `$relatedQuery()` on a narrowed instance don't fetch the
+  // relations that were fetched on that instance, so they aren't narrowed.
+  const narrowed = await person.$fetchGraph('[pets.owner, children]');
+  const f = await narrowed.$query();
+  type _f = Expect<Equal<(typeof f)['pets'], Animal[] | undefined>>;
+  // @ts-expect-error
+  f.children.length;
+  const g = await narrowed.$query().withGraphFetched('children');
+  g.children.length;
+  // @ts-expect-error
+  g.pets.length;
+  const h = await narrowed.$relatedQuery('pets');
+  type _h = Expect<Equal<(typeof h)[number]['owner'], Person | undefined>>;
+  const i = await narrowed.$relatedQuery('pets').withGraphFetched('owner');
+  i[0].owner.id;
+  const j = await (await Person.query().withGraphFetched('children.pets'))[0].$query();
+  // @ts-expect-error
+  j.children.length;
+  const k = await (await narrowed.$fetchGraph('parent')).$query();
+  // @ts-expect-error
+  k.pets.length;
 }
 
 async function fetchGraph() {
@@ -364,6 +386,10 @@ async function customQueryBuilders() {
   e.results[0].owner.pets.length;
   // @ts-expect-error
   e.results[0].owner.parent.id;
+
+  // `$query()` on narrowed instances keeps the custom query builder.
+  const f = await e.results[0].$query().someCustomMethod();
+  type _f = Expect<Equal<(typeof f)['owner'], CustomPerson | undefined>>;
 }
 
 async function assignability() {
