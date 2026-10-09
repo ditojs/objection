@@ -234,3 +234,32 @@ class Person extends Model {
 
 `modelClass` is only checked when it is a class or a function returning one, not when it is a module path. Models are compared structurally, so a model class whose instances have all the properties of the expected model passes too.
 
+## Typing generated properties in TypeScript
+
+`insert()` and `insertGraph()` accept any subset of the model's properties. To check that the data for a new row is complete, mark the properties the database generates, like auto-incremented ids, timestamps or columns with defaults, as `Generated`, and type the data as `Insertable`:
+
+```ts
+import { Model, Generated, Insertable, InsertableGraph } from 'objection';
+
+class Person extends Model {
+  id!: Generated<number>;
+  createdAt!: Generated<Date>;
+  firstName!: string;
+  lastName?: string;
+  middleName!: string | null;
+  pets?: Animal[];
+}
+
+const person = await Person.query().findById(1).throwIfNotFound();
+const id: number = person.id;
+
+const data: Insertable<Person> = { firstName: 'Jennifer' };
+await Person.query().insert(data);
+
+await Person.query().insertGraph({
+  firstName: 'Jennifer',
+  pets: [{ name: 'Doggo', species: 'dog' }]
+} satisfies InsertableGraph<Person>);
+```
+
+`Generated<number>` reads and assigns like a `number`. `Insertable<Person>` requires all properties except optional, nullable and `Generated` ones, and leaves out relations. `InsertableGraph<Person>` adds the relations, which hold the insertable graphs of the related models or `#dbRef` / `#ref` references, and the `#id` of the graph. Both are assignable to the argument types of `insert()` and `insertGraph()`, which themselves are unchanged and still treat all properties as optional. `Generated` also works in an [interface merged into the model](#typing-model-properties-with-an-interface-in-typescript).

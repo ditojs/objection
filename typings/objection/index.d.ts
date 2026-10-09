@@ -21,6 +21,8 @@ export = Objection;
 
 // Phantom brand of the relation types, used by `TypedRelationMappings`.
 declare const relationKind: unique symbol;
+// Phantom brand of `Generated` properties.
+declare const generated: unique symbol;
 
 declare namespace Objection {
   const raw: RawFunction;
@@ -464,6 +466,65 @@ declare namespace Objection {
           ? PartialModelGraph<I>[]
           : Expression<F>
         : Expression<F>;
+
+  /**
+   * Marks a model property whose value the database generates, like an
+   * auto-incremented id, a timestamp or a column with a default value. It
+   * reads as T and accepts T, but `Insertable` and `InsertableGraph` treat
+   * the property as optional:
+   *
+   *   id!: Generated<number>;
+   */
+  export type Generated<T> = T extends null | undefined ? T : T & GeneratedBrand;
+
+  interface GeneratedBrand {
+    readonly [generated]?: true;
+  }
+
+  /**
+   * Insert keys are optional for optional, nullable and generated properties.
+   */
+  type OptionalInsertPropertyNames<M> = {
+    [K in keyof M]-?: {} extends Pick<M, K>
+      ? K
+      : null extends M[K]
+        ? K
+        : typeof generated extends keyof NonNullable<M[K]>
+          ? K
+          : never;
+  }[keyof M];
+
+  type InsertablePropertyNames<M> = Exclude<DataPropertyNames<M>, RelationPropertyNames<M>>;
+
+  /**
+   * The data to insert a model M with `insert()`. Unlike `PartialModelObject`,
+   * all properties are required except optional, nullable and `Generated`
+   * ones. Relation properties are left out.
+   */
+  export type Insertable<M extends Model> = {
+    [K in Exclude<InsertablePropertyNames<M>, OptionalInsertPropertyNames<M>>]: Expression<M[K]>;
+  } & {
+    [K in Extract<InsertablePropertyNames<M>, OptionalInsertPropertyNames<M>>]?: Expression<M[K]>;
+  };
+
+  /**
+   * Like `Insertable`, but for `insertGraph()`: relation properties are
+   * optional and hold the insertable graphs of the related models, or
+   * references to existing ones through `#dbRef` or `#ref`.
+   */
+  export type InsertableGraph<M extends Model> = Insertable<M> &
+    Omit<GraphParameters, '#dbRef' | '#ref'> & {
+      [K in RelationPropertyNames<M>]?: InsertableGraphField<M[K]>;
+    };
+
+  type InsertableGraphReference = { '#dbRef': MaybeCompositeId } | { '#ref': string };
+
+  type InsertableGraphField<F> =
+    NonNullable<F> extends (infer I extends Model)[]
+      ? (InsertableGraph<I> | InsertableGraphReference)[]
+      : NonNullable<F> extends infer I extends Model
+        ? InsertableGraph<I> | InsertableGraphReference | Extract<F, null>
+        : never;
 
   /**
    * Extracts the property names (excluding relations) of a model class.
