@@ -1528,6 +1528,7 @@ declare namespace Objection {
     joinTable: string;
     joinTableOwnerProp: RelationProperty;
     joinTableRelatedProp: RelationProperty;
+    isOneToOne(): boolean;
   }
 
   export interface RelationProperty {

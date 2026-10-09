@@ -1192,6 +1192,7 @@ const orderByColumns: PromiseLike<Person[]> = qb.orderBy([
 
 const someModel1: typeof objection.Model = Person.getRelations()['pets'].joinModelClass;
 const someModel2: typeof objection.Model = Person.getRelation('pets').ownerModelClass;
+const isOneToOne: boolean = Person.getRelation('pets').isOneToOne();
 
 // Verify that Model.query() and model.$query() return the same type of query builder.
 // Confirming this prevent us from having to duplicate the tests for each.

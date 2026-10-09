@@ -481,6 +481,10 @@ See the [error handling recipe](/recipes/error-handling.html) for more info.
 | joinTableOwnerProp   | [RelationProperty](/api/types/#class-relationproperty) | The join table property pointing to `ownerProp` (only for `ManyToMany` and `HasOneThrough` relations).                                                                                                                                         |
 | joinTableRelatedProp | [RelationProperty](/api/types/#class-relationproperty) | The join table property pointing to `relatedProp` (only for `ManyToMany` and `HasOneThrough` relations).                                                                                                                                       |
 
+| Method       | Return value | Description                                                                                                                                                                                 |
+| ------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| isOneToOne() | boolean      | `true` for relations to a single model: `BelongsToOneRelation`, `HasOneRelation` and `HasOneThroughRelation`. Safer than `instanceof` checks, as the latter two extend the many-relations. |
+
 Note that `Relation` instances are actually instances of the relation classes used in `relationMappings`. For example:
 
 ```js
