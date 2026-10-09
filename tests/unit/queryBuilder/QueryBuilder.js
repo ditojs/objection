@@ -3410,6 +3410,158 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('withGraphJoined without a usable primary key (#2748)', () => {
+    let Person;
+    let Animal;
+    let personIdColumn;
+    let personColumns;
+    let animalColumns;
+
+    beforeEach(() => {
+      personIdColumn = 'id';
+      personColumns = ['id', 'name'];
+      animalColumns = ['id', 'name', 'ownerId'];
+
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static get idColumn() {
+          return personIdColumn;
+        }
+
+        static tableMetadata() {
+          return { columns: personColumns };
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: Animal,
+              join: { from: 'Person.name', to: 'Animal.ownerId' },
+            },
+          };
+        }
+      };
+
+      Animal = class Animal extends Model {
+        static get tableName() {
+          return 'Animal';
+        }
+
+        static tableMetadata() {
+          return { columns: animalColumns };
+        }
+      };
+
+      Person.knex(mockKnex);
+    });
+
+    const expectError = (promise, modelName) =>
+      promise.then(
+        () => {
+          throw new Error('should not get here');
+        },
+        (err) => {
+          expect(err.message).to.contain('withGraphJoined');
+          expect(err.message).to.contain(`model ${modelName}`);
+          expect(err.message).to.contain('withGraphFetched');
+        },
+      );
+
+    it('should throw if the id column of the root model is missing from the result', () => {
+      personColumns = ['name'];
+      mockKnexQueryResults = [
+        [
+          { name: 'P1', 'pets:id': 1, 'pets:name': 'A1', 'pets:ownerId': 'P1' },
+          { name: 'P2', 'pets:id': 2, 'pets:name': 'A2', 'pets:ownerId': 'P2' },
+        ],
+      ];
+
+      return expectError(Person.query().withGraphJoined('pets'), 'Person');
+    });
+
+    it('should throw if the id column of a related model is missing from the result', () => {
+      animalColumns = ['name', 'ownerId'];
+      mockKnexQueryResults = [
+        [
+          { id: 1, name: 'P1', 'pets:name': 'A1', 'pets:ownerId': 'P1' },
+          { id: 1, name: 'P1', 'pets:name': 'A2', 'pets:ownerId': 'P1' },
+        ],
+      ];
+
+      return expectError(Person.query().withGraphJoined('pets'), 'Animal');
+    });
+
+    it('should throw if idColumn is null', () => {
+      personIdColumn = null;
+      mockKnexQueryResults = [
+        [
+          { id: 1, name: 'P1', 'pets:id': 1, 'pets:name': 'A1', 'pets:ownerId': 'P1' },
+          { id: 2, name: 'P2', 'pets:id': 2, 'pets:name': 'A2', 'pets:ownerId': 'P2' },
+        ],
+      ];
+
+      return expectError(Person.query().withGraphJoined('pets'), 'Person');
+    });
+
+    it('should not throw for an empty result', () => {
+      personColumns = ['name'];
+      mockKnexQueryResults = [[]];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .then((models) => {
+          expect(models).to.eql([]);
+        });
+    });
+
+    it('should not throw if the joined id columns are null (no match)', () => {
+      mockKnexQueryResults = [
+        [
+          { id: 1, name: 'P1', 'pets:id': null, 'pets:name': null, 'pets:ownerId': null },
+          { id: 2, name: 'P2', 'pets:id': 2, 'pets:name': 'A2', 'pets:ownerId': 'P2' },
+        ],
+      ];
+
+      return Person.query()
+        .withGraphJoined('pets')
+        .then((models) => {
+          expect(models.map((it) => it.toJSON())).to.eql([
+            { id: 1, name: 'P1', pets: [] },
+            { id: 2, name: 'P2', pets: [{ id: 2, name: 'A2', ownerId: 'P2' }] },
+          ]);
+        });
+    });
+
+    it('should not throw if the id columns are not explicitly selected', () => {
+      mockKnexQueryResults = [
+        [
+          { name: 'P1', id: 1, 'pets:name': 'A1', 'pets:id': 1 },
+          { name: 'P1', id: 1, 'pets:name': 'A2', 'pets:id': 2 },
+        ],
+      ];
+
+      return Person.query()
+        .select('name')
+        .withGraphJoined('pets(selectName)')
+        .modifiers({ selectName: (query) => query.select('name') })
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            'select "name", "Person"."id" as "id", ' +
+              '"pets"."name" as "pets:name", "pets"."id" as "pets:id" ' +
+              'from "Person" left join (select "name", "Animal"."id", "Animal"."ownerId" from "Animal") as "pets" ' +
+              'on "pets"."ownerId" = "Person"."name"',
+          ]);
+          expect(models.map((it) => it.toJSON())).to.eql([
+            { name: 'P1', pets: [{ name: 'A1' }, { name: 'A2' }] },
+          ]);
+        });
+    });
+  });
+
   describe('context', () => {
     it('context() should merge context', () => {
       const builder = TestModel.query();
