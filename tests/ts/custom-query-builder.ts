@@ -1,4 +1,4 @@
-import { Model, QueryBuilder, Page, TransactionOrKnex } from '../../';
+import { Model, ModelConstructor, QueryBuilder, Page, TransactionOrKnex } from '../../';
 
 class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   declare ArrayQueryBuilderType: CustomQueryBuilder<M, M[]>;
@@ -69,3 +69,34 @@ const throwIfNotFound: CustomQueryBuilder<Person, Person> = Person.query()
   .findById(1)
   .throwIfNotFound()
   .someCustomMethod();
+
+// Custom query builders can define their own constructor and call `super()`
+// with the model class, see #2306.
+class DefaultSchemaQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
+  declare ArrayQueryBuilderType: DefaultSchemaQueryBuilder<M, M[]>;
+  declare SingleQueryBuilderType: DefaultSchemaQueryBuilder<M, M>;
+  declare MaybeSingleQueryBuilderType: DefaultSchemaQueryBuilder<M, M | undefined>;
+  declare NumberQueryBuilderType: DefaultSchemaQueryBuilder<M, number>;
+  declare PageQueryBuilderType: DefaultSchemaQueryBuilder<M, Page<M>>;
+
+  constructor(modelClass: ModelConstructor<M>) {
+    super(modelClass);
+    this.withSchema('someSchema');
+  }
+}
+
+class DefaultSchemaModel extends Model {
+  static QueryBuilder = DefaultSchemaQueryBuilder;
+  declare QueryBuilderType: DefaultSchemaQueryBuilder<this>;
+}
+
+class Movie extends DefaultSchemaModel {
+  id!: number;
+  title!: string;
+}
+
+const movies: DefaultSchemaQueryBuilder<Movie, Movie[]> = Movie.query().where('title', 'lol');
+const movieQuery: QueryBuilder<Movie> = new QueryBuilder(Movie);
+const defaultSchemaMovieQuery: DefaultSchemaQueryBuilder<Movie> = new DefaultSchemaQueryBuilder(
+  Movie,
+);
