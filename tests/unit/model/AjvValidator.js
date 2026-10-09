@@ -1,5 +1,5 @@
 const addFormats = require('ajv-formats');
-const { AjvValidator, Model } = require('../../../');
+const { AjvValidator, Model, raw, val, ref } = require('../../../');
 const expect = require('expect.js');
 const Knex = require('knex');
 
@@ -592,6 +592,59 @@ describe('AjvValidator', () => {
     it('should not change the validation of field expression keys in non-patch mode', () => {
       const data = validationErrorData(() => TestModel.fromJson({ name: 'foo', 'meta:b': 'foo' }));
       expect(Object.keys(data)).to.eql(['meta:b']);
+    });
+  });
+
+  describe('required properties given as query properties', () => {
+    const TestModel = modelClass('test', {
+      type: 'object',
+      required: ['a', 'b'],
+      properties: {
+        a: { type: 'array', items: { type: 'string' } },
+        b: { type: 'integer' },
+        c: { type: 'string', default: 'c' },
+      },
+    });
+
+    function validationErrorData(fn) {
+      try {
+        fn();
+      } catch (err) {
+        expect(err).to.be.a(TestModel.ValidationError);
+        return err.data;
+      }
+      throw new Error('expected a validation error');
+    }
+
+    it('should count required properties given as query properties as present', () => {
+      const model = TestModel.fromJson({
+        a: val(['x']).asArray().castTo('uuid[]'),
+        b: raw('?', 1),
+      });
+      expect(model.c).to.equal('c');
+      expect(TestModel.fromJson({ a: ['x'], b: ref('c') }).a).to.eql(['x']);
+      expect(TestModel.fromJson({ a: TestModel.query().select('a'), b: 1 }).b).to.equal(1);
+    });
+
+    it('should still require the other required properties', () => {
+      const data = validationErrorData(() => TestModel.fromJson({ a: raw('?', 1) }));
+      expect(Object.keys(data)).to.eql(['b']);
+      expect(data.b[0].keyword).to.equal('required');
+      expect(Object.keys(validationErrorData(() => TestModel.fromJson({ b: raw('1') })))).to.eql([
+        'a',
+      ]);
+    });
+
+    it('should still validate the other properties', () => {
+      const data = validationErrorData(() => TestModel.fromJson({ a: raw('?', 1), b: 'x' }));
+      expect(Object.keys(data)).to.eql(['b']);
+      expect(data.b[0].keyword).to.equal('type');
+    });
+
+    it('should not affect the validation of models without query properties', () => {
+      TestModel.fromJson({ a: raw('?', 1), b: raw('?', 1) });
+      const data = validationErrorData(() => TestModel.fromJson({}));
+      expect(Object.keys(data).sort()).to.eql(['a', 'b']);
     });
   });
 });
