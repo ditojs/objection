@@ -1,10 +1,12 @@
 ---
-home: true
-heroText: Objection.js
-tagline: An SQL-friendly ORM for Node.js
-actionText: Get Started →
-actionLink: /guide/installation
-footer: MIT Licensed | Copyright © 2015-present Sami Koskimäki
+layout: home
+hero:
+  name: Objection.js
+  tagline: An SQL-friendly ORM for Node.js
+  actions:
+    - theme: brand
+      text: Get Started →
+      link: /guide/installation
 ---
 
 Objection.js is an [ORM](https://en.wikipedia.org/wiki/Object-relational_mapping) for [Node.js](https://nodejs.org/) that aims to stay out of your way and make it as easy as possible to use the full power of SQL and the underlying database engine while still making the common stuff easy and enjoyable.
