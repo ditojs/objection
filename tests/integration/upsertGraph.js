@@ -1639,6 +1639,41 @@ module.exports = (session) => {
         });
       });
 
+      it('should not write #unrelate and #delete props set to false to the database', () => {
+        const upsert = {
+          id: 2,
+          '#unrelate': false,
+          model1Prop1: 'updated root 2',
+          model1Relation2: [
+            {
+              idCol: 1,
+              '#delete': false,
+              model2Prop1: 'updated hasMany 1',
+            },
+            {
+              '#delete': false,
+              '#unrelate': false,
+              model2Prop1: 'inserted hasMany',
+            },
+          ],
+        };
+
+        return transaction(session.knex, async (trx) => {
+          await Model1.query(trx).upsertGraph(upsert, { fetchStrategy, noDelete: true });
+
+          const root = await Model1.query(trx)
+            .findById(2)
+            .withGraphFetched('model1Relation2(orderById)');
+
+          expect(root.model1Prop1).to.equal('updated root 2');
+          expect(root.model1Relation2.map((it) => it.model2Prop1)).to.eql([
+            'updated hasMany 1',
+            'hasMany 2',
+            'inserted hasMany',
+          ]);
+        });
+      });
+
       it('should relate and unrelate some models if `unrelate` and `relate` are arrays of relation paths', () => {
         const upsert = {
           // the root gets updated because it has an id
