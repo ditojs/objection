@@ -2177,6 +2177,75 @@ describe('QueryBuilder', () => {
     );
   });
 
+  describe('snake case mappers and field expressions', () => {
+    const toSql = (builder) => builder.toKnexQuery().toString();
+
+    function createModel(mappers) {
+      return class SnakeModel extends Model {
+        static get tableName() {
+          return 'model';
+        }
+
+        static get jsonAttributes() {
+          return ['jsonCol'];
+        }
+
+        static get columnNameMappers() {
+          return mappers;
+        }
+      };
+    }
+
+    function testQueries(Model, knex, { col, patchPath }) {
+      expect(toSql(Model.query(knex).where(ref('jsonCol:someKey.otherKey'), 1))).to.equal(
+        `select "model".* from "model" where "${col}"#>'{someKey,otherKey}' = 1`,
+      );
+      expect(toSql(Model.query(knex).where(ref('jsonCol:[0][innerKey]').castText(), 'x'))).to.equal(
+        `select "model".* from "model" where CAST("${col}"#>>'{0,innerKey}' AS text) = 'x'`,
+      );
+      expect(
+        toSql(Model.query(knex).whereJsonSupersetOf('jsonCol:someKey', { innerKey: 1 })),
+      ).to.equal(
+        `select "model".* from "model" where ( "jsonCol"#>'{someKey}' )::jsonb @> '{"innerKey":1}'::jsonb`,
+      );
+      expect(toSql(Model.query(knex).whereJsonHasAny('jsonCol:someKey', 'fooBar'))).to.equal(
+        `select "model".* from "model" where "jsonCol"#>'{someKey}' ?| array['fooBar']`,
+      );
+      expect(toSql(Model.query(knex).whereJsonIsObject('jsonCol:someKey'))).to.equal(
+        `select "model".* from "model" where ( "jsonCol"#>'{someKey}' )::jsonb @> '{}'::jsonb`,
+      );
+      expect(toSql(Model.query(knex).patch({ 'jsonCol:[0][innerKey]': 1, otherCol: 2 }))).to.equal(
+        `update "model" set "json_col" = jsonb_set("json_col", '${patchPath}', '1', true), "other_col" = 2`,
+      );
+      expect(toSql(Model.query(knex).patch({ jsonCol: { innerKey: 1 } }))).to.equal(
+        `update "model" set "json_col" = '{"innerKey":1}'`,
+      );
+    }
+
+    it('snakeCaseMappers() maps json keys of field expressions in patch (default)', () => {
+      testQueries(createModel(objection.snakeCaseMappers()), mockKnex, {
+        col: 'jsonCol',
+        patchPath: '{0,inner_key}',
+      });
+    });
+
+    it('snakeCaseMappers({ preserveJsonKeys: true }) only maps the column part', () => {
+      testQueries(createModel(objection.snakeCaseMappers({ preserveJsonKeys: true })), mockKnex, {
+        col: 'jsonCol',
+        patchPath: '{0,innerKey}',
+      });
+    });
+
+    it('knexSnakeCaseMappers() never maps json keys of field expressions', () => {
+      const knex = Knex({ client: 'pg', ...objection.knexSnakeCaseMappers() });
+
+      testQueries(createModel(null), knex, {
+        col: 'json_col',
+        patchPath: '{0,innerKey}',
+      });
+    });
+  });
+
   it('first should not add limit(1) by default', () => {
     return TestModel.query()
       .first()
