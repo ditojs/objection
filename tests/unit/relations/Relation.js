@@ -161,6 +161,27 @@ describe('Relation', () => {
     expect(relation.relatedProp.props).to.eql(['ownerName', 'ownerDateOfBirth']);
   });
 
+  it('should accept references created with Model.ref()', () => {
+    let relation = new Relation('testRelation', OwnerModel);
+
+    relation.setMapping({
+      relation: Relation,
+      modelClass: RelatedModel,
+      join: {
+        from: [OwnerModel.ref('id'), OwnerModel.ref('json:attr')],
+        to: [RelatedModel.ref('ownerId'), objection.ref('RelatedModel.ownerAttr')],
+      },
+    });
+
+    expect(relation.ownerModelClass).to.equal(OwnerModel);
+    expect(relation.relatedModelClass).to.equal(RelatedModel);
+    expect(relation.ownerProp.cols).to.eql(['id', 'json']);
+    expect(relation.ownerProp.props).to.eql(['id', 'json']);
+    expect(relation.ownerProp.getProp({ json: { attr: 1 } }, 1)).to.equal(1);
+    expect(relation.relatedProp.cols).to.eql(['ownerId', 'ownerAttr']);
+    expect(relation.relatedProp.props).to.eql(['ownerId', 'ownerAttr']);
+  });
+
   it('should fail if relation property and the relation itself have the same name', () => {
     let relation = new Relation('foo', OwnerModel);
 
