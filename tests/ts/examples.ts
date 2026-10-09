@@ -527,6 +527,8 @@ qb = qb.whereComposite('id', 1);
 qb = qb.whereComposite('id', '>', 1);
 qb = qb.whereComposite(['id1', 'id2'], [1, '2']);
 qb = qb.whereComposite(['id1', 'id2'], Person.query());
+qb = qb.where('id', BigInt(1));
+qb = qb.whereIn('id', [BigInt(1), BigInt(2)]);
 qb = qb.whereInComposite('id', [1, 2]);
 qb = qb.whereInComposite(
   ['id1', 'id2'],
