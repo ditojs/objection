@@ -1342,6 +1342,7 @@ declare namespace Objection {
     upperCase?: boolean;
     underscoreBeforeDigits?: boolean;
     underscoreBetweenUppercaseLetters?: boolean;
+    noDoubleUnderscores?: boolean;
   }
 
   export interface ColumnNameMappers {

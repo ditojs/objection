@@ -73,18 +73,14 @@ const { ref } = require('objection');
 await Model.query()
   .select([
     'id',
-    ref('Model.jsonColumn:details.name')
-      .castText()
-      .as('name'),
-    ref('Model.jsonColumn:details.age')
-      .castInt()
-      .as('age')
+    ref('Model.jsonColumn:details.name').castText().as('name'),
+    ref('Model.jsonColumn:details.age').castInt().as('age'),
   ])
   .join(
     'OtherModel',
     ref('Model.jsonColumn:details.name').castText(),
     '=',
-    ref('OtherModel.name')
+    ref('OtherModel.name'),
   )
   .where('age', '>', ref('OtherModel.ageLimit'));
 ```
@@ -138,7 +134,7 @@ You can use `raw` in insert and update queries too:
 
 ```js
 await Person.query().patch({
-  age: raw('age + ?', 10)
+  age: raw('age + ?', 10),
 });
 ```
 
@@ -149,16 +145,16 @@ await Person.query()
   .select(
     raw('coalesce(sum(:sumColumn:), 0) as :alias:', {
       sumColumn: 'age',
-      alias: 'ageSum'
-    })
+      alias: 'ageSum',
+    }),
   )
   .where(
     'age',
     '<',
     raw(':value1 + :value2', {
       value1: 50,
-      value2: 25
-    })
+      value2: 25,
+    }),
   );
 ```
 
@@ -196,14 +192,12 @@ const { val, ref } = require('objection');
 await Model.query().where(
   ref('Model.jsonColumn:details'),
   '=',
-  val({ name: 'Jennifer', age: 29 })
+  val({ name: 'Jennifer', age: 29 }),
 );
 
 // Insert an array.
 await Model.query().insert({
-  numbers: val([1, 2, 3])
-    .asArray()
-    .castTo('real[]')
+  numbers: val([1, 2, 3]).asArray().castTo('real[]'),
 });
 ```
 
@@ -279,7 +273,7 @@ class Person extends mixin(Model, [
   SomeOtherMixin,
   EvenMoreMixins,
   LolSoManyMixins,
-  ImAMixinWithOptions({ foo: 'bar' })
+  ImAMixinWithOptions({ foo: 'bar' }),
 ]) {}
 ```
 
@@ -301,7 +295,7 @@ const mixins = compose(
   SomeOtherMixin,
   EvenMoreMixins,
   LolSoManyMixins,
-  ImAMixinWithOptions({ foo: 'bar' })
+  ImAMixinWithOptions({ foo: 'bar' }),
 );
 
 class Person extends mixins(Model) {}
@@ -315,11 +309,12 @@ const { snakeCaseMappers } = require('objection');
 
 Function for adding snake_case to camelCase conversion to objection models. Better documented [here](/recipes/snake-case-to-camel-case-conversion.html). The `snakeCaseMappers` function accepts an options object. The available options are:
 
-| Option                            | Type    | Default | Description                                                                                                                                             |
-| --------------------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| upperCase                         | boolean | `false` | Set to `true` if your columns are UPPER_SNAKE_CASED.                                                                                                    |
-| underscoreBeforeDigits            | boolean | `false` | When `true`, will place an underscore before digits (`foo1Bar2` becomes `foo_1_bar_2`). When `false`, `foo1Bar2` becomes `foo1_bar2`.                   |
-| underscoreBetweenUppercaseLetters | boolean | `false` | When `true`, will place underscores between consecutive uppercase letters (`fooBAR` becomes `foo_b_a_r`). When `false`, `fooBAR` will become `foo_bar`. |
+| Option                            | Type    | Default | Description                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| upperCase                         | boolean | `false` | Set to `true` if your columns are UPPER_SNAKE_CASED.                                                                                                                                                                                                                         |
+| underscoreBeforeDigits            | boolean | `false` | When `true`, will place an underscore before digits (`foo1Bar2` becomes `foo_1_bar_2`). When `false`, `foo1Bar2` becomes `foo1_bar2`.                                                                                                                                        |
+| underscoreBetweenUppercaseLetters | boolean | `false` | When `true`, will place underscores between consecutive uppercase letters (`fooBAR` becomes `foo_b_a_r`). When `false`, `fooBAR` will become `foo_bar`.                                                                                                                      |
+| noDoubleUnderscores               | boolean | `false` | When `true`, will never insert an underscore directly after an existing one (with `underscoreBeforeDigits`, `foo_1` stays `foo_1` instead of becoming `foo__1`; `foo_Bar` becomes `foo_bar` instead of `foo__bar`). Underscores already present in the input are kept as is. |
 
 ##### Examples
 
@@ -353,11 +348,12 @@ const { knexSnakeCaseMappers } = require('objection');
 
 Function for adding a snake_case to camelCase conversion to `knex`. Better documented [here](/recipes/snake-case-to-camel-case-conversion.html). The `knexSnakeCaseMappers` function accepts an options object. The available options are:
 
-| Option                            | Type    | Default | Description                                                                                                                                             |
-| --------------------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| upperCase                         | boolean | `false` | Set to `true` if your columns are UPPER_SNAKE_CASED.                                                                                                    |
-| underscoreBeforeDigits            | boolean | `false` | When `true`, will place an underscore before digits (`foo1Bar2` becomes `foo_1_bar_2`). When `false`, `foo1Bar2` becomes `foo1_bar2`.                   |
-| underscoreBetweenUppercaseLetters | boolean | `false` | When `true`, will place underscores between consecutive uppercase letters (`fooBAR` becomes `foo_b_a_r`). When `false`, `fooBAR` will become `foo_bar`. |
+| Option                            | Type    | Default | Description                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| upperCase                         | boolean | `false` | Set to `true` if your columns are UPPER_SNAKE_CASED.                                                                                                                                                                                                                         |
+| underscoreBeforeDigits            | boolean | `false` | When `true`, will place an underscore before digits (`foo1Bar2` becomes `foo_1_bar_2`). When `false`, `foo1Bar2` becomes `foo1_bar2`.                                                                                                                                        |
+| underscoreBetweenUppercaseLetters | boolean | `false` | When `true`, will place underscores between consecutive uppercase letters (`fooBAR` becomes `foo_b_a_r`). When `false`, `fooBAR` will become `foo_bar`.                                                                                                                      |
+| noDoubleUnderscores               | boolean | `false` | When `true`, will never insert an underscore directly after an existing one (with `underscoreBeforeDigits`, `foo_1` stays `foo_1` instead of becoming `foo__1`; `foo_Bar` becomes `foo_bar` instead of `foo__bar`). Underscores already present in the input are kept as is. |
 
 ##### Examples
 
@@ -409,10 +405,10 @@ const knex = Knex({
   connection: {
     host: '127.0.0.1',
     user: 'objection',
-    database: 'objection_test'
+    database: 'objection_test',
   },
 
-  ...knexSnakeCaseMappers()
+  ...knexSnakeCaseMappers(),
 });
 ```
 
@@ -495,14 +491,14 @@ const knex = Knex({
   connection: {
     host: '127.0.0.1',
     user: 'objection',
-    database: 'objection_test'
+    database: 'objection_test',
   },
 
   ...knexIdentifierMapping({
     MyId: 'id',
     MyProp: 'prop',
-    MyAnotherProp: 'anotherProp'
-  })
+    MyAnotherProp: 'anotherProp',
+  }),
 });
 ```
 
