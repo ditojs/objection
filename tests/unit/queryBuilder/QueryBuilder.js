@@ -699,6 +699,51 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('delete with joinRelated and a modifier (#2799)', () => {
+    class Person extends Model {
+      static get tableName() {
+        return 'person';
+      }
+    }
+
+    class PersonTag extends Model {
+      static get tableName() {
+        return 'personTag';
+      }
+
+      static get relationMappings() {
+        return {
+          person: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: Person,
+            join: { from: 'personTag.personId', to: 'person.id' },
+          },
+        };
+      }
+    }
+
+    const expected = {
+      mysql:
+        'delete `personTag` from `personTag` inner join (select `person`.* from `person` where `favorite` = ?) as `person` on `person`.`id` = `personTag`.`personId` where `person`.`category` = ?',
+      pg: 'delete from "personTag" using (select "person".* from "person" where "favorite" = ?) as "person" where "person"."category" = ? and "person"."id" = "personTag"."personId"',
+    };
+
+    for (const [client, sql] of Object.entries(expected)) {
+      it(`should keep the bindings in the order of the sql (${client})`, () => {
+        const query = PersonTag.query(Knex({ client }))
+          .joinRelated('person(favoriteFilter)')
+          .modifiers({ favoriteFilter: (builder) => builder.where('favorite', true) })
+          .where('person.category', 'Follower')
+          .delete()
+          .toKnexQuery()
+          .toSQL();
+
+        expect(query.sql).to.equal(sql);
+        expect(query.bindings).to.eql([true, 'Follower']);
+      });
+    }
+  });
+
   it('should convert array query result into Model instances', () => {
     mockKnexQueryResults = [[{ a: 1 }, { a: 2 }]];
 
