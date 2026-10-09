@@ -152,7 +152,8 @@ Caveats when using special characters in keys:
 2. Keys containing dots `objectColumn:[keywith.dots]` Column `{ "keywith.dots" : "I was referred" }`
 3. Keys containing square brackets `column['[]']` `{ "[]" : "This is getting ridiculous..." }`
 4. Keys containing square brackets and quotes `objectColumn:['Double."Quote".[]']` and `objectColumn:["Sinlge.'Quote'.[]"]` Column `{ "Double.\"Quote\".[]" : "I was referred", "Sinlge.'Quote'.[]" : "Mee too!" }`
-5. Keys containing dots, square brackets, single quotes and double quotes in one json key is not currently supported
+5. Empty keys `objectColumn:[""]` or `objectColumn:['']` Column `{ "" : "I was referred" }`
+6. Keys containing dots, square brackets, single quotes and double quotes in one json key is not currently supported
 
 There are some special methods that accept `FieldExpression` strings directly, like [whereJsonSupersetOf](/api/query-builder/find-methods.html#wherejsonsupersetof) but you can use `FieldExpressions` anywhere with [ref](/api/objection/#ref). Here's an example:
 

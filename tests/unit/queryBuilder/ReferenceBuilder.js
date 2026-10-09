@@ -42,6 +42,25 @@ describe('ReferenceBuilder', () => {
     expect(toRawArgs(reference)).to.eql(["??#>'{jsonAttr}'", ['Table.Column']]);
   });
 
+  it('should quote empty keys in field expressions', () => {
+    expect(toRawArgs(ref('Table.Column:[""]'))).to.eql([`??#>'{""}'`, ['Table.Column']]);
+    expect(toRawArgs(ref("Table.Column:a[''].b").castText())).to.eql([
+      `CAST(??#>>'{a,"",b}' AS text)`,
+      ['Table.Column'],
+    ]);
+  });
+
+  it('should quote keys with special characters in field expressions', () => {
+    expect(toRawArgs(ref('Table.Column:["a,b"][{c}]'))).to.eql([
+      `??#>'{"a,b","{c}"}'`,
+      ['Table.Column'],
+    ]);
+    expect(toRawArgs(ref("Table.Column:['a\\\"b']"))).to.eql([
+      `??#>'{"a\\\\\\"b"}'`,
+      ['Table.Column'],
+    ]);
+  });
+
   it('should support few different casts', () => {
     expect(toRawArgs(ref('Table.Column:jsonAttr').castText())).to.eql([
       "CAST(??#>>'{jsonAttr}' AS text)",

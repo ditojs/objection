@@ -25,12 +25,19 @@ describe('jsonFieldExpressionParser', () => {
 
   // array reference having only quotes
   testParsing("col:[']", ['col', "'"]);
-  testParsing("col:['']", ['col', "''"]);
+  testParsing("col:['']", ['col', '']);
   testParsing("col:[''']", ['col', "'''"]);
 
   testParsing('col:["]', ['col', '"']);
-  testParsing('col:[""]', ['col', '""']);
+  testParsing('col:[""]', ['col', '']);
   testParsing('col:["""]', ['col', '"""']);
+
+  // empty keys
+  testParsing('col:a[""].b', ['col', 'a', '', 'b']);
+  testParsing(`col:[''][""]`, ['col', '', '']);
+  testParsing('col:[""][1]', ['col', '', 1]);
+  // quotes not followed by a closing bracket are part of the key
+  testParsing('col:["a"b"]', ['col', '"a"b"']);
 
   // array reference having quotes and brackets
   testParsing('col:field["nofa\'].il"]', ['col', 'field', "nofa'].il"]);

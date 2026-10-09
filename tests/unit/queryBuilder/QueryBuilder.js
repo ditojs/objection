@@ -2157,6 +2157,26 @@ describe('QueryBuilder', () => {
     );
   });
 
+  it('json methods should support empty keys in field expressions', () => {
+    const toSql = (builder) => builder.toKnexQuery().toString();
+
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content:[""]', { a: 1 }))).to.equal(
+      `select "Model".* from "Model" where ( "content"#>'{""}' )::jsonb @> '{"a":1}'::jsonb`,
+    );
+    expect(toSql(TestModel.query().whereJsonHasAny("content:a['']", ['b']))).to.equal(
+      `select "Model".* from "Model" where "content"#>'{a,""}' ?| array['b']`,
+    );
+    expect(toSql(TestModel.query().whereJsonIsObject('content:[""]'))).to.equal(
+      `select "Model".* from "Model" where ( "content"#>'{""}' )::jsonb @> '{}'::jsonb`,
+    );
+    expect(toSql(TestModel.query().where(ref('content:[""]').castText(), 'x'))).to.equal(
+      `select "Model".* from "Model" where CAST("content"#>>'{""}' AS text) = 'x'`,
+    );
+    expect(toSql(TestModel.query().patch({ 'content:[""]': 1 }))).to.equal(
+      `update "Model" set "content" = jsonb_set("content", '{""}', '1', true)`,
+    );
+  });
+
   it('first should not add limit(1) by default', () => {
     return TestModel.query()
       .first()
