@@ -268,7 +268,7 @@ You can use `withGraphFetched` and `fetchGraph` methods if you want to populate 
 somePerson.pets = await somePerson.$relatedQuery('pets');
 ```
 
-You can also use the `Model.relatedInsertQueryMutates` and `Model.relatedFindQueryMutates` properties to revert back to 1.x behavior. Note that those properties are now deprecated and will be removed in 3.0.
+You can also use the [`Model.relatedFindQueryMutates`](/api/model/static-properties.html#static-relatedfindquerymutates) and [`Model.relatedInsertQueryMutates`](/api/model/static-properties.html#static-relatedinsertquerymutates) properties to revert back to 1.x behavior.
 
 ## context() now acts like mergeContext()
 

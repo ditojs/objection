@@ -582,6 +582,44 @@ class Animal extends Model {
 
 If `true`, `limit(1)` is added to the query when [first()](/api/query-builder/other-methods.html#first) is called. Defaults to `false` for legacy reasons.
 
+## `static` relatedFindQueryMutates
+
+```js
+class Person extends Model {
+  static get relatedFindQueryMutates() {
+    return true;
+  }
+}
+```
+
+If `true`, the result of a find query started with [\$relatedQuery](/api/model/instance-methods.html#relatedquery) (or [relatedQuery](/api/model/static-methods.html#static-relatedquery) with [for](/api/query-builder/other-methods.html#for) given model instances) is also assigned to the relation property of the owner model instance(s), like objection 1.x used to do. The setting is read from the owner's model class. Defaults to `false`.
+
+```js
+const person = await Person.query().findById(1);
+await person.$relatedQuery('pets');
+
+// With `relatedFindQueryMutates = true`, `person.pets` now holds the fetched pets.
+```
+
+## `static` relatedInsertQueryMutates
+
+```js
+class Person extends Model {
+  static get relatedInsertQueryMutates() {
+    return true;
+  }
+}
+```
+
+If `true`, models inserted using [\$relatedQuery](/api/model/instance-methods.html#relatedquery) (or [relatedQuery](/api/model/static-methods.html#static-relatedquery) with [for](/api/query-builder/other-methods.html#for) given model instances) are also added to the relation property of the owner model instance(s), like objection 1.x used to do. The setting is read from the owner's model class. Defaults to `false`.
+
+```js
+const person = await Person.query().findById(1);
+const pet = await person.$relatedQuery('pets').insert({ name: 'Fluffy' });
+
+// With `relatedInsertQueryMutates = true`, `pet` has been appended to `person.pets`.
+```
+
 ## `static` QueryBuilder
 
 ```js
