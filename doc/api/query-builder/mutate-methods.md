@@ -151,7 +151,7 @@ The patch object is validated against the model's [jsonSchema](/api/model/static
 
 If validation fails the Promise is rejected with a [ValidationError](/api/types/#class-validationerror).
 
-The return value of the query will be the number of affected rows. If you want to update a single row and retrieve the updated row as a result, you may want to use the [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid) method or _take a look at [this recipe](/recipes/returning-tricks.html) if you're using Postgres_.
+The return value of the query will be the number of affected rows. If you want to update a single row and retrieve the updated row as a result, you may want to use the [patchById](/api/query-builder/mutate-methods.html#patchbyid) or [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid) methods or _take a look at [this recipe](/recipes/returning-tricks.html) if you're using Postgres_.
 
 ::: tip
 This generates an SQL `update` query. While there's also the [update](/api/query-builder/mutate-methods.html#update) method, `patch` is what you want to use most of the time for updates. Read both methods' documentation carefully. If unsure or hate reading, use `patch` to update stuff :smile:
@@ -216,6 +216,35 @@ await Person.query().patch({
   // json column `detailsJsonColumn`.
   'detailsJsonColumn:address.street': 'Elm street'
 });
+```
+
+## patchById()
+
+```js
+queryBuilder = queryBuilder.patchById(id, modelOrObject);
+```
+
+Just like [patch](/api/query-builder/mutate-methods.html#patch) for a single item identified by its id. Short for `.patch(modelOrObject).findById(id)`.
+
+The return value of the query will be the number of patched rows, `0` or `1`. Use [throwIfNotFound](/api/query-builder/other-methods.html#throwifnotfound) to throw if the item doesn't exist, or [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid) to also fetch the patched row.
+
+##### Arguments
+
+| Argument      | Type                                         | Description                                                 |
+| ------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| id            | any&nbsp;&#124;&nbsp;any[]                   | Identifier of the item to update. Array for composite keys. |
+| modelOrObject | Object&nbsp;&#124;&nbsp;[Model](/api/model/) | The patch object                                            |
+
+##### Return value
+
+| Type                                | Description                        |
+| ----------------------------------- | ---------------------------------- |
+| [QueryBuilder](/api/query-builder/) | `this` query builder for chaining. |
+
+##### Examples
+
+```js
+const numberOfPatchedRows = await Person.query().patchById(134, { age: 24 });
 ```
 
 ## patchAndFetchById()
@@ -288,7 +317,7 @@ The update object is validated against the model's [jsonSchema](/api/model/stati
 
 Use `update` if you update the whole row with all its columns. Otherwise, using the [patch](/api/query-builder/mutate-methods.html#patch) method is recommended. When `update` method is used, the validation respects the schema's `required` properties and throws a [ValidationError](/api/types/#class-validationerror) if any of them are missing. [patch](/api/query-builder/mutate-methods.html#patch) ignores the `required` properties and only validates the ones that are found.
 
-The return value of the query will be the number of affected rows. If you want to update a single row and retrieve the updated row as a result, you may want to use the [updateAndFetchById](/api/query-builder/mutate-methods.html#updateandfetchbyid) method or _take a look at [this recipe](/recipes/returning-tricks.html) if you're using Postgres_.
+The return value of the query will be the number of affected rows. If you want to update a single row and retrieve the updated row as a result, you may want to use the [updateById](/api/query-builder/mutate-methods.html#updatebyid) or [updateAndFetchById](/api/query-builder/mutate-methods.html#updateandfetchbyid) methods or _take a look at [this recipe](/recipes/returning-tricks.html) if you're using Postgres_.
 
 ##### Arguments
 
@@ -331,6 +360,39 @@ Updating single value inside json column and referring attributes inside json co
 await Person.query().update({
   lastName: ref('someJsonColumn:mother.lastName').castText(),
   'detailsJsonColumn:address.street': 'Elm street'
+});
+```
+
+## updateById()
+
+```js
+queryBuilder = queryBuilder.updateById(id, modelOrObject);
+```
+
+Just like [update](/api/query-builder/mutate-methods.html#update) for a single item identified by its id. Short for `.update(modelOrObject).findById(id)`.
+
+The return value of the query will be the number of updated rows, `0` or `1`. Use [throwIfNotFound](/api/query-builder/other-methods.html#throwifnotfound) to throw if the item doesn't exist, or [updateAndFetchById](/api/query-builder/mutate-methods.html#updateandfetchbyid) to also fetch the updated row.
+
+##### Arguments
+
+| Argument      | Type                                         | Description                                                 |
+| ------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| id            | any&nbsp;&#124;&nbsp;any[]                   | Identifier of the item to update. Array for composite keys. |
+| modelOrObject | Object&nbsp;&#124;&nbsp;[Model](/api/model/) | The update object                                           |
+
+##### Return value
+
+| Type                                | Description                        |
+| ----------------------------------- | ---------------------------------- |
+| [QueryBuilder](/api/query-builder/) | `this` query builder for chaining. |
+
+##### Examples
+
+```js
+const numberOfUpdatedRows = await Person.query().updateById(134, {
+  firstName: 'Jennifer',
+  lastName: 'Lawrence',
+  age: 24
 });
 ```
 
