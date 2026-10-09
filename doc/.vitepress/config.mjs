@@ -35,10 +35,14 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Emulates VuePress' `sidebar: auto`: one sidebar item per h2 of the page.
-function autoSidebar(text, link) {
-  const file = path.join(docDir, link, 'index.md');
-  const items = fs
+// One sidebar item per h2 of the page at `link`, like VuePress' sidebar showed
+// the headers of the current page. Used instead of VitePress' outline.
+function headingItems(link) {
+  const file = path.join(
+    docDir,
+    link.endsWith('/') ? `${link}index.md` : `${link}.md`,
+  );
+  return fs
     .readFileSync(file, 'utf8')
     .split('\n')
     .filter((line) => line.startsWith('## '))
@@ -49,14 +53,24 @@ function autoSidebar(text, link) {
         link: `${link}#${slugify(title.replace(/`/g, ''))}`,
       };
     });
-  return [{ text, link, items }];
 }
 
+// Emulates VuePress' `sidebar: auto` for single-page sections.
+function autoSidebar(text, link) {
+  return [{ text, link, items: headingItems(link) }];
+}
+
+// Pages with their headings, collapsed except for the current page.
 function sidebarGroup(text, base, children) {
   return [
     {
       text,
-      items: children.map(([link, text]) => ({ text, link: `${base}${link}` })),
+      items: children.map(([link, text]) => {
+        const items = headingItems(`${base}${link}`);
+        return items.length > 0
+          ? { text, link: `${base}${link}`, items, collapsed: true }
+          : { text, link: `${base}${link}` };
+      }),
     },
   ];
 }
@@ -71,12 +85,20 @@ export default defineConfig({
     anchor: { slugify },
   },
 
+  // No outline aside: the headings of the current page are in the sidebar.
+  transformPageData(pageData) {
+    pageData.frontmatter.aside ??= false;
+  },
+
   vite: {
     // The local search index is a single chunk of ~500 kB.
     build: { chunkSizeWarningLimit: 1000 },
   },
 
   themeConfig: {
+    // The headings of the current page are listed in the sidebar instead.
+    outline: false,
+
     search: {
       provider: 'local',
       options: {
