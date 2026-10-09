@@ -1168,6 +1168,15 @@ const people = await Person.query().whereJsonSupersetOf(
 // additional attributes as well.
 ```
 
+The right hand side can also be a [ref](/api/objection/#ref), [val](/api/objection/#val), [raw](/api/objection/#raw) or a subquery:
+
+```js
+const people = await Person.query().whereJsonSupersetOf(
+  'additionalData:myDogs',
+  ref('Pet.dogs')
+);
+```
+
 Object and array are always their own supersets.
 
 For arrays this means that left side matches if it has all the elements listed in the right hand side. e.g.

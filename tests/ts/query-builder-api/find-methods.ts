@@ -250,6 +250,11 @@ import { Person } from '../fixtures/person';
 
   await Person.query().whereJsonSupersetOf('additionalData:myDogs', 'additionalData:dogsAtHome');
   await Person.query().whereJsonSupersetOf('additionalData:myDogs[0]', { name: 'peter' });
+  await Person.query().whereJsonSupersetOf(
+    'additionalData:myDogs',
+    ref('additionalData:dogsAtHome'),
+  );
+  await Person.query().whereJsonSubsetOf('additionalData', raw('?::jsonb', '{}'));
 
   await Person.query().orWhereJsonSupersetOf('additionalData:myDogs', 'additionalData:dogsAtHome');
   await Person.query().orWhereJsonSupersetOf('additionalData:myDogs[0]', { name: 'peter' });
