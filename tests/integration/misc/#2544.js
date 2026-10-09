@@ -6,9 +6,11 @@ module.exports = (session) => {
     const { knex } = session;
     let Order;
     let OrderItem;
+    let OrderNote;
 
     before(() => {
       return knex.schema
+        .dropTableIfExists('order_notes_2544')
         .dropTableIfExists('order_items_2544')
         .dropTableIfExists('orders_2544')
         .createTable('orders_2544', (table) => {
@@ -20,11 +22,18 @@ module.exports = (session) => {
           table.integer('product_id');
           table.integer('quantity');
           table.primary(['order_id', 'product_id']);
+        })
+        .createTable('order_notes_2544', (table) => {
+          table.integer('order_id').primary();
+          table.string('text');
         });
     });
 
     after(() => {
-      return knex.schema.dropTableIfExists('order_items_2544').dropTableIfExists('orders_2544');
+      return knex.schema
+        .dropTableIfExists('order_notes_2544')
+        .dropTableIfExists('order_items_2544')
+        .dropTableIfExists('orders_2544');
     });
 
     before(() => {
@@ -35,6 +44,17 @@ module.exports = (session) => {
 
         static get idColumn() {
           return ['order_id', 'product_id'];
+        }
+      };
+
+      // A one-to-one child whose id is the foreign key itself.
+      OrderNote = class OrderNote extends Model {
+        static get tableName() {
+          return 'order_notes_2544';
+        }
+
+        static get idColumn() {
+          return 'order_id';
         }
       };
 
@@ -53,6 +73,15 @@ module.exports = (session) => {
                 to: 'order_items_2544.order_id',
               },
             },
+
+            note: {
+              relation: Model.HasOneRelation,
+              modelClass: OrderNote,
+              join: {
+                from: 'orders_2544.id',
+                to: 'order_notes_2544.order_id',
+              },
+            },
           };
         }
       };
@@ -61,8 +90,9 @@ module.exports = (session) => {
     });
 
     beforeEach(() => {
-      return knex('order_items_2544')
+      return knex('order_notes_2544')
         .delete()
+        .then(() => knex('order_items_2544').delete())
         .then(() => knex('orders_2544').delete());
     });
 
@@ -103,6 +133,27 @@ module.exports = (session) => {
       );
 
       expect(await items()).to.eql([{ order_id: 1, product_id: 2, quantity: 5 }]);
+    });
+
+    const notes = () => knex('order_notes_2544').select('order_id', 'text');
+
+    it('should insert a HasOne child whose id is the foreign key using insertGraph', async () => {
+      await Order.query().insertGraph(
+        { id: 1, name: 'order', note: { text: 'note' } },
+        { relate: true },
+      );
+
+      expect(await notes()).to.eql([{ order_id: 1, text: 'note' }]);
+    });
+
+    it('should insert a HasOne child whose id is the foreign key using upsertGraph', async () => {
+      const order = await Order.query().upsertGraphAndFetch(
+        { id: 1, name: 'order', note: { text: 'note' } },
+        { relate: true, insertMissing: true },
+      );
+
+      expect(order.note.toJSON()).to.eql({ order_id: 1, text: 'note' });
+      expect(await notes()).to.eql([{ order_id: 1, text: 'note' }]);
     });
   });
 };
