@@ -2553,6 +2553,12 @@ describe('QueryBuilder', () => {
       expect(warnings).to.eql([]);
     });
 
+    it('andWhereJsonNotSupersetOf() should be an alias of whereJsonNotSupersetOf()', () => {
+      expect(toSql(query('pg').andWhereJsonNotSupersetOf('content', { a: 1 }))).to.equal(
+        toSql(query('pg').whereJsonNotSupersetOf('content', { a: 1 })),
+      );
+    });
+
     it('should only pass the json superset and subset methods on to knex on mysql', () => {
       expect(toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
         'select `Model`.* from `Model` where ( `content` )::jsonb @> \'{"a":1}\'::jsonb',
