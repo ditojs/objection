@@ -1454,11 +1454,11 @@ declare namespace Objection {
     QueryBuilder: typeof QueryBuilder;
 
     tableName: string;
-    idColumn: null | string | string[];
+    idColumn: null | string | string[] | readonly string[];
     jsonSchema: JSONSchema;
     relationMappings: RelationMappings | RelationMappingsThunk;
     modelPaths: string[];
-    jsonAttributes: string[];
+    jsonAttributes: string[] | readonly string[];
     virtualAttributes: string[];
     uidProp: string;
     uidRefProp: string;
@@ -1563,11 +1563,11 @@ declare namespace Objection {
     static QueryBuilder: typeof QueryBuilder;
 
     static tableName: string;
-    static idColumn: string | string[];
+    static idColumn: string | string[] | readonly string[];
     static jsonSchema: JSONSchema;
     static relationMappings: RelationMappings | RelationMappingsThunk;
     static modelPaths: string[];
-    static jsonAttributes: string[];
+    static jsonAttributes: string[] | readonly string[];
     static virtualAttributes: string[];
     static uidProp: string;
     static uidRefProp: string;
