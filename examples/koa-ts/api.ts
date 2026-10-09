@@ -1,6 +1,8 @@
 import Person from './models/Person'
 import Movie from './models/Movie'
 import KoaRouter from 'koa-router'
+import { PartialModelGraph, PartialModelObject } from 'objection'
+import Animal from './models/Animal'
 
 export default (router: KoaRouter) => {
   /**
@@ -18,7 +20,7 @@ export default (router: KoaRouter) => {
       const insertedGraph = await Person.query(trx)
         // For security reasons, limit the relations that can be inserted.
         .allowGraph('[pets, children.[pets, movies], movies, parent]')
-        .insertGraph(requestBody(ctx))
+        .insertGraph(ctx.request.body as PartialModelGraph<Person>)
 
       return insertedGraph
     })
@@ -73,8 +75,7 @@ export default (router: KoaRouter) => {
     }
 
     if (ctx.query.orderBy) {
-      const orderBy = Array.isArray(ctx.query.orderBy) ? ctx.query.orderBy[0] : ctx.query.orderBy
-      query.orderBy(orderBy as string)
+      query.orderBy(takeFirst(ctx.query.orderBy))
     }
 
     if (ctx.query.withPetCount) {
@@ -95,7 +96,9 @@ export default (router: KoaRouter) => {
    * Update a single Person.
    */
   router.patch('/persons/:id', async (ctx) => {
-    const numUpdated = await Person.query().findById(ctx.params.id).patch(requestBody(ctx))
+    const numUpdated = await Person.query()
+      .findById(ctx.params.id)
+      .patch(ctx.request.body as PartialModelObject<Person>)
 
     ctx.body = {
       success: numUpdated == 1,
@@ -119,7 +122,9 @@ export default (router: KoaRouter) => {
   router.post('/persons/:id/children', async (ctx) => {
     const personId = parseInt(ctx.params.id)
 
-    const child = await Person.relatedQuery('children').for(personId).insert(requestBody(ctx))
+    const child = await Person.relatedQuery('children')
+      .for(personId)
+      .insert(ctx.request.body as PartialModelObject<Person>)
 
     ctx.body = child
   })
@@ -168,7 +173,9 @@ export default (router: KoaRouter) => {
   router.post('/persons/:id/pets', async (ctx) => {
     const personId = parseInt(ctx.params.id)
 
-    const pet = await Person.relatedQuery('pets').for(personId).insert(requestBody(ctx))
+    const pet = await Person.relatedQuery('pets')
+      .for(personId)
+      .insert(ctx.request.body as PartialModelObject<Animal>)
 
     ctx.body = pet
   })
@@ -200,7 +207,7 @@ export default (router: KoaRouter) => {
    * Insert a new movie.
    */
   router.post('/movies', async (ctx) => {
-    const movie = await Movie.query().insert(requestBody(ctx))
+    const movie = await Movie.query().insert(ctx.request.body as PartialModelObject<Movie>)
     ctx.body = movie
   })
 
@@ -241,6 +248,10 @@ export default (router: KoaRouter) => {
   })
 }
 
-function requestBody(ctx: KoaRouter.RouterContext): any {
-  return ctx.request.body
+function takeFirst<T>(item: T | ReadonlyArray<T>): T {
+  return isReadonlyArray(item) ? item[0] : item
+}
+
+function isReadonlyArray<T>(item: T | ReadonlyArray<T>): item is ReadonlyArray<T> {
+  return Array.isArray(item)
 }
