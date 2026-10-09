@@ -1314,7 +1314,7 @@ module.exports = (session) => {
               model2Prop1: 'updated hasMany 1',
 
               // unrelate id=4 with `#unrelate: true` special prop
-              // don't unrelate id=5 because of `noUnrelate`
+              // don't delete id=5 because of `noDelete`
               // relate id=6
               // and insert one new
               model2Relation1: [
@@ -1355,7 +1355,7 @@ module.exports = (session) => {
               return Model1.query(trx)
                 .findById(2)
                 .withGraphFetched(
-                  '[model1Relation1, model1Relation2(orderById).model2Relation1(orderById)]'
+                  '[model1Relation1, model1Relation2(orderById).model2Relation1(orderById)]',
                 );
             })
             .then(omitIrrelevantProps)
@@ -1420,7 +1420,7 @@ module.exports = (session) => {
 
                   // Row 2 should be deleted.
                   expect(model2Rows.find((it) => it.id_col == 2)).to.equal(undefined);
-                }
+                },
               );
             });
         });
