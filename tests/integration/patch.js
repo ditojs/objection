@@ -423,6 +423,22 @@ module.exports = (session) => {
           });
       });
 
+      it('should apply `select` to the fetch query', async () => {
+        const model = Model1.fromJson({ model1Prop1: 'updated text' });
+        const fetchedModel = await Model1.query()
+          .patchAndFetchById(2, model)
+          .select('id', 'model1Prop2');
+
+        expect(fetchedModel).to.equal(model);
+        expect(fetchedModel.id).to.equal(2);
+        expect(fetchedModel.model1Prop1).to.equal('updated text');
+        expect(fetchedModel.model1Prop2).to.equal(null);
+        expect(fetchedModel).to.not.have.property('model1Id');
+
+        const rows = await session.knex('Model1').orderBy('id');
+        expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
+      });
+
       it('should work with `eager` method', () => {
         let model = Model1.fromJson({ model1Prop1: 'updated text' });
 
@@ -727,6 +743,26 @@ module.exports = (session) => {
             expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1', model1Prop2: 10 });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2', model1Prop2: null });
           });
+      });
+
+      it('should apply `select` to the fetch query', async () => {
+        const model = ModelOne.fromJson({ id: 1 });
+        const updated = await model
+          .$query()
+          .patchAndFetch({ model1Prop2: 10 })
+          .select('model1Prop1');
+
+        expect(updated.id).to.equal(1);
+        expect(updated.model1Prop1).to.equal('hello 1');
+        expect(updated.model1Prop2).to.equal(10);
+        expect(updated).to.not.have.property('model1Id');
+
+        if (session.isPostgres()) {
+          expect(queries).to.eql([
+            'update "Model1" set "model1Prop2" = 10 where "Model1"."id" = 1',
+            'select "model1Prop1" from "Model1" where "Model1"."id" = 1',
+          ]);
+        }
       });
     });
 

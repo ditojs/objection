@@ -898,6 +898,65 @@ describe('QueryBuilder', () => {
       });
   });
 
+  describe('*AndFetch* with select()', () => {
+    it('patchAndFetchById should apply selects to the fetch query', async () => {
+      mockKnexQueryResults = [1, [{ id: 1, a: 1 }]];
+
+      const result = await TestModel.query().patchAndFetchById(1, { a: 1 }).select('id', 'a');
+
+      expect(executedQueries).to.eql([
+        'update "Model" set "a" = 1 where "Model"."id" = 1',
+        'select "id", "a" from "Model" where "Model"."id" = 1',
+      ]);
+      expect(result).to.be.a(TestModel);
+      expect(result.toJSON()).to.eql({ id: 1, a: 1 });
+    });
+
+    it('updateAndFetchById should apply selects to the fetch query', async () => {
+      mockKnexQueryResults = [1, [{ a: 1 }]];
+
+      await TestModel.query().updateAndFetchById(1, { a: 1 }).select('a');
+
+      expect(executedQueries).to.eql([
+        'update "Model" set "a" = 1 where "Model"."id" = 1',
+        'select "a" from "Model" where "Model"."id" = 1',
+      ]);
+    });
+
+    it('patchAndFetch should apply selects to the fetch query', async () => {
+      mockKnexQueryResults = [1, [{ a: 1 }]];
+
+      await TestModel.fromJson({ id: 1 }).$query().patchAndFetch({ a: 1 }).select('a');
+
+      expect(executedQueries).to.eql([
+        'update "Model" set "a" = 1 where "Model"."id" = 1',
+        'select "a" from "Model" where "Model"."id" = 1',
+      ]);
+    });
+
+    it('updateAndFetch should apply selects to the fetch query', async () => {
+      mockKnexQueryResults = [1, [{ a: 1 }]];
+
+      await TestModel.fromJson({ id: 1 }).$query().updateAndFetch({ a: 1 }).select('a');
+
+      expect(executedQueries).to.eql([
+        'update "Model" set "a" = 1 where "Model"."id" = 1',
+        'select "a" from "Model" where "Model"."id" = 1',
+      ]);
+    });
+
+    it('patchAndFetchById should select all columns without select', async () => {
+      mockKnexQueryResults = [1, [{ id: 1, a: 1 }]];
+
+      await TestModel.query().patchAndFetchById(1, { a: 1 });
+
+      expect(executedQueries).to.eql([
+        'update "Model" set "a" = 1 where "Model"."id" = 1',
+        'select "Model".* from "Model" where "Model"."id" = 1',
+      ]);
+    });
+  });
+
   describe('for()', () => {
     const message =
       'for() can only be used with queries created using the static relatedQuery method';
