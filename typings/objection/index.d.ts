@@ -932,10 +932,15 @@ declare namespace Objection {
     (): ModelClass<M>;
   }
 
+  interface ReturningOptions {
+    includeTriggerModifications?: boolean;
+  }
+
   interface ReturningMethod {
     <QB extends AnyQueryBuilder>(
       this: QB,
       column: string | Raw | (string | Raw)[] | readonly (string | Raw)[],
+      options?: ReturningOptions,
     ): QB extends NumberQueryBuilder<QB> ? ArrayQueryBuilder<QB> : QB;
   }
 
