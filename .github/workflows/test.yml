@@ -27,7 +27,12 @@ jobs:
         run: npm ci
 
       - name: Run docker compose
-        run: docker compose up -d
+        run: |
+          for i in 1 2 3 4 5; do
+            docker compose pull && break
+            sleep $((i * 15))
+          done
+          docker compose up -d
 
       - name: Setup test db
         run: node setup-test-db.js
