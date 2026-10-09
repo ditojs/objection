@@ -2,7 +2,7 @@ const _ = require('lodash');
 const chai = require('chai');
 const expect = require('expect.js');
 const Promise = require('bluebird');
-const { ValidationError, raw } = require('../..');
+const { ValidationError, raw, ref } = require('../..');
 const mockKnexFactory = require('../../testUtils/mockKnex');
 
 module.exports = (session) => {
@@ -1726,6 +1726,96 @@ module.exports = (session) => {
             });
         });
       }
+
+      it('aliased subquery selects should work in modifier', () => {
+        return Model1.query()
+          .select('Model1.id')
+          .where('Model1.id', 1)
+          .withGraphJoined('model1Relation2(subqueries)')
+          .modifiers({
+            subqueries(builder) {
+              builder.select(
+                'id_col',
+                Model1.query()
+                  .select('model1Prop1')
+                  .where('Model1.id', ref('model2.model1_id'))
+                  .as('owner_prop'),
+                session
+                  .knex('Model1')
+                  .select('id')
+                  .where('Model1.id', session.knex.ref('model2.model1_id'))
+                  .as('owner_id'),
+              );
+            },
+          })
+          .then((models) => {
+            expect(models).to.have.length(1);
+            expect(models[0].id).to.equal(1);
+            expect(_.sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+              { idCol: 1, ownerProp: 'hello 1', ownerId: 1, $afterFindCalled: 1 },
+              { idCol: 2, ownerProp: 'hello 1', ownerId: 1, $afterFindCalled: 1 },
+            ]);
+          });
+      });
+
+      it('aliased subquery selects should not change which other columns are selected', () => {
+        return Model1.query()
+          .select(
+            Model2.query()
+              .count('*')
+              .where('model2.model1_id', ref('Model1.id'))
+              .as('relation2Count'),
+          )
+          .where('Model1.id', 1)
+          .withGraphJoined('model1Relation2(subquery)')
+          .modifiers({
+            subquery(builder) {
+              builder.select(
+                Model1.query()
+                  .select('model1Prop1')
+                  .where('Model1.id', ref('model2.model1_id'))
+                  .as('owner_prop'),
+              );
+            },
+          })
+          .then((models) => {
+            expect(models).to.have.length(1);
+            expect(+models[0].relation2Count).to.equal(2);
+            expect(
+              _.pick(models[0], [
+                'id',
+                'model1Id',
+                'model1Prop1',
+                'model1Prop2',
+                '$afterFindCalled',
+              ]),
+            ).to.eql({
+              id: 1,
+              model1Id: 2,
+              model1Prop1: 'hello 1',
+              model1Prop2: null,
+              $afterFindCalled: 1,
+            });
+            expect(_.sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+              {
+                idCol: 1,
+                model1Id: 1,
+                model2Prop1: 'hejsan 1',
+                model2Prop2: null,
+                ownerProp: 'hello 1',
+                $afterFindCalled: 1,
+              },
+              {
+                idCol: 2,
+                model1Id: 1,
+                model2Prop1: 'hejsan 2',
+                model2Prop2: null,
+                ownerProp: 'hello 1',
+                $afterFindCalled: 1,
+              },
+            ]);
+          });
+      });
 
       it('select should work with alias', () => {
         return Model1.query()
