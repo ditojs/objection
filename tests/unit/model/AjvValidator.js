@@ -646,5 +646,29 @@ describe('AjvValidator', () => {
       const data = validationErrorData(() => TestModel.fromJson({}));
       expect(Object.keys(data).sort()).to.eql(['a', 'b']);
     });
+
+    it('should work with schemas that have an $id', () => {
+      const IdModel = modelClass('IdModel', {
+        $id: 'IdModel',
+        type: 'object',
+        required: ['a', 'b'],
+        properties: {
+          a: { type: 'string' },
+          b: { $ref: '#/definitions/b' },
+          c: { $id: 'IdModelC', type: 'object' },
+        },
+        definitions: {
+          b: { type: 'integer' },
+        },
+      });
+
+      IdModel.fromJson({ a: 'x', b: 1 });
+      expect(IdModel.fromJson({ a: 'x', b: raw('?', 1) }).a).to.equal('x');
+      expect(IdModel.fromJson({ a: raw('?', 'x'), b: 1 }).b).to.equal(1);
+      expect(IdModel.fromJson({ a: raw('?', 'x'), b: raw('?', 1) })).to.be.an(IdModel);
+      expect(() => IdModel.fromJson({ a: raw('?', 'x'), b: 'x' })).to.throwException((err) => {
+        expect(err.data.b[0].keyword).to.equal('type');
+      });
+    });
   });
 });
