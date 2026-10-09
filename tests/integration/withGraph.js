@@ -2197,7 +2197,12 @@ module.exports = (session) => {
           });
       });
 
-      it('relation references longer that 63 chars should throw an exception', (done) => {
+      it('relation references longer that 63 chars should throw an exception on postgres', function (done) {
+        if (!session.isPostgres()) {
+          // MySQL allows 256 characters, SQLite has no limit.
+          return this.skip();
+        }
+
         Model1.query()
           .where('Model1.id', 1)
           .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]')
@@ -2209,11 +2214,24 @@ module.exports = (session) => {
             expect(err.type).to.equal('RelationExpression');
             expect(err.modelClass).to.equal(Model1);
             expect(err.message).to.equal(
-              'identifier model1Relation1:model1Relation1:model1Relation1:model1Relation1:id is over 63 characters long and would be truncated by the database engine.',
+              'identifier model1Relation1:model1Relation1:model1Relation1:model1Relation1:id is over 63 characters long and would be truncated by the database engine. Use the `minimize` option of withGraphJoined() to shorten the aliases.',
             );
             done();
           })
           .catch(done);
+      });
+
+      it('relation references longer that 63 chars should work on databases with a higher limit', async function () {
+        if (session.isPostgres()) {
+          return this.skip();
+        }
+
+        const models = await Model1.query()
+          .where('Model1.id', 1)
+          .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]');
+
+        expect(models).to.have.length(1);
+        expect(models[0].model1Relation1.model1Relation1.id).to.equal(3);
       });
 
       it('relation references longer that 63 chars should NOT throw an exception if minimize: true option is given', (done) => {
