@@ -1750,6 +1750,45 @@ module.exports = (session) => {
                 expect(Movie.afterUpdate.calls.length).to.equal(1);
               });
           });
+
+          it('`asFindQuery` should return the updated rows with findById', async () => {
+            const person = await Person.query().findOne({ name: 'Jennifer' });
+            const movie = await person.$relatedQuery('movies').findOne({ name: 'Hungergames' });
+            let found = null;
+
+            Movie.afterUpdate = createHookSpy(async ({ asFindQuery }) => {
+              found = await asFindQuery().select('movies.name');
+            });
+
+            await person.$relatedQuery('movies').findById(movie.id).patch({ name: 'Updated' });
+
+            expect(Movie.afterUpdate.calls.length).to.equal(1);
+            chaiExpect(found).to.containSubset([{ name: 'Updated' }]);
+            expect(found.length).to.equal(1);
+          });
+
+          it('`asFindQuery` should return the updated rows with upsertGraph', async () => {
+            const person = await Person.query()
+              .findOne({ name: 'Jennifer' })
+              .withGraphFetched('movies');
+            const movie = person.movies.find((it) => it.name === 'Hungergames');
+            let found = null;
+
+            Movie.afterUpdate = createHookSpy(async ({ asFindQuery }) => {
+              found = await asFindQuery().select('movies.name');
+            });
+
+            await Person.query().upsertGraph({
+              id: person.id,
+              movies: person.movies.map((it) =>
+                it.id === movie.id ? { id: it.id, name: 'Updated' } : { id: it.id },
+              ),
+            });
+
+            expect(Movie.afterUpdate.calls.length).to.equal(1);
+            chaiExpect(found).to.containSubset([{ name: 'Updated' }]);
+            expect(found.length).to.equal(1);
+          });
         });
 
         describe('has many', () => {
@@ -2438,6 +2477,25 @@ module.exports = (session) => {
                 expect(numDeleted).to.equal(2);
                 expect(Movie.afterDelete.calls.length).to.equal(1);
               });
+          });
+
+          it('`asFindQuery` should only match the deleted rows', async () => {
+            const person = await Person.query().findOne({ name: 'Jennifer' });
+            let found = null;
+
+            Movie.afterDelete = createHookSpy(async ({ asFindQuery }) => {
+              found = await asFindQuery().select('movies.name');
+            });
+
+            const numDeleted = await person
+              .$relatedQuery('movies')
+              .where('movies.name', 'Hungergames')
+              .delete();
+
+            expect(numDeleted).to.equal(1);
+            expect(Movie.afterDelete.calls.length).to.equal(1);
+            // The deleted row is gone. The remaining related row must not match.
+            expect(found).to.eql([]);
           });
         });
 
