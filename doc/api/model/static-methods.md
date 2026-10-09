@@ -918,6 +918,8 @@ Load related models for a set of models using a [RelationExpression](/api/types/
 | ----------------------------------- | ------------------------- |
 | [QueryBuilder](/api/query-builder/) | The created query builder |
 
+In TypeScript, the result type is narrowed to include the fetched relations, see [withGraphFetched](/api/query-builder/eager-methods.html#typescript).
+
 ##### Examples
 
 ```js
