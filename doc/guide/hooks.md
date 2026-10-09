@@ -225,7 +225,7 @@ await Person.relatedQuery('pets')
 // relation:   pets
 ```
 
-In `afterDelete`, `afterUpdate`, `afterInsert` and `afterFind` hooks, the `result` property of the input argument contains the result of the query. You can change the result by returning a non-undefined value from the hook:
+In `afterDelete`, `afterUpdate`, `afterInsert` and `afterFind` hooks, the `result` property of the input argument contains the result of the query. In `afterInsert`, `result` contains the inserted model instances with only the values returned by the database merged in, even for `insertAndFetch`, which fetches the rows after the hook has run. See [afterInsert](/api/model/static-methods.html#static-afterinsert) for details. You can change the result by returning a non-undefined value from the hook:
 
 ```js
 class Person extends Model {
