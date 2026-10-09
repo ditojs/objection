@@ -1,12 +1,11 @@
 const path = require('path');
 const knexUtils = require('../lib/utils/knexUtils');
 const { map: promiseMap } = require('../lib/utils/promiseUtils');
-const { delay } = require('./testUtils');
+const { delay, cloneDeep } = require('./testUtils');
 const { Model, transaction, snakeCaseMappers, ref } = require('../');
 
 const chai = require('chai');
 chai.use(require('chai-subset'));
-const { cloneDeep } = require('./testUtils');
 
 class TestSession {
   static init() {

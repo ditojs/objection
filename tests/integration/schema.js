@@ -72,35 +72,33 @@ module.exports = (session) => {
           .dropTableIfExists('Person');
       });
 
-      beforeEach(() => {
+      beforeEach(async () => {
         const knex = session.knex;
 
-        return (async function () {
-          await Animal.query(knex).delete();
-          await Person.query(knex).delete();
-          await Person.query(knex).insertGraph({
-            id: 1,
-            name: 'Arnold',
+        await Animal.query(knex).delete();
+        await Person.query(knex).delete();
+        await Person.query(knex).insertGraph({
+          id: 1,
+          name: 'Arnold',
 
-            pets: [
-              {
-                id: 1,
-                name: 'Fluffy',
-              },
-            ],
+          pets: [
+            {
+              id: 1,
+              name: 'Fluffy',
+            },
+          ],
 
-            parents: [
-              {
-                id: 2,
-                name: 'Mom',
-              },
-              {
-                id: 3,
-                name: 'Dad',
-              },
-            ],
-          });
-        })();
+          parents: [
+            {
+              id: 2,
+              name: 'Mom',
+            },
+            {
+              id: 3,
+              name: 'Dad',
+            },
+          ],
+        });
       });
 
       it('simple find query', () => {
@@ -284,24 +282,22 @@ module.exports = (session) => {
           });
       });
 
-      beforeEach(() => {
+      beforeEach(async () => {
         const knex = session.knex;
 
-        return (async function () {
-          await Animal.query(knex).delete();
-          await Person.query(knex).delete();
-          await Person.query(knex).insertGraph({
-            id: 1,
-            name: 'Arnold',
+        await Animal.query(knex).delete();
+        await Person.query(knex).delete();
+        await Person.query(knex).insertGraph({
+          id: 1,
+          name: 'Arnold',
 
-            pets: [
-              {
-                id: 1,
-                name: 'Fluffy',
-              },
-            ],
-          });
-        })();
+          pets: [
+            {
+              id: 1,
+              name: 'Fluffy',
+            },
+          ],
+        });
       });
 
       it('simple find query (parent)', () => {

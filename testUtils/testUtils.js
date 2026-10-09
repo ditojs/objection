@@ -83,66 +83,31 @@ function range(start, end, step) {
   return Array.from({ length }, (_, i) => start + i * step);
 }
 
-// Like lodash's `sortBy`: a stable ascending sort by one or more iteratees,
-// each either a property name or a function. Without iteratees, the items
-// themselves are compared. `null`, `undefined` and `NaN` values sort last.
+// Like lodash's `sortBy`: a stable ascending sort by property names or
+// functions, or by the items themselves. `null` and `undefined` sort last.
 function sortBy(items, ...iteratees) {
-  iteratees = iteratees.flat();
+  const getters = iteratees
+    .flat()
+    .map((it) => (typeof it === 'function' ? it : (item) => item[it]));
 
-  if (iteratees.length === 0) {
-    iteratees = [(it) => it];
+  if (getters.length === 0) {
+    getters.push((item) => item);
   }
 
-  const getters = iteratees.map((iteratee) =>
-    typeof iteratee === 'function' ? iteratee : (it) => (it == null ? undefined : it[iteratee]),
-  );
+  return [...items].sort((a, b) => {
+    for (const get of getters) {
+      const x = get(a);
+      const y = get(b);
 
-  return (items == null ? [] : Array.from(items))
-    .map((item) => ({ item, criteria: getters.map((get) => get(item)) }))
-    .sort((a, b) => {
-      for (let i = 0; i < a.criteria.length; ++i) {
-        const result = compareAscending(a.criteria[i], b.criteria[i]);
-
-        if (result !== 0) {
-          return result;
-        }
+      if (x !== y) {
+        if (x == null) return 1;
+        if (y == null) return -1;
+        return x < y ? -1 : 1;
       }
-
-      return 0;
-    })
-    .map(({ item }) => item);
-}
-
-function compareAscending(value, other) {
-  if (value !== other) {
-    const valIsDefined = value !== undefined;
-    const valIsNull = value === null;
-    const valIsReflexive = value === value;
-
-    const othIsDefined = other !== undefined;
-    const othIsNull = other === null;
-    const othIsReflexive = other === other;
-
-    if (
-      (!othIsNull && value > other) ||
-      (valIsNull && othIsDefined && othIsReflexive) ||
-      (!valIsDefined && othIsReflexive) ||
-      !valIsReflexive
-    ) {
-      return 1;
     }
 
-    if (
-      (!valIsNull && value < other) ||
-      (othIsNull && valIsDefined && valIsReflexive) ||
-      (!othIsDefined && valIsReflexive) ||
-      !othIsReflexive
-    ) {
-      return -1;
-    }
-  }
-
-  return 0;
+    return 0;
+  });
 }
 
 module.exports = {
