@@ -2622,6 +2622,40 @@ module.exports = (session) => {
         });
       });
 
+      it('should not expose internally selected columns to runAfter', () => {
+        const queries = [
+          () => Model1.query().withGraphJoined('model1Relation1'),
+          () => Model1.query().withGraphFetched('model1Relation2'),
+          ...orders.map(
+            (order) => () =>
+              callInOrder(Model1.query(), order, 'model1Relation1', 'model1Relation2'),
+          ),
+        ];
+
+        return Promise.map(queries, (createQuery) => {
+          let runAfterModels = null;
+
+          return createQuery()
+            .select('Model1.model1Prop1')
+            .where('Model1.id', 1)
+            .runAfter((models) => {
+              runAfterModels = models;
+              expect(models[0]).to.not.have.property('id');
+              return models;
+            })
+            .then((models) => {
+              expect(runAfterModels).to.equal(models);
+              expect(models).to.have.length(1);
+              expect(models[0]).to.not.have.property('id');
+              expect(models[0].model1Prop1).to.equal('hello 1');
+
+              const { model1Relation1, model1Relation2 } = models[0];
+              expect(model1Relation1 === undefined || model1Relation1.id === 2).to.equal(true);
+              expect(model1Relation2 === undefined || model1Relation2.length === 2).to.equal(true);
+            });
+        });
+      });
+
       it('page should work', () => {
         return Promise.map(orders, (order) => {
           let query = Model1.query().whereNotNull('model1Relation1.id').orderBy('Model1.id');
