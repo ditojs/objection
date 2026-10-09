@@ -1,4 +1,4 @@
-const uuid = require('uuid');
+const { randomUUID } = require('crypto');
 const { expect } = require('chai');
 const { Model, val, raw } = require('../../../');
 
@@ -36,7 +36,7 @@ module.exports = (session) => {
     beforeEach(() => Person.query().delete());
 
     it('should be able to cast to uuid[]', () => {
-      const uuids = [uuid.v4(), uuid.v4()];
+      const uuids = [randomUUID(), randomUUID()];
 
       return Person.query()
         .insert({
@@ -57,7 +57,7 @@ module.exports = (session) => {
     });
 
     it('should be able to cast individual array items to uuid', () => {
-      const uuids = [uuid.v4(), uuid.v4()];
+      const uuids = [randomUUID(), randomUUID()];
 
       return Person.query()
         .insert({
@@ -78,7 +78,7 @@ module.exports = (session) => {
     });
 
     it('should be able to give an array of raw instances that are cast to uuid', () => {
-      const uuids = [uuid.v4(), uuid.v4()];
+      const uuids = [randomUUID(), randomUUID()];
 
       return Person.query()
         .insert({
