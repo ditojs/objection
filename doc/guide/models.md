@@ -196,3 +196,41 @@ class Person extends Model {
   static QueryBuilder = MyQueryBuilder;
 }
 ```
+
+## Checking relation mappings in TypeScript
+
+The relation properties of a model have to be declared by hand, and TypeScript doesn't check them against `relationMappings` by default. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation` or `ManyToManyRelation` for an array), and that `modelClass` matches the property's model type:
+
+```ts
+import { Model, TypedRelationMappings } from 'objection';
+
+class Person extends Model {
+  pets?: Animal[];
+  parent?: Person | null;
+
+  static relationMappings = () =>
+    ({
+      pets: {
+        relation: Model.HasManyRelation,
+        modelClass: Animal,
+        join: {
+          from: 'persons.id',
+          to: 'animals.ownerId'
+        }
+      },
+      parent: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Person,
+        join: {
+          from: 'persons.parentId',
+          to: 'persons.id'
+        }
+      }
+    }) satisfies TypedRelationMappings<Person>;
+}
+```
+
+`satisfies` keeps the inferred type of the mappings. It works with the thunk above, with a static property holding the object, and with a static getter, either returning `{ ... } satisfies TypedRelationMappings<Person>` or declared with `TypedRelationMappings<Person>` as return type. Put `satisfies` on the returned object, not on the thunk: on a function, TypeScript doesn't report unknown keys. The thunk or getter also avoids accessing model classes before they are initialized, e.g. with circular imports.
+
+`modelClass` is only checked when it is a class or a function returning one, not when it is a module path. Models are compared structurally, so a model class whose instances have all the properties of the expected model passes too.
+
