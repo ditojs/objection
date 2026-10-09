@@ -19,6 +19,9 @@ import { Knex } from 'knex';
 // Export the entire Objection namespace.
 export = Objection;
 
+// Phantom brand of the relation types, used by `TypedRelationMappings`.
+declare const relationKind: unique symbol;
+
 declare namespace Objection {
   const raw: RawFunction;
   const val: ValueFunction;
@@ -1523,6 +1526,67 @@ declare namespace Objection {
 
   export interface RelationType extends Constructor<Relation> {}
 
+  // The relation types are branded so that `TypedRelationMappings` can tell
+  // them apart. The brand is optional, so any `RelationType` is assignable.
+  export interface BelongsToOneRelationType extends RelationType {
+    readonly [relationKind]?: 'BelongsToOne';
+  }
+  export interface HasOneRelationType extends RelationType {
+    readonly [relationKind]?: 'HasOne';
+  }
+  export interface HasManyRelationType extends RelationType {
+    readonly [relationKind]?: 'HasMany';
+  }
+  export interface ManyToManyRelationType extends RelationType {
+    readonly [relationKind]?: 'ManyToMany';
+  }
+  export interface HasOneThroughRelationType extends RelationType {
+    readonly [relationKind]?: 'HasOneThrough';
+  }
+
+  /**
+   * Names of the properties of M that hold related models.
+   */
+  type RelationPropertyNames<M> = {
+    [K in keyof M]-?: NonNullable<M[K]> extends Model | Model[] ? K : never;
+  }[keyof M];
+
+  type TypedModelClassSpecifier<M extends Model> =
+    string | ModelConstructor<M> | (() => ModelConstructor<M>);
+
+  /**
+   * A `RelationMapping` for related models of type M with relation type R.
+   */
+  export interface TypedRelationMapping<
+    M extends Model,
+    R extends RelationType = RelationType,
+  > extends RelationMapping<M> {
+    relation: R;
+    modelClass: TypedModelClassSpecifier<M>;
+  }
+
+  type TypedRelationMappingFor<T> =
+    NonNullable<T> extends (infer I extends Model)[]
+      ? TypedRelationMapping<I, HasManyRelationType | ManyToManyRelationType>
+      : NonNullable<T> extends infer I extends Model
+        ? TypedRelationMapping<
+            I,
+            BelongsToOneRelationType | HasOneRelationType | HasOneThroughRelationType
+          >
+        : never;
+
+  /**
+   * Relation mappings checked against the relation properties of model M.
+   * Use it with `satisfies`, so the inferred type of the mappings is kept:
+   *
+   *   static relationMappings = {
+   *     pets: { ... },
+   *   } satisfies TypedRelationMappings<Person>;
+   */
+  export type TypedRelationMappings<M extends Model> = [RelationPropertyNames<M>] extends [never]
+    ? Record<string, never>
+    : { [K in RelationPropertyNames<M>]?: TypedRelationMappingFor<M[K]> };
+
   export interface Relation {
     name: string;
     ownerModelClass: typeof Model;
@@ -1754,11 +1818,11 @@ declare namespace Objection {
     ref: ReferenceFunction;
     fn: FunctionFunction;
 
-    BelongsToOneRelation: RelationType;
-    HasOneRelation: RelationType;
-    HasManyRelation: RelationType;
-    ManyToManyRelation: RelationType;
-    HasOneThroughRelation: RelationType;
+    BelongsToOneRelation: BelongsToOneRelationType;
+    HasOneRelation: HasOneRelationType;
+    HasManyRelation: HasManyRelationType;
+    ManyToManyRelation: ManyToManyRelationType;
+    HasOneThroughRelation: HasOneThroughRelationType;
 
     defaultGraphOptions?: GraphOptions;
 
@@ -1865,11 +1929,11 @@ declare namespace Objection {
     static ref: ReferenceFunction;
     static fn: FunctionFunction;
 
-    static BelongsToOneRelation: RelationType;
-    static HasOneRelation: RelationType;
-    static HasManyRelation: RelationType;
-    static ManyToManyRelation: RelationType;
-    static HasOneThroughRelation: RelationType;
+    static BelongsToOneRelation: BelongsToOneRelationType;
+    static HasOneRelation: HasOneRelationType;
+    static HasManyRelation: HasManyRelationType;
+    static ManyToManyRelation: ManyToManyRelationType;
+    static HasOneThroughRelation: HasOneThroughRelationType;
 
     static defaultGraphOptions?: GraphOptions;
 
