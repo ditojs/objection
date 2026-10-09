@@ -7,6 +7,7 @@ const _ = require('lodash'),
   knexUtils = require('../../../lib/utils/knexUtils'),
   knexMocker = require('../../../testUtils/mockKnex'),
   ref = objection.ref,
+  raw = objection.raw,
   Model = objection.Model,
   QueryBuilder = objection.QueryBuilder,
   QueryBuilderBase = objection.QueryBuilderBase;
@@ -444,6 +445,34 @@ describe('QueryBuilder', () => {
             'select "Model".* from "Model" where "id" = 10 or "SomeTable"."someColumn" = "SomeOtherTable"."someOtherColumn"',
           ]);
         });
+    });
+  });
+
+  describe('orderBy([...]) with refs and raws', () => {
+    it('should support refs as array items', () => {
+      expect(
+        TestModel.query()
+          .orderBy([ref('a'), ref('Model.b')])
+          .toKnexQuery()
+          .toString(),
+      ).to.equal('select "Model".* from "Model" order by "a" asc, "Model"."b" asc');
+    });
+
+    it('should support mixed strings, refs, raws and objects as array items', () => {
+      expect(
+        TestModel.query()
+          .orderBy([
+            'a',
+            ref('b'),
+            raw('lower(??)', 'c'),
+            { column: ref('d'), order: 'desc' },
+            { column: 'e', order: 'desc', nulls: 'last' },
+          ])
+          .toKnexQuery()
+          .toString(),
+      ).to.equal(
+        'select "Model".* from "Model" order by "a" asc, "b" asc, lower("c") asc, "d" desc, "e" desc nulls last',
+      );
     });
   });
 
