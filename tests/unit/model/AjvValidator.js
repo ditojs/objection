@@ -320,6 +320,57 @@ describe('AjvValidator', () => {
       expect(validate({ a: 'str' })).to.be(false);
     });
 
+    for (const prop of ['anyOf', 'oneOf']) {
+      it(`should not require patches to match other ${prop} options if one only has required`, () => {
+        const schema = {
+          [prop]: [{ required: ['a'] }, { required: ['b'], properties: { b: { type: 'number' } } }],
+          properties: {
+            a: { type: 'string' },
+            b: {},
+          },
+        };
+        const validate = patchValidator(schema);
+        expect(validate.schema[prop]).to.be(undefined);
+        expect(validate({ a: 'str', b: 'str' })).to.be(true);
+        expect(validate({ b: 1 })).to.be(true);
+        expect(validate({ a: 1 })).to.be(false);
+      });
+
+      it(`should not require nested objects to match other ${prop} options if one only has required`, () => {
+        const schema = {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              [prop]: [
+                { required: ['a'] },
+                { required: ['b'], properties: { b: { type: 'number' } } },
+              ],
+              properties: {
+                a: { type: 'string' },
+                b: {},
+              },
+            },
+          },
+        };
+        const validate = patchValidator(schema);
+        expect(validate.schema.properties.data[prop]).to.be(undefined);
+        expect(validate({ data: {} })).to.be(true);
+        expect(validate({ data: { b: 1 } })).to.be(true);
+        expect(validate({ data: { b: 'str' } })).to.be(true);
+        expect(validate({ data: { a: 1 } })).to.be(false);
+      });
+    }
+
+    it('should keep allOf options that still have constraints', () => {
+      const schema = {
+        allOf: [{ required: ['a'] }, { required: ['b'], properties: { b: { type: 'number' } } }],
+      };
+      const validate = patchValidator(schema);
+      expect(validate.schema.allOf).to.eql([{ properties: { b: { type: 'number' } } }]);
+      expect(validate({ b: 'str' })).to.be(false);
+    });
+
     it('should keep top-level not schemas intact', () => {
       const schema = {
         type: 'object',
