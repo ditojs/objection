@@ -1005,6 +1005,66 @@ describe('QueryBuilder', () => {
       .catch(done);
   });
 
+  describe('orderBy added at build time', () => {
+    class TestModelRelated extends Model {
+      static get tableName() {
+        return 'Related';
+      }
+    }
+
+    class TestModel extends Model {
+      static get tableName() {
+        return 'Model';
+      }
+
+      static get relationMappings() {
+        return {
+          related: {
+            relation: Model.HasManyRelation,
+            modelClass: TestModelRelated,
+            modify: (builder) => builder.orderBy('order'),
+            join: {
+              from: 'Model.id',
+              to: 'Related.modelId',
+            },
+          },
+        };
+      }
+    }
+
+    beforeEach(() => {
+      TestModel.knex(mockKnex);
+      TestModelRelated.knex(mockKnex);
+    });
+
+    it('resultSize should not include orderBy added by relation modify', () => {
+      mockKnexQueryResults = [[{ count: '123' }]];
+      return TestModel.relatedQuery('related')
+        .for(1)
+        .resultSize()
+        .then((res) => {
+          expect(res).to.equal(123);
+          expect(executedQueries).to.eql([
+            'select count(*) as "count" from (select "Related".* from "Related" where "Related"."modelId" in (1)) as "temp"',
+          ]);
+        });
+    });
+
+    it('page should not include orderBy added by relation modify in the total count query', () => {
+      mockKnexQueryResults = [[{ a: '1' }], [{ count: '123' }]];
+      return TestModel.relatedQuery('related')
+        .for(1)
+        .page(0, 10)
+        .then((res) => {
+          expect(res.total).to.equal(123);
+          expect(executedQueries).to.eql([
+            'select "Related".* from "Related" where "Related"."modelId" in (1) order by "order" asc limit 10',
+            'select count(*) as "count" from (select "Related".* from "Related" where "Related"."modelId" in (1)) as "temp"',
+          ]);
+        });
+    });
+  });
+
   it('isFind, isInsert, isUpdate, isPatch, isDelete, isRelate, isUnrelate should return true only for the right operations', () => {
     TestModel.relationMappings = {
       someRel: {
