@@ -61,6 +61,7 @@ import { Person } from '../fixtures/person';
   await Person.query().column('firstName', { last: 'lastName' }, 'age').select();
 
   await Person.query().select('*').from('employees');
+  await Person.query().select('*').from('employees', { only: true });
 
   // No example available in Knex documentation
 

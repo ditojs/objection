@@ -590,7 +590,7 @@ declare namespace Objection {
   }
 
   interface FromMethod<QB extends AnyQueryBuilder> {
-    (table: TableRef<QB>): QB;
+    (table: TableRef<QB>, options?: { only?: boolean }): QB;
   }
 
   interface FromRawMethod<QB extends AnyQueryBuilder> extends RawInterface<QB> {}
