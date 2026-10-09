@@ -1536,6 +1536,31 @@ describe('QueryBuilder', () => {
     expect(builder._explicitRejectValue).to.equal(null);
   });
 
+  it('subqueries in join builders should work with mysql', () => {
+    class MysqlModel extends TestModel {}
+    MysqlModel.knex(Knex({ client: 'mysql' }));
+    const subquery = () => MysqlModel.query().select('id').where('a', '>', 1);
+
+    expect(
+      MysqlModel.query()
+        .innerJoin('Other', (join) => join.onIn('Other.modelId', subquery()))
+        .toKnexQuery()
+        .toString(),
+    ).to.equal(
+      'select `Model`.* from `Model` inner join `Other` on `Other`.`modelId` in (select `id` from `Model` where `a` > 1)',
+    );
+
+    expect(
+      MysqlModel.query()
+        .patch({ a: 1 })
+        .innerJoin('Other', (join) => join.onIn('Other.modelId', subquery().from('Third')))
+        .toKnexQuery()
+        .toString(),
+    ).to.equal(
+      'update `Model` inner join `Other` on `Other`.`modelId` in (select `id` from `Third` where `a` > 1) set `a` = 1',
+    );
+  });
+
   it('joinRelated should add join clause to correct place', (done) => {
     class M1 extends Model {
       static get tableName() {
