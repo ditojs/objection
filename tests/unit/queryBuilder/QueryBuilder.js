@@ -4357,6 +4357,78 @@ describe('QueryBuilder', () => {
       expect(sql).to.contain(petSelections('animalCount'));
     });
 
+    it('should select a raw with a quoted alias in the sql', () => {
+      const sql = buildSql(
+        raw('upper("name") AS "upperName"'),
+        raw('lower("name") as `lowerName`'),
+        raw('1 as [one]'),
+      );
+
+      expect(sql).to.contain(petSelections('upperName', 'lowerName', 'one'));
+    });
+
+    it('should select a knex raw with a quoted alias in the sql', () => {
+      const sql = buildSql(mockKnex.raw('upper("name") as "upperName"'));
+
+      expect(sql).to.contain(petSelections('upperName'));
+    });
+
+    it('should select a raw with an identifier binding as the alias', () => {
+      const sql = buildSql(
+        raw('upper(??) as ??', ['name', 'upperName']),
+        raw('lower(:col:) as :alias:', { col: 'name', alias: 'lowerName' }),
+      );
+
+      expect(sql).to.contain(petSelections('upperName', 'lowerName'));
+    });
+
+    it('should select a raw with an unquoted lower case alias in the sql', () => {
+      const sql = buildSql(raw('upper("name") as upper_name'));
+
+      expect(sql).to.contain(petSelections('upper_name'));
+    });
+
+    it('should not select raws without a recognizable alias', () => {
+      // Unquoted mixed case aliases are folded to lower case by some databases.
+      const sql = buildSql(raw('upper("name") as upperName'), raw('cast("id" as text)'), raw('1'));
+
+      expect(sql).to.contain(petSelections());
+    });
+
+    it('should still select all columns of a relation if a modifier only selects raws with an alias in the sql', () => {
+      const sql = Person.query()
+        .withGraphJoined('pets(selectPet)')
+        .modifiers({
+          selectPet: (query) => query.select(raw('upper("name") as "upperName"')),
+        })
+        .toKnexQuery()
+        .toString();
+
+      expect(sql).to.equal(
+        'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId", "pets"."upperName" as "pets:upperName" ' +
+          'from "Person" left join (select upper("name") as "upperName", "Animal".* from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
+      );
+    });
+
+    it('should still select all root columns if the root query only selects raws with an alias in the sql', () => {
+      mockKnexQueryResults = [
+        [{ one: 1, id: 1, name: 'P1', 'pets:id': 10, 'pets:name': 'A1', 'pets:ownerId': 1 }],
+      ];
+
+      return Person.query()
+        .select(raw('1 as one'))
+        .withGraphJoined('pets')
+        .then((models) => {
+          expect(executedQueries).to.eql([
+            'select 1 as one, "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
+              'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
+          ]);
+          expect(models.map((it) => it.toJSON())).to.eql([
+            { one: 1, id: 1, name: 'P1', pets: [{ id: 10, name: 'A1', ownerId: 1 }] },
+          ]);
+        });
+    });
+
     it('should still select all columns of a relation if a modifier only selects aliased subqueries', () => {
       const sql = Person.query()
         .withGraphJoined('pets(selectPet)')
@@ -4408,6 +4480,7 @@ describe('QueryBuilder', () => {
             id: 1,
             name: 'P1',
             'pets:name': 'A1',
+            'pets:upperName': 'A1!',
             'pets:siblingCount': 2,
             'pets:id': 10,
           },
@@ -4420,16 +4493,17 @@ describe('QueryBuilder', () => {
           selectPet: (query) =>
             query.select(
               'name',
+              raw('upper("name") AS "upperName"'),
               Animal.query().count().where('Animal.ownerId', ref('Person.id')).as('siblingCount'),
             ),
         })
         .then((models) => {
-          expect(executedQueries[0]).to.contain(petSelections('siblingCount'));
+          expect(executedQueries[0]).to.contain(petSelections('upperName', 'siblingCount'));
           expect(models.map((it) => it.toJSON())).to.eql([
             {
               id: 1,
               name: 'P1',
-              pets: [{ name: 'A1', siblingCount: 2 }],
+              pets: [{ name: 'A1', upperName: 'A1!', siblingCount: 2 }],
             },
           ]);
         });

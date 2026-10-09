@@ -1817,6 +1817,80 @@ module.exports = (session) => {
           });
       });
 
+      it('raw selects with an alias in the sql should work in modifier', () => {
+        return Model1.query()
+          .select('Model1.id')
+          .where('Model1.id', 1)
+          .withGraphJoined('model1Relation2(rawAliases)')
+          .modifiers({
+            rawAliases(builder) {
+              builder.select(
+                'id_col',
+                raw('upper(model2_prop1) AS "upper_prop"'),
+                raw('lower(??) as ??', ['model2_prop1', 'lower_prop']),
+              );
+            },
+          })
+          .then((models) => {
+            expect(models).to.have.length(1);
+            expect(models[0].id).to.equal(1);
+            expect(_.sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+              { idCol: 1, upperProp: 'HEJSAN 1', lowerProp: 'hejsan 1', $afterFindCalled: 1 },
+              { idCol: 2, upperProp: 'HEJSAN 2', lowerProp: 'hejsan 2', $afterFindCalled: 1 },
+            ]);
+          });
+      });
+
+      it('raw selects with an alias in the sql should not change which other columns are selected', () => {
+        return Model1.query()
+          .select(raw('upper(??) as "upper_prop"', 'Model1.model1Prop1'))
+          .where('Model1.id', 1)
+          .withGraphJoined('model1Relation2(rawAlias)')
+          .modifiers({
+            rawAlias(builder) {
+              builder.select(raw('upper(model2_prop1) AS "upper_prop"'));
+            },
+          })
+          .then((models) => {
+            expect(models).to.have.length(1);
+            expect(
+              _.pick(models[0], [
+                'id',
+                'model1Id',
+                'model1Prop1',
+                'model1Prop2',
+                'upper_prop',
+                '$afterFindCalled',
+              ]),
+            ).to.eql({
+              id: 1,
+              model1Id: 2,
+              model1Prop1: 'hello 1',
+              model1Prop2: null,
+              upper_prop: 'HELLO 1',
+              $afterFindCalled: 1,
+            });
+            expect(_.sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+              {
+                idCol: 1,
+                model1Id: 1,
+                model2Prop1: 'hejsan 1',
+                model2Prop2: null,
+                upperProp: 'HEJSAN 1',
+                $afterFindCalled: 1,
+              },
+              {
+                idCol: 2,
+                model1Id: 1,
+                model2Prop1: 'hejsan 2',
+                model2Prop2: null,
+                upperProp: 'HEJSAN 2',
+                $afterFindCalled: 1,
+              },
+            ]);
+          });
+      });
+
       it('select should work with alias', () => {
         return Model1.query()
           .select('Model1.id as theId', 'Model1.model1Prop1 as leProp')
