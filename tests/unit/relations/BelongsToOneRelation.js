@@ -1,5 +1,4 @@
-const _ = require('lodash'),
-  Knex = require('knex'),
+const Knex = require('knex'),
   expect = require('expect.js'),
   objection = require('../../../'),
   knexMocker = require('../../../testUtils/mockKnex'),

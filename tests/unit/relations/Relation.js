@@ -1,7 +1,9 @@
-const _ = require('lodash');
 const Knex = require('knex');
 const expect = require('expect.js');
 const objection = require('../../../');
+
+// Converts snake_case and kebab-case keys to camelCase.
+const camelCase = (str) => str.replace(/[-_]+(.)/g, (match, char) => char.toUpperCase());
 const Relation = objection.Relation;
 
 describe('Relation', () => {
@@ -535,9 +537,11 @@ describe('Relation', () => {
     });
 
     OwnerModel.prototype.$parseDatabaseJson = (json) => {
-      return _.mapKeys(json, (value, key) => {
-        return _.camelCase(key);
-      });
+      return Object.fromEntries(
+        Object.entries(json).map(([key, value]) => {
+          return [camelCase(key), value];
+        }),
+      );
     };
 
     Object.defineProperty(RelatedModel, 'tableName', {
@@ -547,9 +551,11 @@ describe('Relation', () => {
     });
 
     RelatedModel.prototype.$parseDatabaseJson = (json) => {
-      return _.mapKeys(json, (value, key) => {
-        return _.camelCase(key);
-      });
+      return Object.fromEntries(
+        Object.entries(json).map(([key, value]) => {
+          return [camelCase(key), value];
+        }),
+      );
     };
 
     relation.setMapping({

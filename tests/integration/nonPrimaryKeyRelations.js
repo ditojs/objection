@@ -1,6 +1,6 @@
 const { Model, raw } = require('../../');
 const { expect } = require('chai');
-const { orderBy } = require('lodash');
+const { sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   describe("relations that don't use the primary keys", () => {
@@ -235,7 +235,7 @@ module.exports = (session) => {
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets'))
             .then((pets) => {
-              expect(orderBy(pets, 'nickname').map((pet) => pet.nickname)).to.eql([
+              expect(sortBy(pets, 'nickname').map((pet) => pet.nickname)).to.eql([
                 'Freudzilla',
                 'Stalinzilla',
               ]);

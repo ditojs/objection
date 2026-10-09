@@ -1,7 +1,7 @@
-const _ = require('lodash');
 const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
 const mockKnexFactory = require('../../testUtils/mockKnex');
+const { sortBy } = require('../../testUtils/testUtils');
 
 // This is another one of those features that need a separate test suite
 // because they are so pervasive.
@@ -709,11 +709,11 @@ function sortEager(models) {
 
   mods.forEach((model) => {
     if (model.model1Relation2) {
-      model.model1Relation2 = _.sortBy(model.model1Relation2, 'idCol');
+      model.model1Relation2 = sortBy(model.model1Relation2, 'idCol');
     }
 
     if (model.model1Relation2[1].model2Relation1) {
-      model.model1Relation2[1].model2Relation1 = _.sortBy(
+      model.model1Relation2[1].model2Relation1 = sortBy(
         model.model1Relation2[1].model2Relation1,
         'id',
       );

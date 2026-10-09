@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const { Model } = require('../../../');
 const { AjvValidator } = require('../../../lib/model/AjvValidator');

@@ -1,6 +1,6 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const { Model } = require('../../../');
+const { sortBy } = require('../../../testUtils/testUtils');
 
 module.exports = (session) => {
   describe('Eagerly loaded empty relations seem to short-circuit conversion to internal structure #292', () => {
@@ -131,7 +131,7 @@ module.exports = (session) => {
       return A.query(session.knex)
         .withGraphJoined('Bs.[Cs, Ds]')
         .then((results) => {
-          results[0].Bs[0].Ds = _.sortBy(results[0].Bs[0].Ds, 'id');
+          results[0].Bs[0].Ds = sortBy(results[0].Bs[0].Ds, 'id');
 
           expect(results).to.eql([
             {

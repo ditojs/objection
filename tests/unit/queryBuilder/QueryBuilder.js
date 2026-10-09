@@ -1,5 +1,4 @@
-const _ = require('lodash'),
-  Knex = require('knex'),
+const Knex = require('knex'),
   expect = require('expect.js'),
   chai = require('chai'),
   objection = require('../../../'),
@@ -345,7 +344,7 @@ describe('QueryBuilder', () => {
   });
 
   it('should return a promise from .then method', () => {
-    let promise = QueryBuilder.forClass(TestModel).then(_.identity);
+    let promise = QueryBuilder.forClass(TestModel).then((it) => it);
     expect(promise).to.be.a(Promise);
     return promise;
   });
@@ -357,7 +356,7 @@ describe('QueryBuilder', () => {
   });
 
   it('should return a promise from .catch method', () => {
-    let promise = QueryBuilder.forClass(TestModel).catch(_.noop);
+    let promise = QueryBuilder.forClass(TestModel).catch(() => {});
     expect(promise).to.be.a(Promise);
     return promise;
   });
@@ -1731,7 +1730,8 @@ describe('QueryBuilder', () => {
 
     // Check all types of operations, call all available checks for reach of them,
     // (e.g. isFind(), isUpdate(), etc) and see if they return the expected result.
-    const getMethodName = (name) => `is${_.capitalize(name === 'patch' ? 'update' : name)}`;
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    const getMethodName = (name) => `is${capitalize(name === 'patch' ? 'update' : name)}`;
 
     for (const name in queries) {
       const query = queries[name];
@@ -2218,9 +2218,9 @@ describe('QueryBuilder', () => {
   it('clearWithGraph() should clear everything related to eager', () => {
     let builder = QueryBuilder.forClass(TestModel)
       .withGraphFetched('a(f).b', {
-        f: _.noop,
+        f: () => {},
       })
-      .modifyGraph('a', _.noop);
+      .modifyGraph('a', () => {});
 
     expect(builder.findOperation('eager')).to.not.equal(null);
     builder.clearWithGraph();
@@ -2858,7 +2858,7 @@ describe('QueryBuilder', () => {
     it("allowGraph('a').withGraphFetched('a(f1)') should be ok", (done) => {
       QueryBuilder.forClass(TestModel)
         .allowGraph('a')
-        .withGraphFetched('a(f1)', { f1: _.noop })
+        .withGraphFetched('a(f1)', { f1: () => {} })
         .then(() => {
           expect(executedQueries).to.have.length(1);
           done();
@@ -2870,7 +2870,7 @@ describe('QueryBuilder', () => {
 
     it("withGraphFetched('a(f1)').allowGraph('a') should be ok", (done) => {
       QueryBuilder.forClass(TestModel)
-        .withGraphFetched('a(f1)', { f1: _.noop })
+        .withGraphFetched('a(f1)', { f1: () => {} })
         .allowGraph('a')
         .then(() => {
           expect(executedQueries).to.have.length(1);
@@ -2919,7 +2919,7 @@ describe('QueryBuilder', () => {
     it("allowGraph('a').withGraphFetched('a(f1)') should be ok", (done) => {
       QueryBuilder.forClass(TestModel)
         .allowGraph('a')
-        .withGraphFetched('a(f1)', { f1: _.noop })
+        .withGraphFetched('a(f1)', { f1: () => {} })
         .then(() => {
           expect(executedQueries).to.have.length(1);
           done();
@@ -3262,7 +3262,7 @@ describe('QueryBuilder', () => {
         }
 
         $afterFind() {
-          this.ids = _.map(this.someRel, 'id');
+          this.ids = (this.someRel || []).map((it) => it.id);
         }
 
         static get relationMappings() {
@@ -3713,9 +3713,16 @@ describe('QueryBuilder', () => {
     it('hasWithGraph() should consider both operations', () => {
       expect(Person.query().withGraphJoined('pets').hasWithGraph()).to.equal(true);
       expect(Person.query().withGraphFetched('pets').hasWithGraph()).to.equal(true);
-      expect(Person.query().modifyGraph('pets', _.noop).hasWithGraph()).to.equal(false);
       expect(
-        Person.query().modifyGraph('pets', _.noop).withGraphJoined('pets').hasWithGraph(),
+        Person.query()
+          .modifyGraph('pets', () => {})
+          .hasWithGraph(),
+      ).to.equal(false);
+      expect(
+        Person.query()
+          .modifyGraph('pets', () => {})
+          .withGraphJoined('pets')
+          .hasWithGraph(),
       ).to.equal(true);
     });
 
@@ -3771,10 +3778,10 @@ describe('QueryBuilder', () => {
 
     it('graphModifiersAtPath() should return the modifiers once', () => {
       const builder = Person.query()
-        .modifyGraph('pets', _.noop)
+        .modifyGraph('pets', () => {})
         .withGraphJoined('pets')
         .withGraphFetched('movies')
-        .modifyGraph('movies', _.noop);
+        .modifyGraph('movies', () => {});
 
       expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets', 'movies']);
     });
@@ -3783,16 +3790,16 @@ describe('QueryBuilder', () => {
       const builder = Person.query()
         .withGraphJoined('pets')
         .withGraphFetched('movies')
-        .modifyGraph('pets', _.noop);
+        .modifyGraph('pets', () => {});
 
-      builder.clone().modifyGraph('movies', _.noop);
+      builder.clone().modifyGraph('movies', () => {});
 
       expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets']);
     });
 
     it('clearWithGraph() should drop the graph modifiers', () => {
       const builder = Person.query()
-        .modifyGraph('pets', _.noop)
+        .modifyGraph('pets', () => {})
         .withGraphJoined('pets')
         .clearWithGraph()
         .withGraphFetched('movies');
@@ -5319,7 +5326,7 @@ function createInsertOperation(builder, mergeWithModel) {
     };
 
     operation.onBuildKnex = function (knexBuilder) {
-      let json = _.merge(this.models[0], mergeWithModel);
+      let json = Object.assign(this.models[0], mergeWithModel);
       knexBuilder.insert(json);
     };
 
@@ -5346,7 +5353,7 @@ function createUpdateOperation(builder, mergeWithModel) {
     };
 
     operation.onBuildKnex = function (knexBuilder) {
-      let json = _.merge(this.model, mergeWithModel);
+      let json = Object.assign(this.model, mergeWithModel);
       knexBuilder.update(json);
     };
 

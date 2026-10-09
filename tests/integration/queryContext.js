@@ -1,5 +1,3 @@
-const _ = require('lodash');
-
 const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
 const chai = require('chai');
@@ -238,7 +236,7 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$afterDelete = (queryContext) => {
-        expect(queryContext).to.eql(_.assign({}, context, merge1, merge2));
+        expect(queryContext).to.eql(Object.assign({}, context, merge1, merge2));
         expect(context.transaction).to.equal(undefined);
         expect(queryContext.transaction).to.equal(mockKnex);
         expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
@@ -374,7 +372,7 @@ module.exports = (session) => {
               runAfter: [
                 (models) => {
                   // Append text to the end of our computed property to make sure this function is called.
-                  _.each(_.flatten([models]), (model) => {
+                  [models].flat().forEach((model) => {
                     model.computed += ' after';
                   });
                   return models;
@@ -478,7 +476,7 @@ module.exports = (session) => {
                 }
               },
               runAfter: (models) => {
-                _.each(_.flatten([models]), (model) => {
+                [models].flat().forEach((model) => {
                   model.computed += ' after';
                 });
                 return models;
@@ -664,8 +662,8 @@ module.exports = (session) => {
             return Model1.query()
               .whereIn('id', [2, 4])
               .then((mod) => {
-                model2 = _.find(mod, { id: 2 });
-                model4 = _.find(mod, { id: 4 });
+                model2 = mod.find((it) => it.id === 2);
+                model4 = mod.find((it) => it.id === 4);
                 mockKnex.reset();
               });
           });
@@ -863,7 +861,7 @@ module.exports = (session) => {
                   return session.knex('model2');
                 })
                 .then((rows) => {
-                  _.each(rows, (row) => {
+                  rows.forEach((row) => {
                     expect(row.model1_id).to.equal(null);
                   });
                 })
@@ -952,7 +950,9 @@ module.exports = (session) => {
                   return session.knex('Model1Model2');
                 })
                 .then((rows) => {
-                  expect(_.filter(rows, { model1Id: 1, model2Id: 1 }).length).to.equal(1);
+                  expect(
+                    rows.filter((it) => it.model1Id === 1 && it.model2Id === 1).length,
+                  ).to.equal(1);
                 })
             );
           });

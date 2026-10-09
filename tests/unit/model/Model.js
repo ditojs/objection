@@ -1,6 +1,7 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const { Model, QueryBuilder, ValidationError, raw, fn } = require('../../../');
+const { snakeCase, camelCase } = require('../../../lib/utils/identifierMapping');
+const { range, sortBy } = require('../../../testUtils/testUtils');
 
 describe('Model', () => {
   describe('fromJson', () => {
@@ -1231,9 +1232,11 @@ describe('Model', () => {
     beforeEach(() => {
       Model1 = createModelClass({
         $formatDatabaseJson: (json) => {
-          return _.mapKeys(json, (value, key) => {
-            return _.snakeCase(key);
-          });
+          return Object.fromEntries(
+            Object.entries(json).map(([key, value]) => {
+              return [snakeCase(key), value];
+            }),
+          );
         },
       });
     });
@@ -1249,9 +1252,11 @@ describe('Model', () => {
     beforeEach(() => {
       Model1 = createModelClass({
         $parseDatabaseJson: (json) => {
-          return _.mapKeys(json, (value, key) => {
-            return _.camelCase(key);
-          });
+          return Object.fromEntries(
+            Object.entries(json).map(([key, value]) => {
+              return [camelCase(key), value];
+            }),
+          );
         },
       });
     });
@@ -2283,8 +2288,8 @@ describe('Model', () => {
         }
       });
 
-      expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+      expect(sortBy(model2Ids)).to.eql(range(4, 26));
     });
 
     it('traverse([], traverser) should not throw', () => {
@@ -2346,8 +2351,8 @@ describe('Model', () => {
         }
       });
 
-      expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+      expect(sortBy(model2Ids)).to.eql(range(4, 26));
     });
 
     it('traverse(null, singleModel, traverser) should traverse through the relation tree', () => {
@@ -2362,8 +2367,8 @@ describe('Model', () => {
         }
       });
 
-      expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+      expect(sortBy(model2Ids)).to.eql(range(4, 26));
     });
 
     it('traverse(ModelClass, model, traverser) should traverse through all ModelClass instances in the relation tree', () => {
@@ -2376,8 +2381,8 @@ describe('Model', () => {
         model1Ids.push(model.id);
       });
 
-      expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+      expect(sortBy(model2Ids)).to.eql(range(4, 26));
     });
 
     it('$traverse(traverser) should traverse through the relation tree', () => {
@@ -2392,8 +2397,8 @@ describe('Model', () => {
         }
       });
 
-      expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+      expect(sortBy(model2Ids)).to.eql(range(4, 26));
     });
 
     it('$traverse(ModelClass, traverser) should traverse through the ModelClass instances in the relation tree', () => {
@@ -2408,8 +2413,8 @@ describe('Model', () => {
           model2Ids.push(model.id);
         });
 
-      expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+      expect(sortBy(model2Ids)).to.eql(range(4, 26));
     });
   });
 
@@ -2501,8 +2506,8 @@ describe('Model', () => {
           }, 5);
         });
       }).then(() => {
-        expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-        expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+        expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+        expect(sortBy(model2Ids)).to.eql(range(4, 26));
       });
     });
 
@@ -2522,8 +2527,8 @@ describe('Model', () => {
           }, 5);
         });
       }).then(() => {
-        expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-        expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+        expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+        expect(sortBy(model2Ids)).to.eql(range(4, 26));
       });
     });
 
@@ -2575,8 +2580,8 @@ describe('Model', () => {
           });
         })
         .then(() => {
-          expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-          expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+          expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+          expect(sortBy(model2Ids)).to.eql(range(4, 26));
         });
     });
 
@@ -2598,8 +2603,8 @@ describe('Model', () => {
           });
         })
         .then(() => {
-          expect(_.sortBy(model1Ids)).to.eql([1, 2, 3]);
-          expect(_.sortBy(model2Ids)).to.eql(_.range(4, 26));
+          expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
+          expect(sortBy(model2Ids)).to.eql(range(4, 26));
         });
     });
   });
@@ -2675,8 +2680,8 @@ describe('Model', () => {
   function createModelClass(proto, staticStuff) {
     class Model1 extends Model {}
 
-    _.merge(Model1.prototype, proto);
-    _.merge(Model1, staticStuff);
+    Object.assign(Model1.prototype, proto);
+    Object.assign(Model1, staticStuff);
 
     return Model1;
   }

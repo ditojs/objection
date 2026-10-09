@@ -1,6 +1,5 @@
-const _ = require('lodash');
 const expect = require('expect.js');
-const { createRejectionReflection } = require('../../../testUtils/testUtils');
+const { createRejectionReflection, sortBy } = require('../../../testUtils/testUtils');
 const { try: promiseTry } = require('../../../lib/utils/promiseUtils');
 
 module.exports = (session) => {
@@ -283,7 +282,7 @@ module.exports = (session) => {
             $afterFindCalled: 1,
           });
 
-          expect(_.sortBy(results[2], 'idCol')).to.eql([
+          expect(sortBy(results[2], 'idCol')).to.eql([
             {
               idCol: 1,
               model1Id: 1,
@@ -300,7 +299,7 @@ module.exports = (session) => {
             },
           ]);
 
-          expect(_.sortBy(results[3], 'id')).to.eql([
+          expect(sortBy(results[3], 'id')).to.eql([
             {
               id: 5,
               model1Id: null,
@@ -379,7 +378,7 @@ module.exports = (session) => {
         .select('Model1.id as id', 'model1Relation1.id as relId')
         .innerJoinRelated('model1Relation1')
         .then((models) => {
-          expect(_.sortBy(models, 'id')).to.eql([
+          expect(sortBy(models, 'id')).to.eql([
             { id: 1, relId: 2, $afterFindCalled: 1 },
             { id: 2, relId: 3, $afterFindCalled: 1 },
             { id: 3, relId: 4, $afterFindCalled: 1 },
@@ -393,7 +392,7 @@ module.exports = (session) => {
         .select('Model1.id as id', 'model1Relation3.id_col as relId')
         .innerJoinRelated('model1Relation3')
         .then((models) => {
-          expect(_.sortBy(models, 'id')).to.eql([
+          expect(sortBy(models, 'id')).to.eql([
             { id: 5, relId: 2, $afterFindCalled: 1 },
             { id: 6, relId: 2, $afterFindCalled: 1 },
           ]);
@@ -482,11 +481,11 @@ module.exports = (session) => {
     function sortRelations(models) {
       Model1.traverse(models, (model) => {
         if (model.model1Relation2) {
-          model.model1Relation2 = _.sortBy(model.model1Relation2, 'idCol');
+          model.model1Relation2 = sortBy(model.model1Relation2, 'idCol');
         }
 
         if (model.model2Relation1) {
-          model.model2Relation1 = _.sortBy(model.model2Relation1, 'id');
+          model.model2Relation1 = sortBy(model.model2Relation1, 'id');
         }
       });
 

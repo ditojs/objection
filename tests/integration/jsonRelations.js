@@ -1,7 +1,6 @@
 const { Model, ref } = require('../../');
-const find = require('lodash/find');
 const expect = require('expect.js');
-const sortBy = require('lodash/sortBy');
+const { sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   describe('JSON relations', () => {
@@ -305,8 +304,8 @@ module.exports = (session) => {
             .then((it) => it.$relatedQuery('favoritePet').relate(123))
             .then(() => Person.query().withGraphFetched('favoritePet').orderBy('name'))
             .then((people) => {
-              const brad = find(people, { name: 'Brad' });
-              const ardnold = find(people, { name: 'Arnold' });
+              const brad = people.find((it) => it.name === 'Brad');
+              const ardnold = people.find((it) => it.name === 'Arnold');
 
               expect(ardnold.json.stuff.favoritePetId).to.equal(123);
               expect(brad.json.stuff.favoritePetId).to.equal(brad.favoritePet.id);
@@ -319,8 +318,8 @@ module.exports = (session) => {
             .then((it) => it.$relatedQuery('favoritePet').unrelate())
             .then(() => Person.query().withGraphFetched('favoritePet').orderBy('name'))
             .then((people) => {
-              const brad = find(people, { name: 'Brad' });
-              const ardnold = find(people, { name: 'Arnold' });
+              const brad = people.find((it) => it.name === 'Brad');
+              const ardnold = people.find((it) => it.name === 'Arnold');
 
               expect(ardnold.json.stuff.favoritePetId).to.equal(null);
               expect(brad.json.stuff.favoritePetId).to.equal(brad.favoritePet.id);

@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const knexMethods = require('knex/lib/query/method-constants').concat('queryBuilder', 'raw');
 
 /**
@@ -23,7 +22,7 @@ module.exports = function mockKnex(knex, mockExecutor) {
     };
   });
 
-  const keys = _.uniqBy([...Object.keys(knex), 'client']);
+  const keys = [...new Set([...Object.keys(knex), 'client'])];
 
   // Mock all other methods and properties.
   keys.forEach((key) => {
@@ -33,7 +32,7 @@ module.exports = function mockKnex(knex, mockExecutor) {
       return;
     }
 
-    if (_.isFunction(value)) {
+    if (typeof value === 'function') {
       mock[key] = (...args) => {
         return knex[key](...args);
       };

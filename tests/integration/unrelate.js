@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const chai = require('chai');
 
@@ -251,10 +250,10 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(3);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 4 })).to.have.length(0);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).to.have.length(0);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
             });
         });
 
@@ -273,10 +272,10 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(2);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 4 })).to.have.length(0);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(0);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).to.have.length(0);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(0);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
             });
         });
 
@@ -358,7 +357,7 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
             });
         });
       });
@@ -745,10 +744,10 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(2);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 4 })).to.have.length(0);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(0);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).to.have.length(0);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(0);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
             });
         });
 

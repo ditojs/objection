@@ -1,7 +1,7 @@
-const _ = require('lodash');
 const { Model } = require('../../');
 const expect = require('expect.js');
 const mockKnexFactory = require('../../testUtils/mockKnex');
+const { sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   describe('Composite keys', () => {
@@ -686,12 +686,12 @@ module.exports = (session) => {
                 },
               })
               .then((models) => {
-                models = _.sortBy(models, ['id3', 'id4']);
+                models = sortBy(models, ['id3', 'id4']);
                 models.forEach((it) => {
-                  it.a = _.sortBy(it.a, ['id1', 'id2']);
+                  it.a = sortBy(it.a, ['id1', 'id2']);
                 });
                 models.forEach((it) => {
-                  it.ab = _.sortBy(it.ab, ['id1', 'id2']);
+                  it.ab = sortBy(it.ab, ['id1', 'id2']);
                 });
 
                 expect(models).to.eql([
@@ -781,7 +781,7 @@ module.exports = (session) => {
                 return b.$relatedQuery('a')[method]('b');
               })
               .then((b) => {
-                b = _.sortBy(b, ['id1', 'id2']);
+                b = sortBy(b, ['id1', 'id2']);
 
                 expect(b).to.eql([
                   {
@@ -819,8 +819,8 @@ module.exports = (session) => {
                 return b.$relatedQuery('ab')[method]('ba');
               })
               .then((b) => {
-                b = _.sortBy(b, ['id1', 'id2']);
-                b[0].ba = _.sortBy(b[0].ba, ['id3', 'id4']);
+                b = sortBy(b, ['id1', 'id2']);
+                b[0].ba = sortBy(b[0].ba, ['id3', 'id4']);
 
                 expect(b).to.eql([
                   {
@@ -1291,7 +1291,7 @@ module.exports = (session) => {
             .then(([a, ab]) => {
               expect(a).to.eql(aOld);
               expect(ab).to.eql(
-                _.sortBy(abOld.concat([{ aid1: 1, aid2: '2', bid3: 1, bid4: '2' }]), [
+                sortBy(abOld.concat([{ aid1: 1, aid2: '2', bid3: 1, bid4: '2' }]), [
                   'bid3',
                   'bid4',
                   'aid1',
@@ -1328,7 +1328,7 @@ module.exports = (session) => {
             })
             .then(([a, ab]) => {
               expect(a).to.eql(aOld);
-              expect(ab).to.eql(_.reject(abOld, { bid3: 1, bid4: '2' }));
+              expect(ab).to.eql(abOld.filter((it) => !(it.bid3 === 1 && it.bid4 === '2')));
             });
         });
       });

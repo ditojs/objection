@@ -1,5 +1,4 @@
-const _ = require('lodash'),
-  expect = require('expect.js'),
+const expect = require('expect.js'),
   parser = require('../../../lib/queryBuilder/parsers/jsonFieldExpressionParser.js');
 
 describe('jsonFieldExpressionParser', () => {
@@ -126,7 +125,7 @@ describe('jsonFieldExpressionParser', () => {
 function testParsing(expr, expected) {
   it(expr, () => {
     let result = parser.parse(expr);
-    let resultArray = [result.columnName].concat(_.map(result.access, 'ref'));
+    let resultArray = [result.columnName].concat(result.access.map((it) => it.ref));
     expect(JSON.stringify(resultArray)).to.eql(JSON.stringify(expected));
   });
 }

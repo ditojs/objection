@@ -1,6 +1,6 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const chai = require('chai');
+const { pick, sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   let Model1 = session.models.Model1;
@@ -274,7 +274,7 @@ module.exports = (session) => {
 
             expect(result).to.have.length(2);
             expect(result[0]).to.be.a(Model2);
-            expect(_.sortBy(result, 'idCol').map((it) => _.pick(it, 'idCol', 'model1Id'))).to.eql([
+            expect(sortBy(result, 'idCol').map((it) => pick(it, 'idCol', 'model1Id'))).to.eql([
               { idCol: 2, model1Id: 1 },
               { idCol: 3, model1Id: 1 },
             ]);
@@ -345,11 +345,11 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(5);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 4 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 5 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
             });
         });
 
@@ -367,12 +367,24 @@ module.exports = (session) => {
               })
               .then((rows) => {
                 expect(rows).to.have.length(6);
-                expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-                expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(1);
-                expect(_.filter(rows, { model2Id: 1, model1Id: 6 })).to.have.length(1);
-                expect(_.filter(rows, { model2Id: 2, model1Id: 4 })).to.have.length(1);
-                expect(_.filter(rows, { model2Id: 2, model1Id: 5 })).to.have.length(1);
-                expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(
+                  1,
+                );
+                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(
+                  1,
+                );
+                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 6)).to.have.length(
+                  1,
+                );
+                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(
+                  1,
+                );
+                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(
+                  1,
+                );
+                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(
+                  1,
+                );
               });
           });
 
@@ -399,12 +411,12 @@ module.exports = (session) => {
 
             expect(result).to.have.length(2);
             expect(result.every((it) => typeof it.id === 'number')).to.equal(true);
-            expect(
-              _.sortBy(result, 'model1Id').map((it) => _.pick(it, 'model1Id', 'model2Id')),
-            ).to.eql([
-              { model1Id: 5, model2Id: 1 },
-              { model1Id: 6, model2Id: 1 },
-            ]);
+            expect(sortBy(result, 'model1Id').map((it) => pick(it, 'model1Id', 'model2Id'))).to.eql(
+              [
+                { model1Id: 5, model2Id: 1 },
+                { model1Id: 6, model2Id: 1 },
+              ],
+            );
 
             const rows = await session.knex('Model1Model2').orderBy('id');
             expect(rows).to.have.length(6);
@@ -424,11 +436,11 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(5);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 4 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 5 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
             });
         });
 
@@ -447,13 +459,15 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(5);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 3 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 5, extra3: 'foobar' })).to.have.length(
-                1,
-              );
-              expect(_.filter(rows, { model2Id: 2, model1Id: 4 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 5 })).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 2, model1Id: 6 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(
+                rows.filter(
+                  (it) => it.model2Id === 1 && it.model1Id === 5 && it.extra3 === 'foobar',
+                ),
+              ).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
             });
         });
       });
@@ -492,7 +506,7 @@ module.exports = (session) => {
             })
             .then((rows) => {
               expect(rows).to.have.length(1);
-              expect(_.filter(rows, { model2Id: 1, model1Id: 2 })).to.have.length(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 2)).to.have.length(1);
             });
         });
       });

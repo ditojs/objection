@@ -1,6 +1,6 @@
 const expect = require('expect.js');
 const classUtils = require('../../lib/utils/classUtils');
-const { delay } = require('../../testUtils/testUtils');
+const { delay, range } = require('../../testUtils/testUtils');
 
 const {
   snakeCase,
@@ -11,7 +11,6 @@ const {
   knexSnakeCaseMappers,
 } = require('../../lib/utils/identifierMapping');
 
-const { range } = require('lodash');
 const { compose, mixin } = require('../../lib/utils/mixin');
 const { map } = require('../../lib/utils/promiseUtils');
 const { jsonEquals, uniqBy, union } = require('../../lib/utils/objectUtils');

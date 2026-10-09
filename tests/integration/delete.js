@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const expect = require('expect.js');
 const expectPartEql = require('./../../testUtils/testUtils').expectPartialEqual;
 const isPostgres = require('../../lib/utils/knexUtils').isPostgres;
@@ -128,7 +127,7 @@ module.exports = (session) => {
             .returning('*')
             .then((deletedObjects) => {
               expect(deletedObjects).to.have.length(2);
-              deleted1 = _.find(deletedObjects, { id: 1 });
+              deleted1 = deletedObjects.find((it) => it.id === 1);
               expect(deleted1).to.be.a(Model1);
               expectPartEql(deleted1, { id: 1, model1Prop1: 'hello 1' });
               return session.knex('Model1').orderBy('id');
@@ -331,8 +330,8 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model1.query().then((parents) => {
-            parent1 = _.find(parents, { id: 1 });
-            parent2 = _.find(parents, { id: 3 });
+            parent1 = parents.find((it) => it.id === 1);
+            parent2 = parents.find((it) => it.id === 3);
           });
         });
 
@@ -443,8 +442,8 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model1.query().then((parents) => {
-            parent1 = _.find(parents, { id: 1 });
-            parent2 = _.find(parents, { id: 2 });
+            parent1 = parents.find((it) => it.id === 1);
+            parent2 = parents.find((it) => it.id === 2);
           });
         });
 
@@ -474,7 +473,7 @@ module.exports = (session) => {
               .returning('*')
               .then((deletedObjects) => {
                 expect(deletedObjects).to.have.length(3);
-                child1 = _.find(deletedObjects, { idCol: 1 });
+                child1 = deletedObjects.find((it) => it.idCol === 1);
                 expect(child1).to.be.a(Model2);
                 expectPartEql(child1, { idCol: 1, model2Prop1: 'text 1' });
                 return session.knex('model2').orderBy('id_col');
@@ -592,8 +591,8 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model2.query().then((parents) => {
-            parent1 = _.find(parents, { idCol: 1 });
-            parent2 = _.find(parents, { idCol: 2 });
+            parent1 = parents.find((it) => it.idCol === 1);
+            parent2 = parents.find((it) => it.idCol === 2);
           });
         });
 
@@ -718,7 +717,7 @@ module.exports = (session) => {
               .returning('*')
               .then((deletedObjects) => {
                 expect(deletedObjects).to.have.length(2);
-                child1 = _.find(deletedObjects, { id: 6 });
+                child1 = deletedObjects.find((it) => it.id === 6);
                 expect(child1).to.be.a(Model1);
                 expectPartEql(child1, { id: 6, model1Prop1: 'blaa 4' });
                 return session.knex('Model1').orderBy('Model1.id');
@@ -796,7 +795,7 @@ module.exports = (session) => {
 
         beforeEach(() => {
           return Model2.query().then((parents) => {
-            parent = _.find(parents, { idCol: 2 });
+            parent = parents.find((it) => it.idCol === 2);
           });
         });
 
@@ -1002,7 +1001,7 @@ module.exports = (session) => {
               .returning('*')
               .then((deletedObjects) => {
                 expect(deletedObjects).to.have.length(3);
-                child1 = _.find(deletedObjects, { idCol: 1 });
+                child1 = deletedObjects.find((it) => it.idCol === 1);
                 expect(child1).to.be.a(Model2);
                 expectPartEql(child1, { idCol: 1, model2Prop1: 'text 1' });
                 return session.knex('model2').orderBy('id_col');
@@ -1236,7 +1235,7 @@ module.exports = (session) => {
               .returning('*')
               .then((deletedObjects) => {
                 expect(deletedObjects).to.have.length(2);
-                child1 = _.find(deletedObjects, { id: 6 });
+                child1 = deletedObjects.find((it) => it.id === 6);
                 expect(child1).to.be.a(Model1);
                 expectPartEql(child1, { id: 6, model1Prop1: 'blaa 4' });
                 return session.knex('Model1').orderBy('Model1.id');
