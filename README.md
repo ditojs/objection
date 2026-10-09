@@ -3,7 +3,7 @@
 [![Tests](https://github.com/ditojs/objection/actions/workflows/test.yml/badge.svg)](https://github.com/ditojs/objection/actions)
 [![Join the chat at https://gitter.im/Vincit/objection.js](https://badges.gitter.im/Vincit/objection.js.svg)](https://gitter.im/Vincit/objection.js?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-# [Objection.js](https://vincit.github.io/objection.js)
+# [Objection.js](https://ditojs.github.io/objection/)
 
 Objection.js is an [ORM](https://en.wikipedia.org/wiki/Object-relational_mapping) for [Node.js](https://nodejs.org/) that aims to stay out of your way and make it as easy as possible to use the full power of SQL and the underlying database engine while still making the common stuff easy and enjoyable.
 
@@ -13,13 +13,13 @@ Objection.js is built on an SQL query builder called [knex](http://knexjs.org). 
 
 What objection.js gives you:
 
-- **An easy declarative way of [defining models](https://vincit.github.io/objection.js/guide/models.html) and relationships between them**
-- **Simple and fun way to [fetch, insert, update and delete](https://vincit.github.io/objection.js/guide/query-examples.html) objects using the full power of SQL**
-- **Powerful mechanisms for [eager loading](https://vincit.github.io/objection.js/guide/query-examples.html#eager-loading), [inserting](https://vincit.github.io/objection.js/guide/query-examples.html#graph-inserts) and [upserting](https://vincit.github.io/objection.js/guide/query-examples.html#graph-upserts) object graphs**
-- **Easy to use [transactions](https://vincit.github.io/objection.js/guide/transactions.html)**
+- **An easy declarative way of [defining models](https://ditojs.github.io/objection/guide/models.html) and relationships between them**
+- **Simple and fun way to [fetch, insert, update and delete](https://ditojs.github.io/objection/guide/query-examples.html) objects using the full power of SQL**
+- **Powerful mechanisms for [eager loading](https://ditojs.github.io/objection/guide/query-examples.html#eager-loading), [inserting](https://ditojs.github.io/objection/guide/query-examples.html#graph-inserts) and [upserting](https://ditojs.github.io/objection/guide/query-examples.html#graph-upserts) object graphs**
+- **Easy to use [transactions](https://ditojs.github.io/objection/guide/transactions.html)**
 - **Official [TypeScript](https://github.com/ditojs/objection/blob/main/typings/objection/index.d.ts) support**
-- **Optional [JSON schema](https://vincit.github.io/objection.js/guide/validation.html) validation**
-- **A way to [store complex documents](https://vincit.github.io/objection.js/guide/documents.html) as single rows**
+- **Optional [JSON schema](https://ditojs.github.io/objection/guide/validation.html) validation**
+- **A way to [store complex documents](https://ditojs.github.io/objection/guide/documents.html) as single rows**
 
 What objection.js **doesn't** give you:
 
@@ -31,7 +31,7 @@ What objection.js **doesn't** give you:
 - **A custom query DSL. SQL is used as a query language.**
   This doesn't mean you have to write SQL strings though. A query builder based on [knex](http://knexjs.org) is
   used to build the SQL. However, if the query builder fails you for some reason, raw SQL strings can be easily
-  written using the [raw](https://vincit.github.io/objection.js/api/objection/#raw) helper function.
+  written using the [raw](https://ditojs.github.io/objection/api/objection/#raw) helper function.
 - **Automatic database schema creation and migration from model definitions.**
   For simple things it is useful that the database schema is automatically generated from the model definitions,
   but usually just gets in your way when doing anything non-trivial. Objection.js leaves the schema related things
@@ -45,9 +45,9 @@ Check out [this issue](https://github.com/Vincit/objection.js/issues/1069) to se
 Shortcuts:
 
 - [Who uses objection.js](https://github.com/Vincit/objection.js/discussions/2464)
-- [API reference](https://vincit.github.io/objection.js/api/query-builder/)
+- [API reference](https://ditojs.github.io/objection/api/query-builder/)
 - [Example projects](https://github.com/Vincit/objection.js/tree/main/examples)
-- [Changelog](https://vincit.github.io/objection.js/release-notes/changelog.html)
-- [v1 -> v2 -> v3 migration guide](https://vincit.github.io/objection.js/release-notes/migration.html)
-- [Contribution guide](https://vincit.github.io/objection.js/guide/contributing.html)
-- [Plugins](https://vincit.github.io/objection.js/guide/plugins.html)
+- [Changelog](https://ditojs.github.io/objection/release-notes/changelog.html)
+- [v1 -> v2 -> v3 migration guide](https://ditojs.github.io/objection/release-notes/migration.html)
+- [Contribution guide](https://ditojs.github.io/objection/guide/contributing.html)
+- [Plugins](https://ditojs.github.io/objection/guide/plugins.html)

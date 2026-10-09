@@ -36,7 +36,7 @@
   "bugs": {
     "url": "https://github.com/ditojs/objection/issues"
   },
-  "homepage": "https://github.com/ditojs/objection",
+  "homepage": "https://ditojs.github.io/objection/",
   "engines": {
     "node": ">=14.0.0"
   },

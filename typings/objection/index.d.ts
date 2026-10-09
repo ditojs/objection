@@ -1,7 +1,7 @@
 /// <reference types="node" />
 
 // Type definitions for Objection.js
-// Project: <http://vincit.github.io/objection.js/>
+// Project: <https://ditojs.github.io/objection/>
 //
 // Contributions by:
 // * Matthew McEachen <https://github.com/mceachen>
@@ -343,7 +343,7 @@ declare namespace Objection {
   }
 
   /**
-   * https://vincit.github.io/objection.js/api/types/#type-fieldexpression
+   * https://ditojs.github.io/objection/api/types/#type-fieldexpression
    */
   type FieldExpression = string;
 
@@ -1758,7 +1758,7 @@ declare namespace Objection {
    * - https://github.com/microsoft/TypeScript/issues/1360
    * - https://github.com/Microsoft/TypeScript/issues/5453
    *
-   * @tutorial https://vincit.github.io/objection.js/guide/transactions.html#creating-a-transaction
+   * @tutorial https://ditojs.github.io/objection/guide/transactions.html#creating-a-transaction
    */
   export interface transaction {
     start(knexOrModel: Knex | AnyModelConstructor): Promise<Transaction>;
