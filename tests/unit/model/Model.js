@@ -1012,6 +1012,27 @@ describe('Model', () => {
       expect(model.$toJson()).to.eql({ a: 1, b: { c: 2, d: 3 }, e: [{ f: 100, d: 3 }] });
     });
 
+    it('should pass formatting options to $formatJson of nested models', () => {
+      let Model2 = createModelClass();
+      let opt = { d: 3 };
+
+      Model1.prototype.$formatJson = Model2.prototype.$formatJson = (jsn, o) => {
+        jsn.d = o && o.d;
+        return jsn;
+      };
+
+      let model = Model1.fromJson({ a: 1 });
+      model.b = Model2.fromJson({ c: 2 });
+      model.e = [Model2.fromJson({ f: 100 })];
+
+      expect(model.$toJson({ format: opt })).to.eql({
+        a: 1,
+        d: 3,
+        b: { c: 2, d: 3 },
+        e: [{ f: 100, d: 3 }],
+      });
+    });
+
     it('should return a deep copy', () => {
       let json = { a: 1, b: [{ c: 2 }], d: { e: 'str' } };
       let model = Model1.fromJson(json);
