@@ -1303,7 +1303,7 @@ declare namespace Objection {
 
   export interface ToJsonOptions extends CloneOptions {
     virtuals?: boolean | string[];
-    format?: Pojo
+    format?: Pojo;
   }
 
   export interface ValidatorContext {
