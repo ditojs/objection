@@ -11,6 +11,12 @@ class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
     return this;
   }
 
+  // Calling first() on the polymorphic `this` type used to cause
+  // "Type instantiation is excessively deep and possibly infinite".
+  firstWithName(name: string) {
+    return this.where('name', name).first();
+  }
+
   delete() {
     return super.delete();
   }
@@ -100,3 +106,15 @@ const movieQuery: QueryBuilder<Movie> = new QueryBuilder(Movie);
 const defaultSchemaMovieQuery: DefaultSchemaQueryBuilder<Movie> = new DefaultSchemaQueryBuilder(
   Movie,
 );
+
+// first() inside custom query builder methods.
+const firstWithName: CustomQueryBuilder<Person, Person | undefined> =
+  Person.query().firstWithName('Jennifer');
+const firstWithNameResult: PromiseLike<Person | undefined> = Person.query()
+  .firstWithName('Jennifer')
+  .someCustomMethod();
+const patchFirstWithName: CustomQueryBuilder<Person, number> = Person.query()
+  .patch({ firstName: 'test' })
+  .firstWithName('Jennifer');
+// @ts-expect-error first() may return undefined
+const firstWithNameNotUndefined: PromiseLike<Person> = Person.query().firstWithName('Jennifer');
