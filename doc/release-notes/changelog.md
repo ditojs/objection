@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.4.1
+
+### Fixes
+
+- Select aliased aggregates like `count('* as n')`, `count('id', { as: 'n' })` and `count({ n: 'id' })` in `withGraphJoined()` modifiers. They were treated as selecting all columns, or were missing from the result. Unaliased aggregates are left out, since their column name differs between databases. [#2219](https://github.com/Vincit/objection.js/issues/2219)
+- JSON field expressions (`ref('col:path')`, `'col:path'` keys in patches) and the `whereJson*()` methods warn once on databases other than Postgres, where they generate invalid or silently wrong SQL. MySQL, for example, reads `#>` as a comment. On MySQL, `whereJsonSupersetOf(column, value)` / `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array are passed on to knex, which supports them there. [#276](https://github.com/Vincit/objection.js/issues/276)
+- Fix the infinite recursion in `andWhereJsonNotSupersetOf()`
+- The warnings about missing join properties from 3.4.0 also cover `ManyToManyRelation` and `HasOneThroughRelation`: owner models missing a join property, and related models that come back without the owner join column, e.g. stripped by `$parseDatabaseJson()`. [#1832](https://github.com/Vincit/objection.js/issues/1832), [#2258](https://github.com/Vincit/objection.js/issues/2258)
+- Warn once when a relation's owner join property holds an array, e.g. a JSON array of keys, which isn't supported and silently fetched no related models. Use a `ManyToManyRelation` through a join table instead. [#2667](https://github.com/Vincit/objection.js/issues/2667)
+
 ## 3.4.0
 
 ### What's new
