@@ -1,3 +1,4 @@
+const Knex = require('knex');
 const expect = require('expect.js');
 const { ref, Model } = require('../../../');
 const { ReferenceBuilder } = require('../../../lib/queryBuilder/ReferenceBuilder');
@@ -59,6 +60,37 @@ describe('ReferenceBuilder', () => {
       `??#>'{"a\\\\\\"b"}'`,
       ['Table.Column'],
     ]);
+  });
+
+  it('should escape single quotes and question marks in json path keys', () => {
+    expect(toRawArgs(ref("Table.Column:x') or 1=1 --"))).to.eql([
+      `??#>'{"x'') or 1=1 --"}'`,
+      ['Table.Column'],
+    ]);
+    expect(toRawArgs(ref('Table.Column:a?b').castText().as('x'))).to.eql([
+      `CAST(??#>>'{a\\?b}' AS text) as ??`,
+      ['Table.Column', 'x'],
+    ]);
+    // Backslashes are doubled inside the quoted text array element.
+    expect(toRawArgs(ref(`Table.Column:["a\\'?b"]`))).to.eql([
+      `??#>'{"a\\\\''\\?b"}'`,
+      ['Table.Column'],
+    ]);
+  });
+
+  it('should keep bindings in order when used as a column in whereIn', () => {
+    class TestModel extends Model {
+      static get tableName() {
+        return 'Table';
+      }
+    }
+    const { sql, bindings } = TestModel.query(Knex({ client: 'pg' }))
+      .whereIn(ref('Table.Column:a?b').castInt(), [1])
+      .toKnexQuery()
+      .toSQL()
+      .toNative();
+    expect(sql).to.contain(`CAST("Table"."Column"#>>'{a?b}' AS integer) in ($1)`);
+    expect(bindings).to.eql([1]);
   });
 
   it('should support few different casts', () => {
