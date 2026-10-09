@@ -1009,6 +1009,187 @@ describe('QueryBuilder', () => {
     }
   });
 
+  describe('none()', () => {
+    beforeEach(() => {
+      // If any query gets executed, it returns rows.
+      mockKnexQueryResults = [[{ id: 1 }], [{ id: 2 }]];
+    });
+
+    it('should return an empty array without executing a query', () => {
+      return TestModel.query()
+        .where('a', 1)
+        .none()
+        .then((result) => {
+          expect(result).to.eql([]);
+          expect(executedQueries).to.have.length(0);
+        });
+    });
+
+    it('should return undefined for single result queries', () => {
+      return Promise.all([
+        TestModel.query().none().first(),
+        TestModel.query().none().findById(1),
+        TestModel.query().findOne({ a: 1 }).none(),
+      ]).then((results) => {
+        expect(results).to.eql([undefined, undefined, undefined]);
+        expect(executedQueries).to.have.length(0);
+      });
+    });
+
+    it('should not execute eager queries', () => {
+      const Person = class Person extends TestModel {
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: TestModel,
+              join: {
+                from: 'Model.id',
+                to: 'Model.ownerId',
+              },
+            },
+          };
+        }
+      };
+
+      return Person.query()
+        .withGraphFetched('pets')
+        .none()
+        .then((result) => {
+          expect(result).to.eql([]);
+          expect(executedQueries).to.have.length(0);
+        });
+    });
+
+    it('should return 0 for update, patch and delete queries without executing them', () => {
+      return Promise.all([
+        TestModel.query().none().update({ a: 1 }),
+        TestModel.query().patch({ a: 1 }).none(),
+        TestModel.query().none().delete(),
+        TestModel.query().none().deleteById(1),
+      ]).then((results) => {
+        expect(results).to.eql([0, 0, 0, 0]);
+        expect(executedQueries).to.have.length(0);
+      });
+    });
+
+    it('should return undefined for patchAndFetchById without executing it', () => {
+      return TestModel.query()
+        .none()
+        .patchAndFetchById(1, { a: 1 })
+        .then((result) => {
+          expect(result).to.equal(undefined);
+          expect(executedQueries).to.have.length(0);
+        });
+    });
+
+    it('should return an empty array for update and delete queries with returning', () => {
+      return Promise.all([
+        TestModel.query().none().patch({ a: 1 }).returning('*'),
+        TestModel.query().none().delete().returning('*'),
+      ]).then((results) => {
+        expect(results).to.eql([[], []]);
+        expect(executedQueries).to.have.length(0);
+      });
+    });
+
+    it('should reject insert queries', () => {
+      return TestModel.query()
+        .none()
+        .insert({ a: 1 })
+        .then(() => {
+          throw new Error('should not get here');
+        })
+        .catch((err) => {
+          expect(err.message).to.equal(
+            'none() can only be used with find, update and delete queries',
+          );
+          expect(executedQueries).to.have.length(0);
+        });
+    });
+
+    it('should replace all where clauses with an always false condition in the built query', () => {
+      expect(
+        TestModel.query()
+          .where('a', 1)
+          .orWhere('b', 2)
+          .none()
+          .orWhere('c', 3)
+          .toKnexQuery()
+          .toString(),
+      ).to.equal('select "Model".* from "Model" where 1 = 0');
+    });
+
+    it('should replace all where clauses with an always false condition in subqueries', () => {
+      return TestModel.query()
+        .whereIn('id', TestModel.query().select('x').where('a', 1).orWhere('b', 2).none())
+        .then(() => {
+          expect(executedQueries).to.eql([
+            'select "Model".* from "Model" where "id" in (select "x" from "Model" where 1 = 0)',
+          ]);
+        });
+    });
+
+    it('should execute find queries with aggregates or groupBy', () => {
+      mockKnexQueryResults = [[{ count: 0 }], [{ total: null }], []];
+
+      return Promise.all([
+        TestModel.query().none().count('* as count').first(),
+        TestModel.query().sum('a as total').none(),
+        TestModel.query().select('a').groupBy('a').none(),
+      ]).then((results) => {
+        expect(results).to.eql([{ count: 0 }, [{ total: null }], []]);
+        expect(executedQueries).to.eql([
+          'select count(*) as "count" from "Model" where 1 = 0',
+          'select sum("a") as "total" from "Model" where 1 = 0',
+          'select "a" from "Model" where 1 = 0 group by "a"',
+        ]);
+      });
+    });
+
+    it('should make resultSize return 0', () => {
+      mockKnexQueryResults = [[{ count: '0' }]];
+
+      return TestModel.query()
+        .none()
+        .resultSize()
+        .then((result) => {
+          expect(result).to.equal(0);
+          expect(executedQueries).to.eql([
+            'select count(*) as "count" from (select "Model".* from "Model" where 1 = 0) as "temp"',
+          ]);
+        });
+    });
+
+    it('should still call the static query hooks', () => {
+      const calls = [];
+
+      class HookModel extends TestModel {
+        static beforeFind() {
+          calls.push('beforeFind');
+        }
+
+        static afterFind({ result }) {
+          calls.push(['afterFind', result]);
+        }
+      }
+
+      return HookModel.query()
+        .none()
+        .then((result) => {
+          expect(result).to.eql([]);
+          expect(calls).to.eql(['beforeFind', ['afterFind', []]]);
+          expect(executedQueries).to.have.length(0);
+        });
+    });
+
+    it('should be matched by has() and removed by clear()', () => {
+      const query = TestModel.query().none();
+      expect(query.has('none')).to.equal(true);
+      expect(query.clear('none').has('none')).to.equal(false);
+    });
+  });
+
   it('should be able to execute same query multiple times', () => {
     let query = QueryBuilder.forClass(TestModel)
       .updateOperationFactory((builder) => {

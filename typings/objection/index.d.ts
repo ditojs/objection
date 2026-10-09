@@ -1035,6 +1035,7 @@ declare namespace Objection {
     increment: IncrementDecrementMethod<this>;
     decrement: IncrementDecrementMethod<this>;
     first: FirstMethod;
+    none: IdentityMethod<this>;
 
     orderBy: OrderByMethod<this>;
     orderByRaw: OrderByRawMethod<this>;
