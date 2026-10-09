@@ -518,8 +518,8 @@ describe('ManyToManyRelation', () => {
             'from "RelatedModel"',
             'inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId"',
             'where "JoinModel"."ownerId" in (666)',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });
@@ -557,8 +557,8 @@ describe('ManyToManyRelation', () => {
             'from "RelatedModel"',
             'inner join "JoinModel" on "RelatedModel"."cid" = "JoinModel"."relatedCId" and "RelatedModel"."did" = "JoinModel"."relatedDId"',
             'where ("JoinModel"."ownerAId", "JoinModel"."ownerBId") in ((11, 22))',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });
@@ -602,8 +602,8 @@ describe('ManyToManyRelation', () => {
             'from "RelatedModel"',
             'inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId"',
             'where "JoinModel"."ownerId" in (666, 667)',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });
@@ -650,8 +650,8 @@ describe('ManyToManyRelation', () => {
             'from "RelatedModel"',
             'inner join "JoinModel" on "RelatedModel"."cid" = "JoinModel"."relatedCId" and "RelatedModel"."did" = "JoinModel"."relatedDId"',
             'where ("JoinModel"."ownerAId", "JoinModel"."ownerBId") in ((11, 22), (11, 33))',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });
@@ -690,8 +690,8 @@ describe('ManyToManyRelation', () => {
             'from "RelatedModel"',
             'inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId"',
             'where "JoinModel"."ownerId" in (666)',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });
@@ -733,8 +733,8 @@ describe('ManyToManyRelation', () => {
             'inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId"',
             'where "JoinModel"."ownerId" in (666)',
             'and "someColumn" = 100',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });
@@ -776,8 +776,8 @@ describe('ManyToManyRelation', () => {
             'inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId"',
             'where "JoinModel"."ownerId" in (666)',
             'and "filteredProperty" = true',
-            'and "name" = \'Teppo\'',
-            'or "age" > 60',
+            'and ("name" = \'Teppo\'',
+            'or "age" > 60)',
           ].join(' '),
         );
       });

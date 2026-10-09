@@ -109,7 +109,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
@@ -156,7 +156,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel".* from "RelatedModel" where ("RelatedModel"."ownerAId", "RelatedModel"."ownerBId") in ((11, 22), (11, 33)) and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel".* from "RelatedModel" where ("RelatedModel"."ownerAId", "RelatedModel"."ownerBId") in ((11, 22), (11, 33)) and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
@@ -200,7 +200,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666, 667) and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666, 667) and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
@@ -233,7 +233,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel"."ownerId", "name" from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel"."ownerId", "name" from "RelatedModel" where "RelatedModel"."ownerId" in (666) and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
@@ -267,7 +267,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "someColumn" = \'foo\' and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "someColumn" = \'foo\' and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
@@ -301,7 +301,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "someColumn" = \'foo\' and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "someColumn" = \'foo\' and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
@@ -335,7 +335,7 @@ describe('HasManyRelation', () => {
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(builder.toKnexQuery().toString());
         expect(executedQueries[0]).to.equal(
-          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "filteredProperty" = true and "name" = \'Teppo\' or "age" > 60',
+          'select "RelatedModel".* from "RelatedModel" where "RelatedModel"."ownerId" in (666) and "filteredProperty" = true and ("name" = \'Teppo\' or "age" > 60)',
         );
       });
     });
