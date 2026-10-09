@@ -14,6 +14,11 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [16.x, 18.x, 20.x, 22.x, 24.x]
+        knex: [default]
+        # Also test the oldest supported knex version, as a separate job.
+        include:
+          - node-version: 16.x
+            knex: 2.3.0
 
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +30,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install knex ${{ matrix.knex }}
+        if: matrix.knex != 'default'
+        run: npm install --no-save knex@${{ matrix.knex }}
 
       - name: Run docker compose
         run: |
@@ -38,4 +47,11 @@ jobs:
         run: node setup-test-db.js
 
       - name: Run tests
+        if: matrix.knex == 'default'
         run: npm test
+
+      # The typings of older knex versions don't compile with current
+      # TypeScript, so only the test suite runs against them.
+      - name: Run tests without typings
+        if: matrix.knex != 'default'
+        run: npx mocha --slow 10 --timeout 15000 --reporter spec --recursive tests --exclude "tests/unit/relations/files/**"

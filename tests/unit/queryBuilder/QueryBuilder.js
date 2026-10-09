@@ -728,8 +728,12 @@ describe('QueryBuilder', () => {
       pg: 'delete from "personTag" using (select "person".* from "person" where "favorite" = ?) as "person" where "person"."category" = ? and "person"."id" = "personTag"."personId"',
     };
 
+    // The bindings are only kept in order since knex 3.3.
+    const [major, minor] = require('knex/package.json').version.split('.').map(Number);
+    const itKnex33 = major > 3 || (major === 3 && minor >= 3) ? it : it.skip;
+
     for (const [client, sql] of Object.entries(expected)) {
-      it(`should keep the bindings in the order of the sql (${client})`, () => {
+      itKnex33(`should keep the bindings in the order of the sql (${client})`, () => {
         const query = PersonTag.query(Knex({ client }))
           .joinRelated('person(favoriteFilter)')
           .modifiers({ favoriteFilter: (builder) => builder.where('favorite', true) })
