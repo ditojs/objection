@@ -610,6 +610,10 @@ Registers a function to be called when the builder is executed.
 
 These functions are executed as the last thing before any promise handlers registered using the [then](/api/query-builder/other-methods.html#then) method. Multiple functions can be chained like [then](/api/query-builder/other-methods.html#then) methods of a promise.
 
+::: tip
+In the queries of relations loaded using [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched), for example in modifiers or [modifyGraph](/api/query-builder/eager-methods.html#modifygraph), the related models are assigned to their owners before `runAfter` is called. The function can modify the related models, but its return value is ignored. To replace or transform the loaded relations, use `runAfter` on the root query instead.
+:::
+
 ##### Arguments
 
 | Argument | Type                                                       | Description                                                                                                                                         |
