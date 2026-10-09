@@ -1415,3 +1415,21 @@ Person.fromJson({ id: 1 }).$modelClass.query();
     ...mappers,
   });
 };
+
+// knexSnakeCaseMappers and knexIdentifierMapping with mapNestedKeys (issue #2273)
+() => {
+  const snakeCaseMappers: objection.KnexMappers = objection.knexSnakeCaseMappers({
+    upperCase: true,
+    mapNestedKeys: true,
+  });
+
+  const identifierMappers: objection.KnexMappers = knexIdentifierMapping(
+    { MyId: 'id' },
+    { mapNestedKeys: true },
+  );
+
+  knex({
+    client: 'mysql',
+    ...snakeCaseMappers,
+  });
+};
