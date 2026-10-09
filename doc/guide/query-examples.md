@@ -983,7 +983,11 @@ await Person.query().insertGraph(
 );
 ```
 
-Jennifer can't be inserted before Felix because of `favoritePetId`, and Felix can't be inserted before Jennifer because of `ownerId`. [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) resolves cycles like this by inserting Jennifer without `favoritePetId` and updating it once Felix has been inserted. This only works if the foreign key column is nullable (or the constraint is deferrable). The update is a normal [patch](/api/query-builder/mutate-methods.html#patch) query, so `$beforeUpdate` and `$afterUpdate` hooks are called for it. Cycles that can't be resolved this way, for example ones created using only `#ref{}` property references, are rejected with a clear error message.
+Jennifer can't be inserted before Felix because of `favoritePetId`, and Felix can't be inserted before Jennifer because of `ownerId`. [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) resolves cycles like this by inserting Jennifer without `favoritePetId` and updating it once Felix has been inserted. The update is a normal [patch](/api/query-builder/mutate-methods.html#patch) query (one per model), so `$beforeUpdate` and `$afterUpdate` hooks are called for it.
+
+This only works if the foreign key column is nullable (or the constraint is deferrable). If it isn't, the database rejects the insert of Jennifer, possibly after other models of the graph have already been inserted. Use a [transaction](/guide/transactions.html) to roll those back in that case.
+
+Cycles that can't be resolved this way are rejected with a clear error message before anything is inserted. This is the case for cycles created using only `#ref{}` property references, cycles where the deferred foreign key is itself read by a `#ref{}` property reference, and cycles where one of the models isn't inserted, for example because of the `noInsert` option.
 
 You can refer to the properties of other models anywhere in the graph using expressions of format `#ref{<id>.<property>}` as long as the reference doesn't create a circular dependency. For example:
 
