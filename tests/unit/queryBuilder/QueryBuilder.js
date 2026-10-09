@@ -898,6 +898,84 @@ describe('QueryBuilder', () => {
       });
   });
 
+  describe('for()', () => {
+    const message =
+      'for() can only be used with queries created using the static relatedQuery method';
+
+    let Person;
+
+    beforeEach(() => {
+      Person = class Person extends TestModel {
+        static get tableName() {
+          return 'person';
+        }
+
+        static get relationMappings() {
+          return {
+            pets: {
+              relation: Model.HasManyRelation,
+              modelClass: TestModel,
+              join: {
+                from: 'person.id',
+                to: 'Model.ownerId',
+              },
+            },
+          };
+        }
+      };
+    });
+
+    const queries = {
+      find: (query) => query,
+      insert: (query) => query.insert({ a: 1 }),
+      update: (query) => query.update({ a: 1 }),
+      patch: (query) => query.patch({ a: 1 }),
+      delete: (query) => query.delete(),
+    };
+
+    for (const [name, create] of Object.entries(queries)) {
+      it(`should reject a ${name} query that wasn't created using relatedQuery`, () => {
+        return create(TestModel.query().for(1))
+          .then(() => {
+            throw new Error('should not get here');
+          })
+          .catch((err) => {
+            expect(err.message).to.equal(message);
+            expect(executedQueries).to.have.length(0);
+          });
+      });
+
+      it(`should reject a ${name} query that wasn't created using relatedQuery when for() is called last`, () => {
+        return create(TestModel.query())
+          .for(1)
+          .then(() => {
+            throw new Error('should not get here');
+          })
+          .catch((err) => {
+            expect(err.message).to.equal(message);
+            expect(executedQueries).to.have.length(0);
+          });
+      });
+    }
+
+    it("toKnexQuery() should throw for a query that wasn't created using relatedQuery", () => {
+      expect(() => {
+        TestModel.query().for(1).delete().toKnexQuery();
+      }).to.throwException((err) => {
+        expect(err.message).to.equal(message);
+      });
+    });
+
+    it('should work with queries created using relatedQuery', () => {
+      return Person.relatedQuery('pets')
+        .for(1)
+        .delete()
+        .then(() => {
+          expect(executedQueries).to.eql(['delete from "Model" where "Model"."ownerId" in (1)']);
+        });
+    });
+  });
+
   it('should be able to execute same query multiple times', () => {
     let query = QueryBuilder.forClass(TestModel)
       .updateOperationFactory((builder) => {
