@@ -4868,6 +4868,58 @@ describe('QueryBuilder', () => {
     });
   });
 
+  describe('unknown graph options (#84)', () => {
+    let Person;
+    let warnings;
+    let originalWarn;
+
+    beforeEach(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+      };
+
+      Person.knex(mockKnex);
+      resetDeprecations();
+      warnings = [];
+      originalWarn = console.warn;
+      console.warn = (message) => warnings.push(message);
+      mockKnexQueryResults = [[{ id: 1 }]];
+      mockKnexQueryResultIndex = 0;
+    });
+
+    afterEach(() => {
+      console.warn = originalWarn;
+      resetDeprecations();
+    });
+
+    it('insertGraph() should warn once about an unknown option', async () => {
+      await Person.query().insertGraph({ name: 'Jennifer' }, { relat: true });
+      await Person.query().insertGraph({ name: 'Jennifer' }, { relat: true });
+
+      expect(warnings).to.have.length(1);
+      expect(warnings[0]).to.contain('Unknown graph option "relat" is ignored.');
+    });
+
+    it('upsertGraph() should warn about an unknown option', async () => {
+      await Person.query().upsertGraph({ name: 'Jennifer' }, { noInset: true });
+
+      expect(warnings).to.have.length(1);
+      expect(warnings[0]).to.contain('Unknown graph option "noInset" is ignored.');
+    });
+
+    it('should not warn about known options', async () => {
+      await Person.query().insertGraph({ name: 'Jennifer' }, { relate: true, allowRefs: true });
+      await Person.query().upsertGraph(
+        { name: 'Jennifer' },
+        { insertMissing: true, noDelete: true, fetchStrategy: 'OnlyNeeded' },
+      );
+
+      expect(warnings).to.eql([]);
+    });
+  });
+
   describe('context', () => {
     it('context() should merge context', () => {
       const builder = TestModel.query();
