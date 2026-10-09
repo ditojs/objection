@@ -1710,6 +1710,23 @@ module.exports = (session) => {
         });
       });
 
+      for (const prop of ['#unrelate', '#delete']) {
+        it(`should fail if ${prop} is used for a root model`, async () => {
+          const err = await Model1.query(session.knex)
+            .upsertGraph({ id: 2, [prop]: true }, { fetchStrategy })
+            .catch((err) => err);
+
+          expect(err).to.be.a(ValidationError);
+          expect(err.type).to.equal('InvalidGraph');
+          expect(err.message).to.equal(
+            '#unrelate and #delete can only be used for related models, not for root models',
+          );
+
+          const row = await session.knex('Model1').where('id', 2).first();
+          expect(row.id).to.equal(2);
+        });
+      }
+
       it('should relate and unrelate some models if `unrelate` and `relate` are arrays of relation paths', () => {
         const upsert = {
           // the root gets updated because it has an id
