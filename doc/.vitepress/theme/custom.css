@@ -1,5 +1,7 @@
 /* Objection's golden accent color, ported from the VuePress theme. */
 :root {
+  /* Keep the sidebar at the left edge on wide screens, like VuePress did. */
+  --vp-layout-max-width: 100%;
   --vp-c-brand-1: #9a6b0c;
   --vp-c-brand-2: #b07d14;
   --vp-c-brand-3: #c8932a;
@@ -32,4 +34,20 @@
 
 .dark .vp-doc .custom-block code {
   background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Center the content in a readable column next to the sidebar, like VuePress
+   did, now that there's no outline aside to share the space with. */
+:root {
+  --vp-sidebar-width: 320px;
+}
+
+.VPDoc.has-sidebar .content-container {
+  max-width: 740px;
+}
+
+/* Keep the home page in a centered column too. */
+.VPHome {
+  max-width: 1020px;
+  margin: 0 auto;
 }
