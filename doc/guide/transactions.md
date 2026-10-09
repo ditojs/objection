@@ -240,6 +240,35 @@ await transaction(Person, async (Person, trx) => {
 
 Originally we advertised this way of doing transactions as a remedy to the transaction passing plague but it has turned out to be pretty error-prone. This approach is handy for single inline functions that do a handful of operations, but becomes tricky when you have to call services and helper methods that also perform database queries. To get the helpers and service functions to participate in the transaction you need to pass around the bound copies of the model classes. If you `require` the same models in the helpers and start queries through them, they will **not** be executed in the transaction since the required models are not the bound copies, but the original models from which the copies were taken.
 
+## Running code after the transaction commits
+
+Sometimes code deep inside a transaction needs to schedule work that must only happen once the transaction has been committed, for example sending an email or invalidating a cache. Knex transaction objects have an `executionPromise` property for this: it resolves after the transaction has been committed and rejects if it is rolled back.
+
+```js
+async function createPerson(attrs, trx) {
+  const person = await Person.query(trx).insert(attrs);
+
+  trx.executionPromise.then(
+    () => sendWelcomeEmail(person),
+    // Rolled back: don't send. The rejection must be handled here,
+    // otherwise it becomes an unhandled promise rejection.
+    () => {},
+  );
+
+  return person;
+}
+
+await Person.transaction(async (trx) => {
+  await createPerson({ firstName: 'Jennifer' }, trx);
+});
+```
+
+Things to keep in mind:
+
+- The callback is not awaited by the transaction. `await Person.transaction(...)` doesn't wait for `sendWelcomeEmail` to finish, and errors thrown by it are not passed on to the caller of `transaction`. If you control the code that starts the transaction, simply running your code after `await Person.transaction(...)` is often simpler.
+- When using [Model.startTransaction()](/api/model/static-methods.html#static-starttransaction) or `knex.transaction()` without a callback, pass the error to `trx.rollback(err)`. Calling `trx.rollback()` without an argument resolves `executionPromise` just like a commit.
+- For a nested transaction (savepoint) created with `trx.transaction()`, `executionPromise` resolves when the savepoint is released, not when the outer transaction commits. Use the `executionPromise` of the outermost transaction instead.
+
 ## Setting the isolation level
 
 You can use `raw` to set the isolation level (among other things):

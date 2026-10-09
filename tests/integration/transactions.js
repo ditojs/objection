@@ -851,6 +851,58 @@ module.exports = (session) => {
       });
     });
 
+    describe('trx.executionPromise', () => {
+      function onCommit(trx) {
+        return trx.executionPromise.then(
+          () => true,
+          () => false,
+        );
+      }
+
+      it('should resolve after commit (Model.transaction)', async () => {
+        let committed;
+        await Model1.transaction(async (trx) => {
+          committed = onCommit(trx);
+          await Model1.query(trx).insert({ model1Prop1: 'test 1' });
+        });
+
+        expect(await committed).to.equal(true);
+        expect(await session.knex('Model1')).to.have.length(1);
+      });
+
+      it('should reject on rollback (Model.transaction)', async () => {
+        let committed;
+        await Model1.transaction(async (trx) => {
+          committed = onCommit(trx);
+          await Model1.query(trx).insert({ model1Prop1: 'test 1' });
+          throw new Error('rollback');
+        }).catch(_.noop);
+
+        expect(await committed).to.equal(false);
+        expect(await session.knex('Model1')).to.have.length(0);
+      });
+
+      it('should resolve after commit (Model.startTransaction)', async () => {
+        const trx = await Model1.startTransaction();
+        const committed = onCommit(trx);
+        await Model1.query(trx).insert({ model1Prop1: 'test 1' });
+        await trx.commit();
+
+        expect(await committed).to.equal(true);
+        expect(await session.knex('Model1')).to.have.length(1);
+      });
+
+      it('should reject on rollback with an error (Model.startTransaction)', async () => {
+        const trx = await Model1.startTransaction();
+        const committed = onCommit(trx);
+        await Model1.query(trx).insert({ model1Prop1: 'test 1' });
+        await trx.rollback(new Error('rollback'));
+
+        expect(await committed).to.equal(false);
+        expect(await session.knex('Model1')).to.have.length(0);
+      });
+    });
+
     describe('model.$knex()', () => {
       it("model.$knex() methods should return the model's transaction", (done) => {
         transaction
