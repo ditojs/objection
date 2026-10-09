@@ -78,11 +78,11 @@ import { Model, Page } from 'objection';
 class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   // These are necessary. You can just copy-paste them and change the
   // name of the query builder class.
-  ArrayQueryBuilderType!: MyQueryBuilder<M, M[]>;
-  SingleQueryBuilderType!: MyQueryBuilder<M, M>;
-  MaybeSingleQueryBuilderType!: MyQueryBuilder<M, M | undefined>;
-  NumberQueryBuilderType!: MyQueryBuilder<M, number>;
-  PageQueryBuilderType!: MyQueryBuilder<M, Page<M>>;
+  declare ArrayQueryBuilderType: MyQueryBuilder<M, M[]>;
+  declare SingleQueryBuilderType: MyQueryBuilder<M, M>;
+  declare MaybeSingleQueryBuilderType: MyQueryBuilder<M, M | undefined>;
+  declare NumberQueryBuilderType: MyQueryBuilder<M, number>;
+  declare PageQueryBuilderType: MyQueryBuilder<M, Page<M>>;
 
   myCustomMethod(something: number): this {
     doSomething(something);
@@ -92,7 +92,7 @@ class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
 
 class BaseModel extends Model {
   // Both of these are needed.
-  QueryBuilderType!: MyQueryBuilder<this>;
+  declare QueryBuilderType: MyQueryBuilder<this>;
   static QueryBuilder = MyQueryBuilder;
 }
 ```

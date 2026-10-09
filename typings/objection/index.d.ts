@@ -127,11 +127,13 @@ declare namespace Objection {
     | string
     | number
     | boolean
+    | bigint
     | Date
     | Buffer
     | string[]
     | number[]
     | boolean[]
+    | bigint[]
     | Date[]
     | Buffer[]
     | null;
@@ -1095,7 +1097,7 @@ declare namespace Objection {
 
     throwIfNotFound: (
       arg?: any,
-    ) => R extends Model | undefined ? SingleQueryBuilder<QueryBuilder<M, M>> : this;
+    ) => R extends Model | undefined ? SingleQueryBuilder<this> : this;
 
     returning: ReturningMethod;
     forUpdate: IdentityMethod<this>;
