@@ -3498,6 +3498,210 @@ describe('QueryBuilder', () => {
           expect(count).to.equal(2);
         });
     });
+
+    describe('withGraph()', () => {
+      // Returns the top-level relation names of the joined and fetched
+      // operations of `builder`.
+      const relationsOf = (builder) => {
+        const names = (OperationClass) => {
+          const op = builder.findOperation(OperationClass);
+          return op ? op.expression.node.$childNames : [];
+        };
+
+        return { join: names(JoinEagerOperation), fetch: names(WhereInEagerOperation) };
+      };
+
+      it('should fetch relations if no algorithm was used before', () => {
+        expect(relationsOf(Person.query().withGraph('[pets, movies]'))).to.eql({
+          join: [],
+          fetch: ['pets', 'movies'],
+        });
+      });
+
+      it('should use the algorithm given in the options', () => {
+        const builder = Person.query()
+          .withGraph('pets', { algorithm: 'join' })
+          .withGraph('movies', { algorithm: 'fetch' });
+
+        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies'] });
+      });
+
+      it('should throw for unknown algorithms', () => {
+        expect(() => {
+          Person.query().withGraph('pets', { algorithm: 'naive' });
+        }).to.throwException((err) => {
+          expect(err.message).to.equal(
+            'unknown graph algorithm "naive", expected "fetch" or "join"',
+          );
+        });
+      });
+
+      it('should use the most recently used algorithm for new relations', () => {
+        expect(relationsOf(Person.query().withGraphJoined('pets').withGraph('movies'))).to.eql({
+          join: ['pets', 'movies'],
+          fetch: [],
+        });
+
+        const builder = Person.query()
+          .withGraphFetched('movies')
+          .withGraphJoined('pets')
+          .withGraph('parent');
+
+        expect(relationsOf(builder)).to.eql({ join: ['pets', 'parent'], fetch: ['movies'] });
+      });
+
+      it('should merge existing relations into their operations without throwing', () => {
+        const builder = Person.query()
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .withGraph('[pets, movies, parent]');
+
+        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies', 'parent'] });
+      });
+
+      it('should not change the most recently used algorithm when merging', () => {
+        const builder = Person.query()
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .withGraph('pets')
+          .withGraph('parent');
+
+        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies', 'parent'] });
+      });
+
+      it('should add nested relations to the operation of their top-level relation', () => {
+        const builder = Person.query()
+          .withGraphJoined('parent')
+          .withGraphFetched('movies')
+          .withGraph('[parent.pets, movies]');
+
+        expect(relationsOf(builder)).to.eql({ join: ['parent'], fetch: ['movies'] });
+        expect(builder.findOperation(JoinEagerOperation).expression.toString()).to.equal(
+          'parent.pets',
+        );
+      });
+
+      it('should still throw for contradicting explicit algorithms', () => {
+        expect(() => {
+          Person.query().withGraphJoined('pets').withGraph('pets', { algorithm: 'fetch' });
+        }).to.throwException((err) => {
+          expect(err.message).to.equal(
+            'relation `pets` cannot be loaded with both withGraphJoined and withGraphFetched',
+          );
+        });
+      });
+
+      it('should keep the most recently used algorithm in clones', () => {
+        const builder = Person.query().withGraphJoined('pets').clone().withGraph('movies');
+        expect(relationsOf(builder)).to.eql({ join: ['pets', 'movies'], fetch: [] });
+      });
+
+      it('should forget the most recently used algorithm in clearWithGraph()', () => {
+        const builder = Person.query().withGraphJoined('pets').clearWithGraph().withGraph('movies');
+        expect(relationsOf(builder)).to.eql({ join: [], fetch: ['movies'] });
+      });
+
+      it('should inherit the most recently used algorithm in child queries', () => {
+        const parent = Person.query().withGraphJoined('pets');
+        const child = Person.query().childQueryOf(parent).withGraph('movies');
+        expect(relationsOf(child)).to.eql({ join: ['movies'], fetch: [] });
+      });
+
+      it('should pass the other options to the operations', () => {
+        const builder = Person.query()
+          .withGraphFetched('parent')
+          .withGraphJoined('movies')
+          .withGraph('pets', { joinOperation: 'innerJoin' })
+          .withGraph('parent', { maxBatchSize: 1 });
+
+        expect(builder.toKnexQuery().toString()).to.contain(
+          'inner join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
+        );
+        expect(builder.findOperation(WhereInEagerOperation).graphOptions.maxBatchSize).to.equal(1);
+      });
+
+      it('should load the merged graph', () => {
+        mockKnexQueryResults = [flatRows(), movieRows()];
+
+        return Person.query()
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .withGraph('[pets, movies]')
+          .then((models) => {
+            expect(executedQueries).to.eql([
+              joinQuery,
+              'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
+            ]);
+
+            expect(toJson(models)).to.eql(expectedGraph);
+          });
+      });
+
+      it('should apply modifiers to both operations', () => {
+        mockKnexQueryResults = [flatRows(), movieRows()];
+
+        return Person.query()
+          .withGraphJoined('pets')
+          .withGraphFetched('movies')
+          .withGraph('[pets(a10), movies(m100)]')
+          .modifiers({
+            a10: (builder) => builder.where('name', 'A10'),
+            m100: (builder) => builder.where('name', 'M100'),
+          })
+          .then(() => {
+            expect(executedQueries).to.have.length(2);
+            expect(executedQueries[0]).to.contain(
+              `left join (select "Animal".* from "Animal" where "name" = 'A10') as "pets"`,
+            );
+            expect(executedQueries[1]).to.equal(
+              `select "Movie".* from "Movie" where "Movie"."personId" in (1, 2) and "name" = 'M100'`,
+            );
+          });
+      });
+    });
+
+    describe('isJoinChildQuery()', () => {
+      const orders = [
+        ['withGraphJoined', 'withGraphFetched'],
+        ['withGraphFetched', 'withGraphJoined'],
+      ];
+
+      for (const order of orders) {
+        it(`should tell the child queries of joined and fetched relations apart (${order.join(
+          ', ',
+        )})`, () => {
+          mockKnexQueryResults = [flatRows(), movieRows()];
+          const childQueries = {};
+
+          let builder = Person.query().modifiers({
+            capture: (query) => {
+              childQueries[query.modelClass().getTableName()] = query.isJoinChildQuery();
+            },
+          });
+
+          for (const method of order) {
+            builder = builder[method](
+              method === 'withGraphJoined' ? 'pets(capture)' : 'movies(capture)',
+            );
+          }
+
+          expect(builder.isJoinChildQuery()).to.equal(false);
+
+          return builder.then(() => {
+            expect(childQueries).to.eql({ Animal: true, Movie: false });
+          });
+        });
+      }
+
+      it('should be kept in clones', () => {
+        const parent = Person.query();
+        const child = Person.query().childQueryOf(parent, { isJoinChildQuery: true });
+
+        expect(child.isJoinChildQuery()).to.equal(true);
+        expect(child.clone().isJoinChildQuery()).to.equal(true);
+        expect(parent.isJoinChildQuery()).to.equal(false);
+      });
+    });
   });
 
   describe('withGraphJoined with a different joinOperation per call (#2125)', () => {
