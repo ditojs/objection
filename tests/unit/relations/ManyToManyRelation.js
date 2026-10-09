@@ -144,6 +144,30 @@ describe('ManyToManyRelation', () => {
     expect(isSubclassOf(relation.joinModelClass, JoinModel)).to.equal(true);
   });
 
+  it('should accept references created with Model.ref()', () => {
+    let relation = new ManyToManyRelation('testRelation', OwnerModel);
+
+    relation.setMapping({
+      relation: ManyToManyRelation,
+      modelClass: RelatedModel,
+      join: {
+        from: OwnerModel.ref('id'),
+        through: {
+          modelClass: JoinModel,
+          from: JoinModel.ref('ownerId'),
+          to: JoinModel.ref('relatedId'),
+        },
+        to: RelatedModel.ref('ownerId'),
+      },
+    });
+
+    expect(relation.joinTable).to.equal('JoinModel');
+    expect(relation.ownerProp.cols).to.eql(['id']);
+    expect(relation.joinTableOwnerProp.cols).to.eql(['ownerId']);
+    expect(relation.joinTableRelatedProp.cols).to.eql(['relatedId']);
+    expect(relation.relatedProp.cols).to.eql(['ownerId']);
+  });
+
   it('should accept an absolute file path to a join model in join.through object', () => {
     let relation = new ManyToManyRelation('testRelation', OwnerModel);
 
