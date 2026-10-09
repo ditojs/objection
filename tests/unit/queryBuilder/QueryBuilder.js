@@ -3245,6 +3245,27 @@ describe('QueryBuilder', () => {
       expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets', 'movies']);
     });
 
+    it('clone() should not share the graph modifiers', () => {
+      const builder = Person.query()
+        .withGraphJoined('pets')
+        .withGraphFetched('movies')
+        .modifyGraph('pets', _.noop);
+
+      builder.clone().modifyGraph('movies', _.noop);
+
+      expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets']);
+    });
+
+    it('clearWithGraph() should drop the graph modifiers', () => {
+      const builder = Person.query()
+        .modifyGraph('pets', _.noop)
+        .withGraphJoined('pets')
+        .clearWithGraph()
+        .withGraphFetched('movies');
+
+      expect(builder.graphModifiersAtPath()).to.eql([]);
+    });
+
     it('clearWithGraph() should clear both operations', () => {
       mockKnexQueryResults = [[{ id: 1 }]];
 
