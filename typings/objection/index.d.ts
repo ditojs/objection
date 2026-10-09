@@ -291,8 +291,8 @@ declare namespace Objection {
 
   /**
    * Marks the relations in tree T as fetched on model M: they become required
-   * and are narrowed recursively. Declared `null` is kept, as to-one relations
-   * can be null when there is no related row.
+   * and are narrowed recursively. Only `undefined` is removed: declared `null`
+   * is kept, as to-one relations can be null when there is no related row.
    */
   type WithGraph<M, T> = [keyof T] extends [never]
     ? M
@@ -300,7 +300,16 @@ declare namespace Objection {
 
   type WithGraphRelations<M, T, K extends keyof M & keyof T> = [K] extends [never]
     ? M
-    : { -readonly [P in K]-?: WithGraphProperty<Defined<M[P]>, T[P]> } & M;
+    : { -readonly [P in K]-?: WithGraphProperty<Defined<M[P]>, T[P]> } & UnnarrowedMethods<M> & M;
+
+  /**
+   * `$query()` of the un-narrowed model M, as it doesn't fetch the relations
+   * that were fetched on the instance. Otherwise its polymorphic `this` would
+   * resolve to the narrowed model. With chained narrowing, the first `$query`
+   * signature of the intersection wins, which is the one of the innermost,
+   * un-narrowed model.
+   */
+  type UnnarrowedMethods<M> = Pick<M, Extract<'$query', keyof M>>;
 
   /**
    * The keys of tree T that are relation properties of model M.
