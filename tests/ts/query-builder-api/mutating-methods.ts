@@ -70,6 +70,12 @@ import { Person } from '../fixtures/person';
 
   await Person.query().patchAndFetchById(134, { age: 24 });
 
+  const numPatched: number = await Person.query().patchById(134, { age: 24 });
+  await Person.query().patchById([10, '20', 46], { age: 24 }).throwIfNotFound();
+
+  const numUpdated: number = await Person.query().updateById(134, { firstName: 'Jennifer' });
+  await Person.query().updateById([10, '20', 46], { firstName: 'Jennifer' });
+
   let jennifer = await Person.query().findOne({ firstName: 'Jennifer' });
   let updatedJennifer = await jennifer!.$query().patchAndFetch({ age: 24 });
 

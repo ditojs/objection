@@ -358,6 +358,96 @@ module.exports = (session) => {
       });
     });
 
+    describe('.query().patchById()', () => {
+      beforeEach(() => {
+        return session.populate([
+          {
+            id: 1,
+            model1Prop1: 'hello 1',
+            model1Relation2: [
+              {
+                idCol: 1,
+                model2Prop1: 'text 1',
+              },
+              {
+                idCol: 2,
+                model2Prop1: 'text 2',
+              },
+            ],
+          },
+          {
+            id: 2,
+            model1Prop1: 'hello 2',
+          },
+          {
+            id: 3,
+            model1Prop1: 'hello 3',
+          },
+        ]);
+      });
+
+      it('should patch a model by id and return the number of patched rows', async () => {
+        const model = Model1.fromJson({ model1Prop1: 'updated text' });
+        const numUpdated = await Model1.query().patchById(2, model);
+
+        expect(numUpdated).to.equal(1);
+        expect(model.$beforeUpdateCalled).to.equal(1);
+        expect(model.$beforeUpdateOptions).to.eql({ patch: true });
+        expect(model.$afterUpdateCalled).to.equal(1);
+        expect(model.$afterUpdateOptions).to.eql({ patch: true });
+
+        const rows = await session.knex('Model1').orderBy('id');
+        expect(rows).to.have.length(3);
+        expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
+        expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
+        expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
+      });
+
+      it('should return 0 if the model does not exist', async () => {
+        const numUpdated = await Model1.query().patchById(1000, { model1Prop1: 'updated text' });
+        expect(numUpdated).to.equal(0);
+      });
+
+      it('should throw a NotFoundError with throwIfNotFound() if the model does not exist', async () => {
+        let error;
+
+        try {
+          await Model1.query().patchById(1000, { model1Prop1: 'updated text' }).throwIfNotFound();
+        } catch (err) {
+          error = err;
+        }
+
+        expect(error).to.be.a(Model1.NotFoundError);
+      });
+
+      it('should throw a clear error if undefined is passed as id', async () => {
+        let error;
+
+        try {
+          await Model1.query().patchById(undefined, { model1Prop1: 'updated text' });
+        } catch (err) {
+          error = err;
+        }
+
+        expect(error.message).to.equal('undefined was passed to patchById');
+
+        const rows = await session.knex('Model1').where('model1Prop1', 'updated text');
+        expect(rows).to.have.length(0);
+      });
+
+      it('should patch a related model by id', async () => {
+        const numUpdated = await Model1.relatedQuery('model1Relation2')
+          .for(1)
+          .patchById(2, { model2Prop1: 'updated text' });
+
+        expect(numUpdated).to.equal(1);
+
+        const rows = await session.knex('model2').orderBy('id_col');
+        expectPartEql(rows[0], { id_col: 1, model2_prop1: 'text 1' });
+        expectPartEql(rows[1], { id_col: 2, model2_prop1: 'updated text' });
+      });
+    });
+
     describe('.query().patchAndFetchById()', () => {
       beforeEach(() => {
         return session.populate([

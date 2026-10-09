@@ -1277,6 +1277,7 @@ declare namespace Objection {
 
     update(update: PartialModelObject<M>): NumberQueryBuilder<this>;
     update(): NumberQueryBuilder<this>;
+    updateById(id: MaybeCompositeId, update: PartialModelObject<M>): NumberQueryBuilder<this>;
     updateAndFetch(update: PartialModelObject<M>): SingleQueryBuilder<this>;
     updateAndFetchById(
       id: MaybeCompositeId,
@@ -1285,6 +1286,7 @@ declare namespace Objection {
 
     patch(update: PartialModelObject<M>): NumberQueryBuilder<this>;
     patch(): NumberQueryBuilder<this>;
+    patchById(id: MaybeCompositeId, update: PartialModelObject<M>): NumberQueryBuilder<this>;
     patchAndFetch(update: PartialModelObject<M>): SingleQueryBuilder<this>;
     patchAndFetchById(
       id: MaybeCompositeId,

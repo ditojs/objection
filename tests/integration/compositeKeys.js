@@ -605,6 +605,22 @@ module.exports = (session) => {
             ]);
           });
       });
+
+      it('patchById should accept a composite id', async () => {
+        const count = await A.query().patchById([1, '2'], { aval: 'x' });
+        expect(count).to.eql(1);
+
+        const rows = await session.knex('A').orderBy(['id1', 'id2']);
+        expect(rows.map((row) => row.aval)).to.eql(['a', 'x', 'c', 'd', 'e']);
+      });
+
+      it('updateById should accept a composite id', async () => {
+        const count = await A.query().updateById([2, '3'], { aval: 'y' });
+        expect(count).to.eql(1);
+
+        const rows = await session.knex('A').orderBy(['id1', 'id2']);
+        expect(rows.map((row) => row.aval)).to.eql(['a', 'b', 'c', 'y', 'e']);
+      });
     });
 
     describe('relations', () => {
