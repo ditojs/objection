@@ -837,6 +837,16 @@ const tableRef: string = qb.tableRefFor(Person);
 const tableRefModelClass: string = qb.tableRefFor(modelFromQuery);
 const queryTableName: string = qb.tableName();
 const queryTableRef: string = qb.tableRef();
+const tableNameFromString: string = qb.tableNameFor('persons');
+const tableRefFromString: string = qb.tableRefFor('persons');
+const aliasForModelClass: string | null = qb.aliasFor(Person);
+const aliasForTableName: string | null = qb.aliasFor('persons');
+// @ts-expect-error aliasFor() getter returns null when no alias is set
+const aliasForNotNull: string = qb.aliasFor(Person);
+const aliasForSetter: objection.QueryBuilder<Person> = qb.aliasFor(Person, 'p');
+const aliasForSetterTableName: objection.QueryBuilder<Person> = qb.aliasFor('persons', 'p');
+// @ts-expect-error tableNameFor() requires a model class or table name
+qb.tableNameFor(1);
 
 function noop() {
   // no-op
