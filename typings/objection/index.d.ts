@@ -171,6 +171,207 @@ declare namespace Objection {
 
   type RelationExpression<M extends Model> = string | object;
 
+  // Type-level parsing of relation expressions, used to narrow the result
+  // types of `withGraphFetched()`, `withGraphJoined()` and `fetchGraph()`.
+
+  /**
+   * Parses a relation expression, in string or object notation, into a tree
+   * of fetched relations: '[pets.owner, children]' and
+   * `{ pets: { owner: true }, children: true }` both become
+   * `{ pets: { owner: {} }, children: {} }`.
+   *
+   * Anything that isn't a literal expression (e.g. a `string` variable) yields
+   * `{}`, and so do nodes the parser doesn't understand (aliases, `*`,
+   * recursion with `^`), so these simply don't narrow.
+   */
+  type ParseRelationExpression<E> = string extends E
+    ? {}
+    : E extends string
+      ? ParseRelationString<E>
+      : ParseRelationObject<E>;
+
+  type Whitespace = ' ' | '\n' | '\r' | '\t';
+
+  type Trim<S extends string> = S extends `${Whitespace}${infer R}`
+    ? Trim<R>
+    : S extends `${infer L}${Whitespace}`
+      ? Trim<L>
+      : S;
+
+  /**
+   * Counts the occurrences of character C in S, as a tuple length.
+   */
+  type CountChar<
+    S extends string,
+    C extends string,
+    N extends 0[] = [],
+  > = S extends `${string}${C}${infer R}` ? CountChar<R, C, [...N, 0]> : N['length'];
+
+  /**
+   * True if S has as many opening as closing brackets and parentheses.
+   */
+  type IsBalanced<S extends string> =
+    CountChar<S, '['> extends CountChar<S, ']'>
+      ? CountChar<S, '('> extends CountChar<S, ')'>
+        ? true
+        : false
+      : false;
+
+  /**
+   * Splits a list of expressions at the commas that aren't nested inside
+   * brackets or parentheses: 'a, b.[c, d]' -> ['a', 'b.[c, d]'].
+   */
+  type SplitList<
+    S extends string,
+    Acc extends string = '',
+    Out extends string[] = [],
+  > = S extends `${infer Head},${infer Rest}`
+    ? IsBalanced<`${Acc}${Head}`> extends true
+      ? SplitList<Rest, '', [...Out, `${Acc}${Head}`]>
+      : SplitList<Rest, `${Acc}${Head},`, Out>
+    : [...Out, `${Acc}${S}`];
+
+  type ParseRelationList<L extends string[], Acc = {}> = L extends [
+    infer H extends string,
+    ...infer T extends string[],
+  ]
+    ? ParseRelationList<T, Acc & ParseRelationString<H>>
+    : Acc;
+
+  /**
+   * Parses '[a, b]', 'a.b' and 'a' style expressions.
+   */
+  type ParseRelationString<S extends string> =
+    Trim<S> extends `[${infer Inner}]`
+      ? ParseRelationList<SplitList<Inner>>
+      : Trim<S> extends `${infer Head}.${infer Rest}`
+        ? IsBalanced<Head> extends true
+          ? RelationNode<RelationName<Head>, ParseRelationString<Rest>>
+          : {}
+        : RelationNode<RelationName<S>, {}>;
+
+  /**
+   * Extracts the relation name from a single node, dropping modifiers:
+   * 'pets(selectName)' -> 'pets'. Returns never for nodes that can't be
+   * narrowed: aliases ('pets as p'), '*' and recursion ('^', '^2').
+   */
+  type RelationName<S extends string> =
+    Trim<S> extends `${infer Name}(${string})`
+      ? RelationName<Name>
+      : Trim<S> extends infer Name extends string
+        ? Name extends '' | '*' | `^${string}` | `${string}${Whitespace}${string}`
+          ? never
+          : string extends Name
+            ? never
+            : Name
+        : never;
+
+  type RelationNode<Name extends string, Children> = [Name] extends [never]
+    ? {}
+    : { [K in Name]: Children };
+
+  /**
+   * Parses `{ a: true, b: { c: true } }` style expressions. Keys starting with
+   * `$` are options, and aliased nodes (`{ p: { $relation: 'pets' } }`) are
+   * skipped.
+   */
+  type ParseRelationObject<E> = string extends keyof E
+    ? {}
+    : {
+        [
+          K in keyof E as K extends `$${string}`
+            ? never
+            : false extends E[K]
+              ? never
+              : E[K] extends { $relation: any }
+                ? never
+                : K
+        ]: E[K] extends object ? ParseRelationObject<E[K]> : {};
+      };
+
+  /**
+   * Marks the relations in tree T as fetched on model M: they become required
+   * and are narrowed recursively. Declared `null` is kept, as to-one relations
+   * can be null when there is no related row.
+   */
+  type WithGraph<M, T> = [keyof T] extends [never]
+    ? M
+    : WithGraphRelations<M, T, FetchedRelations<M, T>>;
+
+  type WithGraphRelations<M, T, K extends keyof M & keyof T> = [K] extends [never]
+    ? M
+    : { -readonly [P in K]-?: WithGraphProperty<Defined<M[P]>, T[P]> } & M;
+
+  /**
+   * The keys of tree T that are relation properties of model M.
+   */
+  type FetchedRelations<M, T> = {
+    [K in keyof M & keyof T]: NonNullable<M[K]> extends Model | Model[] ? K : never;
+  }[keyof M & keyof T];
+
+  type WithGraphProperty<P, T> = [keyof T] extends [never]
+    ? P
+    : P extends Array<infer I>
+      ? WithGraph<I, T>[]
+      : P extends Model
+        ? WithGraph<P, T>
+        : P;
+
+  /**
+   * The model type after fetching the relation expression E on model M.
+   */
+  type WithGraphModel<M, E> = WithGraph<M, ParseRelationExpression<E>>;
+
+  /**
+   * The query builder type for model M after fetching relation expression E.
+   * `M extends unknown` makes this distributive, so that in generic code (e.g.
+   * `this` in model methods), TypeScript can resolve it through the constraint
+   * of M.
+   */
+  type WithGraphModelQueryBuilder<M extends Model, E> = M extends unknown
+    ? WithGraphModel<M, E>['QueryBuilderType']
+    : never;
+
+  /**
+   * The query builder type after `withGraphFetched(E)` / `withGraphJoined(E)`
+   * on QB. The model type is narrowed, and the query builder for the narrowed
+   * model is looked up through its `QueryBuilderType`, so custom query
+   * builders are kept. Falls back to QB if nothing can be narrowed, or if the
+   * model type is `any` (`0 extends 1 & M`), e.g. for AnyQueryBuilder.
+   * `QB extends unknown` below serves the same purpose as in
+   * WithGraphModelQueryBuilder.
+   */
+  type WithGraphQueryBuilder<QB extends AnyQueryBuilder, E> = WithGraphTreeQueryBuilder<
+    QB,
+    ParseRelationExpression<E>
+  >;
+
+  type WithGraphTreeQueryBuilder<QB extends AnyQueryBuilder, T> = [keyof T] extends [never]
+    ? QB
+    : QB extends unknown
+      ? 0 extends 1 & ModelType<QB>
+        ? QB
+        : [FetchedRelations<ModelType<QB>, T>] extends [never]
+          ? QB
+          : WithResultKind<QB, WithGraph<ModelType<QB>, T>['QueryBuilderType']>
+      : never;
+
+  /**
+   * Converts the query builder NQB to the same result kind as QB:
+   * array, single, maybe-single or page.
+   */
+  type WithResultKind<QB extends AnyQueryBuilder, NQB extends AnyQueryBuilder> = [
+    ResultType<QB>,
+  ] extends [ModelType<QB>[]]
+    ? ArrayQueryBuilder<NQB>
+    : [ResultType<QB>] extends [ModelType<QB>]
+      ? SingleQueryBuilder<NQB>
+      : [ResultType<QB>] extends [ModelType<QB> | undefined]
+        ? MaybeSingleQueryBuilder<NQB>
+        : [ResultType<QB>] extends [Page<ModelType<QB>>]
+          ? PageQueryBuilder<NQB>
+          : QB;
+
   /**
    * If T is an array, returns the item type, otherwise returns T.
    */
@@ -1104,8 +1305,16 @@ declare namespace Objection {
     unrelate(): NumberQueryBuilder<this>;
     for(ids: ForIdValue | ForIdValue[]): this;
 
-    withGraphFetched(expr: RelationExpression<M>, options?: GraphOptions): this;
-    withGraphJoined(expr: RelationExpression<M>, options?: GraphOptions): this;
+    // With literal relation expressions, the fetched relations become required
+    // on the result type, see WithGraphQueryBuilder.
+    withGraphFetched<const E extends RelationExpression<M>>(
+      expr: E,
+      options?: GraphOptions,
+    ): WithGraphQueryBuilder<this, E>;
+    withGraphJoined<const E extends RelationExpression<M>>(
+      expr: E,
+      options?: GraphOptions,
+    ): WithGraphQueryBuilder<this, E>;
 
     truncate(): Promise<void>;
     allowGraph: AllowGraphMethod<this>;
@@ -1536,17 +1745,17 @@ declare namespace Objection {
     bindKnex(trxOrKnex: TransactionOrKnex): this;
     bindTransaction(trxOrKnex: TransactionOrKnex): this;
 
-    fetchGraph(
+    fetchGraph<const E extends RelationExpression<M>>(
       modelOrObject: PartialModelObject<M>,
-      expression: RelationExpression<M>,
+      expression: E,
       options?: FetchGraphOptions,
-    ): SingleQueryBuilder<QueryBuilderType<M>>;
+    ): SingleQueryBuilder<WithGraphModelQueryBuilder<M, E>>;
 
-    fetchGraph(
+    fetchGraph<const E extends RelationExpression<M>>(
       modelOrObject: PartialModelObject<M>[],
-      expression: RelationExpression<M>,
+      expression: E,
       options?: FetchGraphOptions,
-    ): QueryBuilderType<M>;
+    ): WithGraphModelQueryBuilder<M, E>;
 
     getRelations(): Relations;
     getRelation(name: string): Relation;
@@ -1651,19 +1860,19 @@ declare namespace Objection {
     static bindKnex<M>(this: M, trxOrKnex: TransactionOrKnex): M;
     static bindTransaction<M>(this: M, trxOrKnex: TransactionOrKnex): M;
 
-    static fetchGraph<M extends Model>(
+    static fetchGraph<M extends Model, const E extends RelationExpression<M>>(
       this: ConstructorType<M>,
       modelOrObject: PartialModelObject<M>,
-      expression: RelationExpression<M>,
+      expression: E,
       options?: FetchGraphOptions,
-    ): SingleQueryBuilder<QueryBuilderType<M>>;
+    ): SingleQueryBuilder<WithGraphModelQueryBuilder<M, E>>;
 
-    static fetchGraph<M extends Model>(
+    static fetchGraph<M extends Model, const E extends RelationExpression<M>>(
       this: ConstructorType<M>,
       modelOrObject: PartialModelObject<M>[],
-      expression: RelationExpression<M>,
+      expression: E,
       options?: FetchGraphOptions,
-    ): QueryBuilderType<M>;
+    ): WithGraphModelQueryBuilder<M, E>;
 
     static getRelations(): Relations;
     static getRelation(name: string): Relation;
@@ -1707,10 +1916,10 @@ declare namespace Objection {
     $id(id: any): void;
     $id(): any;
 
-    $fetchGraph(
-      expression: RelationExpression<this>,
+    $fetchGraph<const E extends RelationExpression<this>>(
+      expression: E,
       options?: FetchGraphOptions,
-    ): SingleQueryBuilder<QueryBuilderType<this>>;
+    ): SingleQueryBuilder<WithGraphModelQueryBuilder<this, E>>;
 
     $formatDatabaseJson(json: Pojo): Pojo;
     $parseDatabaseJson(json: Pojo): Pojo;
