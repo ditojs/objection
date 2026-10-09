@@ -154,7 +154,7 @@ This generates an SQL `update` query. While there's also the [update](/api/query
 :::
 
 ::: warning
-[raw](/api/objection/#raw), subqueries and other "query properties" in the patch object are not validated. Also fields specified using [FieldExpressions](/api/types/#type-fieldexpression) are not validated.
+[raw](/api/objection/#raw), subqueries and other "query properties" in the patch object are not validated. Fields specified using [FieldExpressions](/api/types/#type-fieldexpression) like `'meta:a.b'` are validated against the schema of the nested property (`properties.meta.properties.a.properties.b`), unless they access array items (`'meta:list[0]'`).
 :::
 
 ##### Arguments
@@ -197,7 +197,7 @@ const numberOfAffectedRows = await Person.query()
   .where('age', '<', 50);
 ```
 
-You can also give raw expressions, subqueries and `ref()` as values and [FieldExpressions](/api/types/#type-fieldexpression) as keys. Note that none of these are validated. Objection cannot know what their values will be at the time the validation is done.
+You can also give raw expressions, subqueries and `ref()` as values and [FieldExpressions](/api/types/#type-fieldexpression) as keys. Note that the values given as raw expressions, subqueries and `ref()` are not validated. Objection cannot know what their values will be at the time the validation is done.
 
 ```js
 const { ref, raw } = require('objection');

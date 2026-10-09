@@ -425,6 +425,71 @@ module.exports = (session) => {
           expect(item.jsonObject).to.eql({ '': { a: 3 }, 'x, y': 1 });
         });
       });
+      describe('patch validation with additionalProperties: false', () => {
+        class StrictModelJson extends ModelJson {
+          static get jsonSchema() {
+            return {
+              type: 'object',
+              additionalProperties: false,
+              required: ['name'],
+              properties: {
+                id: { type: 'integer' },
+                name: { type: 'string' },
+                jsonObject: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['attr'],
+                  properties: {
+                    attr: { type: 'integer' },
+                    other: { type: 'string' },
+                  },
+                },
+                jsonArray: { type: 'array' },
+              },
+            };
+          }
+        }
+
+        const StrictModel = StrictModelJson.bindKnex(session.knex);
+
+        beforeEach(async () => {
+          await StrictModel.query().truncate();
+          await StrictModel.query().insert({ id: 1, name: 'test1', jsonObject: { attr: 1 } });
+        });
+
+        it('should be able to patch fields of json columns', async () => {
+          await StrictModel.query().findById(1).patch({ 'jsonObject:other': 'foo' });
+          const item = await StrictModel.query().findById(1);
+          expect(item.jsonObject).to.eql({ attr: 1, other: 'foo' });
+        });
+
+        it('should validate patched fields against the json column schema', async () => {
+          let error = null;
+
+          try {
+            await StrictModel.query().findById(1).patch({ 'jsonObject:unknown': 'foo' });
+          } catch (err) {
+            error = err;
+          }
+
+          expect(error).to.be.a(StrictModel.ValidationError);
+          expect(error.data).to.have.key('jsonObject.unknown');
+
+          error = null;
+
+          try {
+            await StrictModel.query().findById(1).patch({ 'jsonObject:other': 1 });
+          } catch (err) {
+            error = err;
+          }
+
+          expect(error).to.be.a(StrictModel.ValidationError);
+          expect(error.data).to.have.key('jsonObject.other');
+
+          const item = await StrictModel.query().findById(1);
+          expect(item.jsonObject).to.eql({ attr: 1 });
+        });
+      });
     });
 
     describe('QueryBuilder JSON queries', () => {

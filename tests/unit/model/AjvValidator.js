@@ -302,4 +302,144 @@ describe('AjvValidator', () => {
       );
     });
   });
+
+  describe('patch validation with field expression keys', () => {
+    const schema = {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name'],
+      properties: {
+        id: { type: 'integer' },
+        name: { type: 'string' },
+        meta: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['a'],
+          properties: {
+            a: { type: 'string' },
+            b: { type: 'string' },
+            nested: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['x'],
+              properties: {
+                x: { type: 'integer' },
+                y: { type: 'integer' },
+              },
+            },
+          },
+        },
+        tags: {
+          type: 'array',
+          minItems: 2,
+          items: { type: 'string' },
+        },
+      },
+    };
+
+    function createModelClass(options) {
+      return class TestModel extends modelClass('test', schema) {
+        static createValidator() {
+          return new AjvValidator({ options });
+        }
+      };
+    }
+
+    const TestModel = createModelClass();
+
+    function validationErrorData(fn) {
+      try {
+        fn();
+      } catch (err) {
+        expect(err).to.be.a(TestModel.ValidationError);
+        return err.data;
+      }
+      throw new Error('expected a validation error');
+    }
+
+    it('should validate field expression keys against the nested schema', () => {
+      const model = TestModel.fromJson({ 'meta:b': 'foo' }, { patch: true });
+      expect(model['meta:b']).to.equal('foo');
+
+      const data = validationErrorData(() => TestModel.fromJson({ 'meta:b': 1 }, { patch: true }));
+      expect(Object.keys(data)).to.eql(['meta.b']);
+      expect(data['meta.b'][0].keyword).to.equal('type');
+    });
+
+    it('should not fail on nested required properties of untouched siblings', () => {
+      expect(() => {
+        TestModel.fromJson({ 'meta:nested.y': 1, 'meta:b': 'foo' }, { patch: true });
+      }).to.not.throwException();
+    });
+
+    it('should validate multiple field expression keys of the same column', () => {
+      expect(() => {
+        TestModel.fromJson(
+          { name: 'foo', 'meta:a': 'a', 'meta:b': 'b', 'meta:nested.x': 1 },
+          { patch: true },
+        );
+      }).to.not.throwException();
+
+      const data = validationErrorData(() =>
+        TestModel.fromJson({ 'meta:a': 1, 'meta:nested.x': 'x' }, { patch: true }),
+      );
+      expect(Object.keys(data).sort()).to.eql(['meta.a', 'meta.nested.x']);
+    });
+
+    it('should report additional properties inside the json column', () => {
+      const data = validationErrorData(() =>
+        TestModel.fromJson({ 'meta:c': 'foo' }, { patch: true }),
+      );
+      expect(Object.keys(data)).to.eql(['meta.c']);
+      expect(data['meta.c'][0].keyword).to.equal('additionalProperties');
+    });
+
+    it('should report unknown columns of field expression keys', () => {
+      const data = validationErrorData(() =>
+        TestModel.fromJson({ 'unknown:b': 'foo' }, { patch: true }),
+      );
+      expect(Object.keys(data)).to.eql(['unknown']);
+      expect(data.unknown[0].keyword).to.equal('additionalProperties');
+    });
+
+    it('should support table prefixes in field expression keys', () => {
+      expect(() => {
+        TestModel.fromJson({ 'test.meta:b': 'foo' }, { patch: true });
+      }).to.not.throwException();
+    });
+
+    it('should not validate field expression keys with array access', () => {
+      expect(() => {
+        TestModel.fromJson({ 'tags:[0]': 'foo', 'meta:nested[0]': 1 }, { patch: true });
+      }).to.not.throwException();
+    });
+
+    it('should not modify the input json', () => {
+      const json = { name: 'foo', 'meta:b': 'foo' };
+      const model = TestModel.fromJson(json, { patch: true });
+      expect(json).to.eql({ name: 'foo', 'meta:b': 'foo' });
+      expect(model).to.eql({ name: 'foo', 'meta:b': 'foo' });
+    });
+
+    it('should apply type coercion to field expression values', () => {
+      const CoercingModel = createModelClass({ coerceTypes: true });
+      const model = CoercingModel.fromJson({ 'meta:b': 1, 'meta:nested.x': '2' }, { patch: true });
+      expect(model['meta:b']).to.equal('1');
+      expect(model['meta:nested.x']).to.equal(2);
+    });
+
+    it('should apply removeAdditional to field expression keys', () => {
+      const RemovingModel = createModelClass({ removeAdditional: 'all' });
+      const model = RemovingModel.fromJson(
+        { 'meta:b': 'foo', 'meta:c': 'bar', 'unknown:a': 1 },
+        { patch: true },
+      );
+      expect(model).to.eql({ 'meta:b': 'foo' });
+    });
+
+    it('should not change the validation of field expression keys in non-patch mode', () => {
+      const data = validationErrorData(() => TestModel.fromJson({ name: 'foo', 'meta:b': 'foo' }));
+      expect(Object.keys(data)).to.eql(['meta:b']);
+    });
+  });
 });
