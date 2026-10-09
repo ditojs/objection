@@ -264,6 +264,24 @@ const people = await Person.query()
   .where('persons.id', '>', 100);
 ```
 
+##### Mixing withGraphJoined and withGraphFetched
+
+`withGraphJoined` and [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) can be used in the same query. The joined relations are joined to the main query, so you can filter by them, and the fetched relations are then loaded using separate queries for the resulting models. The order of the calls doesn't matter.
+
+```js
+const people = await Person.query()
+  .withGraphJoined('pets')
+  .withGraphFetched('[movies, children]')
+  .where('pets.species', 'dog');
+
+// Only people that have a dog are returned and only their dogs are in
+// `pets`. `movies` and `children` contain all related items of those people.
+console.log(people[0].pets[0].species);
+console.log(people[0].movies.length);
+```
+
+A top-level relation can be either joined or fetched, but not both. Passing the same relation to both methods, even when only a nested relation is different (for example `withGraphJoined('pets')` and `withGraphFetched('pets.toys')`), throws an error. The `*` expression can't be used when mixing the methods. [modifyGraph](/api/query-builder/eager-methods.html#modifygraph) works with both joined and fetched relations.
+
 ## graphExpressionObject()
 
 ```js
