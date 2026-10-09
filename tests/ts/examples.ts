@@ -634,14 +634,14 @@ const rowsUpdatedWithData: PromiseLike<number>[] = [
   qb.update({ firstName: 'name' }),
   qb.update({ firstName: ref('last_name') }),
   qb.update({ firstName: raw('"name"') }),
-  qb.update({ firstName: qb.select('lastname') }),
+  qb.update({ firstName: qb.select('lastName') }),
 ];
 
 const rowsPatchedWithData: PromiseLike<number>[] = [
   qb.patch({ firstName: 'name' }),
   qb.patch({ firstName: ref('last_name') }),
   qb.patch({ firstName: raw('"name"') }),
-  qb.patch({ firstName: qb.select('lastname') }),
+  qb.patch({ firstName: qb.select('lastName') }),
 ];
 
 const insertedModel: PromiseLike<Person> = Person.query().insertAndFetch({});
@@ -689,24 +689,24 @@ const updatedModels: PromiseLike<Person>[] = [
   qb.updateAndFetch({ firstName: 'name' }),
   qb.updateAndFetch({ firstName: ref('last_name') }),
   qb.updateAndFetch({ firstName: raw('"name"') }),
-  qb.updateAndFetch({ firstName: qb.select('lastname') }),
+  qb.updateAndFetch({ firstName: qb.select('lastName') }),
 
   qb.updateAndFetchById(123, { firstName: 'name' }),
   qb.updateAndFetchById(123, { firstName: ref('last_name') }),
   qb.updateAndFetchById(123, { firstName: raw('"name"') }),
-  qb.updateAndFetchById(123, { firstName: qb.select('lastname') }),
+  qb.updateAndFetchById(123, { firstName: qb.select('lastName') }),
 ];
 
 const patchedModels: PromiseLike<Person>[] = [
   qb.patchAndFetch({ firstName: 'name' }),
   qb.patchAndFetch({ firstName: ref('last_name') }),
   qb.patchAndFetch({ firstName: raw('"name"') }),
-  qb.patchAndFetch({ firstName: qb.select('lastname') }),
+  qb.patchAndFetch({ firstName: qb.select('lastName') }),
 
   qb.patchAndFetchById(123, { firstName: 'name' }),
   qb.patchAndFetchById(123, { firstName: ref('last_name') }),
   qb.patchAndFetchById(123, { firstName: raw('"name"') }),
-  qb.patchAndFetchById(123, { firstName: qb.select('lastname') }),
+  qb.patchAndFetchById(123, { firstName: qb.select('lastName') }),
 ];
 
 const rowsEager: PromiseLike<Person[]> = Person.query().withGraphFetched('foo.bar', {
