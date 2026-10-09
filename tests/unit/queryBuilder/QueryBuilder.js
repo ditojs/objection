@@ -2227,6 +2227,95 @@ describe('QueryBuilder', () => {
     );
   });
 
+  describe('json paths with special characters in keys', () => {
+    const toSql = (builder) => builder.toKnexQuery().toString();
+    // The native SQL that is sent to Postgres, with `$n` placeholders.
+    const toSQL = (builder) => builder.toKnexQuery().toSQL().toNative();
+
+    const keys = [
+      // Breaking out of the string literal.
+      "x') or 1=1 --",
+      "x'}' or 1=1 --",
+      // Binding placeholders.
+      'a?b',
+      '??',
+      // Escape characters and double quotes.
+      'a\\b',
+      'a"b',
+      '\\',
+      // Everything at once (keys can't contain both kinds of quotes).
+      "'?\\{},",
+      '"?\\{},',
+    ];
+
+    function queries(key) {
+      // Use the bracket notation with whichever quote doesn't appear in the key.
+      const quote = key.includes("'") ? '"' : "'";
+      const expr = `content:a[${quote}${key}${quote}]`;
+      return [
+        TestModel.query().where(ref(expr), 1),
+        TestModel.query().where(ref(expr).castText(), 'x'),
+        TestModel.query().select(ref(expr).as('val')),
+        TestModel.query().whereJsonSupersetOf(expr, { a: 1 }),
+        TestModel.query().whereJsonSubsetOf('content', expr),
+        TestModel.query().whereJsonHasAny(expr, ['b']),
+        TestModel.query().whereJsonHasAll(expr, ['b']),
+        TestModel.query().whereJsonIsObject(expr),
+        TestModel.query().whereJsonNotObject(expr),
+        TestModel.query().patch({ [expr]: 1 }),
+        TestModel.query().patch({ [expr]: ref(expr) }),
+      ];
+    }
+
+    for (const key of keys) {
+      it(`escapes the key ${JSON.stringify(key)} in SQL`, () => {
+        // The json path `{a,<key>}` as an escaped Postgres string literal.
+        const element = /[{}",\\\s]/.test(key) ? `"${key.replace(/["\\]/g, '\\$&')}"` : key;
+        const literal = `'{a,${element.replace(/'/g, "''")}}'`;
+        // Patch queries can only be built once, so create the queries twice.
+        const strings = queries(key).map(toSql);
+        for (const query of queries(key)) {
+          const { sql, bindings } = toSQL(query);
+          // The key only appears inside the escaped json path literal, and its
+          // `?` characters aren't turned into binding placeholders.
+          expect(sql).to.contain(literal);
+          expect(sql.split(literal).join('')).not.to.contain(key);
+          expect(bindings.some((it) => typeof it === 'string' && it.includes(key))).to.be(false);
+        }
+        // Interpolating the bindings doesn't throw (e.g. "Expected N bindings").
+        for (const string of strings) {
+          expect(string).to.contain(literal);
+        }
+      });
+    }
+
+    it('escapes keys correctly in the json path literal', () => {
+      expect(toSql(TestModel.query().where(ref("content:x') or 1=1 --"), 1))).to.equal(
+        `select "Model".* from "Model" where "content"#>'{"x'') or 1=1 --"}' = 1`,
+      );
+      expect(toSql(TestModel.query().whereJsonSupersetOf('content:a?b', { a: 1 }))).to.equal(
+        `select "Model".* from "Model" where ( "content"#>'{a?b}' )::jsonb @> '{"a":1}'::jsonb`,
+      );
+      expect(toSql(TestModel.query().whereJsonHasAny('content:a?b', ['c?']))).to.equal(
+        `select "Model".* from "Model" where "content"#>'{a?b}' ?| array['c?']`,
+      );
+      expect(toSql(TestModel.query().patch({ "content:x') or 1=1 --": 1 }))).to.equal(
+        `update "Model" set "content" = jsonb_set("content", '{"x'') or 1=1 --"}', '1', true)`,
+      );
+    });
+
+    it('binds string values containing `?` in json methods', () => {
+      expect(toSql(TestModel.query().whereJsonHasAny('content:a', ['?', 'b?']))).to.equal(
+        `select "Model".* from "Model" where "content"#>'{a}' ?| array['?','b?']`,
+      );
+      const { sql, bindings } = toSQL(
+        TestModel.query().whereJsonHasAll('content', "x') or 1=1 --"),
+      );
+      expect(sql).to.equal('select "Model".* from "Model" where "content" ?& array[$1]');
+      expect(bindings).to.eql(["x') or 1=1 --"]);
+    });
+  });
+
   describe('snake case mappers and field expressions', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
 

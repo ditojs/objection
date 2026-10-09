@@ -425,6 +425,59 @@ module.exports = (session) => {
           expect(item.jsonObject).to.eql({ '': { a: 3 }, 'x, y': 1 });
         });
       });
+
+      describe('json keys with SQL syntax characters', () => {
+        const injection = "x') or 1=1 --";
+        const keys = { injection, question: 'a?b', backslash: 'a\\b', quote: 'a"b' };
+        // Use the bracket notation with whichever quote doesn't appear in the key.
+        const expr = (key) => {
+          const quote = key.includes("'") ? '"' : "'";
+          return `jsonObject:[${quote}${key}${quote}]`;
+        };
+
+        beforeEach(async () => {
+          await BoundModel.query().truncate();
+          await BoundModel.query().insert([
+            {
+              id: 1,
+              name: 'test1',
+              jsonObject: _.mapValues(_.invert(keys), () => ({ a: 1 })),
+              jsonArray: [],
+            },
+            { id: 2, name: 'test2', jsonObject: { x: { a: 2 } }, jsonArray: [] },
+          ]);
+        });
+
+        for (const [name, key] of Object.entries(keys)) {
+          it(`should select and filter by a key with ${name}`, async () => {
+            const result = await BoundModel.query()
+              .select('id', ref(`${expr(key)}.a`).as('a'))
+              .where(ref(`${expr(key)}.a`).castInt(), 1)
+              .orWhere(ref(`${expr(key)}.a`), 2);
+            expect(result).to.eql([{ id: 1, a: 1 }]);
+          });
+
+          it(`should use a key with ${name} in json where methods`, async () => {
+            expectIdsEqual(await BoundModel.query().whereJsonSupersetOf(expr(key), { a: 1 }), [1]);
+            expectIdsEqual(await BoundModel.query().whereJsonIsObject(expr(key)), [1]);
+            expectIdsEqual(await BoundModel.query().whereJsonNotObject(expr(key)), [2]);
+            expectIdsEqual(await BoundModel.query().whereJsonHasAny(expr(key), ['a', key]), [1]);
+            expectIdsEqual(await BoundModel.query().whereJsonHasAll('jsonObject', [key]), [1]);
+          });
+
+          it(`should patch a key with ${name}`, async () => {
+            await BoundModel.query()
+              .findById(1)
+              .patch({ [`${expr(key)}.a`]: 3 });
+            const items = await BoundModel.query().orderBy('id');
+            expect(items[0].jsonObject[key]).to.eql({ a: 3 });
+            expect(_.omit(items[0].jsonObject, key)).to.eql(
+              _.mapValues(_.invert(_.omit(keys, name)), () => ({ a: 1 })),
+            );
+            expect(items[1].jsonObject).to.eql({ x: { a: 2 } });
+          });
+        }
+      });
       describe('patch validation with additionalProperties: false', () => {
         class StrictModelJson extends ModelJson {
           static get jsonSchema() {
