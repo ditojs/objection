@@ -25,6 +25,13 @@ import { Person } from '../fixtures/person';
     .where('p.id', 1)
     .join('persons as parent', 'parent.id', 'p.parentId');
 
+  // Object form for (multi-column) joins.
+  await Person.query().join('movies', {
+    'movies.directorId': 'persons.id',
+    'movies.studioId': ref('persons.studioId'),
+  });
+  await Person.query().leftJoin('movies', { 'movies.directorId': 'persons.id' });
+
   await Person.query()
     .aliasFor('persons_movies', 'pm')
     .joinRelated('movies')
@@ -194,6 +201,10 @@ import { Person } from '../fixtures/person';
 
   await Person.query().limit(100).offset(200);
 
+  // Knex `skipBinding` options.
+  await Person.query().limit(100, { skipBinding: true }).offset(200, { skipBinding: true });
+  await Person.query().limit(100, true).offset(200, true);
+
   await Person.query().count();
   await Person.query().resultSize();
 
@@ -204,6 +215,11 @@ import { Person } from '../fixtures/person';
   await Person.query().sum('age');
   await Person.query().avg('age');
   await Person.query().avgDistinct('age');
+
+  // Aggregates with alias-to-column objects.
+  await Person.query()
+    .sum({ totalAge: 'age' })
+    .max({ maxAge: ref('age') });
 
   await Person.query()
     .insert({
