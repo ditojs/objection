@@ -118,6 +118,10 @@ queryBuilder = queryBuilder.insertGraph(graph, options);
 
 See the [section about graph inserts](/guide/query-examples.html#graph-inserts).
 
+::: warning
+[onConflict()](/api/query-builder/mutate-methods.html#onconflict), [ignore()](/api/query-builder/mutate-methods.html#ignore) and [merge()](/api/query-builder/mutate-methods.html#merge) aren't supported by `insertGraph` (or `upsertGraph`). They are currently ignored and a warning is logged, and will cause the query to throw in objection 4.0. A graph is inserted using multiple insert queries, one for each table and batch, so there is no single query to apply a conflict target to. Applying it to the root table only isn't safe either: rows skipped by `ignore()` aren't returned from the database, so the related rows would be inserted without the correct foreign keys. Insert the rows that may conflict using a separate [insert()](/api/query-builder/mutate-methods.html#insert) query and relate them in the graph, for example using `#dbRef` or the `relate` option.
+:::
+
 ##### Arguments
 
 | Argument | Type                                                                                                           | Description       |
@@ -814,6 +818,8 @@ See [knex documentation](https://knexjs.org/guide/query-builder.html#truncate)
 ## onConflict()
 
 See [knex documentation](https://knexjs.org/guide/query-builder.html#onconflict)
+
+Not supported by [insertGraph()](/api/query-builder/mutate-methods.html#insertgraph) and [upsertGraph()](/api/query-builder/mutate-methods.html#upsertgraph), which currently ignore `onConflict()`, `ignore()` and `merge()` with a warning, and will throw in objection 4.0.
 
 ##### Return value
 
