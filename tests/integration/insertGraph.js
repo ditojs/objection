@@ -4,6 +4,7 @@ const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
 const Promise = require('bluebird');
 const { transaction, ValidationError, Model } = require('../../');
+const { resetDeprecations } = require('../../lib/utils/deprecate');
 
 module.exports = (session) => {
   let Model1 = session.models.Model1;
@@ -631,6 +632,60 @@ module.exports = (session) => {
             });
           });
       });
+    });
+
+    describe('.query().insertGraph().onConflict() (#2156)', () => {
+      let warnings;
+      let originalWarn;
+
+      beforeEach(() => {
+        resetDeprecations();
+        warnings = [];
+        originalWarn = console.warn;
+        console.warn = (message) => warnings.push(message);
+        return session.populate(population);
+      });
+
+      afterEach(() => {
+        console.warn = originalWarn;
+        resetDeprecations();
+      });
+
+      const graph = () => ({
+        model1Prop1: 'new root',
+        model1Relation2: [{ model2Prop1: 'new child' }],
+      });
+
+      const cases = {
+        'insertGraph().onConflict().ignore()': () =>
+          Model1.query().insertGraph(graph()).onConflict('id').ignore(),
+        'insertGraph().onConflict().merge()': () =>
+          Model1.query().insertGraph(graph()).onConflict('id').merge(),
+        'insertGraphAndFetch().onConflict().ignore()': () =>
+          Model1.query().insertGraphAndFetch(graph()).onConflict('id').ignore(),
+        'upsertGraph().onConflict().merge()': () =>
+          Model1.query().upsertGraph(graph()).onConflict('id').merge(),
+      };
+
+      for (const [title, createQuery] of Object.entries(cases)) {
+        it(`${title} should warn and insert the graph as without onConflict()`, async () => {
+          const method = title.includes('upsertGraph') ? 'upsertGraph' : 'insertGraph';
+          const inserted = await createQuery();
+
+          expect(warnings).to.eql([
+            `onConflict(), ignore() and merge() are not supported by ${method}(). ` +
+              'Insert the conflicting rows with a separate insert() query instead. ' +
+              'This will throw in objection 4.0.',
+          ]);
+
+          const fetched = await Model1.query()
+            .findById(inserted.id)
+            .withGraphFetched('model1Relation2');
+
+          expect(fetched.model1Prop1).to.equal('new root');
+          expect(fetched.model1Relation2.map((it) => it.model2Prop1)).to.eql(['new child']);
+        });
+      }
     });
 
     describe('.query().insertGraph().allowGraph()', () => {
