@@ -944,6 +944,10 @@ console.log(result.total); // --> 3341
 
 Two queries are performed by this method: the actual query and a query to get the `total` count.
 
+::: tip
+Pagination is only stable if the query has a deterministic order. If the columns in [orderBy](/api/query-builder/find-methods.html#orderby) contain duplicate values (for example many rows share the same `created_at`), the database may return the tied rows in a different order for each query, so rows can be repeated or skipped across pages. Add a unique column as a tiebreaker, e.g. `.orderBy('created_at', 'desc').orderBy('id')`.
+:::
+
 Mysql has the `SQL_CALC_FOUND_ROWS` option and `FOUND_ROWS()` function that can be used to calculate the result size, but according to my tests and [the interwebs](https://www.google.com/search?q=SQL_CALC_FOUND_ROWS+performance) the performance is significantly worse than just executing a separate count query.
 
 Postgresql has window functions that can be used to get the total count like this `select count(*) over () as total`. The problem with this is that if the result set is empty, we don't get the total count either. (If someone can figure out a way around this, a PR is very welcome).
@@ -970,6 +974,10 @@ queryBuilder = queryBuilder.range(start, end);
 Only returns the given range of results.
 
 Two queries are performed by this method: the actual query and a query to get the `total` count.
+
+::: tip
+Pagination is only stable if the query has a deterministic order. If the columns in [orderBy](/api/query-builder/find-methods.html#orderby) contain duplicate values (for example many rows share the same `created_at`), the database may return the tied rows in a different order for each query, so rows can be repeated or skipped across pages. Add a unique column as a tiebreaker, e.g. `.orderBy('created_at', 'desc').orderBy('id')`.
+:::
 
 Mysql has the `SQL_CALC_FOUND_ROWS` option and `FOUND_ROWS()` function that can be used to calculate the result size, but according to my tests and [the interwebs](https://www.google.com/search?q=SQL_CALC_FOUND_ROWS+performance) the performance is significantly worse than just executing a separate count query.
 
