@@ -2777,6 +2777,26 @@ describe('QueryBuilder', () => {
       });
     });
 
+    it('graphExpressionObject() should be modifiable and passable back to withGraphFetched()', () => {
+      const graph = QueryBuilder.forClass(TestModel)
+        .withGraphFetched('[a, b.c]')
+        .graphExpressionObject();
+
+      graph.a = {
+        ...graph.a,
+        d: true,
+      };
+      graph.e = { f: true };
+      delete graph.b;
+
+      const expr = QueryBuilder.forClass(TestModel).withGraphFetched(graph).graphExpressionObject();
+
+      expect(objection.RelationExpression.create(expr).toString()).to.equal('[a.d, e.f]');
+      expect(expr.$childNames).to.eql(['a', 'e']);
+      expect(expr.a.$childNames).to.eql(['d']);
+      expect(expr.b).to.equal(undefined);
+    });
+
     it("modifiers() should return the eager expression's modifiers as an object", () => {
       const foo = (builder) => builder.where('foo');
       const builder = QueryBuilder.forClass(TestModel).withGraphFetched('[a, b.c(foo)]').modifiers({
