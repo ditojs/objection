@@ -532,7 +532,7 @@ const col = property.fullCol(builder, index);
 ```
 
 Returns the property's index:th column name with the correct table reference. Something like `"Table.column"`.
-The first argument must be an objection [QueryBuilder](/api/types/#querybuilder) instance.
+The first argument must be an objection [QueryBuilder](/api/query-builder/) instance.
 
 #### ref()
 

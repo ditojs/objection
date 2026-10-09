@@ -87,7 +87,7 @@ const arnold = await Person.query().findOne({ name: 'Arnold' });
 await arnold.$query().patch({ firstName: 'Jennifer' });
 ```
 
-Each instance hook is passed the [context](/api/query-builder/other-methods.html#context) object as the only argument. The context contains whatever data you have installed using either the [context](/api/query-builder/other-methods.html#context) or the [mergeContext](/api/query-builder/other-methods.html#mergecontext) method. In addition to that, it always contains the `transaction` property that holds the parent query's transaction.
+Each instance hook is passed the [context](/api/query-builder/other-methods.html#context) object as the only argument. The context contains whatever data you have installed using the [context](/api/query-builder/other-methods.html#context) method. In addition to that, it always contains the `transaction` property that holds the parent query's transaction.
 
 ```js
 class Person extends Model {

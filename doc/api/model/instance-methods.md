@@ -921,7 +921,7 @@ Shortcut for [Person.fetchGraph(person, options)](/api/model/static-methods.html
 person.$traverse(filterConstructor, callback);
 ```
 
-Shortcut for [Model.traverse(filterConstructor, this, callback)](/api/model/static-methods.html#static-traverse).
+Shortcut for `Model.traverse(filterConstructor, this, callback)`.
 
 ## $traverseAsync()
 

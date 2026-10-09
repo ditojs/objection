@@ -286,7 +286,7 @@ Person.query().withGraphFetched(
 );
 ```
 
-Modifiers can also be used through [modifyGraph](/api/query-builder/other-methods.html#modifygraph):
+Modifiers can also be used through [modifyGraph](/api/query-builder/eager-methods.html#modifygraph):
 
 ```js
 Person.query()

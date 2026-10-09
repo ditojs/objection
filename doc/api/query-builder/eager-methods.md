@@ -155,7 +155,7 @@ console.log(people[0].children[0].pets[0].name);
 console.log(people[0].children[0].movies[0].id);
 ```
 
-Filters can also be registered using the [modifyGraph](/api/query-builder/other-methods.html#modifygraph) method:
+Filters can also be registered using the [modifyGraph](/api/query-builder/eager-methods.html#modifygraph) method:
 
 ```js
 const people = await Person.query()
@@ -216,7 +216,7 @@ There are two methods that can be used to load relations eagerly: [withGraphFetc
 
 As mentioned, this method uses [SQL joins](https://www.postgresql.org/docs/12/tutorial-join.html) to join all the relations defined in the `relationExpression` and then parses the result into a graph of model instances equal to the one you get from `withGraphFetched`. The main benefit of this is that you can filter the query based on the relations. See the examples.
 
-By default left join is used but you can define the join type using the [joinOperation](/api/types/#type-eageroptions) option.
+By default left join is used but you can define the join type using the [joinOperation](/api/types/#type-graphoptions) option.
 
 **Limitations:**
 
