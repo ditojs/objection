@@ -694,8 +694,7 @@ declare namespace Objection {
   }
 
   interface TableRefForMethod {
-    (modelClass: AnyModelConstructor): string | null;
-    // The setter variant is not public.
+    (modelClassOrTableName: string | AnyModelConstructor): string;
   }
 
   interface AliasForMethod<QB extends AnyQueryBuilder> {
