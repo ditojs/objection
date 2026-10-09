@@ -137,7 +137,13 @@ Replaces the current context with an empty object.
 const tableName = queryBuilder.tableName();
 ```
 
-Returns the table name for the query model class.
+Returns the table name for the query's model class. Like [tableNameFor](/api/query-builder/other-methods.html#tablenamefor), this takes into account changes made using the [QueryBuilder#table](/api/query-builder/find-methods.html#table) method.
+
+##### Return value
+
+| Type   | Description                                                  |
+| ------ | ------------------------------------------------------------ |
+| string | The source table (or view) name for the query's model class. |
 
 ## tableNameFor()
 
@@ -168,6 +174,12 @@ const tableRef = queryBuilder.tableRef();
 Returns the name that should be used to refer to the query's table.
 Usually a table can be referred to using its name, but `tableRef` can return a different
 value for example in case an alias has been given.
+
+##### Return value
+
+| Type   | Description                                                 |
+| ------ | ----------------------------------------------------------- |
+| string | The name that should be used to refer to the query's table. |
 
 ## tableRefFor()
 
