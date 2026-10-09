@@ -2725,6 +2725,73 @@ module.exports = (session) => {
           );
         });
       });
+
+      it('withGraph() should merge nested relations into both operations', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query().where('Model1.id', 1);
+          query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
+
+          return query
+            .withGraph('[model1Relation1.model1Relation1, model1Relation2.model2Relation1]')
+            .modifyGraph('model1Relation2', (builder) => {
+              builder.orderBy('id_col');
+            })
+            .modifyGraph('model1Relation2.model2Relation1', (builder) => {
+              builder.orderBy('Model1.id');
+            })
+            .then((models) => {
+              expect(models).to.have.length(1);
+              expect(models[0].model1Relation1.id).to.equal(2);
+              expect(models[0].model1Relation1.model1Relation1.id).to.equal(3);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+              expect(
+                models[0].model1Relation2.map((it) => it.model2Relation1.map((it) => it.id)),
+              ).to.eql([[], [5, 6]]);
+            });
+        });
+      });
+
+      it('withGraph() should add new relations with the most recently used algorithm', () => {
+        return Promise.map(orders, (order) => {
+          let query = Model1.query().where('Model1.id', 1);
+          query = callInOrder(query, order, 'model1Relation1', 'model1Relation2');
+
+          // `model1Relation3` is joined or fetched, depending on the order.
+          return query
+            .withGraph('model1Relation3')
+            .modifyGraph('model1Relation2', (builder) => {
+              builder.orderBy('id_col');
+            })
+            .then((models) => {
+              expect(models).to.have.length(1);
+              expect(models[0].model1Relation1.id).to.equal(2);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+              expect(models[0].model1Relation3).to.be.an('array');
+            });
+        });
+      });
+
+      it('isJoinChildQuery() should tell the child queries of both algorithms apart', () => {
+        return Promise.map(orders, (order) => {
+          const childQueries = [];
+          let query = Model1.query()
+            .where('Model1.id', 1)
+            .modifiers({
+              capture: (builder) => {
+                childQueries.push([builder.modelClass().name, builder.isJoinChildQuery()]);
+              },
+            });
+
+          query = callInOrder(query, order, 'model1Relation1(capture)', 'model1Relation2(capture)');
+
+          return query.then(() => {
+            expect(_.sortBy(childQueries, ([name]) => name)).to.eql([
+              ['Model1', true],
+              ['Model2', false],
+            ]);
+          });
+        });
+      });
     });
 
     describe('QueryBuilder.orderBy', () => {

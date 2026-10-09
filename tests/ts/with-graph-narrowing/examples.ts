@@ -481,3 +481,24 @@ async function modelMethods(owner: Owner) {
   const c = await Owner.findWithPets();
   type _c = Expect<Equal<typeof c, Animal[]>>;
 }
+
+async function withGraph() {
+  // `withGraph()` narrows like `withGraphFetched()` / `withGraphJoined()`,
+  // with or without an algorithm.
+  const a = await Person.query()
+    .withGraphJoined('pets')
+    .withGraph('children.pets')
+    .withGraph('pets.owner', { algorithm: 'fetch', minimize: true });
+  a[0].pets[0].owner.id;
+  a[0].children[0].pets.length;
+  // @ts-expect-error
+  a[0].parent.id;
+
+  const b = await Person.query().findById(1).withGraph('pets', { algorithm: 'join' });
+  type _b = Expect<Equal<NonNullable<typeof b>['pets'], Animal[]>>;
+
+  // @ts-expect-error
+  Person.query().withGraph('pets', { algorithm: 'naive' });
+
+  const isJoinChildQuery: boolean = Person.query().isJoinChildQuery();
+}

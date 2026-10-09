@@ -1044,6 +1044,10 @@ declare namespace Objection {
     maxBatchSize?: number;
   }
 
+  export interface WithGraphOptions extends GraphOptions {
+    algorithm?: 'fetch' | 'join';
+  }
+
   interface ModifyGraphMethod<QB extends AnyQueryBuilder> {
     <M extends Model>(
       expr: RelationExpression<ModelType<QB>>,
@@ -1326,6 +1330,10 @@ declare namespace Objection {
       expr: E,
       options?: GraphOptions,
     ): WithGraphQueryBuilder<this, E>;
+    withGraph<const E extends RelationExpression<M>>(
+      expr: E,
+      options?: WithGraphOptions,
+    ): WithGraphQueryBuilder<this, E>;
 
     truncate(): Promise<void>;
     allowGraph: AllowGraphMethod<this>;
@@ -1399,6 +1407,7 @@ declare namespace Objection {
     isRelate: BooleanReturningMethod;
     isUnrelate: BooleanReturningMethod;
     isInternal: BooleanReturningMethod;
+    isJoinChildQuery: BooleanReturningMethod;
     hasWheres: BooleanReturningMethod;
     hasSelects: BooleanReturningMethod;
     hasWithGraph: BooleanReturningMethod;
