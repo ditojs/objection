@@ -1889,11 +1889,11 @@ describe('QueryBuilder', () => {
     };
 
     const query = TestModel.query();
-    expect(query.hasWithGraph(), false);
+    expect(query.hasWithGraph()).to.equal(false);
     query.withGraphFetched('someRel');
-    expect(query.hasWithGraph(), true);
+    expect(query.hasWithGraph()).to.equal(true);
     query.clearWithGraph();
-    expect(query.hasWithGraph(), false);
+    expect(query.hasWithGraph()).to.equal(false);
   });
 
   it('has() should match defined query operations', () => {

@@ -18,7 +18,6 @@ describe('JoinBuilder', () => {
     let builder = JoinBuilder.forClass(TestModel);
     for (let name in knexJoinClause) {
       let func = knexJoinClause[name];
-      console.log('checking', name, typeof func);
       if (typeof func === 'function' && ignore.indexOf(name) === -1) {
         if (typeof builder[name] !== 'function') {
           expect().to.fail("knex method '" + name + "' is missing from JoinBuilder");
