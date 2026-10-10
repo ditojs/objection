@@ -27,7 +27,7 @@ class Person extends Model {
 Modifying the [Ajv](https://github.com/epoberezkin/ajv) based JSON schema validation:
 
 ```js
-const AjvValidator = require('objection').AjvValidator;
+import { AjvValidator } from 'objection';
 
 class Model {
   static createValidator() {
@@ -51,7 +51,7 @@ Replace JSON schema validation with any other validation scheme by implementing 
 ```js
 // MyCustomValidator.js
 
-const { Validator } = require('objection');
+import { Validator } from 'objection';
 
 class MyCustomValidator extends Validator {
   validate(args) {
@@ -96,7 +96,7 @@ class MyCustomValidator extends Validator {
 
 // BaseModel.js
 
-const Model = require('objection').Model;
+import { Model } from 'objection';
 
 // Override the `createValidator` method of a `Model` to use the
 // custom validator.

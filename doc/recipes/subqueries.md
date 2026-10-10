@@ -31,7 +31,7 @@ console.log(peopleOlderThanAverage);
 You can use [ref](/api/objection/#ref) to reference the parent query in subqueries:
 
 ```js
-const { ref } = require('objection');
+import { ref } from 'objection';
 
 const peopleWithPetCount = await Person.query().select([
   'persons.*',

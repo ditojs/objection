@@ -44,7 +44,7 @@ Note: Even if you start a transaction using `Person.transaction` it doesn't mean
 An alternative way to start a transaction is to use the [Model.startTransaction()](/api/model/static-methods.html#static-starttransaction) method:
 
 ```js
-const { transaction } = require('objection');
+import { transaction } from 'objection';
 
 const trx = await Person.startTransaction();
 
@@ -130,14 +130,14 @@ await insertPersonAndPet(person, pet);
 The second way to use transactions avoids passing around a transaction object by "binding" model classes to a transaction. You pass all models you want to bind as arguments to the [objection.transaction](/api/objection/#transaction) method and as the last argument you provide a callback that receives **copies** of the models that have been bound to a newly started transaction. All queries started through the bound copies take part in the transaction and you don't need to pass around a transaction object. Note that the models passed to the callback are actual copies of the models passed as arguments to [objection.transaction](/api/objection/#transaction) and starting a query through any other object will **not** be executed inside a transaction.
 
 ```js
-const { transaction } = require('objection');
+import { transaction } from 'objection';
 
 try {
   const scrappy = await transaction(Person, Animal, async (Person, Animal) => {
     // Person and Animal inside this function are bound to a newly
     // created transaction. The Person and Animal outside this function
-    // are not! Even if you do `require('./models/Person')` inside this
-    // function and start a query using the required `Person` it will
+    // are not! Even if you import `Person` from `./models/Person.js`
+    // and start a query using the imported `Person` it will
     // NOT take part in the transaction. Only the actual objects passed
     // to this function are bound to the transaction.
 
@@ -158,7 +158,7 @@ try {
 You only need to give the [objection.transaction](/api/objection/#transaction) function the model classes you use explicitly. All the related model classes are implicitly bound to the same transaction:
 
 ```js
-const { transaction } = require('objection');
+import { transaction } from 'objection';
 
 try {
   const scrappy = await transaction(Person, async Person => {
@@ -183,9 +183,9 @@ try {
 The only way you can mess up with the transactions is if you _explicitly_ start a query using a model class that is not bound to the transaction:
 
 ```js
-const { transaction } = require('objection');
-const Person = require('./models/Person');
-const Animal = require('./models/Animal');
+import { transaction } from 'objection';
+import Person from './models/Person.js';
+import Animal from './models/Animal.js';
 
 await transaction(Person, async BoundPerson => {
   // This will be executed inside the transaction.
@@ -208,7 +208,7 @@ await transaction(Person, async BoundPerson => {
 The transaction object is always passed as the last argument to the callback:
 
 ```js
-const { transaction } = require('objection');
+import { transaction } from 'objection';
 
 await transaction(Person, async (Person, trx) => {
   // `trx` is the knex transaction object.

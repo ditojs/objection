@@ -5,7 +5,7 @@ Sometimes when you have a many-to-many relationship, you want to store some prop
 Let's consider a schema like this:
 
 ```js
-exports.up = knex => {
+export function up(knex) {
   return knex.schema
     .createTable('actors', table => {
       table.increments('id').primary();
@@ -21,7 +21,7 @@ exports.up = knex => {
       // The actor's character's name in the movie.
       table.string('characterName');
     });
-};
+}
 ```
 
 In this schema, `characterName` is the `extra` property. When we fetch movies for an actor, we want the movie objects to contain the `characterName` in addition to normal movie properties.
