@@ -38,6 +38,18 @@ import jsonQueriesMySql from './jsonQueriesMySql.js';
 // of databases to test.
 const DATABASES = (process.env.DATABASES && process.env.DATABASES.split(',')) || [];
 
+// The defaults match the databases in docker-compose.yml. Each setting can be
+// overridden with an environment variable, e.g. OBJECTION_TEST_POSTGRES_PORT.
+function connection(client, defaults) {
+  const settings = ['host', 'port', 'user', 'password', 'database'];
+  return Object.fromEntries(
+    settings.map((setting) => {
+      const name = `OBJECTION_TEST_${client}_${setting}`.toUpperCase();
+      return [setting, process.env[name] ?? defaults[setting]];
+    }),
+  );
+}
+
 describe('integration tests', () => {
   const testDatabaseConfigs = [
     {
@@ -54,11 +66,12 @@ describe('integration tests', () => {
     },
     {
       client: 'mysql',
-      connection: {
+      connection: connection('mysql', {
         host: '127.0.0.1',
+        port: 33306,
         user: 'objection',
         database: 'objection_test',
-      },
+      }),
       pool: {
         min: 2,
         max: 10,
@@ -71,11 +84,12 @@ describe('integration tests', () => {
     },
     {
       client: 'postgres',
-      connection: {
+      connection: connection('postgres', {
         host: '127.0.0.1',
+        port: 55432,
         user: 'objection',
         database: 'objection_test',
-      },
+      }),
     },
   ].filter((it) => {
     return DATABASES.length === 0 || DATABASES.includes(it.client);
