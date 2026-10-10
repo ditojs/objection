@@ -1,6 +1,6 @@
-import { UpsertGraphOptions } from '../../../typings/objection';
-import { Person } from '../fixtures/person';
-import { Animal } from '../fixtures/animal';
+import { UpsertGraphOptions } from 'objection';
+import { Person } from '../fixtures/person.js';
+import { Animal } from '../fixtures/animal.js';
 
 (async () => {
   await Person.query().upsertGraph({

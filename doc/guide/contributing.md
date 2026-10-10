@@ -45,7 +45,7 @@ git clone git@github.com:<your-account>/objection.git
 
 ## Running the tests
 
-[Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases.:
+You need Node.js `^20.19.0 || >=22.12.0`. [Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases:
 
 ```bash
 npm ci
@@ -86,7 +86,7 @@ To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*`, `OBJECTI
 
 The SQLite tests use a new database file in the system's temporary directory for each run, which is deleted afterwards. Set `OBJECTION_TEST_SQLITE_FILE` to use a file of your choice, which is kept.
 
-The tests are run with [mocha](https://mochajs.org/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure.
+The tests are run with [vitest](https://vitest.dev/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure, or `npm run test:watch` to rerun them whenever files change.
 
 SQL Server can't insert explicit values into auto-incrementing (identity) columns. Tests that insert rows with explicit ids create their tables with `session.createTable()` instead of `knex.schema.createTable()`, and their id columns with the `increments()` it passes to the callback.
 

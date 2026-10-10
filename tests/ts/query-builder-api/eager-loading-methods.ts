@@ -1,4 +1,4 @@
-import { Person } from '../fixtures/person';
+import { Person } from '../fixtures/person.js';
 
 (async () => {
   await Person.query().where('firstName', 'Arnold').withGraphFetched('pets');

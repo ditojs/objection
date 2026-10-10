@@ -1,5 +1,5 @@
-import { raw } from '../../../../';
-import { Person } from '../../fixtures/person';
+import { raw } from 'objection';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   await Person.query().deleteById(1);

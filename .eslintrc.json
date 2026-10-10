@@ -1,7 +1,8 @@
 {
   "root": true,
   "parserOptions": {
-    "ecmaVersion": "latest"
+    "ecmaVersion": "latest",
+    "sourceType": "module"
   },
   "plugins": [
     "prettier"
@@ -12,16 +13,13 @@
   },
   "env": {
     "es6": true,
-    "node": true,
-    "mocha": true
+    "node": true
   },
   "overrides": [
     {
-      "files": [
-        "lib/**/*.js"
-      ],
+      "files": ["tests/unit/relations/files/*.js"],
       "parserOptions": {
-        "ecmaVersion": 2020
+        "sourceType": "script"
       }
     }
   ]
