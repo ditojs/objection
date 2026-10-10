@@ -1,5 +1,5 @@
-import { Person } from '../../fixtures/person';
-import { Animal } from '../../fixtures/animal';
+import { Person } from '../../fixtures/person.js';
+import { Animal } from '../../fixtures/animal.js';
 
 type IPerson = Partial<
   Pick<Person, 'id' | 'firstName' | 'lastName'> & {

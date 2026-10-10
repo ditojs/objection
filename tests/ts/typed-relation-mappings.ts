@@ -1,7 +1,7 @@
-import { Model, RelationMappings, TypedRelationMappings } from '../../';
-import { Animal } from './fixtures/animal';
-import { Movie } from './fixtures/movie';
-import { Person } from './fixtures/person';
+import { Model, RelationMappings, TypedRelationMappings } from 'objection';
+import { Animal } from './fixtures/animal.js';
+import { Movie } from './fixtures/movie.js';
+import { Person } from './fixtures/person.js';
 
 // Thunk form: the classes referenced in the mappings don't need to be
 // initialized when the class is declared.

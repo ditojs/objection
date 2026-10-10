@@ -1,4 +1,4 @@
-import * as objection from '../../../';
+import * as objection from 'objection';
 
 export class Review extends objection.Model {
   id!: number;

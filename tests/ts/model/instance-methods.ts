@@ -1,5 +1,5 @@
-import { Person } from '../fixtures/person';
-import { ModelObject } from '../../../typings/objection';
+import { Person } from '../fixtures/person.js';
+import { ModelObject } from 'objection';
 
 const takesPersonPojo = (person: ModelObject<Person>) => true;
 

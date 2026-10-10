@@ -1,5 +1,5 @@
-import { ValidationError } from '../../typings/objection';
-import { Person } from './fixtures/person';
+import { ValidationError } from 'objection';
+import { Person } from './fixtures/person.js';
 
 (async () => {
   const person = Person.fromJson({ firstName: 'jennifer', lastName: 'Lawrence' });

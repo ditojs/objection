@@ -1,7 +1,6 @@
-import { Person } from '../fixtures/person';
-import { UniqueViolationError } from 'db-errors';
-import { Animal } from '../fixtures/animal';
-import { Model, transaction } from '../../../typings/objection';
+import { Person } from '../fixtures/person.js';
+import { Animal } from '../fixtures/animal.js';
+import { Model, transaction, UniqueViolationError } from 'objection';
 
 (async () => {
   const debugResult = Person.query().joinRelated('children').where('age', '>', '21').debug();

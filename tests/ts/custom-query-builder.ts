@@ -10,7 +10,7 @@ import {
   TransactionOrKnex,
   WithGraphOptions,
   WithGraphQueryBuilder,
-} from '../../';
+} from 'objection';
 
 class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   declare ArrayQueryBuilderType: CustomQueryBuilder<M, M[]>;

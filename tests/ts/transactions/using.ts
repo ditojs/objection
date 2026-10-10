@@ -1,6 +1,6 @@
-import { transaction, Transaction } from '../../../';
-import { Animal } from '../fixtures/animal';
-import { Person } from '../fixtures/person';
+import { transaction, Transaction } from 'objection';
+import { Animal } from '../fixtures/animal.js';
+import { Person } from '../fixtures/person.js';
 import { Knex } from 'knex';
 
 (async () => {

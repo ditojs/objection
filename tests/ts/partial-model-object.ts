@@ -1,7 +1,7 @@
 // Type tests for PartialModelObject, the data accepted by `insert()`,
 // `patch()` and the other mutating methods.
 
-import { Model, PartialModelObject, raw } from '../../';
+import { Model, PartialModelObject, raw } from 'objection';
 
 class Pet extends Model {
   id!: number;

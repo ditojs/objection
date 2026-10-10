@@ -1,6 +1,6 @@
-import { raw, ref } from '../../..';
-import { Movie } from '../fixtures/movie';
-import { Person } from '../fixtures/person';
+import { raw, ref } from 'objection';
+import { Movie } from '../fixtures/movie.js';
+import { Person } from '../fixtures/person.js';
 
 (async () => {
   const person = await Person.query().findById(1);

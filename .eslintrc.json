@@ -1,7 +1,8 @@
 {
   "root": true,
   "parserOptions": {
-    "ecmaVersion": "latest"
+    "ecmaVersion": "latest",
+    "sourceType": "module"
   },
   "plugins": [
     "prettier"
@@ -11,25 +12,14 @@
     "no-undef": "error"
   },
   "env": {
-    "es6": true,
-    "node": true,
-    "mocha": true
+    "es2021": true,
+    "node": true
   },
   "overrides": [
     {
-      "files": [
-        "lib/**/*.js"
-      ],
+      "files": ["tests/unit/relations/files/*.js"],
       "parserOptions": {
-        "ecmaVersion": 2020
-      }
-    },
-    {
-      "files": [
-        "tests/**/*.js"
-      ],
-      "env": {
-        "es2021": true
+        "sourceType": "script"
       }
     }
   ]

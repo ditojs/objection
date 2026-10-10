@@ -1,5 +1,5 @@
-import * as objection from '../../../';
-import { Person } from './person';
+import * as objection from 'objection';
+import { Person } from './person.js';
 
 export class Animal extends objection.Model {
   id!: number;

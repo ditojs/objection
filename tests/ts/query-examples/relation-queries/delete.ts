@@ -1,4 +1,4 @@
-import { Person } from '../../fixtures/person';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   const numberOfDeletedRows = await Person.query().delete().where('age', '>', 100);
