@@ -41,6 +41,13 @@ jobs:
         if: matrix.knex != 'default'
         run: npm install --no-save knex@${{ matrix.knex }}
 
+      # The generated parsers have to match their grammars. One job is enough.
+      - name: Check the generated parsers
+        if: matrix.node-version == '24.x' && matrix.knex == 'default' && matrix.mysql == '8.4'
+        run: |
+          npm run build:parsers
+          git diff --exit-code lib/queryBuilder/parsers
+
       - name: Start test databases
         env:
           COMPOSE_FILE: ${{ matrix.mysql == '5.7' && 'docker-compose.yml:docker-compose.mysql57.yml' || 'docker-compose.yml' }}

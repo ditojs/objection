@@ -10,6 +10,7 @@
     "test:typings": "tsc && prettier --check \"typings/**/*.ts\" \"tests/ts/**/*.ts\"",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down -v",
+    "build:parsers": "npx --yes peggy@5.1.0 --format commonjs -o lib/queryBuilder/parsers/jsonFieldExpressionParser.js lib/queryBuilder/parsers/jsonFieldExpressionParser.pegjs && npx --yes peggy@5.1.0 --format commonjs -o lib/queryBuilder/parsers/relationExpressionParser.js lib/queryBuilder/parsers/relationExpressionParser.pegjs && prettier --write \"lib/queryBuilder/parsers/*Parser.js\"",
     "prettier": "prettier --write \"{examples,lib,tests,testUtils,typings,doc}/**/*.{js,ts}\"",
     "eslint": "eslint --format codeframe \"examples/**/*.js\" \"lib/**/*.js\" \"tests/**/*.js\" \"testUtils/**/*.js\" \"*.js\"",
     "docs:dev": "vitepress dev doc",
