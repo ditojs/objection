@@ -600,6 +600,16 @@ declare namespace Objection {
   type ResultType<T extends { ResultType: any }> = T['ResultType'];
 
   /**
+   * Re-instantiates the query builder QB with the model type M and the result
+   * type R, through its `RebindType` slot.
+   */
+  type Rebind<QB extends { RebindType: any }, M extends Model, R> = (QB & {
+    '~rebindM': M;
+    '~rebindR': R;
+    '~rebound': true;
+  })['RebindType'];
+
+  /**
    * Gets the single item query builder type for a query builder.
    */
   type SingleQueryBuilder<T extends { SingleQueryBuilderType: any }> = T['SingleQueryBuilderType'];
@@ -1495,11 +1505,34 @@ declare namespace Objection {
     ModelType: M;
     ResultType: R;
 
-    ArrayQueryBuilderType: QueryBuilder<M, M[]>;
-    SingleQueryBuilderType: QueryBuilder<M, M>;
-    MaybeSingleQueryBuilderType: QueryBuilder<M, M | undefined>;
-    NumberQueryBuilderType: QueryBuilder<M, number>;
-    PageQueryBuilderType: QueryBuilder<M, Page<M>>;
+    // Type-only slots used by Rebind to re-instantiate the query builder.
+    // The `~rebind*` slots are `unknown`, so that they resolve to exactly the
+    // types that Rebind intersects them with. Where `this` is generic,
+    // TypeScript simplifies `(this & { ... })['RebindType']` to
+    // `this['RebindType']`, which reads the bare slots, e.g. when it checks
+    // the members of a custom query builder against the base class. `~M` and
+    // `~R` are `any` there, so that these checks pass.
+    '~M': [this['~rebound']] extends [true] ? this['~rebindM'] : any;
+    '~R': [this['~rebound']] extends [true] ? this['~rebindR'] : any;
+    '~rebindM': unknown;
+    '~rebindR': unknown;
+    '~rebound': unknown;
+
+    /**
+     * The query builder re-instantiated with `this['~M']` and `this['~R']`,
+     * from which the `*QueryBuilderType` members below are derived. Custom
+     * query builders only need to redeclare this to keep their type through
+     * first(), findById(), page(), etc:
+     *
+     *   declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+     */
+    RebindType: QueryBuilder<this['~M'], this['~R']>;
+
+    ArrayQueryBuilderType: Rebind<this, M, M[]>;
+    SingleQueryBuilderType: Rebind<this, M, M>;
+    MaybeSingleQueryBuilderType: Rebind<this, M, M | undefined>;
+    NumberQueryBuilderType: Rebind<this, M, number>;
+    PageQueryBuilderType: Rebind<this, M, Page<M>>;
 
     then<R1 = R, R2 = never>(
       onfulfilled?: ((value: R) => R1 | PromiseLike<R1>) | undefined | null,
