@@ -1,15 +1,15 @@
-const mockKnexFactory = require('../../../testUtils/mockKnex');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import mockKnexFactory from '../../../testUtils/mockKnex.js';
 
-const { expect } = require('chai');
-const { Model, raw } = require('../../../');
-const { ModelGraph } = require('../../../lib/model/graph/ModelGraph');
-const { GraphInsert } = require('../../../lib/queryBuilder/graph/insert/GraphInsert');
-const { GraphOptions } = require('../../../lib/queryBuilder/graph/GraphOptions');
-const { GraphNodeDbExistence } = require('../../../lib/queryBuilder/graph/GraphNodeDbExistence');
-const { GraphFetcher } = require('../../../lib/queryBuilder/graph/GraphFetcher');
-const { asArray } = require('../../../lib/utils/objectUtils');
+import { Model, raw } from 'objection';
+import { ModelGraph } from '../../../lib/model/graph/ModelGraph.js';
+import { GraphInsert } from '../../../lib/queryBuilder/graph/insert/GraphInsert.js';
+import { GraphOptions } from '../../../lib/queryBuilder/graph/GraphOptions.js';
+import { GraphNodeDbExistence } from '../../../lib/queryBuilder/graph/GraphNodeDbExistence.js';
+import { GraphFetcher } from '../../../lib/queryBuilder/graph/GraphFetcher.js';
+import { asArray } from '../../../lib/utils/objectUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   const ID_NOT_IN_DB = 1000000;
 
   describe('GraphInsert tests', () => {
@@ -18,7 +18,7 @@ module.exports = (session) => {
     let mockKnex = null;
     let numExecutedQueries = 0;
 
-    before(createSchema);
+    beforeAll(createSchema);
     beforeEach(createModels);
     beforeEach(() => {
       return session
@@ -28,7 +28,7 @@ module.exports = (session) => {
         .then(() => session.knex('persons').delete());
     });
 
-    after(dropSchema);
+    afterAll(dropSchema);
 
     it('should insert one object', () => {
       return test({
@@ -441,7 +441,7 @@ module.exports = (session) => {
           postgresNumQueries: 2,
 
           check(graph) {
-            expect(graph[0].id).to.equal(graph[0].pets[0].favoritePerson.id);
+            expect(graph[0].id).toBe(graph[0].pets[0].favoritePerson.id);
           },
         });
       });
@@ -780,7 +780,7 @@ module.exports = (session) => {
             postgresNumQueries: 2,
 
             check(graphOut) {
-              expect(graphOut[0].id).to.equal(graphOut[0].relatives[0].id);
+              expect(graphOut[0].id).toBe(graphOut[0].relatives[0].id);
             },
           });
         });
@@ -1057,12 +1057,12 @@ module.exports = (session) => {
         })
         .then(() => {
           if (session.isPostgres() && postgresNumQueries) {
-            expect(numExecutedQueries).to.equal(postgresNumQueries);
+            expect(numExecutedQueries).toBe(postgresNumQueries);
           }
         })
         .then(() => queryOut(modelClass.query()))
         .then((result) => {
-          expect(result).to.containSubset(graphOut);
+          expect(result).toContainSubset(graphOut);
 
           if (check) {
             check(result);

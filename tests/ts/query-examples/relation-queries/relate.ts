@@ -1,5 +1,5 @@
-import { Movie } from '../../fixtures/movie';
-import { Person } from '../../fixtures/person';
+import { Movie } from '../../fixtures/movie.js';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   const person = (await Person.query().findById(123))!;

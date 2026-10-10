@@ -1,8 +1,8 @@
-const Knex = require('knex');
-const { Model, ref, snakeCaseMappers, knexSnakeCaseMappers } = require('../../');
-const expect = require('chai').expect;
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import Knex from 'knex';
+import { Model, ref, snakeCaseMappers, knexSnakeCaseMappers } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('snakeCaseMappers', () => {
     class Person extends Model {
       $formatDatabaseJson(json) {
@@ -79,7 +79,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('person_movie')
         .dropTableIfExists('animal')
@@ -173,7 +173,7 @@ module.exports = (session) => {
             return model.$relatedQuery('pets', session.knex).orderBy('animal_name');
           })
           .then((pets) => {
-            expect(pets).to.containSubset([
+            expect(pets).toContainSubset([
               {
                 animalName: 'Hurtta',
               },
@@ -189,7 +189,7 @@ module.exports = (session) => {
           .joinRelated('parentPerson.parentPerson')
           .select('parentPerson:parentPerson.first_name as nestedRef')
           .then((result) => {
-            expect(result).to.containSubset([{ nestedRef: 'Matti' }]);
+            expect(result).toContainSubset([{ nestedRef: 'Matti' }]);
           });
       });
 
@@ -203,7 +203,7 @@ module.exports = (session) => {
             })
             .returning('*')
             .then((result) => {
-              expect(result).to.containSubset([
+              expect(result).toContainSubset([
                 {
                   firstName: 'Matti',
                   parentId: null,
@@ -238,8 +238,8 @@ module.exports = (session) => {
               .patch({ 'personAddress:personCity': 'Helsinki' });
 
             const { person_address } = await fetchMatti();
-            expect(person_address.personCity).to.equal('Jalasjärvi');
-            expect(person_address.person_city).to.equal('Helsinki');
+            expect(person_address.personCity).toBe('Jalasjärvi');
+            expect(person_address.person_city).toBe('Helsinki');
           });
 
           it('patch only maps the column part with `preserveJsonKeys: true`', async () => {
@@ -247,9 +247,9 @@ module.exports = (session) => {
               .where(ref(latitudeRef), 61)
               .patch({ 'personAddress:cityCoordinates.latitudeCoordinate': 30 });
 
-            expect(numUpdated).to.equal(1);
+            expect(numUpdated).toBe(1);
             const { person_address } = await fetchMatti();
-            expect(person_address).to.eql({
+            expect(person_address).toEqual({
               personCity: 'Jalasjärvi',
               cityCoordinates: { latitudeCoordinate: 30, longitudeCoordinate: 23 },
             });
@@ -258,7 +258,7 @@ module.exports = (session) => {
               .select('first_name', ref(latitudeRef).castInt().as('latitude'))
               .whereJsonSupersetOf('person_address:cityCoordinates', { latitudeCoordinate: 30 });
 
-            expect(result.map((it) => it.toJSON())).to.eql([{ firstName: 'Matti', latitude: 30 }]);
+            expect(result.map((it) => it.toJSON())).toEqual([{ firstName: 'Matti', latitude: 30 }]);
           });
 
           it('knexSnakeCaseMappers never maps json keys of field expressions', async () => {
@@ -279,9 +279,9 @@ module.exports = (session) => {
                 .where(ref('personAddress:cityCoordinates.latitudeCoordinate'), 61)
                 .patch({ 'personAddress:cityCoordinates.latitudeCoordinate': 30 });
 
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               const { person_address } = await fetchMatti();
-              expect(person_address.cityCoordinates).to.eql({
+              expect(person_address.cityCoordinates).toEqual({
                 latitudeCoordinate: 30,
                 longitudeCoordinate: 23,
               });
@@ -293,7 +293,7 @@ module.exports = (session) => {
                 )
                 .whereNotNull('personAddress');
 
-              expect(result.map((it) => it.toJSON())).to.eql([
+              expect(result.map((it) => it.toJSON())).toEqual([
                 { firstName: 'Matti', latitudeValue: 30 },
               ]);
             } finally {
@@ -314,8 +314,8 @@ module.exports = (session) => {
             [method]('[parentPerson.parentPerson, pets, movies]')
             .orderBy('person.first_name')
             .then((people) => {
-              expect(people.length).to.equal(3);
-              expect(people).to.containSubset([
+              expect(people.length).toBe(3);
+              expect(people).toContainSubset([
                 {
                   rootFirstName: 'Seppo',
 
@@ -361,7 +361,7 @@ module.exports = (session) => {
       });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('person_movie')
         .dropTableIfExists('animal')
@@ -448,7 +448,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('PERSON_MOVIE')
         .dropTableIfExists('ANIMAL')
@@ -520,7 +520,7 @@ module.exports = (session) => {
             return model.$relatedQuery('pets', session.knex).orderBy('ANIMAL_NAME');
           })
           .then((pets) => {
-            expect(pets).to.containSubset([
+            expect(pets).toContainSubset([
               {
                 animalName: 'Hurtta',
               },
@@ -542,8 +542,8 @@ module.exports = (session) => {
             [method]('[parentPerson.parentPerson, pets, movies]')
             .orderBy('PERSON.FIRST_NAME')
             .then((people) => {
-              expect(people.length).to.equal(3);
-              expect(people).to.containSubset([
+              expect(people.length).toBe(3);
+              expect(people).toContainSubset([
                 {
                   rootFirstName: 'Seppo',
 
@@ -589,7 +589,7 @@ module.exports = (session) => {
       });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('PERSON_MOVIe')
         .dropTableIfExists('ANIMAL')

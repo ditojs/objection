@@ -1,4 +1,4 @@
-const knex = require('knex');
+import knex from 'knex';
 
 // DATABASES environment variable can contain a comma separated list
 // of databases to setup. Defaults to all databases.
@@ -39,7 +39,7 @@ async function setup() {
 
     await mysql.raw('DROP DATABASE IF EXISTS objection_test');
     await mysql.raw('DROP USER IF EXISTS objection');
-    await mysql.raw('CREATE USER objection');
+    await mysql.raw('CREATE USER objection IDENTIFIED WITH mysql_native_password');
     await mysql.raw('GRANT ALL PRIVILEGES ON *.* TO objection');
     await mysql.raw('CREATE DATABASE objection_test');
 

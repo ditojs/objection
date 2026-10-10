@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   const { knex } = session;
 
   // Typescript adds undefined default values for all declared class fields
@@ -97,7 +97,7 @@ module.exports = (session) => {
       static tableName = 'toy';
     }
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('petToy')
         .dropTableIfExists('pet')
@@ -123,7 +123,7 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema
         .dropTableIfExists('petToy')
         .dropTableIfExists('pet')
@@ -139,7 +139,7 @@ module.exports = (session) => {
           pets: [{ name: 'Catto' }, { name: 'Doggo', toys: [{ toyName: 'Bone' }] }],
         });
 
-      expect(result).to.containSubset({
+      expect(result).toContainSubset({
         firstName: 'Arnold',
         pets: [
           { name: 'Catto', owner: undefined, toys: undefined },
@@ -159,7 +159,7 @@ module.exports = (session) => {
           },
         });
 
-      expect(resultFromDb).to.containSubset({
+      expect(resultFromDb).toContainSubset({
         firstName: 'Arnold',
         pets: [
           { name: 'Catto', owner: undefined, toys: [] },
@@ -185,7 +185,7 @@ module.exports = (session) => {
           },
         });
 
-      expect(result).to.containSubset({
+      expect(result).toContainSubset({
         firstName: 'Arnold',
         pets: [
           { name: 'Catto', owner: undefined, toys: [] },
@@ -212,7 +212,7 @@ module.exports = (session) => {
           },
         });
 
-      expect(result).to.containSubset({
+      expect(result).toContainSubset({
         firstName: 'Arnold',
         pets: [
           { name: 'Catto', owner: undefined, toys: [] },
@@ -231,8 +231,8 @@ module.exports = (session) => {
       await toy.$query(knex).patch({ toyName: 'Wheel' });
 
       toy = await Toy.query(knex).findById(toy.id);
-      expect(toy.price).to.equal(100);
-      expect(toy.toyName).to.equal('Wheel');
+      expect(toy.price).toBe(100);
+      expect(toy.toyName).toBe('Wheel');
 
       toy = await Toy.query(knex).insert({ toyName: 'Wheel' });
       await toy.$query(knex).update();
@@ -249,18 +249,18 @@ module.exports = (session) => {
 
       // HasManyRelation
       const catto = await Person.relatedQuery('pets', knex).for(personId).findById(cattoId);
-      expect(catto).to.containSubset({ name: 'Catto' });
+      expect(catto).toMatchObject({ name: 'Catto' });
       const doggo = await Person.relatedQuery('pets', knex).for(personId).findById(doggoId);
-      expect(doggo).to.containSubset({ name: 'Doggo' });
+      expect(doggo).toMatchObject({ name: 'Doggo' });
 
       // BelongsToOneRelation
       const person = await doggo.$relatedQuery('owner', knex);
-      expect(person).to.containSubset({ firstName: 'Arnold' });
+      expect(person).toMatchObject({ firstName: 'Arnold' });
 
       // ManyToManyRelation
       const toys = await Pet.relatedQuery('toys', knex).for(doggo);
-      expect(toys).to.have.length(1);
-      expect(toys).to.containSubset([{ toyName: 'Bone' }]);
+      expect(toys).toHaveLength(1);
+      expect(toys).toContainSubset([{ toyName: 'Bone' }]);
     });
 
     it('relatedQuery: insert', async () => {
@@ -270,7 +270,7 @@ module.exports = (session) => {
         .for(doggo)
         .insert({ firstName: 'Arnold' });
       let arnold = await Person.query(knex).withGraphFetched('pets').findById(arnoldId);
-      expect(arnold).to.containSubset({
+      expect(arnold).toContainSubset({
         firstName: 'Arnold',
         pets: [{ name: 'Doggo' }],
       });
@@ -280,14 +280,14 @@ module.exports = (session) => {
         .for(arnold.id)
         .insert({ name: 'Catto' });
       arnold = await Person.query(knex).withGraphFetched('pets').findById(arnoldId);
-      expect(arnold).to.containSubset({
+      expect(arnold).toContainSubset({
         firstName: 'Arnold',
         pets: [{ name: 'Doggo' }, { name: 'Catto' }],
       });
 
       // ManyToManyRelation
       const toy = await Pet.relatedQuery('toys', knex).for(catto).insert({ toyName: 'Bone' });
-      expect(toy).to.containSubset({ toyName: 'Bone' });
+      expect(toy).toMatchObject({ toyName: 'Bone' });
 
       const result = await Person.query(knex)
         .findById(arnoldId)
@@ -297,7 +297,7 @@ module.exports = (session) => {
           },
         });
 
-      expect(result).to.containSubset({
+      expect(result).toContainSubset({
         firstName: 'Arnold',
         pets: [
           { name: 'Catto', owner: undefined, toys: [{ toyName: 'Bone' }] },

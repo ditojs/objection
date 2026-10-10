@@ -1,9 +1,9 @@
-const { Model } = require('../../');
-const expect = require('expect.js');
-const mockKnexFactory = require('../../testUtils/mockKnex');
-const { sortBy } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { Model } from 'objection';
+import mockKnexFactory from '../../testUtils/mockKnex.js';
+import { sortBy } from '../../testUtils/testUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   describe('Composite keys', () => {
     let mockKnex;
     let queries;
@@ -11,14 +11,14 @@ module.exports = (session) => {
     let A;
     let B;
 
-    before(() => {
+    beforeAll(() => {
       mockKnex = mockKnexFactory(session.knex, function (mock, oldImpl, args) {
         queries.push(this.toSQL());
         return oldImpl.apply(this, args);
       });
     });
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('A_B')
         .dropTableIfExists('A')
@@ -45,14 +45,14 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('A_B')
         .dropTableIfExists('A')
         .dropTableIfExists('B');
     });
 
-    before(() => {
+    beforeAll(() => {
       class ModelA extends Model {
         static get tableName() {
           return 'A';
@@ -140,33 +140,29 @@ module.exports = (session) => {
         return A.query()
           .insert({ id1: 1, id2: '1', aval: 'a' })
           .then((ret) => {
-            expect(ret).to.eql({ id1: 1, id2: '1', aval: 'a' });
+            expect(ret).toEqual({ id1: 1, id2: '1', aval: 'a' });
             return A.query().insertAndFetch({ id1: 1, id2: '2', aval: 'b' });
           })
           .then((ret) => {
-            expect(ret.$toJson()).to.eql({ id1: 1, id2: '2', aval: 'b', bid3: null, bid4: null });
+            expect(ret.$toJson()).toEqual({ id1: 1, id2: '2', aval: 'b', bid3: null, bid4: null });
             return session.knex('A').orderBy('id2');
           })
           .then((rows) => {
-            expect(rows).to.eql([
+            expect(rows).toEqual([
               { id1: 1, id2: '1', aval: 'a', bid3: null, bid4: null },
               { id1: 1, id2: '2', aval: 'b', bid3: null, bid4: null },
             ]);
           });
       });
 
-      it('insert should fail (unique violation)', (done) => {
-        A.query()
-          .insert({ id1: 1, id2: '1', aval: 'a' })
-          .then(() => {
-            return A.query().insert({ id1: 1, id2: '1', aval: 'b' });
-          })
-          .then(() => {
-            done(new Error('should not get here'));
-          })
-          .catch(() => {
-            done();
-          });
+      it('insert should fail (unique violation)', () => {
+        return expect(
+          A.query()
+            .insert({ id1: 1, id2: '1', aval: 'a' })
+            .then(() => {
+              return A.query().insert({ id1: 1, id2: '1', aval: 'b' });
+            }),
+        ).rejects.toThrow();
       });
     });
 
@@ -189,7 +185,7 @@ module.exports = (session) => {
         return A.query()
           .findById([2, '2'])
           .then((model) => {
-            expect(model.toJSON()).to.eql({ id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null });
+            expect(model.toJSON()).toEqual({ id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null });
           });
       });
 
@@ -200,7 +196,7 @@ module.exports = (session) => {
             [2, '2'],
           ])
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               { id1: 1, id2: '1', aval: 'a', bid3: null, bid4: null },
               { id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null },
             ]);
@@ -212,7 +208,7 @@ module.exports = (session) => {
           .whereComposite(['id1', 'id2'], [2, '2'])
           .first()
           .then((model) => {
-            expect(model.toJSON()).to.eql({ id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null });
+            expect(model.toJSON()).toEqual({ id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null });
           });
       });
 
@@ -228,7 +224,7 @@ module.exports = (session) => {
           )
           .orderBy(['id1', 'id2'])
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               { id1: 1, id2: '2', aval: 'b', bid3: null, bid4: null },
               { id1: 2, id2: '3', aval: 'd', bid3: null, bid4: null },
               { id1: 3, id2: '3', aval: 'e', bid3: null, bid4: null },
@@ -248,7 +244,7 @@ module.exports = (session) => {
           )
           .orderBy(['id1', 'id2'])
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               { id1: 1, id2: '1', aval: 'a', bid3: null, bid4: null },
               { id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null },
             ]);
@@ -276,11 +272,11 @@ module.exports = (session) => {
           .updateAndFetchById([1, '2'], { aval: 'updated' })
           .orderBy(['id1', 'id2'])
           .then((model) => {
-            expect(model).to.eql({ id1: 1, id2: '2', aval: 'updated', bid3: null, bid4: null });
+            expect(model).toEqual({ id1: 1, id2: '2', aval: 'updated', bid3: null, bid4: null });
             return session.knex('A').orderBy(['id1', 'id2']);
           })
           .then((rows) => {
-            expect(rows).to.eql([
+            expect(rows).toEqual([
               { id1: 1, id2: '1', aval: 'a', bid3: null, bid4: null },
               { id1: 1, id2: '2', aval: 'updated', bid3: null, bid4: null },
               { id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null },
@@ -353,8 +349,8 @@ module.exports = (session) => {
           { insertMissing: true },
         );
 
-        expect(queries.length).to.equal(2);
-        expect(await A.query().findById([1000, "doesn't exist in the db"])).not.equal(undefined);
+        expect(queries.length).toBe(2);
+        expect(await A.query().findById([1000, "doesn't exist in the db"])).not.toBeUndefined();
       });
 
       it('should work when updating the root', async () => {
@@ -364,18 +360,18 @@ module.exports = (session) => {
           aval: 'updated',
         });
 
-        expect(result.aval).to.equal('updated');
-        expect(queries.length).to.equal(2);
-        expect(queries[0].bindings).to.eql([1, '1']);
+        expect(result.aval).toBe('updated');
+        expect(queries.length).toBe(2);
+        expect(queries[0].bindings).toEqual([1, '1']);
 
         if (session.isPostgres()) {
-          expect(queries[0].sql).to.equal(
+          expect(queries[0].sql).toBe(
             'select "A"."id1", "A"."id2", "A"."aval" from "A" where ("A"."id1", "A"."id2") in ((?, ?))',
           );
         }
 
         const fromDb = await A.query().findById([1, '1']);
-        expect(fromDb.aval).to.equal('updated');
+        expect(fromDb.aval).toBe('updated');
       });
 
       it('should work when `insertMissing` option is true', () => {
@@ -443,7 +439,7 @@ module.exports = (session) => {
               .modifyGraph('ba', (qb) => qb.orderBy(['id3', 'id4']));
           })
           .then((model) => {
-            expect(model).to.eql({
+            expect(model).toEqual({
               id1: 1,
               id2: '1',
               aval: 'x',
@@ -500,13 +496,13 @@ module.exports = (session) => {
             ]);
           })
           .then(([a, b]) => {
-            expect(a).to.eql([
+            expect(a).toEqual([
               { id1: 1, id2: '1', aval: 'x', bid3: 1, bid4: '1' },
               { id1: 1, id2: '2', aval: 'w', bid3: 1, bid4: '1' },
               { id1: 400, id2: '600', aval: 'new a', bid3: 1, bid4: '1' },
             ]);
 
-            expect(b).to.eql([
+            expect(b).toEqual([
               { id3: 1, id4: '1', bval: 'z' },
               { id3: 2, id4: '1', bval: 'y' },
               { id3: 200, id4: '300', bval: 'new b' },
@@ -548,7 +544,7 @@ module.exports = (session) => {
               .modifyGraph('ba', (qb) => qb.orderBy(['id3', 'id4']));
           })
           .then((model) => {
-            expect(model).to.eql({
+            expect(model).toEqual({
               id1: 1,
               id2: '1',
               aval: 'aUpdated',
@@ -592,11 +588,11 @@ module.exports = (session) => {
           .deleteById([1, '2'])
           .orderBy(['id1', 'id2'])
           .then((count) => {
-            expect(count).to.eql(1);
+            expect(count).toBe(1);
             return session.knex('A').orderBy(['id1', 'id2']);
           })
           .then((rows) => {
-            expect(rows).to.eql([
+            expect(rows).toEqual([
               { id1: 1, id2: '1', aval: 'a', bid3: null, bid4: null },
               { id1: 2, id2: '2', aval: 'c', bid3: null, bid4: null },
               { id1: 2, id2: '3', aval: 'd', bid3: null, bid4: null },
@@ -607,18 +603,18 @@ module.exports = (session) => {
 
       it('patchById should accept a composite id', async () => {
         const count = await A.query().patchById([1, '2'], { aval: 'x' });
-        expect(count).to.eql(1);
+        expect(count).toBe(1);
 
         const rows = await session.knex('A').orderBy(['id1', 'id2']);
-        expect(rows.map((row) => row.aval)).to.eql(['a', 'x', 'c', 'd', 'e']);
+        expect(rows.map((row) => row.aval)).toEqual(['a', 'x', 'c', 'd', 'e']);
       });
 
       it('updateById should accept a composite id', async () => {
         const count = await A.query().updateById([2, '3'], { aval: 'y' });
-        expect(count).to.eql(1);
+        expect(count).toBe(1);
 
         const rows = await session.knex('A').orderBy(['id1', 'id2']);
-        expect(rows.map((row) => row.aval)).to.eql(['a', 'b', 'c', 'y', 'e']);
+        expect(rows.map((row) => row.aval)).toEqual(['a', 'b', 'c', 'y', 'e']);
       });
     });
 
@@ -694,7 +690,7 @@ module.exports = (session) => {
                   it.ab = sortBy(it.ab, ['id1', 'id2']);
                 });
 
-                expect(models).to.eql([
+                expect(models).toEqual([
                   {
                     id3: 1,
                     id4: '1',
@@ -783,7 +779,7 @@ module.exports = (session) => {
               .then((b) => {
                 b = sortBy(b, ['id1', 'id2']);
 
-                expect(b).to.eql([
+                expect(b).toEqual([
                   {
                     id1: 1,
                     id2: '1',
@@ -822,7 +818,7 @@ module.exports = (session) => {
                 b = sortBy(b, ['id1', 'id2']);
                 b[0].ba = sortBy(b[0].ba, ['id3', 'id4']);
 
-                expect(b).to.eql([
+                expect(b).toEqual([
                   {
                     id1: 11,
                     id2: '11',
@@ -864,7 +860,7 @@ module.exports = (session) => {
               return Promise.all([a1, a1.$relatedQuery('b')]);
             })
             .then(([_, b1]) => {
-              expect(b1).to.eql({ id3: 1, id4: '1', bval: 'b1' });
+              expect(b1).toEqual({ id3: 1, id4: '1', bval: 'b1' });
             });
         });
 
@@ -878,8 +874,8 @@ module.exports = (session) => {
               ]);
             })
             .then(([a1, bNew]) => {
-              expect(bNew).to.eql({ id3: 1000, id4: '2000', bval: 'new' });
-              expect(a1).to.eql({
+              expect(bNew).toEqual({ id3: 1000, id4: '2000', bval: 'new' });
+              expect(a1).toEqual({
                 id1: 1,
                 id2: '1',
                 aval: 'a1',
@@ -892,8 +888,8 @@ module.exports = (session) => {
               ]);
             })
             .then(([a1, bNew]) => {
-              expect(a1).to.eql({ id1: 1, id2: '1', aval: 'a1', bid3: 1000, bid4: '2000' });
-              expect(bNew).to.eql({ id3: 1000, id4: '2000', bval: 'new' });
+              expect(a1).toEqual({ id1: 1, id2: '1', aval: 'a1', bid3: 1000, bid4: '2000' });
+              expect(bNew).toEqual({ id3: 1000, id4: '2000', bval: 'new' });
             });
         });
 
@@ -904,12 +900,12 @@ module.exports = (session) => {
               return Promise.all([a1, a1.$relatedQuery('b').update({ bval: 'updated' })]);
             })
             .then(([a1, numUpdated]) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('B').where('bval', 'updated');
             })
             .then((rows) => {
-              expect(rows).to.have.length(1);
-              expect(rows[0]).to.eql({ id3: 1, id4: '1', bval: 'updated' });
+              expect(rows).toHaveLength(1);
+              expect(rows[0]).toEqual({ id3: 1, id4: '1', bval: 'updated' });
             });
         });
 
@@ -923,12 +919,12 @@ module.exports = (session) => {
               ]);
             })
             .then(([a1, b1]) => {
-              expect(b1).to.eql({ id3: 1, id4: '1', bval: 'updated' });
+              expect(b1).toEqual({ id3: 1, id4: '1', bval: 'updated' });
               return session.knex('B').where('bval', 'updated');
             })
             .then((rows) => {
-              expect(rows).to.have.length(1);
-              expect(rows[0]).to.eql({ id3: 1, id4: '1', bval: 'updated' });
+              expect(rows).toHaveLength(1);
+              expect(rows[0]).toEqual({ id3: 1, id4: '1', bval: 'updated' });
             });
         });
 
@@ -939,12 +935,12 @@ module.exports = (session) => {
               return Promise.all([a1, a1.$relatedQuery('b').delete()]);
             })
             .then(([a1, numDeleted]) => {
-              expect(numDeleted).to.equal(1);
+              expect(numDeleted).toBe(1);
               return session.knex('B');
             })
             .then((rows) => {
-              expect(rows).to.have.length(1);
-              expect(rows[0].bval).to.equal('b1');
+              expect(rows).toHaveLength(1);
+              expect(rows[0].bval).toBe('b1');
             });
         });
 
@@ -952,18 +948,18 @@ module.exports = (session) => {
           return A.query()
             .findById([2, '2'])
             .then((a1) => {
-              expect(a1.bid3).to.equal(1);
-              expect(a1.bid4).to.equal('2');
+              expect(a1.bid3).toBe(1);
+              expect(a1.bid4).toBe('2');
               return Promise.all([a1, a1.$relatedQuery('b').relate([1, '1'])]);
             })
             .then(([a1]) => {
-              expect(a1.bid3).to.equal(1);
-              expect(a1.bid4).to.equal('1');
+              expect(a1.bid3).toBe(1);
+              expect(a1.bid4).toBe('1');
               return A.query().findById([2, '2']);
             })
             .then((a1) => {
-              expect(a1.bid3).to.equal(1);
-              expect(a1.bid4).to.equal('1');
+              expect(a1.bid3).toBe(1);
+              expect(a1.bid4).toBe('1');
             });
         });
 
@@ -971,18 +967,18 @@ module.exports = (session) => {
           return A.query()
             .findById([2, '2'])
             .then((a1) => {
-              expect(a1.bid3).to.equal(1);
-              expect(a1.bid4).to.equal('2');
+              expect(a1.bid3).toBe(1);
+              expect(a1.bid4).toBe('2');
               return Promise.all([a1, a1.$relatedQuery('b').unrelate()]);
             })
             .then(([a1]) => {
-              expect(a1.bid3).to.equal(null);
-              expect(a1.bid4).to.equal(null);
+              expect(a1.bid3).toBeNull();
+              expect(a1.bid4).toBeNull();
               return A.query().findById([2, '2']);
             })
             .then((a1) => {
-              expect(a1.bid3).to.equal(null);
-              expect(a1.bid4).to.equal(null);
+              expect(a1.bid3).toBeNull();
+              expect(a1.bid4).toBeNull();
             });
         });
       });
@@ -995,7 +991,7 @@ module.exports = (session) => {
               return Promise.all([b1, b1.$relatedQuery('a').orderBy(['id1', 'id2'])]);
             })
             .then(([_, a]) => {
-              expect(a).to.eql([
+              expect(a).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '1' },
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1013,7 +1009,7 @@ module.exports = (session) => {
               ]);
             })
             .then(([b1, aNew]) => {
-              expect(aNew).to.eql({
+              expect(aNew).toEqual({
                 id1: 1000,
                 id2: '2000',
                 aval: 'new',
@@ -1023,7 +1019,7 @@ module.exports = (session) => {
               return session.knex('A').where({ id1: 1000, id2: '2000' }).first();
             })
             .then((aNew) => {
-              expect(aNew).to.eql({ id1: 1000, id2: '2000', aval: 'new', bid3: 1, bid4: '1' });
+              expect(aNew).toEqual({ id1: 1000, id2: '2000', aval: 'new', bid3: 1, bid4: '1' });
             });
         });
 
@@ -1034,11 +1030,11 @@ module.exports = (session) => {
               return b1.$relatedQuery('a').update({ aval: 'up' }).where('id2', '>', '1');
             })
             .then((count) => {
-              expect(count).to.equal(1);
+              expect(count).toBe(1);
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '1' },
                 { id1: 1, id2: '2', aval: 'up', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1062,11 +1058,11 @@ module.exports = (session) => {
               return b2.$relatedQuery('a').delete();
             })
             .then((count) => {
-              expect(count).to.equal(3);
+              expect(count).toBe(3);
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '1' },
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1090,7 +1086,7 @@ module.exports = (session) => {
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '2' },
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1117,7 +1113,7 @@ module.exports = (session) => {
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '2' },
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1144,7 +1140,7 @@ module.exports = (session) => {
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '1' },
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1170,7 +1166,7 @@ module.exports = (session) => {
               return b2.$relatedQuery('ab').orderBy(['id1', 'id2']);
             })
             .then((ret) => {
-              expect(ret).to.eql([
+              expect(ret).toEqual([
                 { id1: 1, id2: '1', aval: 'a1', bid3: 1, bid4: '1' },
                 { id1: 11, id2: '11', aval: 'a7', bid3: null, bid4: null },
                 { id1: 21, id2: '21', aval: 'a10', bid3: null, bid4: null },
@@ -1206,11 +1202,11 @@ module.exports = (session) => {
               ]);
             })
             .then(([a, ab]) => {
-              expect(a).to.eql(
+              expect(a).toEqual(
                 aOld.concat([{ id1: 1000, id2: '2000', aval: 'new', bid3: null, bid4: null }]),
               );
 
-              expect(ab).to.eql(abOld.concat([{ aid1: 1000, aid2: '2000', bid3: 1, bid4: '2' }]));
+              expect(ab).toEqual(abOld.concat([{ aid1: 1000, aid2: '2000', bid3: 1, bid4: '2' }]));
             });
         });
 
@@ -1224,7 +1220,7 @@ module.exports = (session) => {
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '1', aval: 'XX', bid3: 1, bid4: '1' },
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
@@ -1251,7 +1247,7 @@ module.exports = (session) => {
               return session.knex('A').orderBy(['id1', 'id2']);
             })
             .then((rows) => {
-              expect(rows).to.eql([
+              expect(rows).toEqual([
                 { id1: 1, id2: '2', aval: 'a2', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '1', aval: 'a3', bid3: 1, bid4: '1' },
                 { id1: 2, id2: '2', aval: 'a4', bid3: 1, bid4: '2' },
@@ -1289,8 +1285,8 @@ module.exports = (session) => {
               ]);
             })
             .then(([a, ab]) => {
-              expect(a).to.eql(aOld);
-              expect(ab).to.eql(
+              expect(a).toEqual(aOld);
+              expect(ab).toEqual(
                 sortBy(abOld.concat([{ aid1: 1, aid2: '2', bid3: 1, bid4: '2' }]), [
                   'bid3',
                   'bid4',
@@ -1327,8 +1323,8 @@ module.exports = (session) => {
               ]);
             })
             .then(([a, ab]) => {
-              expect(a).to.eql(aOld);
-              expect(ab).to.eql(abOld.filter((it) => !(it.bid3 === 1 && it.bid4 === '2')));
+              expect(a).toEqual(aOld);
+              expect(ab).toEqual(abOld.filter((it) => !(it.bid3 === 1 && it.bid4 === '2')));
             });
         });
       });

@@ -1,0 +1,183 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
+
+export default (session) => {
+  describe(`orderBy extra property in relation modify #760`, () => {
+    let knex = session.knex;
+    let Person;
+
+    beforeAll(() => {
+      return knex.schema
+        .dropTableIfExists('Person')
+        .dropTableIfExists('PersonPerson')
+        .createTable('Person', (table) => {
+          table.increments('id').primary();
+          table.string('name');
+        })
+        .createTable('PersonPerson', (table) => {
+          table.increments('id').primary();
+          table.integer('awesomeness');
+          table.integer('person1Id');
+          table.integer('person2Id');
+        });
+    });
+
+    afterAll(() => {
+      return knex.schema.dropTableIfExists('PersonPerson').dropTableIfExists('Person');
+    });
+
+    beforeAll(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'Person';
+        }
+
+        static get relationMappings() {
+          return {
+            relatives: {
+              relation: Model.ManyToManyRelation,
+              modelClass: Person,
+              modify: (builder) => builder.orderBy('awesomeness'),
+              join: {
+                from: 'Person.id',
+                through: {
+                  from: 'PersonPerson.person1Id',
+                  to: 'PersonPerson.person2Id',
+                  extra: ['awesomeness'],
+                },
+                to: 'Person.id',
+              },
+            },
+
+            goodRelatives: {
+              relation: Model.ManyToManyRelation,
+              modelClass: Person,
+              modify: (builder) => builder.orderBy('awesomeness').where('awesomeness', '>', 1),
+              join: {
+                from: 'Person.id',
+                through: {
+                  from: 'PersonPerson.person1Id',
+                  to: 'PersonPerson.person2Id',
+                  extra: ['awesomeness'],
+                },
+                to: 'Person.id',
+              },
+            },
+          };
+        }
+      };
+
+      Person.knex(knex);
+    });
+
+    beforeEach(() => {
+      return Person.query()
+        .delete()
+        .then(() => {
+          return Person.query().insertGraph({
+            id: 1,
+            name: 'parent',
+            relatives: [
+              {
+                id: 2,
+                awesomeness: 1,
+                name: 'relative 1',
+              },
+              {
+                id: 3,
+                awesomeness: 2,
+                name: 'relative 2',
+              },
+            ],
+          });
+        });
+    });
+
+    it('eager', () => {
+      return Person.query()
+        .where('Person.id', 1)
+        .withGraphFetched('[relatives, goodRelatives]')
+        .then((result) => {
+          expect(result).toContainSubset([
+            {
+              id: 1,
+              name: 'parent',
+
+              relatives: [
+                { id: 2, name: 'relative 1', awesomeness: 1 },
+                { id: 3, name: 'relative 2', awesomeness: 2 },
+              ],
+
+              goodRelatives: [{ id: 3, name: 'relative 2', awesomeness: 2 }],
+            },
+          ]);
+        });
+    });
+
+    it('upsertGraph', () => {
+      // MySQL runs the concurrent `where id in (subquery)` updates of the related
+      // rows as full scans of Person that lock each other's rows and deadlock.
+      // Patching the graph in a transaction runs them one after the other.
+      return Person.transaction((trx) =>
+        Person.query(trx).upsertGraph({
+          id: 1,
+          relatives: [
+            {
+              id: 2,
+              name: 'relative 11',
+              awesomeness: 11,
+            },
+            {
+              id: 3,
+              name: 'relative 22',
+              awesomeness: 22,
+            },
+          ],
+        }),
+      )
+        .then(() => {
+          return Person.query().findById(1).withGraphFetched('relatives');
+        })
+        .then((result) => {
+          expect(result).toContainSubset({
+            id: 1,
+            name: 'parent',
+            relatives: [
+              { id: 2, name: 'relative 11', awesomeness: 11 },
+              { id: 3, name: 'relative 22', awesomeness: 22 },
+            ],
+          });
+        });
+    });
+
+    it('upsertGraph (only extra properties)', () => {
+      return Person.query()
+        .upsertGraph({
+          id: 1,
+          relatives: [
+            {
+              id: 2,
+              awesomeness: 11,
+            },
+            {
+              id: 3,
+              awesomeness: 22,
+            },
+          ],
+        })
+        .then(() => {
+          return Person.query().findById(1).withGraphFetched('relatives');
+        })
+        .then((result) => {
+          expect(result).toContainSubset({
+            id: 1,
+            name: 'parent',
+            relatives: [
+              { id: 2, name: 'relative 1', awesomeness: 11 },
+              { id: 3, name: 'relative 2', awesomeness: 22 },
+            ],
+          });
+        });
+    });
+  });
+};

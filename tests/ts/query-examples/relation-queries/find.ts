@@ -1,4 +1,4 @@
-import { Person } from '../../fixtures/person';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   const person = await Person.query().findById(1);

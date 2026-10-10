@@ -1,26 +1,12 @@
-const path = require('path');
-const knexUtils = require('../lib/utils/knexUtils');
-const { map: promiseMap } = require('../lib/utils/promiseUtils');
-const { delay, cloneDeep } = require('./testUtils');
-const { Model, transaction, snakeCaseMappers, ref } = require('../');
-
-const chai = require('chai');
-chai.use(require('chai-subset'));
+import path from 'node:path';
+import * as knexUtils from '../lib/utils/knexUtils.js';
+import { map as promiseMap } from '../lib/utils/promiseUtils/index.js';
+import { delay, cloneDeep } from './testUtils.js';
+import { Model, transaction, snakeCaseMappers, ref } from 'objection';
+import Knex from 'knex';
 
 class TestSession {
-  static init() {
-    if (this.staticInitCalled) {
-      return;
-    }
-
-    registerUnhandledRejectionHandler();
-
-    this.staticInitCalled = true;
-  }
-
   constructor(opt) {
-    TestSession.init();
-
     this.opt = opt;
     this.knex = this.createKnex(opt);
     this.unboundModels = this.createModels();
@@ -30,7 +16,7 @@ class TestSession {
   }
 
   createKnex() {
-    return require('knex')(this.opt.knexConfig);
+    return Knex(this.opt.knexConfig);
   }
 
   createModels() {
@@ -315,7 +301,7 @@ class TestSession {
             '. Make sure the server is running and the database ' +
             opt.knexConfig.connection.database +
             ' is created. You can see the test database configurations from file ' +
-            path.join(__dirname, 'index.js'),
+            path.join(import.meta.dirname, 'index.js'),
         );
 
         const oldStack = err.stack;
@@ -379,16 +365,6 @@ class TestSession {
     return this.knex.destroy();
   }
 
-  addUnhandledRejectionHandler(handler) {
-    const handlers = TestSession.unhandledRejectionHandlers;
-    handlers.push(handler);
-  }
-
-  removeUnhandledRejectionHandler(handler) {
-    const handlers = TestSession.unhandledRejectionHandlers;
-    handlers.splice(handlers.indexOf(handler), 1);
-  }
-
   isPostgres() {
     return knexUtils.isPostgres(this.knex);
   }
@@ -402,8 +378,6 @@ class TestSession {
   }
 }
 
-TestSession.staticInitCalled = false;
-TestSession.unhandledRejectionHandlers = [];
 TestSession.hookCounter = 0;
 
 // Creates a hook that waits for `ms` milliseconds and then
@@ -434,16 +408,4 @@ function inc(obj, key) {
   obj[key] = (obj[key] || 0) + 1;
 }
 
-function registerUnhandledRejectionHandler() {
-  process.on('unhandledRejection', (error) => {
-    if (TestSession.unhandledRejectionHandlers.length === 0) {
-      console.error(error.stack);
-    }
-
-    TestSession.unhandledRejectionHandlers.forEach((handler) => {
-      handler(error);
-    });
-  });
-}
-
-module.exports = TestSession;
+export default TestSession;

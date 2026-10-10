@@ -7,7 +7,7 @@ import {
   PartialModelGraph,
   PartialModelObject,
   raw,
-} from '../../';
+} from 'objection';
 
 class Pet extends Model {
   id!: Generated<number>;

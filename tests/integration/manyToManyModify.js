@@ -1,6 +1,6 @@
-const expect = require('expect.js');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-module.exports = (session) => {
+export default (session) => {
   const { Model1, Model2 } = session.models;
 
   describe('many to many relation modify queries', () => {
@@ -69,9 +69,9 @@ module.exports = (session) => {
         const model = await owner(1);
         const numDeleted = await model.$relatedQuery('model1Relation3').unrelate();
 
-        expect(numDeleted).to.equal(4);
-        expect(await joinRows()).to.eql(withoutRows(0, 1, 2, 3));
-        expect(await model2Rows()).to.have.length(3);
+        expect(numDeleted).toBe(4);
+        expect(await joinRows()).toEqual(withoutRows(0, 1, 2, 3));
+        expect(await model2Rows()).toHaveLength(3);
       });
 
       it('should unrelate rows matching a filter on the related table', async () => {
@@ -81,8 +81,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.model2_prop1', 'b');
 
-        expect(numDeleted).to.equal(1);
-        expect(await joinRows()).to.eql(withoutRows(2));
+        expect(numDeleted).toBe(1);
+        expect(await joinRows()).toEqual(withoutRows(2));
       });
 
       it('should unrelate all join rows of a related row matching a filter', async () => {
@@ -92,8 +92,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.id_col', 1);
 
-        expect(numDeleted).to.equal(2);
-        expect(await joinRows()).to.eql(withoutRows(0, 1));
+        expect(numDeleted).toBe(2);
+        expect(await joinRows()).toEqual(withoutRows(0, 1));
       });
 
       it('should unrelate rows using findByIds', async () => {
@@ -103,8 +103,8 @@ module.exports = (session) => {
           .unrelate()
           .findByIds([1, 3]);
 
-        expect(numDeleted).to.equal(3);
-        expect(await joinRows()).to.eql(withoutRows(0, 1, 3));
+        expect(numDeleted).toBe(3);
+        expect(await joinRows()).toEqual(withoutRows(0, 1, 3));
       });
 
       it('should return 0 if no rows match', async () => {
@@ -114,8 +114,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.model2_prop1', 'does not exist');
 
-        expect(numDeleted).to.equal(0);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(numDeleted).toBe(0);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should unrelate for multiple owners', async () => {
@@ -124,8 +124,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.id_col', 2);
 
-        expect(numDeleted).to.equal(2);
-        expect(await joinRows()).to.eql(withoutRows(2, 4));
+        expect(numDeleted).toBe(2);
+        expect(await joinRows()).toEqual(withoutRows(2, 4));
       });
 
       describe('filters on the join table (#1853)', () => {
@@ -136,8 +136,8 @@ module.exports = (session) => {
             .unrelate()
             .where('Model1Model2.extra1', 'x1');
 
-          expect(numDeleted).to.equal(1);
-          expect(await joinRows()).to.eql(withoutRows(0));
+          expect(numDeleted).toBe(1);
+          expect(await joinRows()).toEqual(withoutRows(0));
         });
 
         it('should only unrelate the join rows matching the filter for multiple owners', async () => {
@@ -146,8 +146,8 @@ module.exports = (session) => {
             .unrelate()
             .where('Model1Model2.extra1', 'x1');
 
-          expect(numDeleted).to.equal(2);
-          expect(await joinRows()).to.eql(withoutRows(0, 5));
+          expect(numDeleted).toBe(2);
+          expect(await joinRows()).toEqual(withoutRows(0, 5));
         });
 
         it('should combine filters on the join table and the related table', async () => {
@@ -158,63 +158,60 @@ module.exports = (session) => {
             .where('model2.id_col', 1)
             .where('Model1Model2.extra1', 'dup');
 
-          expect(numDeleted).to.equal(1);
-          expect(await joinRows()).to.eql(withoutRows(1));
+          expect(numDeleted).toBe(1);
+          expect(await joinRows()).toEqual(withoutRows(1));
         });
       });
 
-      describe('with a trigger on the join table that modifies the related table (#2127)', () => {
-        before(async function () {
-          if (!session.isMySql()) {
-            this.skip();
-          }
-
-          await session.knex.raw('DROP TRIGGER IF EXISTS model1_model2_after_delete');
-          await session.knex.raw(`
-            CREATE TRIGGER model1_model2_after_delete AFTER DELETE ON Model1Model2
-            FOR EACH ROW UPDATE model2 SET model2_prop2 = model2_prop2 + 100
-            WHERE id_col = OLD.model2Id
-          `);
-        });
-
-        after(async () => {
-          if (session.isMySql()) {
+      describe.skipIf(!session.isMySql())(
+        'with a trigger on the join table that modifies the related table (#2127)',
+        () => {
+          beforeAll(async () => {
             await session.knex.raw('DROP TRIGGER IF EXISTS model1_model2_after_delete');
-          }
-        });
+            await session.knex.raw(`
+              CREATE TRIGGER model1_model2_after_delete AFTER DELETE ON Model1Model2
+              FOR EACH ROW UPDATE model2 SET model2_prop2 = model2_prop2 + 100
+              WHERE id_col = OLD.model2Id
+            `);
+          });
 
-        it('should unrelate', async () => {
-          const model = await owner(1);
-          const numDeleted = await model
-            .$relatedQuery('model1Relation3')
-            .unrelate()
-            .where('model2.model2_prop1', 'b');
+          afterAll(async () => {
+            await session.knex.raw('DROP TRIGGER IF EXISTS model1_model2_after_delete');
+          });
 
-          expect(numDeleted).to.equal(1);
-          expect(await joinRows()).to.eql(withoutRows(2));
-          expect(await model2Rows()).to.eql([
-            [1, 1],
-            [2, 102],
-            [3, 3],
-          ]);
-        });
+          it('should unrelate', async () => {
+            const model = await owner(1);
+            const numDeleted = await model
+              .$relatedQuery('model1Relation3')
+              .unrelate()
+              .where('model2.model2_prop1', 'b');
 
-        it('should only unrelate the join rows matching a filter on the join table', async () => {
-          const model = await owner(1);
-          const numDeleted = await model
-            .$relatedQuery('model1Relation3')
-            .unrelate()
-            .where('Model1Model2.extra1', 'dup');
+            expect(numDeleted).toBe(1);
+            expect(await joinRows()).toEqual(withoutRows(2));
+            expect(await model2Rows()).toEqual([
+              [1, 1],
+              [2, 102],
+              [3, 3],
+            ]);
+          });
 
-          expect(numDeleted).to.equal(1);
-          expect(await joinRows()).to.eql(withoutRows(1));
-          expect(await model2Rows()).to.eql([
-            [1, 101],
-            [2, 2],
-            [3, 3],
-          ]);
-        });
-      });
+          it('should only unrelate the join rows matching a filter on the join table', async () => {
+            const model = await owner(1);
+            const numDeleted = await model
+              .$relatedQuery('model1Relation3')
+              .unrelate()
+              .where('Model1Model2.extra1', 'dup');
+
+            expect(numDeleted).toBe(1);
+            expect(await joinRows()).toEqual(withoutRows(1));
+            expect(await model2Rows()).toEqual([
+              [1, 101],
+              [2, 2],
+              [3, 3],
+            ]);
+          });
+        },
+      );
     });
 
     describe('patch', () => {
@@ -225,13 +222,13 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10 })
           .where('model2.id_col', 1);
 
-        expect(numUpdated).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 10],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should patch related rows and join table extras matching a filter', async () => {
@@ -241,8 +238,8 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('model2.model2_prop1', 'b');
 
-        expect(numUpdated).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 10],
           [3, 3],
@@ -250,7 +247,7 @@ module.exports = (session) => {
 
         const expected = allJoinRows.slice();
         expected[2] = [1, 2, 'x2', 'z'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should patch nothing if no rows match', async () => {
@@ -260,13 +257,13 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('model2.model2_prop1', 'does not exist');
 
-        expect(numUpdated).to.equal(0);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(0);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should only patch the join table extras of join rows matching a filter on the join table (#1853)', async () => {
@@ -276,7 +273,7 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('Model1Model2.extra1', 'x1');
 
-        expect(await model2Rows()).to.eql([
+        expect(await model2Rows()).toEqual([
           [1, 10],
           [2, 2],
           [3, 3],
@@ -284,7 +281,7 @@ module.exports = (session) => {
 
         const expected = allJoinRows.slice();
         expected[0] = [1, 1, 'x1', 'z'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
     });
 
@@ -293,9 +290,9 @@ module.exports = (session) => {
         const model = await owner(1);
         const numDeleted = await model.$relatedQuery('model1Relation3').delete();
 
-        expect(numDeleted).to.equal(3);
-        expect(await model2Rows()).to.eql([]);
-        expect(await joinRows()).to.eql([]);
+        expect(numDeleted).toBe(3);
+        expect(await model2Rows()).toEqual([]);
+        expect(await joinRows()).toEqual([]);
       });
 
       it('should delete related rows matching a filter on the related table', async () => {
@@ -305,12 +302,12 @@ module.exports = (session) => {
           .delete()
           .where('model2.model2_prop1', 'a');
 
-        expect(numDeleted).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numDeleted).toBe(1);
+        expect(await model2Rows()).toEqual([
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(withoutRows(0, 1));
+        expect(await joinRows()).toEqual(withoutRows(0, 1));
       });
 
       it('should delete related rows matching a filter on the join table', async () => {
@@ -320,24 +317,24 @@ module.exports = (session) => {
           .delete()
           .where('Model1Model2.extra1', 'x2');
 
-        expect(numDeleted).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numDeleted).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(withoutRows(2, 4));
+        expect(await joinRows()).toEqual(withoutRows(2, 4));
       });
 
       it('should delete related rows using findById', async () => {
         const model = await owner(1);
         const numDeleted = await model.$relatedQuery('model1Relation3').delete().findById(3);
 
-        expect(numDeleted).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numDeleted).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
         ]);
-        expect(await joinRows()).to.eql(withoutRows(3, 5));
+        expect(await joinRows()).toEqual(withoutRows(3, 5));
       });
 
       it('should return 0 if no rows match', async () => {
@@ -347,9 +344,9 @@ module.exports = (session) => {
           .delete()
           .where('model2.model2_prop1', 'a');
 
-        expect(numDeleted).to.equal(0);
-        expect(await model2Rows()).to.have.length(3);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(numDeleted).toBe(0);
+        expect(await model2Rows()).toHaveLength(3);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
     });
   });
