@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('model relatedQueries fail when they lack a proper target', () => {
     let knex = session.knex;
 
@@ -29,7 +29,7 @@ module.exports = (session) => {
       }
     }
 
-    before(async () => {
+    beforeAll(async () => {
       const knex = session.knex;
 
       await knex.schema.dropTableIfExists('posts');
@@ -47,7 +47,7 @@ module.exports = (session) => {
         });
     });
 
-    after(async () => {
+    afterAll(async () => {
       await knex.schema.dropTableIfExists('posts');
       await knex.schema.dropTableIfExists('users');
     });
@@ -56,7 +56,7 @@ module.exports = (session) => {
       try {
         await User.relatedQuery('posts', knex).insert({ content: 'my post content' });
       } catch (e) {
-        expect(e.message).to.equal(
+        expect(e.message).toBe(
           'query method `for` ommitted outside a subquery, can not figure out relation target',
         );
       }
@@ -65,7 +65,7 @@ module.exports = (session) => {
       try {
         await User.relatedQuery('posts', knex).where({ content: 'my post content' });
       } catch (e) {
-        expect(e.message).to.equal(
+        expect(e.message).toBe(
           'query method `for` ommitted outside a subquery, can not figure out relation target',
         );
       }

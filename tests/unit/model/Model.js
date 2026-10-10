@@ -1,7 +1,7 @@
-const expect = require('expect.js');
-const { Model, QueryBuilder, ValidationError, raw, fn } = require('../../../');
-const { snakeCase, camelCase } = require('../../../lib/utils/identifierMapping');
-const { range, sortBy } = require('../../../testUtils/testUtils');
+import { describe, it, expect, beforeEach } from 'vitest';
+import { Model, QueryBuilder, ValidationError, raw, fn } from 'objection';
+import { snakeCase, camelCase } from '../../../lib/utils/identifierMapping.js';
+import { expectThrows, range, sortBy } from '../../../testUtils/testUtils.js';
 
 describe('Model', () => {
   describe('fromJson', () => {
@@ -15,26 +15,26 @@ describe('Model', () => {
       let json = { a: 1, b: 2, c: { d: 'str1' }, e: [3, 4, { f: 'str2' }] };
       let model = Model1.fromJson(json);
 
-      expect(model.a).to.equal(1);
-      expect(model.b).to.equal(2);
-      expect(model.c.d).to.equal('str1');
-      expect(model.e[0]).to.equal(3);
-      expect(model.e[1]).to.equal(4);
-      expect(model.e[2].f).to.equal('str2');
+      expect(model.a).toBe(1);
+      expect(model.b).toBe(2);
+      expect(model.c.d).toBe('str1');
+      expect(model.e[0]).toBe(3);
+      expect(model.e[1]).toBe(4);
+      expect(model.e[2].f).toBe('str2');
     });
 
     it('should skip properties starting with $', () => {
       let model = Model1.fromJson({ a: 1, $b: 2 });
 
-      expect(model.a).to.equal(1);
-      expect(model).to.not.have.property('$b');
+      expect(model.a).toBe(1);
+      expect(model).not.toHaveProperty('$b');
     });
 
     it('should skip functions', () => {
       let model = Model1.fromJson({ a: 1, b: () => {} });
 
-      expect(model.a).to.equal(1);
-      expect(model).to.not.have.property('b');
+      expect(model.a).toBe(1);
+      expect(model).not.toHaveProperty('b');
     });
 
     it('should call $parseJson', () => {
@@ -44,16 +44,16 @@ describe('Model', () => {
 
       Model1.prototype.$parseJson = function (jsn, opt) {
         ++calls;
-        expect(jsn).to.eql(json);
-        expect(opt).to.eql(options);
+        expect(jsn).toEqual(json);
+        expect(opt).toEqual(options);
         return { c: 3 };
       };
 
       let model = Model1.fromJson(json, options);
 
-      expect(model).to.not.have.property('a');
-      expect(model.c).to.equal(3);
-      expect(calls).to.equal(1);
+      expect(model).not.toHaveProperty('a');
+      expect(model.c).toBe(3);
+      expect(calls).toBe(1);
     });
 
     it('should validate if jsonSchema is defined', () => {
@@ -85,62 +85,80 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ a: 'str', b: 1 });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'str' });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'a', c: { d: 'test' } });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'a', c: { d: 'test', e: [{ f: 1 }] } });
-      }).to.not.throwException();
+      }).not.toThrow();
 
-      expect(() => {
-        Model1.fromJson({ a: 1, b: '1' });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('a');
-        expect(exp.data).to.have.property('b');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 1, b: '1' });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty('a');
+          expect(exp.data).toHaveProperty('b');
+        },
+      );
 
-      expect(() => {
-        Model1.fromJson({ b: 1 });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('a');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ b: 1 });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty('a');
+        },
+      );
 
-      expect(() => {
-        Model1.fromJson({ a: 'a', additional: 1 });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('additional');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 'a', additional: 1 });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty('additional');
+        },
+      );
 
-      expect(() => {
-        Model1.fromJson({ a: 'a', c: { d: 10 } });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('c.d');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 'a', c: { d: 10 } });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty(['c.d']);
+        },
+      );
 
-      expect(() => {
-        Model1.fromJson({ a: 'a', c: { d: 'test', e: [{ f: 'not a number' }] } });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('c.e.0.f');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 'a', c: { d: 'test', e: [{ f: 'not a number' }] } });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty(['c.e.0.f']);
+        },
+      );
 
-      expect(() => {
-        Model1.fromJson({ a: 'a', c: { d: 'test', e: [{ additional: true }] } });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('c.e.0.additional');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 'a', c: { d: 'test', e: [{ additional: true }] } });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty(['c.e.0.additional']);
+        },
+      );
     });
 
     it('should call $validate if jsonSchema is defined', () => {
@@ -160,17 +178,15 @@ describe('Model', () => {
         Model.prototype.$validate.call(this, jsn, opt);
 
         ++calls;
-        expect(opt).to.eql(options);
-        expect(jsn).to.eql(json);
+        expect(opt).toEqual(options);
+        expect(jsn).toEqual(json);
       };
 
       expect(() => {
         Model1.fromJson(json, options);
-      }).to.not.throwException((err) => {
-        console.log(err.stack);
-      });
+      }).not.toThrow();
 
-      expect(calls).to.equal(1);
+      expect(calls).toBe(1);
     });
 
     it('should only call jsonSchema once if jsonSchema is a getter', () => {
@@ -199,7 +215,7 @@ describe('Model', () => {
       model.$toJson();
       model.$toDatabaseJson();
 
-      expect(calls).to.equal(1);
+      expect(calls).toBe(1);
     });
 
     it('should call $beforeValidate if jsonSchema is defined', () => {
@@ -218,9 +234,9 @@ describe('Model', () => {
       Model1.prototype.$beforeValidate = function (schema, jsn, opt) {
         ++calls;
 
-        expect(opt).to.eql(options);
-        expect(jsn).to.eql(json);
-        expect(schema).to.eql(Model1.jsonSchema);
+        expect(opt).toEqual(options);
+        expect(jsn).toEqual(json);
+        expect(schema).toEqual(Model1.jsonSchema);
 
         schema.properties.a.type = 'number';
         return schema;
@@ -228,9 +244,9 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson(json, options);
-      }).to.not.throwException();
+      }).not.toThrow();
 
-      expect(calls).to.equal(1);
+      expect(calls).toBe(1);
     });
 
     it('should call $afterValidate if jsonSchema is defined', () => {
@@ -248,15 +264,15 @@ describe('Model', () => {
 
       Model1.prototype.$afterValidate = function (jsn, opt) {
         ++calls;
-        expect(opt).to.eql(options);
-        expect(jsn).to.eql(json);
+        expect(opt).toEqual(options);
+        expect(jsn).toEqual(json);
       };
 
       expect(() => {
         Model1.fromJson(json, options);
-      }).to.not.throwException();
+      }).not.toThrow();
 
-      expect(calls).to.equal(1);
+      expect(calls).toBe(1);
     });
 
     it('should skip requirement validation if options.patch == true', () => {
@@ -270,24 +286,27 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ a: 'str', b: 1 }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       // b is not required.
       expect(() => {
         Model1.fromJson({ a: 'str' }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
 
-      expect(() => {
-        Model1.fromJson({ a: 1, b: '1' }, { patch: true });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('a');
-        expect(exp.data).to.have.property('b');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 1, b: '1' }, { patch: true });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty('a');
+          expect(exp.data).toHaveProperty('b');
+        },
+      );
 
       expect(() => {
         Model1.fromJson({ b: 1 }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should skip requirement validation if options.patch == true (oneOf)', () => {
@@ -310,19 +329,19 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ c: 'str' });
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'str' });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ b: 1 });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ c: 'str' }, { patch: true });
-      }).to.not.throwException((err) => console.log(err));
+      }).not.toThrow();
     });
 
     it('should skip requirement validation if options.patch == true (anyOf)', () => {
@@ -345,19 +364,19 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ c: 'str' });
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'str' });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ b: 1 });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ c: 'str' }, { patch: true });
-      }).to.not.throwException((err) => console.log(err));
+      }).not.toThrow();
     });
 
     it('should skip requirement validation if options.patch == true (if/then)', () => {
@@ -385,27 +404,27 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ a: 'foo' });
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'bar' });
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'foo', b: 1 });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'bar', c: 'baz' });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'foo' }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'bar' }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should skip validation if options.skipValidation == true', () => {
@@ -419,19 +438,19 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ a: 'str', b: 1 }, { skipValidation: true });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 'str' }, { skipValidation: true });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ a: 1, b: '1' }, { skipValidation: true });
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({ b: 1 }, { skipValidation: true });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should merge default values from jsonSchema', () => {
@@ -448,10 +467,10 @@ describe('Model', () => {
 
       let model = Model1.fromJson({ a: 'str' });
 
-      expect(model.a).to.equal('str');
-      expect(model.b).to.equal(666);
-      expect(model.c).to.eql(obj);
-      expect(model.c).to.not.equal(obj);
+      expect(model.a).toBe('str');
+      expect(model.b).toBe(666);
+      expect(model.c).toEqual(obj);
+      expect(model.c).not.toBe(obj);
     });
 
     it('should merge default values from jsonSchema when validating a model instance', () => {
@@ -468,15 +487,15 @@ describe('Model', () => {
 
       let model = Model1.fromJson({ a: 'str' }, { skipValidation: true });
 
-      expect(model.b).to.equal(undefined);
-      expect(model.c).to.equal(undefined);
+      expect(model.b).toBeUndefined();
+      expect(model.c).toBeUndefined();
 
       model.$validate();
 
-      expect(model.a).to.equal('str');
-      expect(model.b).to.equal(666);
-      expect(model.c).to.eql(obj);
-      expect(model.c).to.not.equal(obj);
+      expect(model.a).toBe('str');
+      expect(model.b).toBe(666);
+      expect(model.c).toEqual(obj);
+      expect(model.c).not.toBe(obj);
     });
 
     // regression introduced in 0.6
@@ -488,7 +507,7 @@ describe('Model', () => {
 
       let model = Model1.fromJson({ a: 100 });
 
-      expect(model.a).to.equal(100);
+      expect(model.a).toBe(100);
     });
 
     it('should validate but not pass if jsonSchema.required exists and jsonSchema.properties == undefined', () => {
@@ -498,9 +517,7 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson({ b: 200 });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-      });
+      }).toThrow(ValidationError);
     });
 
     it('should not merge default values from jsonSchema if options.patch == true', () => {
@@ -517,9 +534,9 @@ describe('Model', () => {
 
       let model = Model1.fromJson({ b: 10 }, { patch: true });
 
-      expect(model).to.not.have.property('a');
-      expect(model.b).to.equal(10);
-      expect(model).to.not.have.property('c');
+      expect(model).not.toHaveProperty('a');
+      expect(model.b).toBe(10);
+      expect(model).not.toHaveProperty('c');
     });
 
     it('should throw with error context if validation fails', () => {
@@ -531,27 +548,30 @@ describe('Model', () => {
         },
       };
 
-      expect(() => {
-        Model1.fromJson({ b: 'abc' });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('a');
-        expect(exp.data['a']).to.be.a(Array);
-        expect(exp.data['a'].length).to.be.above(0);
-        expect(exp.data['a'][0]).to.have.property('message');
-        expect(exp.data['a'][0]).to.have.property('keyword');
-        expect(exp.data['a'][0]).to.have.property('params');
-        expect(exp.data['a'][0].keyword).to.equal('required');
-        expect(exp.data).to.have.property('b');
-        expect(exp.data['b']).to.be.a(Array);
-        expect(exp.data['b'].length).to.be.above(0);
-        expect(exp.data['b'][0]).to.have.property('message');
-        expect(exp.data['b'][0]).to.have.property('keyword');
-        expect(exp.data['b'][0]).to.have.property('params');
-        expect(exp.data['b'][0].keyword).to.equal('minLength');
-        expect(exp.data['b'][0].params).to.have.property('limit');
-        expect(exp.data['b'][0].params.limit).to.equal(4);
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ b: 'abc' });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty('a');
+          expect(exp.data['a']).toBeInstanceOf(Array);
+          expect(exp.data['a'].length).toBeGreaterThan(0);
+          expect(exp.data['a'][0]).toHaveProperty('message');
+          expect(exp.data['a'][0]).toHaveProperty('keyword');
+          expect(exp.data['a'][0]).toHaveProperty('params');
+          expect(exp.data['a'][0].keyword).toBe('required');
+          expect(exp.data).toHaveProperty('b');
+          expect(exp.data['b']).toBeInstanceOf(Array);
+          expect(exp.data['b'].length).toBeGreaterThan(0);
+          expect(exp.data['b'][0]).toHaveProperty('message');
+          expect(exp.data['b'][0]).toHaveProperty('keyword');
+          expect(exp.data['b'][0]).toHaveProperty('params');
+          expect(exp.data['b'][0].keyword).toBe('minLength');
+          expect(exp.data['b'][0].params).toHaveProperty('limit');
+          expect(exp.data['b'][0].params.limit).toBe(4);
+        },
+      );
     });
 
     it('should throw if anything non-object is given', () => {
@@ -559,59 +579,59 @@ describe('Model', () => {
 
       expect(() => {
         Model1.fromJson();
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson(null);
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson(undefined);
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson({});
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson(new SomeClass());
-      }).to.not.throwException();
+      }).not.toThrow();
 
       expect(() => {
         Model1.fromJson('hello');
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(new String('hello'));
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(1);
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(new Number(1));
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson([{ a: 1 }]);
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(/.*/);
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(new Date());
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(() => {});
-      }).to.throwException();
+      }).toThrow();
 
       expect(() => {
         Model1.fromJson(new Int16Array(100));
-      }).to.throwException();
+      }).toThrow();
     });
 
     it('should be capable to return multiple validation errors per property', () => {
@@ -626,22 +646,25 @@ describe('Model', () => {
         },
       };
 
-      expect(() => {
-        Model1.fromJson({ a: 'four' });
-      }).to.throwException((exp) => {
-        expect(exp).to.be.a(ValidationError);
-        expect(exp.data).to.have.property('a');
-        expect(exp.data['a']).to.be.a(Array);
-        expect(exp.data['a']).to.have.length(2);
-        expect(exp.data['a'][0]).to.have.property('message');
-        expect(exp.data['a'][0]).to.have.property('keyword');
-        expect(exp.data['a'][0]).to.have.property('params');
-        expect(exp.data['a'][0].keyword).to.equal('pattern');
-        expect(exp.data['a'][1]).to.have.property('message');
-        expect(exp.data['a'][1]).to.have.property('keyword');
-        expect(exp.data['a'][1]).to.have.property('params');
-        expect(exp.data['a'][1].keyword).to.equal('minLength');
-      });
+      expectThrows(
+        () => {
+          Model1.fromJson({ a: 'four' });
+        },
+        (exp) => {
+          expect(exp).toBeInstanceOf(ValidationError);
+          expect(exp.data).toHaveProperty('a');
+          expect(exp.data['a']).toBeInstanceOf(Array);
+          expect(exp.data['a']).toHaveLength(2);
+          expect(exp.data['a'][0]).toHaveProperty('message');
+          expect(exp.data['a'][0]).toHaveProperty('keyword');
+          expect(exp.data['a'][0]).toHaveProperty('params');
+          expect(exp.data['a'][0].keyword).toBe('pattern');
+          expect(exp.data['a'][1]).toHaveProperty('message');
+          expect(exp.data['a'][1]).toHaveProperty('keyword');
+          expect(exp.data['a'][1]).toHaveProperty('params');
+          expect(exp.data['a'][1].keyword).toBe('minLength');
+        },
+      );
     });
 
     it('should parse relations into Model instances and remove them from database representation', () => {
@@ -676,19 +699,19 @@ describe('Model', () => {
         relation2: { id: 13, model1Id: null },
       });
 
-      expect(model.relation1[0]).to.be.a(Model2);
-      expect(model.relation1[1]).to.be.a(Model2);
-      expect(model.relation2).to.be.a(Model1);
+      expect(model.relation1[0]).toBeInstanceOf(Model2);
+      expect(model.relation1[1]).toBeInstanceOf(Model2);
+      expect(model.relation2).toBeInstanceOf(Model1);
 
       let json = model.$toDatabaseJson();
 
-      expect(json).to.not.have.property('relation1');
-      expect(json).to.not.have.property('relation2');
+      expect(json).not.toHaveProperty('relation1');
+      expect(json).not.toHaveProperty('relation2');
 
       json = model.$toJson();
 
-      expect(json).to.have.property('relation1');
-      expect(json).to.have.property('relation2');
+      expect(json).toHaveProperty('relation1');
+      expect(json).toHaveProperty('relation2');
     });
 
     it('should parse relations into Model instances if source that is being parsed is already a Model instance', () => {
@@ -725,9 +748,9 @@ describe('Model', () => {
 
       let modelWithRelationships = Model1.fromJson(model);
 
-      expect(modelWithRelationships.relation1[0]).to.be.a(Model2);
-      expect(modelWithRelationships.relation1[1]).to.be.a(Model2);
-      expect(modelWithRelationships.relation2).to.be.a(Model1);
+      expect(modelWithRelationships.relation1[0]).toBeInstanceOf(Model2);
+      expect(modelWithRelationships.relation1[1]).toBeInstanceOf(Model2);
+      expect(modelWithRelationships.relation2).toBeInstanceOf(Model1);
     });
 
     it('should NOT parse relations into Model instances if skipParseRelations option is given', () => {
@@ -765,9 +788,9 @@ describe('Model', () => {
         { skipParseRelations: true },
       );
 
-      expect(model.relation1[0]).to.not.be.a(Model2);
-      expect(model.relation1[1]).to.not.be.a(Model2);
-      expect(model.relation2).to.not.be.a(Model1);
+      expect(model.relation1[0]).not.toBeInstanceOf(Model2);
+      expect(model.relation1[1]).not.toBeInstanceOf(Model2);
+      expect(model.relation2).not.toBeInstanceOf(Model1);
     });
 
     it('should NOT try to parse non-object relations into Model instances', () => {
@@ -802,8 +825,8 @@ describe('Model', () => {
         { skipParseRelations: true },
       );
 
-      expect(model.relation1).to.eql([1, 2, '3', null, undefined, 6]);
-      expect(model.relation2).to.eql('5');
+      expect(model.relation1).toEqual([1, 2, '3', null, undefined, 6]);
+      expect(model.relation2).toBe('5');
     });
 
     it('null relations should be null in the result', () => {
@@ -821,7 +844,7 @@ describe('Model', () => {
       };
 
       let model = Model.fromJson({ a: 1, b: 2, someRelation: null });
-      expect(model.someRelation).to.equal(null);
+      expect(model.someRelation).toBeNull();
     });
   });
 
@@ -865,11 +888,11 @@ describe('Model', () => {
 
       let model2 = Model1.ensureModel(model1);
 
-      expect(model2 === model1).to.equal(true);
-      expect(model2.relation1[0]).to.be.a(Model2);
-      expect(model2.relation1[1]).to.be.a(Model2);
-      expect(model2.relation2).to.be.a(Model1);
-      expect(model2.relation2.relation1[0]).to.be.a(Model2);
+      expect(model2 === model1).toBe(true);
+      expect(model2.relation1[0]).toBeInstanceOf(Model2);
+      expect(model2.relation1[1]).toBeInstanceOf(Model2);
+      expect(model2.relation2).toBeInstanceOf(Model1);
+      expect(model2.relation2.relation1[0]).toBeInstanceOf(Model2);
     });
 
     it('should not mutate if the whole tree already is models', () => {
@@ -882,12 +905,12 @@ describe('Model', () => {
 
       let model2 = Model1.ensureModel(model1);
 
-      expect(model2 === model1).to.equal(true);
-      expect(model2.relation1 === model2.relation1).to.equal(true);
-      expect(model2.relation1[0] === model2.relation1[0]).to.equal(true);
-      expect(model2.relation1[1] === model2.relation1[1]).to.equal(true);
-      expect(model2.relation2 === model2.relation2).to.equal(true);
-      expect(model2.relation2.relation1[0] === model2.relation2.relation1[0]).to.equal(true);
+      expect(model2 === model1).toBe(true);
+      expect(model2.relation1 === model2.relation1).toBe(true);
+      expect(model2.relation1[0] === model2.relation1[0]).toBe(true);
+      expect(model2.relation1[1] === model2.relation1[1]).toBe(true);
+      expect(model2.relation2 === model2.relation2).toBe(true);
+      expect(model2.relation2.relation1[0] === model2.relation2.relation1[0]).toBe(true);
     });
 
     it('should work with circular references', () => {
@@ -898,11 +921,11 @@ describe('Model', () => {
       obj2.relation2 = obj1;
 
       const model = Model1.ensureModel(obj1);
-      expect(model).to.be.a(Model1);
-      expect(model.relation2).to.be.a(Model1);
-      expect(model.relation2.relation2 === model).to.equal(true);
-      expect(model.value).to.equal(1);
-      expect(model.relation2.value).to.equal(2);
+      expect(model).toBeInstanceOf(Model1);
+      expect(model.relation2).toBeInstanceOf(Model1);
+      expect(model.relation2.relation2 === model).toBe(true);
+      expect(model.value).toBe(1);
+      expect(model.relation2.value).toBe(2);
     });
   });
 
@@ -917,12 +940,12 @@ describe('Model', () => {
       let json = { a: 1, b: 2, c: { d: 'str1' }, e: [3, 4, { f: 'str2' }] };
       let model = Model1.fromDatabaseJson(json);
 
-      expect(model.a).to.equal(1);
-      expect(model.b).to.equal(2);
-      expect(model.c.d).to.equal('str1');
-      expect(model.e[0]).to.equal(3);
-      expect(model.e[1]).to.equal(4);
-      expect(model.e[2].f).to.equal('str2');
+      expect(model.a).toBe(1);
+      expect(model.b).toBe(2);
+      expect(model.c.d).toBe('str1');
+      expect(model.e[0]).toBe(3);
+      expect(model.e[1]).toBe(4);
+      expect(model.e[2].f).toBe('str2');
     });
 
     it('should call $parseDatabaseJson', () => {
@@ -931,15 +954,15 @@ describe('Model', () => {
 
       Model1.prototype.$parseDatabaseJson = (jsn) => {
         ++calls;
-        expect(jsn).to.eql(json);
+        expect(jsn).toEqual(json);
         return { c: 3 };
       };
 
       let model = Model1.fromDatabaseJson(json);
 
-      expect(model).to.not.have.property('a');
-      expect(model.c).to.equal(3);
-      expect(calls).to.equal(1);
+      expect(model).not.toHaveProperty('a');
+      expect(model.c).toBe(3);
+      expect(calls).toBe(1);
     });
   });
 
@@ -951,7 +974,7 @@ describe('Model', () => {
     });
 
     it('should return the internal representation by default', () => {
-      expect(Model1.fromJson({ a: 1, b: 2, c: { d: [1, 3] } }).$toJson()).to.eql({
+      expect(Model1.fromJson({ a: 1, b: 2, c: { d: [1, 3] } }).$toJson()).toEqual({
         a: 1,
         b: 2,
         c: { d: [1, 3] },
@@ -964,7 +987,7 @@ describe('Model', () => {
 
       Model1.prototype.$formatJson = (jsn) => {
         ++calls;
-        expect(jsn).to.eql(json);
+        expect(jsn).toEqual(json);
         jsn.b = 2;
         return jsn;
       };
@@ -972,9 +995,9 @@ describe('Model', () => {
       let model = Model1.fromJson(json);
       let output = model.$toJson();
 
-      expect(output.a).to.equal(1);
-      expect(output.b).to.equal(2);
-      expect(calls).to.equal(1);
+      expect(output.a).toBe(1);
+      expect(output.b).toBe(2);
+      expect(calls).toBe(1);
     });
 
     it('should call $formatJson with formatting options', () => {
@@ -984,8 +1007,8 @@ describe('Model', () => {
 
       Model1.prototype.$formatJson = (jsn, o) => {
         ++calls;
-        expect(jsn).to.eql(json);
-        expect(o).to.eql(opt);
+        expect(jsn).toEqual(json);
+        expect(o).toEqual(opt);
         jsn.b = 2;
         return jsn;
       };
@@ -993,9 +1016,9 @@ describe('Model', () => {
       let model = Model1.fromJson(json);
       let output = model.$toJson({ format: opt });
 
-      expect(output.a).to.equal(1);
-      expect(output.b).to.equal(2);
-      expect(calls).to.equal(1);
+      expect(output.a).toBe(1);
+      expect(output.b).toBe(2);
+      expect(calls).toBe(1);
     });
 
     it('should call $toJson for properties of class Model', () => {
@@ -1010,7 +1033,7 @@ describe('Model', () => {
       model.b = Model2.fromJson({ c: 2 });
       model.e = [Model2.fromJson({ f: 100 })];
 
-      expect(model.$toJson()).to.eql({ a: 1, b: { c: 2, d: 3 }, e: [{ f: 100, d: 3 }] });
+      expect(model.$toJson()).toEqual({ a: 1, b: { c: 2, d: 3 }, e: [{ f: 100, d: 3 }] });
     });
 
     it('should pass formatting options to $formatJson of nested models', () => {
@@ -1026,7 +1049,7 @@ describe('Model', () => {
       model.b = Model2.fromJson({ c: 2 });
       model.e = [Model2.fromJson({ f: 100 })];
 
-      expect(model.$toJson({ format: opt })).to.eql({
+      expect(model.$toJson({ format: opt })).toEqual({
         a: 1,
         d: 3,
         b: { c: 2, d: 3 },
@@ -1039,10 +1062,10 @@ describe('Model', () => {
       let model = Model1.fromJson(json);
       let output = model.$toJson();
 
-      expect(output).to.eql(json);
-      expect(output.b).to.not.equal(json.b);
-      expect(output.b[0]).to.not.equal(json.b[0]);
-      expect(output.d).to.not.equal(json.d);
+      expect(output).toEqual(json);
+      expect(output.b).not.toBe(json.b);
+      expect(output.b[0]).not.toBe(json.b[0]);
+      expect(output.d).not.toBe(json.d);
     });
 
     it('should be called by JSON.stringify', () => {
@@ -1052,14 +1075,14 @@ describe('Model', () => {
       };
 
       let model = Model1.fromJson({ a: 1 });
-      expect(JSON.stringify(model)).to.equal('{"a":1,"b":2}');
+      expect(JSON.stringify(model)).toBe('{"a":1,"b":2}');
     });
 
     it('properties registered using $omitFromJson method should be removed from the json', () => {
       let model = Model1.fromJson({ a: 1, b: 2, c: 3 });
       model.$omitFromJson(['b', 'c']);
-      expect(model.$toJson()).to.eql({ a: 1 });
-      expect(model).to.eql({ a: 1, b: 2, c: 3 });
+      expect(model.$toJson()).toEqual({ a: 1 });
+      expect(model).toEqual({ a: 1, b: 2, c: 3 });
     });
 
     it('properties registered using $omitFromJson method should be removed from the json (multiple calls)', () => {
@@ -1067,8 +1090,8 @@ describe('Model', () => {
       model.$omitFromJson(['b']);
       model.$omitFromJson(['c']);
       model.$omitFromDatabaseJson(['a']);
-      expect(model.$toJson()).to.eql({ a: 1 });
-      expect(model).to.eql({ a: 1, b: 2, c: 3 });
+      expect(model.$toJson()).toEqual({ a: 1 });
+      expect(model).toEqual({ a: 1, b: 2, c: 3 });
     });
   });
 
@@ -1080,7 +1103,7 @@ describe('Model', () => {
     });
 
     it('should return then internal representation by default', () => {
-      expect(Model1.fromJson({ a: 1, b: 2, c: { d: [1, 3] } }).$toDatabaseJson()).to.eql({
+      expect(Model1.fromJson({ a: 1, b: 2, c: { d: [1, 3] } }).$toDatabaseJson()).toEqual({
         a: 1,
         b: 2,
         c: { d: [1, 3] },
@@ -1105,7 +1128,7 @@ describe('Model', () => {
           k: null,
           l: undefined,
         }).$toDatabaseJson(),
-      ).to.eql({
+      ).toEqual({
         a: '1',
         b: '"one"',
         c: '{"d":[1,3]}',
@@ -1127,7 +1150,7 @@ describe('Model', () => {
 
       Model1.prototype.$formatDatabaseJson = (jsn) => {
         ++calls;
-        expect(jsn).to.eql(json);
+        expect(jsn).toEqual(json);
         jsn.b = 2;
         return jsn;
       };
@@ -1135,9 +1158,9 @@ describe('Model', () => {
       let model = Model1.fromJson(json);
       let output = model.$toDatabaseJson();
 
-      expect(output.a).to.equal(1);
-      expect(output.b).to.equal(2);
-      expect(calls).to.equal(1);
+      expect(output.a).toBe(1);
+      expect(output.b).toBe(2);
+      expect(calls).toBe(1);
     });
 
     it('should return a deep copy', () => {
@@ -1145,17 +1168,17 @@ describe('Model', () => {
       let model = Model1.fromJson(json);
       let output = model.$toDatabaseJson();
 
-      expect(output).to.eql(json);
-      expect(output.b).to.not.equal(json.b);
-      expect(output.b[0]).to.not.equal(json.b[0]);
-      expect(output.d).to.not.equal(json.d);
+      expect(output).toEqual(json);
+      expect(output.b).not.toBe(json.b);
+      expect(output.b[0]).not.toBe(json.b[0]);
+      expect(output.d).not.toBe(json.d);
     });
 
     it('properties registered using $omitFromDatabaseJson method should be removed from the json', () => {
       let model = Model1.fromJson({ a: 1, b: 2, c: 3 });
       model.$omitFromDatabaseJson(['b', 'c']);
-      expect(model.$toDatabaseJson()).to.eql({ a: 1 });
-      expect(model).to.eql({ a: 1, b: 2, c: 3 });
+      expect(model.$toDatabaseJson()).toEqual({ a: 1 });
+      expect(model).toEqual({ a: 1, b: 2, c: 3 });
     });
 
     it('properties registered using $omitFromDatabaseJson method should be removed from the json (multiple calls)', () => {
@@ -1163,8 +1186,8 @@ describe('Model', () => {
       model.$omitFromDatabaseJson(['b']);
       model.$omitFromDatabaseJson(['c']);
       model.$omitFromJson(['a']);
-      expect(model.$toDatabaseJson()).to.eql({ a: 1 });
-      expect(model).to.eql({ a: 1, b: 2, c: 3 });
+      expect(model.$toDatabaseJson()).toEqual({ a: 1 });
+      expect(model).toEqual({ a: 1, b: 2, c: 3 });
     });
   });
 
@@ -1189,9 +1212,9 @@ describe('Model', () => {
 
       let clone = model.$clone();
 
-      expect(clone).to.eql(model);
-      expect(clone.$toJson()).to.eql(model.$toJson());
-      expect(clone.$toJson()).to.eql({
+      expect(clone).toEqual(model);
+      expect(clone.$toJson()).toEqual(model.$toJson());
+      expect(clone.$toJson()).toEqual({
         a: 1,
         g: { h: 100 },
         r: [{ h: 50 }],
@@ -1199,10 +1222,10 @@ describe('Model', () => {
         e: [{ f: 100, d: 3 }],
       });
 
-      expect(clone.g).to.not.equal(model.g);
-      expect(clone.r[0]).to.not.equal(model.r[0]);
-      expect(clone.b).to.not.equal(model.b);
-      expect(clone.e[0]).to.not.equal(model.e[0]);
+      expect(clone.g).not.toBe(model.g);
+      expect(clone.r[0]).not.toBe(model.r[0]);
+      expect(clone.b).not.toBe(model.b);
+      expect(clone.e[0]).not.toBe(model.e[0]);
     });
 
     it('should shallow clone', () => {
@@ -1221,8 +1244,8 @@ describe('Model', () => {
 
       let model = Model.fromJson({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
 
-      expect(model.$clone()).to.eql({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
-      expect(model.$clone({ shallow: true })).to.eql({ a: 1, b: 2 });
+      expect(model.$clone()).toEqual({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
+      expect(model.$clone({ shallow: true })).toEqual({ a: 1, b: 2 });
     });
   });
 
@@ -1242,7 +1265,7 @@ describe('Model', () => {
     });
 
     it('should convert a property name to column name', () => {
-      expect(Model1.propertyNameToColumnName('someProperty')).to.equal('some_property');
+      expect(Model1.propertyNameToColumnName('someProperty')).toBe('some_property');
     });
   });
 
@@ -1262,7 +1285,7 @@ describe('Model', () => {
     });
 
     it('should convert a column name to property name', () => {
-      expect(Model1.columnNameToPropertyName('some_property')).to.equal('someProperty');
+      expect(Model1.columnNameToPropertyName('some_property')).toBe('someProperty');
     });
   });
 
@@ -1289,7 +1312,7 @@ describe('Model', () => {
           rel1: Model1.fromJson({ a: 101, b: 11 }),
           rel2: [Model1.fromJson({ a: 102, b: 12 }), Model1.fromJson({ a: 103, b: 13 })],
         }).toJSON(),
-      ).to.eql({
+      ).toEqual({
         a: 100,
         b: 10,
         foo: 110,
@@ -1329,7 +1352,7 @@ describe('Model', () => {
           rel1: Model1.fromJson({ a: 101, b: 11 }),
           rel2: [Model1.fromJson({ a: 102, b: 12 }), Model1.fromJson({ a: 103, b: 13 })],
         }).toJSON({ virtuals: false }),
-      ).to.eql({
+      ).toEqual({
         a: 100,
         b: 10,
 
@@ -1367,7 +1390,7 @@ describe('Model', () => {
           rel1: Model1.fromJson({ a: 101, b: 11 }),
           rel2: [Model1.fromJson({ a: 102, b: 12 }), Model1.fromJson({ a: 103, b: 13 })],
         }).$toJson({ virtuals: false }),
-      ).to.eql({
+      ).toEqual({
         a: 100,
         b: 10,
 
@@ -1405,7 +1428,7 @@ describe('Model', () => {
           rel1: Model1.fromJson({ a: 101, b: 11 }),
           rel2: [Model1.fromJson({ a: 102, b: 12 }), Model1.fromJson({ a: 103, b: 13 })],
         }).$toJson({ virtuals: ['foo', 'bar'] }),
-      ).to.eql({
+      ).toEqual({
         a: 100,
         b: 10,
         foo: 110,
@@ -1467,7 +1490,7 @@ describe('Model', () => {
         },
       });
 
-      expect(model2.toJSON()).to.eql({
+      expect(model2.toJSON()).toEqual({
         a: 'a',
         bar: 'bar',
         model1: {
@@ -1520,7 +1543,7 @@ describe('Model', () => {
         },
       });
 
-      expect(model2.toJSON({})).to.eql({
+      expect(model2.toJSON({})).toEqual({
         a: 'a',
         bar: 'bar',
         model1: {
@@ -1546,7 +1569,7 @@ describe('Model', () => {
         }
       }
 
-      expect(Model1.fromJson({ a: 100, b: 10 }).toJSON()).to.eql({
+      expect(Model1.fromJson({ a: 100, b: 10 }).toJSON()).toEqual({
         a: 100,
         b: 10,
         foo: 110,
@@ -1590,7 +1613,7 @@ describe('Model', () => {
         notEvenVirtual: 2000,
       });
 
-      expect(model.toJSON()).to.eql({
+      expect(model.toJSON()).toEqual({
         a: 10,
         b: 100,
         c: 1000,
@@ -1599,7 +1622,7 @@ describe('Model', () => {
         baz: 20,
       });
 
-      expect(model.$toDatabaseJson()).to.eql({
+      expect(model.$toDatabaseJson()).toEqual({
         a: 10,
         b: 100,
         c: 1000,
@@ -1619,13 +1642,13 @@ describe('Model', () => {
 
       class Model1 extends BaseModel {}
 
-      expect(Model1.fromJson({ a: 100, b: 10, foo: 666 }).toJSON()).to.eql({
+      expect(Model1.fromJson({ a: 100, b: 10, foo: 666 }).toJSON()).toEqual({
         a: 100,
         b: 10,
         foo: 110,
       });
 
-      expect(Model1.fromJson({ a: 100, b: 10, foo: 666 }).$toDatabaseJson()).to.eql({
+      expect(Model1.fromJson({ a: 100, b: 10, foo: 666 }).$toDatabaseJson()).toEqual({
         a: 100,
         b: 10,
       });
@@ -1646,25 +1669,25 @@ describe('Model', () => {
         objectField: obj,
       });
 
-      expect(person.objectField).to.equal(obj);
+      expect(person.objectField).toBe(obj);
 
       let json = person.$toDatabaseJson();
 
-      expect(person.objectField).to.equal(obj);
-      expect(json.objectField).to.eql(obj);
-      expect(json.objectField).to.not.equal(obj);
+      expect(person.objectField).toBe(obj);
+      expect(json.objectField).toEqual(obj);
+      expect(json.objectField).not.toBe(obj);
 
       json = person.$toJson();
 
-      expect(person.objectField).to.equal(obj);
-      expect(json.objectField).to.eql(obj);
-      expect(json.objectField).to.not.equal(obj);
+      expect(person.objectField).toBe(obj);
+      expect(json.objectField).toEqual(obj);
+      expect(json.objectField).not.toBe(obj);
 
       json = person.toJSON();
 
-      expect(person.objectField).to.equal(obj);
-      expect(json.objectField).to.eql(obj);
-      expect(json.objectField).to.not.equal(obj);
+      expect(person.objectField).toBe(obj);
+      expect(json.objectField).toEqual(obj);
+      expect(json.objectField).not.toBe(obj);
     });
 
     it('should NOT clone object attributes when calling $toJson or $toDatabaseJson if Model.cloneObjectAttributes = false', () => {
@@ -1684,22 +1707,22 @@ describe('Model', () => {
         objectField: obj,
       });
 
-      expect(person.objectField).to.equal(obj);
+      expect(person.objectField).toBe(obj);
 
       let json = person.$toDatabaseJson();
 
-      expect(person.objectField).to.equal(obj);
-      expect(json.objectField).to.equal(obj);
+      expect(person.objectField).toBe(obj);
+      expect(json.objectField).toBe(obj);
 
       json = person.$toJson();
 
-      expect(person.objectField).to.equal(obj);
-      expect(json.objectField).to.equal(obj);
+      expect(person.objectField).toBe(obj);
+      expect(json.objectField).toBe(obj);
 
       json = person.toJSON();
 
-      expect(person.objectField).to.equal(obj);
-      expect(json.objectField).to.equal(obj);
+      expect(person.objectField).toBe(obj);
+      expect(json.objectField).toBe(obj);
     });
   });
 
@@ -1720,7 +1743,7 @@ describe('Model', () => {
       };
     };
 
-    expect(Model1.getRelation('relation1').relatedModelClass).to.equal(Model2);
+    expect(Model1.getRelation('relation1').relatedModelClass).toBe(Model2);
   });
 
   it('if pickJsonSchemaProperties = true and jsonSchema is given, should remove all but schema properties from database representation', () => {
@@ -1745,22 +1768,22 @@ describe('Model', () => {
 
     let json = model.$toDatabaseJson();
 
-    expect(json.prop1).to.equal(10);
-    expect(json.prop2).to.equal('10');
-    expect(json.prop3).to.equal(undefined);
-    expect(json.prop4).to.equal(undefined);
+    expect(json.prop1).toBe(10);
+    expect(json.prop2).toBe('10');
+    expect(json.prop3).toBeUndefined();
+    expect(json.prop4).toBeUndefined();
 
-    expect(model.prop1).to.equal(10);
-    expect(model.prop2).to.equal('10');
-    expect(model.prop3).to.equal('should be removed');
-    expect(model.prop4).to.eql({ also: 'this' });
+    expect(model.prop1).toBe(10);
+    expect(model.prop2).toBe('10');
+    expect(model.prop3).toBe('should be removed');
+    expect(model.prop4).toEqual({ also: 'this' });
 
     json = model.$toJson();
 
-    expect(json.prop1).to.equal(10);
-    expect(json.prop2).to.equal('10');
-    expect(json.prop3).to.equal('should be removed');
-    expect(json.prop4).to.eql({ also: 'this' });
+    expect(json.prop1).toBe(10);
+    expect(json.prop2).toBe('10');
+    expect(json.prop3).toBe('should be removed');
+    expect(json.prop4).toEqual({ also: 'this' });
   });
 
   it('if pickJsonSchemaProperties = true and jsonSchema is given, should omit relations even if defined in jsonSchema', () => {
@@ -1793,10 +1816,10 @@ describe('Model', () => {
     });
 
     let json = model.$toDatabaseJson();
-    expect(json.someRelation).to.equal(undefined);
-    expect(model.someRelation).to.eql({ value: 'should be removed' });
+    expect(json.someRelation).toBeUndefined();
+    expect(model.someRelation).toEqual({ value: 'should be removed' });
     json = model.$toJson();
-    expect(json.someRelation).to.eql({ value: 'should be removed' });
+    expect(json.someRelation).toEqual({ value: 'should be removed' });
   });
 
   it('if pickJsonSchemaProperties = false, should select all properties even if jsonSchema is defined', () => {
@@ -1820,22 +1843,22 @@ describe('Model', () => {
 
     let json = model.$toDatabaseJson();
 
-    expect(json.prop1).to.equal(10);
-    expect(json.prop2).to.equal('10');
-    expect(json.prop3).to.equal('should not be removed');
-    expect(json.prop4).to.eql({ also: 'this' });
+    expect(json.prop1).toBe(10);
+    expect(json.prop2).toBe('10');
+    expect(json.prop3).toBe('should not be removed');
+    expect(json.prop4).toEqual({ also: 'this' });
 
-    expect(model.prop1).to.equal(10);
-    expect(model.prop2).to.equal('10');
-    expect(model.prop3).to.equal('should not be removed');
-    expect(model.prop4).to.eql({ also: 'this' });
+    expect(model.prop1).toBe(10);
+    expect(model.prop2).toBe('10');
+    expect(model.prop3).toBe('should not be removed');
+    expect(model.prop4).toEqual({ also: 'this' });
 
     json = model.$toJson();
 
-    expect(json.prop1).to.equal(10);
-    expect(json.prop2).to.equal('10');
-    expect(json.prop3).to.equal('should not be removed');
-    expect(json.prop4).to.eql({ also: 'this' });
+    expect(json.prop1).toBe(10);
+    expect(json.prop2).toBe('10');
+    expect(json.prop3).toBe('should not be removed');
+    expect(json.prop4).toEqual({ also: 'this' });
   });
 
   it('should convert objects to json based on jsonSchema type', () => {
@@ -1897,19 +1920,19 @@ describe('Model', () => {
 
     let model = Model.fromJson(inputJson);
 
-    expect(model).to.eql(inputJson);
+    expect(model).toEqual(inputJson);
 
     let dbJson = model.$toDatabaseJson();
 
-    expect(dbJson.prop1).to.equal('text');
-    expect(dbJson.prop2).to.equal('{"subProp1":1000}');
-    expect(dbJson.prop3).to.equal('[{"subProp2":true},{"subProp2":false}]');
-    expect(dbJson.prop4).to.equal('[1,2,3]');
-    expect(dbJson.prop5).to.equal('{"subProp3":"str"}');
+    expect(dbJson.prop1).toBe('text');
+    expect(dbJson.prop2).toBe('{"subProp1":1000}');
+    expect(dbJson.prop3).toBe('[{"subProp2":true},{"subProp2":false}]');
+    expect(dbJson.prop4).toBe('[1,2,3]');
+    expect(dbJson.prop5).toBe('{"subProp3":"str"}');
 
     let model2 = Model.fromDatabaseJson(dbJson);
 
-    expect(model2).to.eql(inputJson);
+    expect(model2).toEqual(inputJson);
   });
 
   it('should convert objects to json based on jsonAttributes array', () => {
@@ -1960,24 +1983,24 @@ describe('Model', () => {
 
     let model = TestModel.fromJson(inputJson);
 
-    expect(model).to.eql(inputJson);
+    expect(model).toEqual(inputJson);
 
     let dbJson = model.$toDatabaseJson();
 
-    expect(dbJson.prop1).to.equal('text');
-    expect(dbJson.prop2).to.equal('{"subProp1":1000}');
-    expect(dbJson.prop3).to.eql(inputJson.prop3);
+    expect(dbJson.prop1).toBe('text');
+    expect(dbJson.prop2).toBe('{"subProp1":1000}');
+    expect(dbJson.prop3).toEqual(inputJson.prop3);
 
     let model2 = TestModel.fromDatabaseJson(dbJson);
 
-    expect(model2).to.eql(inputJson);
+    expect(model2).toEqual(inputJson);
   });
 
   it('$setJson should do nothing if null is given', () => {
     let Model = modelClass('Model');
     let model = Model.fromJson({ a: 1, b: 2 });
     model.$setJson(null);
-    expect(model).to.eql({ a: 1, b: 2 });
+    expect(model).toEqual({ a: 1, b: 2 });
   });
 
   it('$setRelated should set related model instances', () => {
@@ -2018,23 +2041,23 @@ describe('Model', () => {
     const model1 = Model1.fromJson({});
 
     const setResult = model1.$setRelated('hasMany', Model2.fromJson({ id: 1 }));
-    expect(model1.hasMany).to.eql([{ id: 1 }]);
-    expect(setResult === model1).to.equal(true);
+    expect(model1.hasMany).toEqual([{ id: 1 }]);
+    expect(setResult === model1).toBe(true);
 
     model1.$setRelated('hasMany', [Model2.fromJson({ id: 2 })]);
-    expect(model1.hasMany).to.eql([{ id: 2 }]);
+    expect(model1.hasMany).toEqual([{ id: 2 }]);
 
     model1.$setRelated('belongsToOne', Model1.fromJson({ id: 1 }));
-    expect(model1.belongsToOne).to.eql({ id: 1 });
+    expect(model1.belongsToOne).toEqual({ id: 1 });
 
     model1.$setRelated('belongsToOne', [Model1.fromJson({ id: 2 })]);
-    expect(model1.belongsToOne).to.eql({ id: 2 });
+    expect(model1.belongsToOne).toEqual({ id: 2 });
 
     model1.$setRelated('manyToMany', Model1.fromJson({ id: 1 }));
-    expect(model1.manyToMany).to.eql([{ id: 1 }]);
+    expect(model1.manyToMany).toEqual([{ id: 1 }]);
 
     model1.$setRelated('manyToMany', [Model1.fromJson({ id: 2 })]);
-    expect(model1.manyToMany).to.eql([{ id: 2 }]);
+    expect(model1.manyToMany).toEqual([{ id: 2 }]);
   });
 
   it('appendRelated should append related model instances', () => {
@@ -2075,23 +2098,23 @@ describe('Model', () => {
     const model1 = Model1.fromJson({});
 
     const appendResult = model1.$appendRelated('hasMany', Model2.fromJson({ id: 1 }));
-    expect(model1.hasMany).to.eql([{ id: 1 }]);
-    expect(appendResult === model1).to.equal(true);
+    expect(model1.hasMany).toEqual([{ id: 1 }]);
+    expect(appendResult === model1).toBe(true);
 
     model1.$appendRelated('hasMany', [Model2.fromJson({ id: 2 })]);
-    expect(model1.hasMany).to.eql([{ id: 1 }, { id: 2 }]);
+    expect(model1.hasMany).toEqual([{ id: 1 }, { id: 2 }]);
 
     model1.$appendRelated('belongsToOne', Model1.fromJson({ id: 1 }));
-    expect(model1.belongsToOne).to.eql({ id: 1 });
+    expect(model1.belongsToOne).toEqual({ id: 1 });
 
     model1.$appendRelated('belongsToOne', [Model1.fromJson({ id: 2 })]);
-    expect(model1.belongsToOne).to.eql({ id: 2 });
+    expect(model1.belongsToOne).toEqual({ id: 2 });
 
     model1.$appendRelated('manyToMany', Model1.fromJson({ id: 1 }));
-    expect(model1.manyToMany).to.eql([{ id: 1 }]);
+    expect(model1.manyToMany).toEqual([{ id: 1 }]);
 
     model1.$appendRelated('manyToMany', [Model1.fromJson({ id: 2 })]);
-    expect(model1.manyToMany).to.eql([{ id: 1 }, { id: 2 }]);
+    expect(model1.manyToMany).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   it('$toJson should return result without relations if {shallow: true} is given as argument', () => {
@@ -2110,8 +2133,8 @@ describe('Model', () => {
 
     let model = Model.fromJson({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
 
-    expect(model.$toJson()).to.eql({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
-    expect(model.$toJson({ shallow: true })).to.eql({ a: 1, b: 2 });
+    expect(model.$toJson()).toEqual({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
+    expect(model.$toJson({ shallow: true })).toEqual({ a: 1, b: 2 });
   });
 
   it('toJSON should return result without relations if {shallow: true} is given as argument', () => {
@@ -2130,46 +2153,46 @@ describe('Model', () => {
 
     let model = Model.fromJson({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
 
-    expect(model.toJSON()).to.eql({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
-    expect(model.toJSON({ shallow: true })).to.eql({ a: 1, b: 2 });
+    expect(model.toJSON()).toEqual({ a: 1, b: 2, someRelation: { a: 3, b: 4 } });
+    expect(model.toJSON({ shallow: true })).toEqual({ a: 1, b: 2 });
   });
 
   it('Model.raw should return objection.raw', () => {
-    expect(modelClass('Model').raw).to.equal(raw);
+    expect(modelClass('Model').raw).toBe(raw);
   });
 
   it('ensureModel should return null for null input', () => {
     let Model = modelClass('Model');
-    expect(Model.ensureModel(null)).to.equal(null);
+    expect(Model.ensureModel(null)).toBeNull();
   });
 
   it('ensureModelArray should return [] for null input', () => {
     let Model = modelClass('Model');
-    expect(Model.ensureModelArray(null)).to.eql([]);
+    expect(Model.ensureModelArray(null)).toEqual([]);
   });
 
   it('fetchGraph should return a QueryBuilder', () => {
     let Model = modelClass('Model1');
-    expect(Model.fetchGraph([], '[]')).to.be.a(QueryBuilder);
+    expect(Model.fetchGraph([], '[]')).toBeInstanceOf(QueryBuilder);
   });
 
   it('$fetchGraph should return a QueryBuilder', () => {
     let Model = modelClass('Model1');
-    expect(Model.fromJson({}).$fetchGraph('[]')).to.be.a(QueryBuilder);
+    expect(Model.fromJson({}).$fetchGraph('[]')).toBeInstanceOf(QueryBuilder);
   });
 
   it('loadRelated should throw if an invalid expression is given', () => {
     let Model = modelClass('Model1');
     expect(() => {
       Model.loadRelated([], 'notAValidExpression.');
-    }).to.throwException();
+    }).toThrow();
   });
 
   it('loadRelated should throw if an invalid expression is given', () => {
     let Model = modelClass('Model1');
     expect(() => {
       Model.loadRelated([], 'notAValidExpression.');
-    }).to.throwException();
+    }).toThrow();
   });
 
   it('should use Model.QueryBuilder to create `query()` and `$query()`', () => {
@@ -2193,15 +2216,15 @@ describe('Model', () => {
     Model1.QueryBuilder = MyQueryBuilder1;
     Model2.QueryBuilder = MyQueryBuilder2;
 
-    expect(Model1.query()).to.be.a(MyQueryBuilder1);
-    expect(Model1.fromJson({}).$query()).to.be.a(MyQueryBuilder1);
-    expect(Model1.fromJson({}).$relatedQuery('someRelation')).to.be.a(MyQueryBuilder2);
+    expect(Model1.query()).toBeInstanceOf(MyQueryBuilder1);
+    expect(Model1.fromJson({}).$query()).toBeInstanceOf(MyQueryBuilder1);
+    expect(Model1.fromJson({}).$relatedQuery('someRelation')).toBeInstanceOf(MyQueryBuilder2);
   });
 
   it('$modelClass should return this.constructor', () => {
     let Model1 = modelClass('Model1');
     let model = Model1.fromJson({ id: 1 });
-    expect(model.$modelClass === model.constructor).to.equal(true);
+    expect(model.$modelClass === model.constructor).toBe(true);
   });
 
   describe('traverse() and $traverse()', () => {
@@ -2288,50 +2311,50 @@ describe('Model', () => {
         }
       });
 
-      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(sortBy(model2Ids)).to.eql(range(4, 26));
+      expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+      expect(sortBy(model2Ids)).toEqual(range(4, 26));
     });
 
     it('traverse([], traverser) should not throw', () => {
       expect(() => {
         Model1.traverse([], function () {});
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('traverse(undefined, traverser) should not throw', () => {
       expect(() => {
         Model1.traverse(undefined, function () {});
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('traverse callback should be passed the model, its parent (if any) and the relation it is in (if any)', () => {
       Model1.traverse([model], (model, parent, relationName) => {
         if (model instanceof Model1) {
           if (model.id === 1) {
-            expect(parent).to.equal(null);
-            expect(relationName).to.equal(null);
+            expect(parent).toBeNull();
+            expect(relationName).toBeNull();
           } else if (model.id === 2) {
-            expect(parent.id).to.equal(1);
-            expect(relationName).to.equal('relation2');
+            expect(parent.id).toBe(1);
+            expect(relationName).toBe('relation2');
           } else if (model.id === 3) {
-            expect(parent.id).to.equal(2);
-            expect(relationName).to.equal('relation2');
+            expect(parent.id).toBe(2);
+            expect(relationName).toBe('relation2');
           } else {
             throw new Error('should never get here');
           }
         } else if (model instanceof Model2) {
           if (model.id >= 4 && model.id <= 5) {
-            expect(parent).to.be.a(Model1);
-            expect(parent.id).to.equal(1);
-            expect(relationName).to.equal('relation1');
+            expect(parent).toBeInstanceOf(Model1);
+            expect(parent.id).toBe(1);
+            expect(relationName).toBe('relation1');
           } else if (model.id >= 6 && model.id <= 7) {
-            expect(parent).to.be.a(Model1);
-            expect(parent.id).to.equal(2);
-            expect(relationName).to.equal('relation1');
+            expect(parent).toBeInstanceOf(Model1);
+            expect(parent.id).toBe(2);
+            expect(relationName).toBe('relation1');
           } else if (model.id >= 8 && model.id <= 25) {
-            expect(parent).to.be.a(Model1);
-            expect(parent.id).to.equal(3);
-            expect(relationName).to.equal('relation1');
+            expect(parent).toBeInstanceOf(Model1);
+            expect(parent.id).toBe(3);
+            expect(relationName).toBe('relation1');
           } else {
             throw new Error('should never get here');
           }
@@ -2351,8 +2374,8 @@ describe('Model', () => {
         }
       });
 
-      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(sortBy(model2Ids)).to.eql(range(4, 26));
+      expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+      expect(sortBy(model2Ids)).toEqual(range(4, 26));
     });
 
     it('traverse(null, singleModel, traverser) should traverse through the relation tree', () => {
@@ -2367,8 +2390,8 @@ describe('Model', () => {
         }
       });
 
-      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(sortBy(model2Ids)).to.eql(range(4, 26));
+      expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+      expect(sortBy(model2Ids)).toEqual(range(4, 26));
     });
 
     it('traverse(ModelClass, model, traverser) should traverse through all ModelClass instances in the relation tree', () => {
@@ -2381,8 +2404,8 @@ describe('Model', () => {
         model1Ids.push(model.id);
       });
 
-      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(sortBy(model2Ids)).to.eql(range(4, 26));
+      expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+      expect(sortBy(model2Ids)).toEqual(range(4, 26));
     });
 
     it('$traverse(traverser) should traverse through the relation tree', () => {
@@ -2397,8 +2420,8 @@ describe('Model', () => {
         }
       });
 
-      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(sortBy(model2Ids)).to.eql(range(4, 26));
+      expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+      expect(sortBy(model2Ids)).toEqual(range(4, 26));
     });
 
     it('$traverse(ModelClass, traverser) should traverse through the ModelClass instances in the relation tree', () => {
@@ -2413,8 +2436,8 @@ describe('Model', () => {
           model2Ids.push(model.id);
         });
 
-      expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-      expect(sortBy(model2Ids)).to.eql(range(4, 26));
+      expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+      expect(sortBy(model2Ids)).toEqual(range(4, 26));
     });
   });
 
@@ -2506,8 +2529,8 @@ describe('Model', () => {
           }, 5);
         });
       }).then(() => {
-        expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-        expect(sortBy(model2Ids)).to.eql(range(4, 26));
+        expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+        expect(sortBy(model2Ids)).toEqual(range(4, 26));
       });
     });
 
@@ -2527,8 +2550,8 @@ describe('Model', () => {
           }, 5);
         });
       }).then(() => {
-        expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-        expect(sortBy(model2Ids)).to.eql(range(4, 26));
+        expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+        expect(sortBy(model2Ids)).toEqual(range(4, 26));
       });
     });
 
@@ -2536,30 +2559,30 @@ describe('Model', () => {
       return Model1.traverseAsync([model], (model, parent, relationName) => {
         if (model instanceof Model1) {
           if (model.id === 1) {
-            expect(parent).to.equal(null);
-            expect(relationName).to.equal(null);
+            expect(parent).toBeNull();
+            expect(relationName).toBeNull();
           } else if (model.id === 2) {
-            expect(parent.id).to.equal(1);
-            expect(relationName).to.equal('relation2');
+            expect(parent.id).toBe(1);
+            expect(relationName).toBe('relation2');
           } else if (model.id === 3) {
-            expect(parent.id).to.equal(2);
-            expect(relationName).to.equal('relation2');
+            expect(parent.id).toBe(2);
+            expect(relationName).toBe('relation2');
           } else {
             throw new Error('should never get here');
           }
         } else if (model instanceof Model2) {
           if (model.id >= 4 && model.id <= 5) {
-            expect(parent).to.be.a(Model1);
-            expect(parent.id).to.equal(1);
-            expect(relationName).to.equal('relation1');
+            expect(parent).toBeInstanceOf(Model1);
+            expect(parent.id).toBe(1);
+            expect(relationName).toBe('relation1');
           } else if (model.id >= 6 && model.id <= 7) {
-            expect(parent).to.be.a(Model1);
-            expect(parent.id).to.equal(2);
-            expect(relationName).to.equal('relation1');
+            expect(parent).toBeInstanceOf(Model1);
+            expect(parent.id).toBe(2);
+            expect(relationName).toBe('relation1');
           } else if (model.id >= 8 && model.id <= 25) {
-            expect(parent).to.be.a(Model1);
-            expect(parent.id).to.equal(3);
-            expect(relationName).to.equal('relation1');
+            expect(parent).toBeInstanceOf(Model1);
+            expect(parent.id).toBe(3);
+            expect(relationName).toBe('relation1');
           } else {
             throw new Error('should never get here');
           }
@@ -2580,8 +2603,8 @@ describe('Model', () => {
           });
         })
         .then(() => {
-          expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-          expect(sortBy(model2Ids)).to.eql(range(4, 26));
+          expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+          expect(sortBy(model2Ids)).toEqual(range(4, 26));
         });
     });
 
@@ -2603,8 +2626,8 @@ describe('Model', () => {
           });
         })
         .then(() => {
-          expect(sortBy(model1Ids)).to.eql([1, 2, 3]);
-          expect(sortBy(model2Ids)).to.eql(range(4, 26));
+          expect(sortBy(model1Ids)).toEqual([1, 2, 3]);
+          expect(sortBy(model2Ids)).toEqual(range(4, 26));
         });
     });
   });
@@ -2645,15 +2668,15 @@ describe('Model', () => {
     let model = Model1.fromJson({ foo: '10' });
     model.someRelation = Model1.fromJson({ foo: '20' });
 
-    expect(model.foo).to.equal(10);
+    expect(model.foo).toBe(10);
     model.$validate();
-    expect(model.foo).to.equal(10);
+    expect(model.foo).toBe(10);
 
-    expect(model.$toJson().foo).to.equal('10');
+    expect(model.$toJson().foo).toBe('10');
   });
 
   it('Model.fn should return objection.fn', () => {
-    expect(modelClass('Model1').fn).to.equal(fn);
+    expect(modelClass('Model1').fn).toBe(fn);
   });
 
   it('make sure JSON.stringify works with toJSON (#869)', () => {

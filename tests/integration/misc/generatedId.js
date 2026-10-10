@@ -1,11 +1,11 @@
-const expect = require('expect.js');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('generated id', () => {
     let TestModel;
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('generated_id_test')
         .createTable('generated_id_test', (table) => {
@@ -14,11 +14,11 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema.dropTableIfExists('generated_id_test');
     });
 
-    before(() => {
+    beforeAll(() => {
       TestModel = class TestModel extends Model {
         static get tableName() {
           return 'generated_id_test';
@@ -40,11 +40,11 @@ module.exports = (session) => {
       return TestModel.query()
         .insert({ value: 'hello' })
         .then((ret) => {
-          expect(ret.idCol).to.equal('someRandomId');
+          expect(ret.idCol).toBe('someRandomId');
           return session.knex(TestModel.getTableName());
         })
         .then((rows) => {
-          expect(rows[0]).to.eql({ value: 'hello', idCol: 'someRandomId' });
+          expect(rows[0]).toEqual({ value: 'hello', idCol: 'someRandomId' });
         });
     });
   });

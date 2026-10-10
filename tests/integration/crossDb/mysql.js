@@ -1,15 +1,15 @@
-const Knex = require('knex');
-const { Model } = require('../../../');
-const expect = require('expect.js');
-const { cloneDeep } = require('../../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import Knex from 'knex';
+import { Model } from 'objection';
+import { cloneDeep } from '../../../testUtils/testUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   describe('mysql', () => {
     let db2Knex;
     let T1;
     let T2;
 
-    before(async function () {
+    beforeAll(async () => {
       await session.knex.raw('CREATE DATABASE IF NOT EXISTS objection_test_2');
 
       const db2Config = cloneDeep(session.opt.knexConfig);
@@ -31,7 +31,7 @@ module.exports = (session) => {
       });
     });
 
-    after(async function () {
+    afterAll(async () => {
       await db2Knex.schema.dropTableIfExists('t2');
       await db2Knex.schema.dropTableIfExists('t1');
       await db2Knex.destroy();
@@ -79,7 +79,7 @@ module.exports = (session) => {
       T2 = T2Model.bindKnex(session.knex);
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
       await db2Knex('t2').delete();
       await db2Knex('t1').delete();
     });
@@ -91,7 +91,7 @@ module.exports = (session) => {
           return db2Knex('t1');
         })
         .then((rows) => {
-          expect(rows).to.eql([{ id: 1, foo: 1 }]);
+          expect(rows).toEqual([{ id: 1, foo: 1 }]);
         });
     });
 
@@ -111,7 +111,7 @@ module.exports = (session) => {
           return Promise.all([db2Knex('t1'), db2Knex('t2')]);
         })
         .then((res) => {
-          expect(res).to.eql([[{ id: 1, foo: 1 }], [{ id: 1, bar: 2, t1_id: 1 }]]);
+          expect(res).toEqual([[{ id: 1, foo: 1 }], [{ id: 1, bar: 2, t1_id: 1 }]]);
         });
     });
 
@@ -122,13 +122,13 @@ module.exports = (session) => {
           return T1.query().select('objection_test_2.t1.*');
         })
         .then((models) => {
-          expect(models).to.eql([{ id: 1, foo: 1 }]);
+          expect(models).toEqual([{ id: 1, foo: 1 }]);
         })
         .then(() => {
           return T1.query().select('objection_test_2.t1.id');
         })
         .then((models) => {
-          expect(models).to.eql([{ id: 1 }]);
+          expect(models).toEqual([{ id: 1 }]);
         });
     });
 
@@ -148,7 +148,7 @@ module.exports = (session) => {
           return T1.query().withGraphFetched('manyT2').select('objection_test_2.t1.*');
         })
         .then((models) => {
-          expect(models).to.eql([
+          expect(models).toEqual([
             {
               id: 1,
               foo: 1,
@@ -171,7 +171,7 @@ module.exports = (session) => {
             });
         })
         .then((models) => {
-          expect(models).to.eql([
+          expect(models).toEqual([
             {
               foo: 1,
               manyT2: [

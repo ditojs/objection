@@ -1,7 +1,7 @@
-const expect = require('expect.js');
-const { Model } = require('../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   // TODO igor PR test
 
   if (session.isPostgres()) {
@@ -44,7 +44,7 @@ module.exports = (session) => {
         }
       }
 
-      before(() => {
+      beforeAll(() => {
         return session.knex.schema
           .dropTableIfExists('Relatives')
           .dropTableIfExists('Animal')
@@ -65,7 +65,7 @@ module.exports = (session) => {
           });
       });
 
-      after(() => {
+      afterAll(() => {
         return session.knex.schema
           .dropTableIfExists('Relatives')
           .dropTableIfExists('Animal')
@@ -105,7 +105,7 @@ module.exports = (session) => {
         return Person.query(session.knex)
           .orderBy('id')
           .then((people) => {
-            expect(people).to.eql([
+            expect(people).toEqual([
               {
                 id: 1,
                 name: 'Arnold',
@@ -130,7 +130,7 @@ module.exports = (session) => {
             parents: true,
           })
           .then((people) => {
-            expect(people).to.eql([
+            expect(people).toEqual([
               {
                 id: 1,
                 name: 'Arnold',
@@ -162,8 +162,8 @@ module.exports = (session) => {
         return Person.query(session.knex)
           .columnInfo()
           .then((info) => {
-            expect(info instanceof Model).to.equal(false);
-            expect(info).to.eql({
+            expect(info instanceof Model).toBe(false);
+            expect(info).toEqual({
               id: {
                 type: 'integer',
                 maxLength: null,
@@ -187,7 +187,7 @@ module.exports = (session) => {
             return arnold.$relatedQuery('parents', session.knex);
           })
           .then((parents) => {
-            expect(parents).to.eql([
+            expect(parents).toEqual([
               {
                 id: 2,
                 name: 'Mom',
@@ -240,7 +240,7 @@ module.exports = (session) => {
         }
       }
 
-      before(() => {
+      beforeAll(() => {
         return session.knex.schema
           .createSchema('homoSapiens')
           .then(() => {
@@ -267,7 +267,7 @@ module.exports = (session) => {
           });
       });
 
-      after(() => {
+      afterAll(() => {
         return session.knex.schema
           .withSchema('canisFamiliar')
           .dropTableIfExists('Animal')
@@ -302,7 +302,7 @@ module.exports = (session) => {
 
       it('simple find query (parent)', () => {
         return Person.query(session.knex).then((people) => {
-          expect(people).to.eql([
+          expect(people).toEqual([
             {
               id: 1,
               name: 'Arnold',
@@ -313,7 +313,7 @@ module.exports = (session) => {
 
       it('simple find query (child)', () => {
         return Animal.query(session.knex).then((animals) => {
-          expect(animals).to.eql([
+          expect(animals).toEqual([
             {
               id: 1,
               name: 'Fluffy',
@@ -327,7 +327,7 @@ module.exports = (session) => {
         return Person.query(session.knex)
           .withGraphJoined('pets')
           .then((people) => {
-            expect(people).to.eql([
+            expect(people).toEqual([
               {
                 id: 1,
                 name: 'Arnold',
@@ -348,7 +348,7 @@ module.exports = (session) => {
         return Animal.query(session.knex)
           .withGraphJoined('owner')
           .then((animals) => {
-            expect(animals).to.eql([
+            expect(animals).toEqual([
               {
                 id: 1,
                 name: 'Fluffy',
@@ -367,8 +367,8 @@ module.exports = (session) => {
         return Person.query(session.knex)
           .columnInfo()
           .then((info) => {
-            expect(info instanceof Model).to.equal(false);
-            expect(info).to.eql({
+            expect(info instanceof Model).toBe(false);
+            expect(info).toEqual({
               id: {
                 type: 'integer',
                 maxLength: null,

@@ -1,10 +1,9 @@
-const chai = require('chai');
-const expect = require('expect.js');
-const { inheritModel } = require('../../lib/model/inheritModel');
-const { ValidationError, UniqueViolationError } = require('../../');
-const { delay } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeEach } from 'vitest';
+import { inheritModel } from '../../lib/model/inheritModel.js';
+import { ValidationError, UniqueViolationError } from 'objection';
+import { delay } from '../../testUtils/testUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   let Model1 = session.models.Model1;
   let Model2 = session.models.Model2;
 
@@ -39,15 +38,15 @@ module.exports = (session) => {
         return Model1.query()
           .insert(model)
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -60,7 +59,7 @@ module.exports = (session) => {
           await Model1.query().insert({ id: 1 });
           throw new Error('should not get here');
         } catch (err) {
-          expect(err).to.be.a(UniqueViolationError);
+          expect(err).toBeInstanceOf(UniqueViolationError);
         }
       });
 
@@ -79,15 +78,15 @@ module.exports = (session) => {
         return Mod.query()
           .insert({ model1Prop1: 'hello 3' })
           .then((inserted) => {
-            expect(inserted).to.be.a(Mod);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Mod);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -105,15 +104,15 @@ module.exports = (session) => {
         return Model1.query()
           .insert(model)
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -143,15 +142,15 @@ module.exports = (session) => {
         return Mod.query()
           .insert(model)
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Mod.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -169,15 +168,15 @@ module.exports = (session) => {
         return Model1.query()
           .insert(model)
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -191,18 +190,18 @@ module.exports = (session) => {
         return Model1.query()
           .insert(model)
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.id).to.equal(1000);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.id).toBe(1000);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
             expect(
               rows.filter((it) => it.id === 1000 && it.model1Prop1 === 'hello 3'),
-            ).to.have.length(1);
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            ).toHaveLength(1);
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -220,24 +219,24 @@ module.exports = (session) => {
           return Model1.query()
             .insert(models)
             .then((inserted) => {
-              expect(inserted[0]).to.be.a(Model1);
-              expect(inserted[1]).to.be.a(Model1);
-              expect(inserted[0].$beforeInsertCalled).to.equal(1);
-              expect(inserted[0].$afterInsertCalled).to.equal(1);
-              expect(inserted[1].$beforeInsertCalled).to.equal(1);
-              expect(inserted[1].$afterInsertCalled).to.equal(1);
-              expect(inserted.map((it) => it.id).sort()).to.eql([3, 4]);
-              expect(inserted.map((it) => it.model1Prop1).sort()).to.eql(['hello 3', 'hello 4']);
+              expect(inserted[0]).toBeInstanceOf(Model1);
+              expect(inserted[1]).toBeInstanceOf(Model1);
+              expect(inserted[0].$beforeInsertCalled).toBe(1);
+              expect(inserted[0].$afterInsertCalled).toBe(1);
+              expect(inserted[1].$beforeInsertCalled).toBe(1);
+              expect(inserted[1].$afterInsertCalled).toBe(1);
+              expect(inserted.map((it) => it.id).sort()).toEqual([3, 4]);
+              expect(inserted.map((it) => it.model1Prop1).sort()).toEqual(['hello 3', 'hello 4']);
               return session.knex(Model1.getTableName());
             })
             .then((rows) => {
-              expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
                 'hello 1',
                 'hello 2',
                 'hello 3',
                 'hello 4',
               ]);
-              expect(rows.map((it) => it.id).sort()).to.eql([1, 2, 3, 4]);
+              expect(rows.map((it) => it.id).sort()).toEqual([1, 2, 3, 4]);
             });
         });
       }
@@ -246,13 +245,13 @@ module.exports = (session) => {
         return Model1.query()
           .insert({ model1Prop1: 'hello 3' })
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -267,19 +266,19 @@ module.exports = (session) => {
             model1Prop2: Model1.raw('5 + 8'),
           })
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.id).to.eql(3);
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.id).toBe(3);
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'test 2',
             ]);
-            expect(
-              rows.find((it) => it.id === 3 && it.model1Prop1 === 'test 2').model1Prop2,
-            ).to.equal(13);
+            expect(rows.find((it) => it.id === 3 && it.model1Prop1 === 'test 2').model1Prop2).toBe(
+              13,
+            );
           });
       });
 
@@ -288,20 +287,20 @@ module.exports = (session) => {
           return Model1.query()
             .insert([{ model1Prop1: 'hello 3' }, { model1Prop1: 'hello 4' }])
             .then((inserted) => {
-              expect(inserted[0]).to.be.a(Model1);
-              expect(inserted[1]).to.be.a(Model1);
-              expect(inserted.map((it) => it.id).sort()).to.eql([3, 4]);
-              expect(inserted.map((it) => it.model1Prop1).sort()).to.eql(['hello 3', 'hello 4']);
+              expect(inserted[0]).toBeInstanceOf(Model1);
+              expect(inserted[1]).toBeInstanceOf(Model1);
+              expect(inserted.map((it) => it.id).sort()).toEqual([3, 4]);
+              expect(inserted.map((it) => it.model1Prop1).sort()).toEqual(['hello 3', 'hello 4']);
               return session.knex(Model1.getTableName());
             })
             .then((rows) => {
-              expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
                 'hello 1',
                 'hello 2',
                 'hello 3',
                 'hello 4',
               ]);
-              expect(rows.map((it) => it.id).sort()).to.eql([1, 2, 3, 4]);
+              expect(rows.map((it) => it.id).sort()).toEqual([1, 2, 3, 4]);
             });
         });
 
@@ -310,8 +309,8 @@ module.exports = (session) => {
             .insert({ model1Prop1: 'hello 3' })
             .returning('*')
             .then((inserted) => {
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.$toJson()).to.eql({
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.$toJson()).toEqual({
                 id: 3,
                 model1Id: null,
                 model1Prop1: 'hello 3',
@@ -320,12 +319,12 @@ module.exports = (session) => {
               return session.knex(Model1.getTableName());
             })
             .then((rows) => {
-              expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
                 'hello 1',
                 'hello 2',
                 'hello 3',
               ]);
-              expect(rows.map((it) => it.id).sort()).to.eql([1, 2, 3]);
+              expect(rows.map((it) => it.id).sort()).toEqual([1, 2, 3]);
             });
         });
 
@@ -334,22 +333,22 @@ module.exports = (session) => {
             .insert({ model1Prop1: Model1.raw("'hello' || ' 3'") })
             .returning('model1Prop1')
             .then((inserted) => {
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.$toJson()).to.eql({ model1Prop1: 'hello 3' });
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.$toJson()).toEqual({ model1Prop1: 'hello 3' });
               return session.knex(Model1.getTableName());
             })
             .then((rows) => {
-              expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
                 'hello 1',
                 'hello 2',
                 'hello 3',
               ]);
-              expect(rows.map((it) => it.id).sort()).to.eql([1, 2, 3]);
+              expect(rows.map((it) => it.id).sort()).toEqual([1, 2, 3]);
             });
         });
       }
 
-      it('should validate', (done) => {
+      it('should validate', () => {
         let ModelWithSchema = subClassWithSchema(Model1, {
           type: 'object',
           properties: {
@@ -359,25 +358,23 @@ module.exports = (session) => {
           },
         });
 
-        ModelWithSchema.query()
+        return ModelWithSchema.query()
           .insert({ model1Prop1: 666 })
           .then((x) => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err.message).to.equal('model1Prop1: must be string');
-            expect(err).to.be.a(ValidationError);
-            expect(err).to.be.a(ModelWithSchema.ValidationError);
+            expect(err.message).toBe('model1Prop1: must be string');
+            expect(err).toBeInstanceOf(ValidationError);
+            expect(err).toBeInstanceOf(ModelWithSchema.ValidationError);
 
             return session.knex(Model1.getTableName()).then((rows) => {
-              expect(rows.map((it) => it.id).sort()).to.eql([1, 2]);
-              done();
+              expect(rows.map((it) => it.id).sort()).toEqual([1, 2]);
             });
-          })
-          .catch(done);
+          });
       });
 
-      it('should use `Model.createValidationError` to create the error', (done) => {
+      it('should use `Model.createValidationError` to create the error', () => {
         class MyError extends Error {
           constructor({ data }) {
             super('MyError');
@@ -398,14 +395,14 @@ module.exports = (session) => {
           return new MyError(props);
         };
 
-        ModelWithSchema.query()
+        return ModelWithSchema.query()
           .insert({ model1Prop1: 666 })
           .then((x) => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(MyError);
-            expect(err.errors).to.eql({
+            expect(err).toBeInstanceOf(MyError);
+            expect(err.errors).toEqual({
               model1Prop1: [
                 {
                   message: 'must be string',
@@ -418,11 +415,9 @@ module.exports = (session) => {
             });
 
             return session.knex(Model1.getTableName()).then((rows) => {
-              expect(rows.map((it) => it.id).sort()).to.eql([1, 2]);
-              done();
+              expect(rows.map((it) => it.id).sort()).toEqual([1, 2]);
             });
-          })
-          .catch(done);
+          });
       });
 
       it('should allow properties with same names as relations', () => {
@@ -440,7 +435,7 @@ module.exports = (session) => {
         return Mod.query()
           .insert({ model1Prop1: 123, model1Relation1: 666 })
           .then((inserted) => {
-            expect(inserted.model1Prop1).to.equal(666);
+            expect(inserted.model1Prop1).toBe(666);
           });
       });
     });
@@ -475,9 +470,9 @@ module.exports = (session) => {
         return Model1.query()
           .insertAndFetch(model)
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted).to.equal(model);
-            expect(inserted).to.eql({
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted).toBe(model);
+            expect(inserted).toEqual({
               id: 3,
               model1Prop1: 'hello 3',
               model1Prop2: null,
@@ -488,7 +483,7 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -504,11 +499,11 @@ module.exports = (session) => {
           return Model1.query()
             .insertAndFetch([model1, model2])
             .then((inserted) => {
-              expect(inserted).to.have.length(2);
+              expect(inserted).toHaveLength(2);
 
-              expect(inserted[0]).to.be.a(Model1);
-              expect(inserted[0]).to.equal(model1);
-              expect(inserted[0]).to.eql({
+              expect(inserted[0]).toBeInstanceOf(Model1);
+              expect(inserted[0]).toBe(model1);
+              expect(inserted[0]).toEqual({
                 id: 3,
                 model1Prop1: 'hello 3',
                 model1Prop2: null,
@@ -517,9 +512,9 @@ module.exports = (session) => {
                 $afterInsertCalled: 1,
               });
 
-              expect(inserted[1]).to.be.a(Model1);
-              expect(inserted[1]).to.equal(model2);
-              expect(inserted[1]).to.eql({
+              expect(inserted[1]).toBeInstanceOf(Model1);
+              expect(inserted[1]).toBe(model2);
+              expect(inserted[1]).toEqual({
                 id: 4,
                 model1Prop1: 'hello 4',
                 model1Prop2: 10,
@@ -531,7 +526,7 @@ module.exports = (session) => {
               return session.knex(Model1.getTableName());
             })
             .then((rows) => {
-              expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+              expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
                 'hello 1',
                 'hello 2',
                 'hello 3',
@@ -561,15 +556,15 @@ module.exports = (session) => {
           .$query()
           .insert()
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
-            expect(inserted.id).to.eql(3);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
+            expect(inserted.id).toBe(3);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -591,12 +586,12 @@ module.exports = (session) => {
           .$query()
           .insert()
           .then((inserted) => {
-            expect(inserted).to.be.a(Model1);
-            expect(inserted.model1Prop1).to.equal('hello 3');
+            expect(inserted).toBeInstanceOf(Model1);
+            expect(inserted.model1Prop1).toBe('hello 3');
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
@@ -637,8 +632,8 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model1Relation1')
             .then((model) => {
-              expect(parent1.model1Id).to.equal(null);
-              expect(model).to.eql(undefined);
+              expect(parent1.model1Id).toBeNull();
+              expect(model).toBeUndefined();
 
               return parent1
                 .$relatedQuery('model1Relation1')
@@ -646,18 +641,18 @@ module.exports = (session) => {
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(3);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(parent1.model1Relation1).to.equal(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(3);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(parent1.model1Relation1).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.find((it) => it.id === parent1.id).model1Id).to.equal(3);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(3);
+              expect(rows.find((it) => it.id === parent1.id).model1Id).toBe(3);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
             });
         });
 
@@ -668,18 +663,18 @@ module.exports = (session) => {
             .insert({ model1Prop1: 'inserted' })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(3);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('inserted');
-              expect(parent1.model1Relation1).to.equal(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(3);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('inserted');
+              expect(parent1.model1Relation1).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.find((it) => it.id === parent1.id).model1Id).to.equal(3);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('inserted');
+              expect(rows).toHaveLength(3);
+              expect(rows.find((it) => it.id === parent1.id).model1Id).toBe(3);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('inserted');
             });
         });
 
@@ -693,16 +688,16 @@ module.exports = (session) => {
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.id).to.equal(4);
-              expect(inserted.model1Prop1).to.equal('inserted 2');
-              expect(parent1.model1Relation1).to.equal(undefined);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.id).toBe(4);
+              expect(inserted.model1Prop1).toBe('inserted 2');
+              expect(parent1.model1Relation1).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              expect(rows.find((it) => it.id === parent1.id).model1Id).to.equal(4);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('inserted 2');
+              expect(rows).toHaveLength(4);
+              expect(rows.find((it) => it.id === parent1.id).model1Id).toBe(4);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('inserted 2');
             });
         });
       });
@@ -738,7 +733,7 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model1Relation1Inverse')
             .then((model) => {
-              expect(model).to.eql(undefined);
+              expect(model).toBeUndefined();
 
               return parent1
                 .$relatedQuery('model1Relation1Inverse')
@@ -746,18 +741,18 @@ module.exports = (session) => {
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(3);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(parent1.model1Relation1Inverse).to.equal(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(3);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(parent1.model1Relation1Inverse).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.find((it) => it.id === inserted.id).model1Id).to.equal(parent1.id);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(3);
+              expect(rows.find((it) => it.id === inserted.id).model1Id).toBe(parent1.id);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
             });
         });
 
@@ -768,7 +763,7 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model1Relation1Inverse')
             .then((model) => {
-              expect(model).to.eql(undefined);
+              expect(model).toBeUndefined();
 
               return parent1
                 .$relatedQuery('model1Relation1Inverse')
@@ -776,18 +771,18 @@ module.exports = (session) => {
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(3);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(parent1.model1Relation1Inverse).to.equal(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(3);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(parent1.model1Relation1Inverse).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.find((it) => it.id === inserted.id).model1Id).to.equal(parent1.id);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(3);
+              expect(rows.find((it) => it.id === inserted.id).model1Id).toBe(parent1.id);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
             });
         });
       });
@@ -836,7 +831,7 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model1Relation2')
             .then((models) => {
-              expect(models).to.have.length(1);
+              expect(models).toHaveLength(1);
 
               return parent1
                 .$relatedQuery('model1Relation2')
@@ -844,21 +839,19 @@ module.exports = (session) => {
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.idCol).to.equal(3);
-              expect(inserted).to.be.a(Model2);
-              expect(inserted.model2Prop1).to.equal('test');
-              expect(inserted.model1Id).to.equal(parent1.id);
-              expect(parent1.model1Relation2).to.eql(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.idCol).toBe(3);
+              expect(inserted).toBeInstanceOf(Model2);
+              expect(inserted.model2Prop1).toBe('test');
+              expect(inserted.model1Id).toBe(parent1.id);
+              expect(parent1.model1Relation2).toBeUndefined();
               return session.knex('model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.find((it) => it.id_col === inserted.idCol).model1_id).to.equal(
-                parent1.id,
-              );
-              expect(rows.find((it) => it.id_col === inserted.idCol).model2_prop1).to.equal('test');
+              expect(rows).toHaveLength(3);
+              expect(rows.find((it) => it.id_col === inserted.idCol).model1_id).toBe(parent1.id);
+              expect(rows.find((it) => it.id_col === inserted.idCol).model2_prop1).toBe('test');
             });
         });
 
@@ -868,27 +861,25 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model1Relation2')
             .then((models) => {
-              expect(models).to.have.length(1);
+              expect(models).toHaveLength(1);
 
               return parent1.$relatedQuery('model1Relation2').insert({ model2Prop1: 'test' });
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.idCol).to.equal(3);
-              expect(inserted).to.be.a(Model2);
-              expect(inserted.model2Prop1).to.equal('test');
-              expect(inserted.model1Id).to.equal(parent1.id);
-              expect(parent1.model1Relation2).to.eql(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.idCol).toBe(3);
+              expect(inserted).toBeInstanceOf(Model2);
+              expect(inserted.model2Prop1).toBe('test');
+              expect(inserted.model1Id).toBe(parent1.id);
+              expect(parent1.model1Relation2).toBeUndefined();
               return session.knex('model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.find((it) => it.id_col === inserted.idCol).model1_id).to.equal(
-                parent1.id,
-              );
-              expect(rows.find((it) => it.id_col === inserted.idCol).model2_prop1).to.equal('test');
+              expect(rows).toHaveLength(3);
+              expect(rows.find((it) => it.id_col === inserted.idCol).model1_id).toBe(parent1.id);
+              expect(rows.find((it) => it.id_col === inserted.idCol).model2_prop1).toBe('test');
             });
         });
 
@@ -899,7 +890,7 @@ module.exports = (session) => {
             return parent1
               .$relatedQuery('model1Relation2')
               .then((models) => {
-                expect(models).to.have.length(1);
+                expect(models).toHaveLength(1);
 
                 return parent1
                   .$relatedQuery('model1Relation2')
@@ -910,29 +901,29 @@ module.exports = (session) => {
               })
               .then(($inserted) => {
                 inserted = $inserted;
-                expect(inserted[0].idCol).to.equal(3);
-                expect(inserted[1].idCol).to.equal(4);
-                expect(inserted[0]).to.be.a(Model2);
-                expect(inserted[1]).to.be.a(Model2);
-                expect(inserted[0].model2Prop1).to.equal('test 1');
-                expect(inserted[1].model2Prop1).to.equal('test 2');
-                expect(inserted[0].model1Id).to.equal(parent1.id);
-                expect(inserted[1].model1Id).to.equal(parent1.id);
-                expect(parent1.model1Relation2).to.eql(undefined);
+                expect(inserted[0].idCol).toBe(3);
+                expect(inserted[1].idCol).toBe(4);
+                expect(inserted[0]).toBeInstanceOf(Model2);
+                expect(inserted[1]).toBeInstanceOf(Model2);
+                expect(inserted[0].model2Prop1).toBe('test 1');
+                expect(inserted[1].model2Prop1).toBe('test 2');
+                expect(inserted[0].model1Id).toBe(parent1.id);
+                expect(inserted[1].model1Id).toBe(parent1.id);
+                expect(parent1.model1Relation2).toBeUndefined();
                 return session.knex('model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
-                expect(rows.find((it) => it.id_col === inserted[0].idCol).model1_id).to.equal(
+                expect(rows).toHaveLength(4);
+                expect(rows.find((it) => it.id_col === inserted[0].idCol).model1_id).toBe(
                   parent1.id,
                 );
-                expect(rows.find((it) => it.id_col === inserted[0].idCol).model2_prop1).to.equal(
+                expect(rows.find((it) => it.id_col === inserted[0].idCol).model2_prop1).toBe(
                   'test 1',
                 );
-                expect(rows.find((it) => it.id_col === inserted[1].idCol).model1_id).to.equal(
+                expect(rows.find((it) => it.id_col === inserted[1].idCol).model1_id).toBe(
                   parent1.id,
                 );
-                expect(rows.find((it) => it.id_col === inserted[1].idCol).model2_prop1).to.equal(
+                expect(rows.find((it) => it.id_col === inserted[1].idCol).model2_prop1).toBe(
                   'test 2',
                 );
               });
@@ -944,7 +935,7 @@ module.exports = (session) => {
             return parent1
               .$relatedQuery('model1Relation2')
               .then((models) => {
-                expect(models).to.have.length(1);
+                expect(models).toHaveLength(1);
 
                 return parent1
                   .$relatedQuery('model1Relation2')
@@ -952,33 +943,33 @@ module.exports = (session) => {
               })
               .then(($inserted) => {
                 inserted = $inserted;
-                expect(inserted[0].$beforeInsertCalled).to.equal(1);
-                expect(inserted[0].$afterInsertCalled).to.equal(1);
-                expect(inserted[1].$beforeInsertCalled).to.equal(1);
-                expect(inserted[1].$afterInsertCalled).to.equal(1);
-                expect(inserted[0].idCol).to.equal(3);
-                expect(inserted[1].idCol).to.equal(4);
-                expect(inserted[0]).to.be.a(Model2);
-                expect(inserted[1]).to.be.a(Model2);
-                expect(inserted[0].model2Prop1).to.equal('test 1');
-                expect(inserted[1].model2Prop1).to.equal('test 2');
-                expect(inserted[0].model1Id).to.equal(parent1.id);
-                expect(inserted[1].model1Id).to.equal(parent1.id);
-                expect(parent1.model1Relation2).to.eql(undefined);
+                expect(inserted[0].$beforeInsertCalled).toBe(1);
+                expect(inserted[0].$afterInsertCalled).toBe(1);
+                expect(inserted[1].$beforeInsertCalled).toBe(1);
+                expect(inserted[1].$afterInsertCalled).toBe(1);
+                expect(inserted[0].idCol).toBe(3);
+                expect(inserted[1].idCol).toBe(4);
+                expect(inserted[0]).toBeInstanceOf(Model2);
+                expect(inserted[1]).toBeInstanceOf(Model2);
+                expect(inserted[0].model2Prop1).toBe('test 1');
+                expect(inserted[1].model2Prop1).toBe('test 2');
+                expect(inserted[0].model1Id).toBe(parent1.id);
+                expect(inserted[1].model1Id).toBe(parent1.id);
+                expect(parent1.model1Relation2).toBeUndefined();
                 return session.knex('model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
-                expect(rows.find((it) => it.id_col === inserted[0].idCol).model1_id).to.equal(
+                expect(rows).toHaveLength(4);
+                expect(rows.find((it) => it.id_col === inserted[0].idCol).model1_id).toBe(
                   parent1.id,
                 );
-                expect(rows.find((it) => it.id_col === inserted[0].idCol).model2_prop1).to.equal(
+                expect(rows.find((it) => it.id_col === inserted[0].idCol).model2_prop1).toBe(
                   'test 1',
                 );
-                expect(rows.find((it) => it.id_col === inserted[1].idCol).model1_id).to.equal(
+                expect(rows.find((it) => it.id_col === inserted[1].idCol).model1_id).toBe(
                   parent1.id,
                 );
-                expect(rows.find((it) => it.id_col === inserted[1].idCol).model2_prop1).to.equal(
+                expect(rows.find((it) => it.id_col === inserted[1].idCol).model2_prop1).toBe(
                   'test 2',
                 );
               });
@@ -1042,31 +1033,31 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model2Relation1')
             .then((models) => {
-              expect(models).to.have.length(1);
+              expect(models).toHaveLength(1);
               return parent1
                 .$relatedQuery('model2Relation1')
                 .insert(Model1.fromJson({ model1Prop1: 'test' }));
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(5);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(parent1.model2Relation1).to.eql(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(5);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(parent1.model2Relation1).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
+              expect(rows).toHaveLength(3);
               expect(
                 rows.filter((it) => it.model1Id === inserted.id && it.model2Id === parent1.idCol),
-              ).to.have.length(1);
+              ).toHaveLength(1);
             });
         });
 
@@ -1078,12 +1069,12 @@ module.exports = (session) => {
               .onConflict('id')
               .ignore();
 
-            expect(inserted.id).to.equal(4);
-            expect(inserted.$beforeInsertCalled).to.equal(1);
-            expect(inserted.$afterInsertCalled).to.equal(1);
+            expect(inserted.id).toBe(4);
+            expect(inserted.$beforeInsertCalled).toBe(1);
+            expect(inserted.$afterInsertCalled).toBe(1);
 
             const joinTableRows = await session.knex('Model1Model2');
-            chai.expect(joinTableRows).to.containSubset([{ model1Id: 4, model2Id: parent1.idCol }]);
+            expect(joinTableRows).toContainSubset([{ model1Id: 4, model2Id: parent1.idCol }]);
           });
         }
 
@@ -1093,30 +1084,30 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model2Relation1')
             .then((models) => {
-              expect(models).to.have.length(1);
+              expect(models).toHaveLength(1);
 
               return parent1.$relatedQuery('model2Relation1').insert({ model1Prop1: 'test' });
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(5);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(parent1.model2Relation1).to.eql(undefined);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(5);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(parent1.model2Relation1).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
+              expect(rows).toHaveLength(3);
               expect(
                 rows.filter((it) => it.model1Id === inserted.id && it.model2Id === parent1.idCol),
-              ).to.have.length(1);
+              ).toHaveLength(1);
             });
         });
 
@@ -1127,7 +1118,7 @@ module.exports = (session) => {
             return parent1
               .$relatedQuery('model2Relation1')
               .then((models) => {
-                expect(models).to.have.length(1);
+                expect(models).toHaveLength(1);
 
                 return parent1
                   .$relatedQuery('model2Relation1')
@@ -1138,33 +1129,33 @@ module.exports = (session) => {
               })
               .then(($inserted) => {
                 inserted = $inserted;
-                expect(inserted[0].id).to.equal(5);
-                expect(inserted[1].id).to.equal(6);
-                expect(inserted[0]).to.be.a(Model1);
-                expect(inserted[1]).to.be.a(Model1);
-                expect(inserted[0].model1Prop1).to.equal('test 1');
-                expect(inserted[1].model1Prop1).to.equal('test 2');
-                expect(parent1.model2Relation1).to.eql(undefined);
+                expect(inserted[0].id).toBe(5);
+                expect(inserted[1].id).toBe(6);
+                expect(inserted[0]).toBeInstanceOf(Model1);
+                expect(inserted[1]).toBeInstanceOf(Model1);
+                expect(inserted[0].model1Prop1).toBe('test 1');
+                expect(inserted[1].model1Prop1).toBe('test 2');
+                expect(parent1.model2Relation1).toBeUndefined();
                 return session.knex('Model1');
               })
               .then((rows) => {
-                expect(rows).to.have.length(6);
-                expect(rows.find((it) => it.id === inserted[0].id).model1Prop1).to.equal('test 1');
-                expect(rows.find((it) => it.id === inserted[1].id).model1Prop1).to.equal('test 2');
+                expect(rows).toHaveLength(6);
+                expect(rows.find((it) => it.id === inserted[0].id).model1Prop1).toBe('test 1');
+                expect(rows.find((it) => it.id === inserted[1].id).model1Prop1).toBe('test 2');
                 return session.knex('Model1Model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
+                expect(rows).toHaveLength(4);
                 expect(
                   rows.filter(
                     (it) => it.model1Id === inserted[0].id && it.model2Id === parent1.idCol,
                   ),
-                ).to.have.length(1);
+                ).toHaveLength(1);
                 expect(
                   rows.filter(
                     (it) => it.model1Id === inserted[1].id && it.model2Id === parent1.idCol,
                   ),
-                ).to.have.length(1);
+                ).toHaveLength(1);
               });
           });
 
@@ -1174,7 +1165,7 @@ module.exports = (session) => {
             return parent1
               .$relatedQuery('model2Relation1')
               .then((models) => {
-                expect(models).to.have.length(1);
+                expect(models).toHaveLength(1);
 
                 return parent1
                   .$relatedQuery('model2Relation1')
@@ -1182,37 +1173,37 @@ module.exports = (session) => {
               })
               .then(($inserted) => {
                 inserted = $inserted;
-                expect(inserted[0].$beforeInsertCalled).to.equal(1);
-                expect(inserted[0].$afterInsertCalled).to.equal(1);
-                expect(inserted[1].$beforeInsertCalled).to.equal(1);
-                expect(inserted[1].$afterInsertCalled).to.equal(1);
-                expect(inserted[0].id).to.equal(5);
-                expect(inserted[1].id).to.equal(6);
-                expect(inserted[0]).to.be.a(Model1);
-                expect(inserted[1]).to.be.a(Model1);
-                expect(inserted[0].model1Prop1).to.equal('test 1');
-                expect(inserted[1].model1Prop1).to.equal('test 2');
-                expect(parent1.model2Relation1).to.eql(undefined);
+                expect(inserted[0].$beforeInsertCalled).toBe(1);
+                expect(inserted[0].$afterInsertCalled).toBe(1);
+                expect(inserted[1].$beforeInsertCalled).toBe(1);
+                expect(inserted[1].$afterInsertCalled).toBe(1);
+                expect(inserted[0].id).toBe(5);
+                expect(inserted[1].id).toBe(6);
+                expect(inserted[0]).toBeInstanceOf(Model1);
+                expect(inserted[1]).toBeInstanceOf(Model1);
+                expect(inserted[0].model1Prop1).toBe('test 1');
+                expect(inserted[1].model1Prop1).toBe('test 2');
+                expect(parent1.model2Relation1).toBeUndefined();
                 return session.knex('Model1');
               })
               .then((rows) => {
-                expect(rows).to.have.length(6);
-                expect(rows.find((it) => it.id === inserted[0].id).model1Prop1).to.equal('test 1');
-                expect(rows.find((it) => it.id === inserted[1].id).model1Prop1).to.equal('test 2');
+                expect(rows).toHaveLength(6);
+                expect(rows.find((it) => it.id === inserted[0].id).model1Prop1).toBe('test 1');
+                expect(rows.find((it) => it.id === inserted[1].id).model1Prop1).toBe('test 2');
                 return session.knex('Model1Model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
+                expect(rows).toHaveLength(4);
                 expect(
                   rows.filter(
                     (it) => it.model1Id === inserted[0].id && it.model2Id === parent1.idCol,
                   ),
-                ).to.have.length(1);
+                ).toHaveLength(1);
                 expect(
                   rows.filter(
                     (it) => it.model1Id === inserted[1].id && it.model2Id === parent1.idCol,
                   ),
-                ).to.have.length(1);
+                ).toHaveLength(1);
               });
           });
         }
@@ -1223,26 +1214,26 @@ module.exports = (session) => {
           return parent1
             .$relatedQuery('model2Relation1')
             .then((models) => {
-              expect(models).to.have.length(1);
+              expect(models).toHaveLength(1);
               return parent1
                 .$relatedQuery('model2Relation1')
                 .insert(Model1.fromJson({ model1Prop1: 'test', aliasedExtra: 'foo' }));
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.id).to.equal(5);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(inserted.aliasedExtra).to.equal('foo');
-              expect(parent1.model2Relation1).to.eql(undefined);
+              expect(inserted.id).toBe(5);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(inserted.aliasedExtra).toBe('foo');
+              expect(parent1.model2Relation1).toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
+              expect(rows).toHaveLength(3);
               expect(
                 rows.filter(
                   (it) =>
@@ -1250,7 +1241,7 @@ module.exports = (session) => {
                     it.model2Id === parent1.idCol &&
                     it.extra3 === inserted.aliasedExtra,
                 ),
-              ).to.have.length(1);
+              ).toHaveLength(1);
             });
         });
       });
@@ -1309,31 +1300,31 @@ module.exports = (session) => {
           return parent
             .$relatedQuery('model2Relation2')
             .then((models) => {
-              expect(models).to.equal(undefined);
+              expect(models).toBeUndefined();
 
               return parent.$relatedQuery('model2Relation2').insert({ model1Prop1: 'test' });
             })
             .then(($inserted) => {
               inserted = $inserted;
 
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(5);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(5);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
 
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === inserted.id).model1Prop1).toBe('test');
               return session.knex('Model1Model2One');
             })
             .then((rows) => {
-              expect(rows).to.have.length(1);
+              expect(rows).toHaveLength(1);
               expect(
                 rows.filter((it) => it.model1Id === inserted.id && it.model2Id === parent.idCol),
-              ).to.have.length(1);
+              ).toHaveLength(1);
             });
         });
       });
@@ -1362,7 +1353,7 @@ module.exports = (session) => {
             .for(1)
             .first()
             .then((model) => {
-              expect(model).to.eql(undefined);
+              expect(model).toBeUndefined();
 
               return Model1.relatedQuery('model1Relation1')
                 .for(1)
@@ -1371,16 +1362,16 @@ module.exports = (session) => {
             })
             .then(($inserted) => {
               inserted = $inserted;
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(3);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('inserted');
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(3);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('inserted');
               return session.knex('Model1').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(3);
+              expect(rows).toContainSubset([
                 {
                   id: 1,
                   model1Prop1: 'hello 1',
@@ -1405,12 +1396,12 @@ module.exports = (session) => {
             .for([1, 2])
             .insert({ model1Prop1: 'inserted' })
             .then((inserted) => {
-              expect(inserted.id).to.not.be(undefined);
+              expect(inserted.id).not.toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(3);
+              expect(rows).toContainSubset([
                 {
                   id: 1,
                   model1Prop1: 'hello 1',
@@ -1435,12 +1426,12 @@ module.exports = (session) => {
             .for(Model1.query().findByIds([1, 2]))
             .insert({ model1Prop1: 'inserted' })
             .then((inserted) => {
-              expect(inserted.id).to.not.be(undefined);
+              expect(inserted.id).not.toBeUndefined();
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(3);
+              expect(rows).toContainSubset([
                 {
                   id: 1,
                   model1Prop1: 'hello 1',
@@ -1494,17 +1485,17 @@ module.exports = (session) => {
             .for(1)
             .insert({ model2Prop1: 'inserted' })
             .then((inserted) => {
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.idCol).to.equal(3);
-              expect(inserted).to.be.a(Model2);
-              expect(inserted.model2Prop1).to.equal('inserted');
-              expect(inserted.model1Id).to.equal(1);
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.idCol).toBe(3);
+              expect(inserted).toBeInstanceOf(Model2);
+              expect(inserted.model2Prop1).toBe('inserted');
+              expect(inserted.model1Id).toBe(1);
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(3);
+              expect(rows).toContainSubset([
                 { id_col: 1, model2_prop1: 'text 1', model2_prop2: 6, model1_id: 1 },
                 { id_col: 2, model2_prop1: 'text 2', model2_prop2: 3, model1_id: 2 },
                 { id_col: 3, model2_prop1: 'inserted', model2_prop2: null, model1_id: 1 },
@@ -1520,8 +1511,8 @@ module.exports = (session) => {
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(3);
+              expect(rows).toContainSubset([
                 { id_col: 1, model2_prop1: 'text 1', model2_prop2: 6, model1_id: 1 },
                 { id_col: 2, model2_prop1: 'text 2', model2_prop2: 3, model1_id: 2 },
                 { id_col: 3, model2_prop1: 'inserted', model2_prop2: null, model1_id: 1 },
@@ -1529,20 +1520,18 @@ module.exports = (session) => {
             });
         });
 
-        it('should fail if multiple parents are given', (done) => {
-          Model1.relatedQuery('model1Relation2')
+        it('should fail if multiple parents are given', () => {
+          return Model1.relatedQuery('model1Relation2')
             .for([1, 2])
             .insert({ model2Prop1: 'inserted' })
             .then(() => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 "Can only insert items for one parent at a time in case of HasManyRelation. Otherwise multiple insert queries would need to be created. If you need to insert items for multiple parents, simply loop through them. That's the most performant way.",
               );
-              done();
-            })
-            .catch(done);
+            });
         });
 
         if (session.isPostgres()) {
@@ -1551,23 +1540,23 @@ module.exports = (session) => {
               .for(1)
               .insert([{ model2Prop1: 'inserted 1' }, { model2Prop1: 'inserted 2' }])
               .then((inserted) => {
-                expect(inserted[0].$beforeInsertCalled).to.equal(1);
-                expect(inserted[0].$afterInsertCalled).to.equal(1);
-                expect(inserted[1].$beforeInsertCalled).to.equal(1);
-                expect(inserted[1].$afterInsertCalled).to.equal(1);
-                expect(inserted[0].idCol).to.equal(3);
-                expect(inserted[1].idCol).to.equal(4);
-                expect(inserted[0]).to.be.a(Model2);
-                expect(inserted[1]).to.be.a(Model2);
-                expect(inserted[0].model2Prop1).to.equal('inserted 1');
-                expect(inserted[1].model2Prop1).to.equal('inserted 2');
-                expect(inserted[0].model1Id).to.equal(1);
-                expect(inserted[1].model1Id).to.equal(1);
+                expect(inserted[0].$beforeInsertCalled).toBe(1);
+                expect(inserted[0].$afterInsertCalled).toBe(1);
+                expect(inserted[1].$beforeInsertCalled).toBe(1);
+                expect(inserted[1].$afterInsertCalled).toBe(1);
+                expect(inserted[0].idCol).toBe(3);
+                expect(inserted[1].idCol).toBe(4);
+                expect(inserted[0]).toBeInstanceOf(Model2);
+                expect(inserted[1]).toBeInstanceOf(Model2);
+                expect(inserted[0].model2Prop1).toBe('inserted 1');
+                expect(inserted[1].model2Prop1).toBe('inserted 2');
+                expect(inserted[0].model1Id).toBe(1);
+                expect(inserted[1].model1Id).toBe(1);
                 return session.knex('model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
-                chai.expect(rows).containSubset([
+                expect(rows).toHaveLength(4);
+                expect(rows).toContainSubset([
                   { id_col: 1, model2_prop1: 'text 1', model2_prop2: 6, model1_id: 1 },
                   { id_col: 2, model2_prop1: 'text 2', model2_prop2: 3, model1_id: 2 },
                   { id_col: 3, model2_prop1: 'inserted 1', model2_prop2: null, model1_id: 1 },
@@ -1623,21 +1612,21 @@ module.exports = (session) => {
             .for(1)
             .insert({ model1Prop1: 'test' })
             .then((inserted) => {
-              expect(inserted.$beforeInsertCalled).to.equal(1);
-              expect(inserted.$afterInsertCalled).to.equal(1);
-              expect(inserted.id).to.equal(5);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
+              expect(inserted.$beforeInsertCalled).toBe(1);
+              expect(inserted.$afterInsertCalled).toBe(1);
+              expect(inserted.id).toBe(5);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === 5).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === 5).model1Prop1).toBe('test');
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).to.have.length(1);
+              expect(rows).toHaveLength(3);
+              expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).toHaveLength(1);
             });
         });
 
@@ -1646,19 +1635,19 @@ module.exports = (session) => {
             .for(Model2.query().findById(1))
             .insert({ model1Prop1: 'test' })
             .then((inserted) => {
-              expect(inserted.id).to.equal(5);
-              expect(inserted).to.be.a(Model1);
-              expect(inserted.model1Prop1).to.equal('test');
+              expect(inserted.id).toBe(5);
+              expect(inserted).toBeInstanceOf(Model1);
+              expect(inserted.model1Prop1).toBe('test');
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === 5).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === 5).model1Prop1).toBe('test');
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).to.have.length(1);
+              expect(rows).toHaveLength(3);
+              expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).toHaveLength(1);
             });
         });
 
@@ -1668,26 +1657,22 @@ module.exports = (session) => {
               .for([1, 2])
               .insert({ model1Prop1: 'test' })
               .then((inserted) => {
-                expect(inserted.$beforeInsertCalled).to.equal(1);
-                expect(inserted.$afterInsertCalled).to.equal(1);
-                expect(inserted.id).to.equal(5);
-                expect(inserted).to.be.a(Model1);
-                expect(inserted.model1Prop1).to.equal('test');
+                expect(inserted.$beforeInsertCalled).toBe(1);
+                expect(inserted.$afterInsertCalled).toBe(1);
+                expect(inserted.id).toBe(5);
+                expect(inserted).toBeInstanceOf(Model1);
+                expect(inserted.model1Prop1).toBe('test');
                 return session.knex('Model1');
               })
               .then((rows) => {
-                expect(rows).to.have.length(5);
-                expect(rows.find((it) => it.id === 5).model1Prop1).to.equal('test');
+                expect(rows).toHaveLength(5);
+                expect(rows.find((it) => it.id === 5).model1Prop1).toBe('test');
                 return session.knex('Model1Model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
-                expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 2)).to.have.length(
-                  1,
-                );
+                expect(rows).toHaveLength(4);
+                expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).toHaveLength(1);
+                expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 2)).toHaveLength(1);
               });
           });
 
@@ -1696,28 +1681,24 @@ module.exports = (session) => {
               .for(1)
               .insert([{ model1Prop1: 'test 1' }, { model1Prop1: 'test 2' }])
               .then((inserted) => {
-                expect(inserted[0].id).to.equal(5);
-                expect(inserted[1].id).to.equal(6);
-                expect(inserted[0]).to.be.a(Model1);
-                expect(inserted[1]).to.be.a(Model1);
-                expect(inserted[0].model1Prop1).to.equal('test 1');
-                expect(inserted[1].model1Prop1).to.equal('test 2');
+                expect(inserted[0].id).toBe(5);
+                expect(inserted[1].id).toBe(6);
+                expect(inserted[0]).toBeInstanceOf(Model1);
+                expect(inserted[1]).toBeInstanceOf(Model1);
+                expect(inserted[0].model1Prop1).toBe('test 1');
+                expect(inserted[1].model1Prop1).toBe('test 2');
                 return session.knex('Model1');
               })
               .then((rows) => {
-                expect(rows).to.have.length(6);
-                expect(rows.find((it) => it.id === 5).model1Prop1).to.equal('test 1');
-                expect(rows.find((it) => it.id === 6).model1Prop1).to.equal('test 2');
+                expect(rows).toHaveLength(6);
+                expect(rows.find((it) => it.id === 5).model1Prop1).toBe('test 1');
+                expect(rows.find((it) => it.id === 6).model1Prop1).toBe('test 2');
                 return session.knex('Model1Model2');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
-                expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model1Id === 6 && it.model2Id === 1)).to.have.length(
-                  1,
-                );
+                expect(rows).toHaveLength(4);
+                expect(rows.filter((it) => it.model1Id === 5 && it.model2Id === 1)).toHaveLength(1);
+                expect(rows.filter((it) => it.model1Id === 6 && it.model2Id === 1)).toHaveLength(1);
               });
           });
         }
@@ -1727,21 +1708,21 @@ module.exports = (session) => {
             .for(1)
             .insert(Model1.fromJson({ model1Prop1: 'test', aliasedExtra: 'foo' }))
             .then((inserted) => {
-              expect(inserted.id).to.equal(5);
-              expect(inserted.model1Prop1).to.equal('test');
-              expect(inserted.aliasedExtra).to.equal('foo');
+              expect(inserted.id).toBe(5);
+              expect(inserted.model1Prop1).toBe('test');
+              expect(inserted.aliasedExtra).toBe('foo');
               return session.knex('Model1');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.find((it) => it.id === 5).model1Prop1).to.equal('test');
+              expect(rows).toHaveLength(5);
+              expect(rows.find((it) => it.id === 5).model1Prop1).toBe('test');
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
+              expect(rows).toHaveLength(3);
               expect(
                 rows.filter((it) => it.model1Id === 5 && it.model2Id === 1 && it.extra3 === 'foo'),
-              ).to.have.length(1);
+              ).toHaveLength(1);
             });
         });
       });
@@ -1756,12 +1737,12 @@ module.exports = (session) => {
         it('should silently ignore insert if id already exists', async () => {
           await Model1.query().insert({ id: 1 });
           const result = await Model1.query().insert({ id: 1 }).onConflict('id').ignore();
-          expect(result instanceof Model1).to.equal(true);
+          expect(result instanceof Model1).toBe(true);
 
           const rows = await Model1.query();
-          expect(rows).to.have.length(1);
-          expect(rows[0].id).to.equal(1);
-          expect(result.id).to.equal(rows[0].id);
+          expect(rows).toHaveLength(1);
+          expect(rows[0].id).toBe(1);
+          expect(result.id).toBe(rows[0].id);
         });
       });
 
@@ -1772,14 +1753,14 @@ module.exports = (session) => {
             .insert({ idCol: 1, model2Prop1: 'updated' })
             .onConflict('id_col')
             .merge();
-          expect(result instanceof Model2).to.equal(true);
+          expect(result instanceof Model2).toBe(true);
 
           const rows = await Model2.query();
-          expect(rows).to.have.length(1);
-          expect(rows[0].idCol).to.equal(1);
-          expect(rows[0].model2Prop1).to.equal('updated');
-          expect(result.id).to.equal(rows[0].id);
-          expect(result.model2Prop1).to.equal(rows[0].model2Prop1);
+          expect(rows).toHaveLength(1);
+          expect(rows[0].idCol).toBe(1);
+          expect(rows[0].model2Prop1).toBe('updated');
+          expect(result.id).toBe(rows[0].id);
+          expect(result.model2Prop1).toBe(rows[0].model2Prop1);
         });
 
         it('should update some columns of the row if id already exists', async () => {
@@ -1788,15 +1769,15 @@ module.exports = (session) => {
             .insert({ idCol: 1, model2Prop1: 'updated', model2Prop2: 123456 })
             .onConflict('id_col')
             .merge(['model2_prop1']);
-          expect(result instanceof Model2).to.equal(true);
+          expect(result instanceof Model2).toBe(true);
 
           const rows = await Model2.query();
-          expect(rows).to.have.length(1);
-          expect(rows[0].idCol).to.equal(1);
-          expect(rows[0].model2Prop1).to.equal('updated');
-          expect(rows[0].model2Prop2).to.equal(null);
-          expect(result.id).to.equal(rows[0].id);
-          expect(result.model2Prop1).to.equal(rows[0].model2Prop1);
+          expect(rows).toHaveLength(1);
+          expect(rows[0].idCol).toBe(1);
+          expect(rows[0].model2Prop1).toBe('updated');
+          expect(rows[0].model2Prop2).toBeNull();
+          expect(result.id).toBe(rows[0].id);
+          expect(result.model2Prop1).toBe(rows[0].model2Prop1);
         });
 
         if (session.isPostgres()) {
@@ -1807,14 +1788,14 @@ module.exports = (session) => {
               .onConflict('id_col')
               .merge({ model2Prop1: 'override updated' })
               .returning('id_col', 'model2_prop1');
-            expect(result instanceof Model2).to.equal(true);
+            expect(result instanceof Model2).toBe(true);
 
             const rows = await Model2.query();
-            expect(rows).to.have.length(1);
-            expect(rows[0].idCol).to.equal(1);
-            expect(rows[0].model2Prop1).to.equal('override updated');
-            expect(result.id).to.equal(rows[0].id);
-            expect(result.model2Prop1).to.equal(rows[0].model2Prop1);
+            expect(rows).toHaveLength(1);
+            expect(rows[0].idCol).toBe(1);
+            expect(rows[0].model2Prop1).toBe('override updated');
+            expect(result.id).toBe(rows[0].id);
+            expect(result.model2Prop1).toBe(rows[0].model2Prop1);
           });
         }
       });

@@ -1,5 +1,5 @@
-import { Person } from '../fixtures/person';
-import { raw } from '../../..';
+import { Person } from '../fixtures/person.js';
+import { raw } from 'objection';
 
 (async () => {
   await Person.query().joinRelated('pets').where('pets.species', 'dog');

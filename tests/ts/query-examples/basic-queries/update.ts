@@ -1,4 +1,4 @@
-import { Person } from '../../fixtures/person';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   let numUpdated = await Person.query().findById(1).patch({

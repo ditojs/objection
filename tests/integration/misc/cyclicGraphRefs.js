@@ -1,15 +1,15 @@
-const { expect } = require('chai');
-const { Model } = require('../../../');
-const { FetchStrategy } = require('../../../lib/queryBuilder/graph/GraphOptions');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { Model } from 'objection';
+import { FetchStrategy } from '../../../lib/queryBuilder/graph/GraphOptions.js';
 
-module.exports = (session) => {
+export default (session) => {
   describe('insertGraph / upsertGraph with cyclic #ref dependencies #1482', () => {
     const { knex } = session;
     let Person;
     let Pet;
     let Toy;
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('cyclic_toy')
         .dropTableIfExists('cyclic_pet')
@@ -44,7 +44,7 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema
         .alterTable('cyclic_person', (table) => {
           table.dropForeign('favoritePetId');
@@ -64,7 +64,7 @@ module.exports = (session) => {
         });
     });
 
-    before(() => {
+    beforeAll(() => {
       Person = class Person extends Model {
         static get tableName() {
           return 'cyclic_person';
@@ -180,14 +180,14 @@ module.exports = (session) => {
         error = err;
       }
 
-      expect(error).to.be.an('error');
-      expect(error.message).to.equal('the object graph contains cyclic references');
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toBe('the object graph contains cyclic references');
     }
 
     async function expectNoRows() {
-      expect(await Person.query().resultSize()).to.equal(0);
-      expect(await Pet.query().resultSize()).to.equal(0);
-      expect(await Toy.query().resultSize()).to.equal(0);
+      expect(await Person.query().resultSize()).toBe(0);
+      expect(await Pet.query().resultSize()).toBe(0);
+      expect(await Toy.query().resultSize()).toBe(0);
     }
 
     const variants = [
@@ -214,14 +214,14 @@ module.exports = (session) => {
           );
 
           const felix = result.pets[1];
-          expect(felix.id).to.be.a('number');
-          expect(felix.ownerId).to.equal(result.id);
-          expect(result.favoritePetId).to.equal(felix.id);
+          expect(felix.id).toBeTypeOf('number');
+          expect(felix.ownerId).toBe(result.id);
+          expect(result.favoritePetId).toBe(felix.id);
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.pets.map((it) => it.name).sort()).to.eql(['Doggo', 'Felix']);
-          expect(jennifer.favoritePet.name).to.equal('Felix');
-          expect(jennifer.favoritePet.id).to.equal(felix.id);
+          expect(jennifer.pets.map((it) => it.name).sort()).toEqual(['Doggo', 'Felix']);
+          expect(jennifer.favoritePet.name).toBe('Felix');
+          expect(jennifer.favoritePet.id).toBe(felix.id);
         });
 
         it('should work when the #ref target is the first item of the relation', async () => {
@@ -235,8 +235,8 @@ module.exports = (session) => {
           );
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.pets.map((it) => it.name).sort()).to.eql(['Doggo', 'Felix']);
-          expect(jennifer.favoritePet.name).to.equal('Felix');
+          expect(jennifer.pets.map((it) => it.name).sort()).toEqual(['Doggo', 'Felix']);
+          expect(jennifer.favoritePet.name).toBe('Felix');
         });
 
         it('should break cycles spanning more than two levels', async () => {
@@ -254,11 +254,11 @@ module.exports = (session) => {
             graphOptions,
           );
 
-          expect(result.favoriteToyId).to.equal(result.pets[0].toys[1].id);
+          expect(result.favoriteToyId).toBe(result.pets[0].toys[1].id);
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.favoriteToy.name).to.equal('Ball');
-          expect(jennifer.pets[0].toys.map((it) => it.name).sort()).to.eql(['Ball', 'Mouse']);
+          expect(jennifer.favoriteToy.name).toBe('Ball');
+          expect(jennifer.pets[0].toys.map((it) => it.name).sort()).toEqual(['Ball', 'Mouse']);
         });
 
         it('should break multiple cycles in one graph', async () => {
@@ -280,12 +280,12 @@ module.exports = (session) => {
           );
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.favoritePet.name).to.equal('Felix');
-          expect(jennifer.favoriteToy.name).to.equal('Ball');
+          expect(jennifer.favoritePet.name).toBe('Felix');
+          expect(jennifer.favoriteToy.name).toBe('Ball');
 
           const brad = await fetchPerson('Brad');
-          expect(brad.favoritePet.name).to.equal('Tom');
-          expect(brad.pets.map((it) => it.name).sort()).to.eql(['Rex', 'Tom']);
+          expect(brad.favoritePet.name).toBe('Tom');
+          expect(brad.pets.map((it) => it.name).sort()).toEqual(['Rex', 'Tom']);
         });
 
         it('should handle a #ref into another root without a cycle', async () => {
@@ -304,8 +304,8 @@ module.exports = (session) => {
           );
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.favoritePet.name).to.equal('Tom');
-          expect(jennifer.pets).to.eql([]);
+          expect(jennifer.favoritePet.name).toBe('Tom');
+          expect(jennifer.pets).toEqual([]);
         });
 
         it('should resolve #ref{} properties of the owner that are not deferred', async () => {
@@ -322,8 +322,8 @@ module.exports = (session) => {
           );
 
           const jennifer = await fetchPerson('Jennifer');
-          expect(jennifer.favoritePet.name).to.equal('Felix');
-          expect(jennifer.pets[0].toys[0].name).to.equal('Toy of Jennifer');
+          expect(jennifer.favoritePet.name).toBe('Felix');
+          expect(jennifer.pets[0].toys[0].name).toBe('Toy of Jennifer');
         });
 
         it('should not defer a foreign key that is read by a #ref{} property reference', async () => {
@@ -377,7 +377,7 @@ module.exports = (session) => {
             graphOptions,
           );
 
-          expect(Person.hookCalls).to.eql(['beforeUpdate', 'afterUpdate']);
+          expect(Person.hookCalls).toEqual(['beforeUpdate', 'afterUpdate']);
         });
 
         it('should roll back the transaction if the deferred patch fails', async () => {
@@ -399,8 +399,8 @@ module.exports = (session) => {
             error = err;
           }
 
-          expect(error).to.be.an('error');
-          expect(error.message).to.equal('update failed');
+          expect(error).toBeInstanceOf(Error);
+          expect(error.message).toBe('update failed');
           await expectNoRows();
         });
       });
@@ -422,8 +422,8 @@ module.exports = (session) => {
           );
 
         const felix = await Pet.query().findOne({ name: 'Felix' }).withGraphFetched('favoriteToy');
-        expect(felix.ownerId).to.equal(jennifer.id);
-        expect(felix.favoriteToy.name).to.equal('Ball');
+        expect(felix.ownerId).toBe(jennifer.id);
+        expect(felix.favoriteToy.name).toBe('Ball');
       });
     });
 
@@ -473,8 +473,8 @@ module.exports = (session) => {
         );
 
         const fetched = await fetchPerson('Jennifer');
-        expect(fetched.pets.map((it) => it.name)).to.eql(['Felix']);
-        expect(fetched.favoritePet.name).to.equal('Felix');
+        expect(fetched.pets.map((it) => it.name)).toEqual(['Felix']);
+        expect(fetched.favoritePet.name).toBe('Felix');
       });
     });
 
@@ -504,11 +504,11 @@ module.exports = (session) => {
           { allowRefs: true },
         );
 
-        expect(countUpdates()).to.equal(1);
+        expect(countUpdates()).toBe(1);
 
         const jennifer = await fetchPerson('Jennifer');
-        expect(jennifer.favoritePet.name).to.equal('Felix');
-        expect(jennifer.favoriteToy.name).to.equal('Ball');
+        expect(jennifer.favoritePet.name).toBe('Felix');
+        expect(jennifer.favoriteToy.name).toBe('Ball');
       });
 
       it('should patch each owner with deferred foreign keys once', async () => {
@@ -528,7 +528,7 @@ module.exports = (session) => {
           { allowRefs: true },
         );
 
-        expect(countUpdates()).to.equal(2);
+        expect(countUpdates()).toBe(2);
       });
 
       it('should not patch anything if the graph has no cycles', async () => {
@@ -540,7 +540,7 @@ module.exports = (session) => {
           { allowRefs: true },
         );
 
-        expect(countUpdates()).to.equal(0);
+        expect(countUpdates()).toBe(0);
       });
     });
 
@@ -548,7 +548,7 @@ module.exports = (session) => {
       let Owner;
       let Item;
 
-      before(() => {
+      beforeAll(() => {
         return knex.schema
           .dropTableIfExists('cyclic_item')
           .dropTableIfExists('cyclic_owner')
@@ -564,11 +564,11 @@ module.exports = (session) => {
           });
       });
 
-      after(() => {
+      afterAll(() => {
         return knex.schema.dropTableIfExists('cyclic_item').dropTableIfExists('cyclic_owner');
       });
 
-      before(() => {
+      beforeAll(() => {
         Owner = class Owner extends Model {
           static get tableName() {
             return 'cyclic_owner';
@@ -603,41 +603,42 @@ module.exports = (session) => {
 
       // MySQL without strict mode stores 0 for the missing value instead of
       // rejecting the insert.
-      const itUnlessMySql = session.isMySql() ? it.skip : it;
+      it.skipIf(session.isMySql())(
+        'should fail in the database and roll back inside a transaction',
+        async () => {
+          let error;
 
-      itUnlessMySql('should fail in the database and roll back inside a transaction', async () => {
-        let error;
+          try {
+            await Owner.transaction((trx) =>
+              Owner.query(trx).insertGraph(
+                [
+                  { name: 'Unrelated', requiredItemId: 0 },
+                  {
+                    name: 'Jennifer',
+                    items: [{ '#id': 'felix', name: 'Felix' }],
+                    requiredItem: { '#ref': 'felix' },
+                  },
+                ],
+                { allowRefs: true },
+              ),
+            );
+          } catch (err) {
+            error = err;
+          }
 
-        try {
-          await Owner.transaction((trx) =>
-            Owner.query(trx).insertGraph(
-              [
-                { name: 'Unrelated', requiredItemId: 0 },
-                {
-                  name: 'Jennifer',
-                  items: [{ '#id': 'felix', name: 'Felix' }],
-                  requiredItem: { '#ref': 'felix' },
-                },
-              ],
-              { allowRefs: true },
-            ),
-          );
-        } catch (err) {
-          error = err;
-        }
-
-        expect(error).to.be.an('error');
-        expect(error.message).to.not.equal('the object graph contains cyclic references');
-        expect(await Owner.query().resultSize()).to.equal(0);
-        expect(await Item.query().resultSize()).to.equal(0);
-      });
+          expect(error).toBeInstanceOf(Error);
+          expect(error.message).not.toBe('the object graph contains cyclic references');
+          expect(await Owner.query().resultSize()).toBe(0);
+          expect(await Item.query().resultSize()).toBe(0);
+        },
+      );
     });
 
     describe('composite keys', () => {
       let CPerson;
       let CPet;
 
-      before(() => {
+      beforeAll(() => {
         return knex.schema
           .dropTableIfExists('cyclic_cpet')
           .dropTableIfExists('cyclic_cperson')
@@ -659,11 +660,11 @@ module.exports = (session) => {
           });
       });
 
-      after(() => {
+      afterAll(() => {
         return knex.schema.dropTableIfExists('cyclic_cpet').dropTableIfExists('cyclic_cperson');
       });
 
-      before(() => {
+      beforeAll(() => {
         CPerson = class CPerson extends Model {
           static get tableName() {
             return 'cyclic_cperson';
@@ -737,14 +738,14 @@ module.exports = (session) => {
           const jennifer = await CPerson.query()
             .findById([1, 1])
             .withGraphFetched('[pets, favoritePet]');
-          expect(jennifer.favoritePetIdA).to.equal(1);
-          expect(jennifer.favoritePetIdB).to.equal(3);
-          expect(jennifer.favoritePet.name).to.equal('Felix');
-          expect(jennifer.pets).to.have.length(2);
+          expect(jennifer.favoritePetIdA).toBe(1);
+          expect(jennifer.favoritePetIdB).toBe(3);
+          expect(jennifer.favoritePet.name).toBe('Felix');
+          expect(jennifer.pets).toHaveLength(2);
 
           const brad = await CPerson.query().findById([2, 1]);
-          expect(brad.favoritePetIdA).to.equal(null);
-          expect(brad.favoritePetIdB).to.equal(null);
+          expect(brad.favoritePetIdA).toBeNull();
+          expect(brad.favoritePetIdB).toBeNull();
         });
       }
     });

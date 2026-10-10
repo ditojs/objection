@@ -4,8 +4,8 @@
 // Positive cases are plain property accesses or `Expect<Equal<...>>`
 // assertions, negative cases use `@ts-expect-error`.
 
-import { AnyQueryBuilder, Model, Page, QueryBuilder } from '../../../';
-import { Animal, CustomPerson, CustomPet, CustomQueryBuilder, Person, Program } from './models';
+import { AnyQueryBuilder, Model, Page, QueryBuilder } from 'objection';
+import { Animal, CustomPerson, CustomPet, CustomQueryBuilder, Person, Program } from './models.js';
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;

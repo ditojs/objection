@@ -1,14 +1,13 @@
-const expectJs = require('expect.js');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-const { expect } = require('chai');
-const { Model, val, raw, initialize } = require('../../');
+import { Model, val, raw, initialize } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe(`toKnexQuery`, () => {
     const { knex } = session;
     let Person;
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema.dropTableIfExists('persons').createTable('persons', (table) => {
         table.increments('id').primary();
         table.string('name');
@@ -16,7 +15,7 @@ module.exports = (session) => {
       });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('persons');
     });
 
@@ -88,13 +87,13 @@ module.exports = (session) => {
       });
 
       it('should fail with an informational error when withGraphJoined is used before warm up', () => {
-        expectJs(() => {
+        expect(() => {
           Person.query(knex).withGraphJoined('children').toKnexQuery();
-        }).to.throwException((err) => {
-          expect(err.message).to.equal(
-            `table metadata has not been fetched for table 'persons'. Are you trying to call toKnexQuery() for a withGraphJoined query? To make sure the table metadata is fetched see the objection.initialize function.`,
-          );
-        });
+        }).toThrow(
+          expect.objectContaining({
+            message: `table metadata has not been fetched for table 'persons'. Are you trying to call toKnexQuery() for a withGraphJoined query? To make sure the table metadata is fetched see the objection.initialize function.`,
+          }),
+        );
       });
 
       it('should fail with a informational error when withGraphJoined is used before warm up', async () => {
@@ -124,8 +123,8 @@ module.exports = (session) => {
 function testSql({ query, sql, bindings }) {
   const result = query.toKnexQuery().toSQL();
 
-  expect(normalizeSql(result.sql)).to.equal(sql);
-  expect(result.bindings).to.eql(bindings);
+  expect(normalizeSql(result.sql)).toBe(sql);
+  expect(result.bindings).toEqual(bindings);
 }
 
 function normalizeSql(sql) {

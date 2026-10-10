@@ -1,12 +1,12 @@
-const expect = require('expect.js');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('zero value in relation column', () => {
     let Table1;
     let Table2;
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('table1')
         .dropTableIfExists('table2')
@@ -20,14 +20,14 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return Promise.all([
         session.knex.schema.dropTableIfExists('table1'),
         session.knex.schema.dropTableIfExists('table2'),
       ]);
     });
 
-    before(() => {
+    beforeAll(() => {
       Table1 = class Table1 extends Model {
         static get tableName() {
           return 'table1';
@@ -57,7 +57,7 @@ module.exports = (session) => {
       Table2.knex(session.knex);
     });
 
-    before(() => {
+    beforeAll(() => {
       return Promise.all([
         Table1.query().insert({ id: 1, value: 0 }),
         Table1.query().insert({ id: 2, value: 1 }),
@@ -73,7 +73,7 @@ module.exports = (session) => {
           return model.$relatedQuery('relation');
         })
         .then((models) => {
-          expect(models).to.eql([{ id: 1, value: 0 }]);
+          expect(models).toEqual([{ id: 1, value: 0 }]);
         });
     });
   });

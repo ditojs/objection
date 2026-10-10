@@ -1,9 +1,8 @@
-const expect = require('expect.js');
-const { expect: chaiExpect } = require('chai');
-const { Model } = require('../../');
-const mockKnexFactory = require('../../testUtils/mockKnex');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
+import mockKnexFactory from '../../testUtils/mockKnex.js';
 
-module.exports = (session) => {
+export default (session) => {
   describe('static model hooks', () => {
     let knex;
     let queries = [];
@@ -12,7 +11,7 @@ module.exports = (session) => {
     let Pet;
     let Movie;
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('actorsMovies')
         .dropTableIfExists('movies')
@@ -39,7 +38,7 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('actorsMovies')
         .dropTableIfExists('movies')
@@ -47,7 +46,7 @@ module.exports = (session) => {
         .dropTableIfExists('people');
     });
 
-    before(() => {
+    beforeAll(() => {
       knex = mockKnexFactory(session.knex, function (_, oldImpl, args) {
         queries.push(this.toSQL());
         return oldImpl.apply(this, args);
@@ -184,7 +183,7 @@ module.exports = (session) => {
           return Person.query()
             .findOne('name', 'Jennifer')
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 name: 'Jennifer',
               });
             });
@@ -195,7 +194,7 @@ module.exports = (session) => {
             .findOne('name', 'Jennifer')
             .patch({ name: 'Jennier II' })
             .then((result) => {
-              expect(result).to.eql(1);
+              expect(result).toBe(1);
             });
         });
 
@@ -203,7 +202,7 @@ module.exports = (session) => {
           return Person.query()
             .insert({ name: 'Jennier II' })
             .then((result) => {
-              expect(result.id).to.be.a('number');
+              expect(result.id).toBeTypeOf('number');
             });
         });
 
@@ -212,7 +211,7 @@ module.exports = (session) => {
             .findOne('name', 'Jennifer')
             .delete()
             .then((result) => {
-              expect(result).to.eql(1);
+              expect(result).toBe(1);
             });
         });
 
@@ -227,7 +226,7 @@ module.exports = (session) => {
             })
             .modifyGraph('pets', (query) => query.orderBy('name', 'desc'))
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 name: 'Jennifer',
                 pets: [
                   {
@@ -263,7 +262,7 @@ module.exports = (session) => {
             })
             .orderBy('pets.name', 'desc')
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 name: 'Jennifer',
                 pets: [
                   {
@@ -352,9 +351,9 @@ module.exports = (session) => {
           Movie.beforeFind = createHookSpy();
 
           return Movie.query().then((movies) => {
-            expect(movies.length).to.equal(2);
+            expect(movies.length).toBe(2);
 
-            chaiExpect(movies).to.containSubset([
+            expect(movies).toContainSubset([
               {
                 name: 'Silver Linings Playbook',
               },
@@ -363,7 +362,7 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(Movie.beforeFind.calls.length).to.equal(1);
+            expect(Movie.beforeFind.calls.length).toBe(1);
           });
         });
 
@@ -375,9 +374,9 @@ module.exports = (session) => {
           });
 
           return Movie.query().then((movies) => {
-            expect(movies.length).to.equal(2);
+            expect(movies.length).toBe(2);
 
-            chaiExpect(movies).to.containSubset([
+            expect(movies).toContainSubset([
               {
                 name: 'Silver Linings Playbook',
               },
@@ -386,30 +385,30 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(Movie.beforeFind.calls.length).to.equal(1);
-            expect(Movie.beforeFind.calls[0].itWorked).to.equal(true);
+            expect(Movie.beforeFind.calls.length).toBe(1);
+            expect(Movie.beforeFind.calls[0].itWorked).toBe(true);
           });
         });
 
         it('should have access to `context`', () => {
           Movie.beforeFind = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.beforeFind.calls.length).to.equal(1);
+              expect(Movie.beforeFind.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.beforeFind = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query().then(() => {
-            expect(Movie.beforeFind.calls.length).to.equal(1);
+            expect(Movie.beforeFind.calls.length).toBe(1);
           });
         });
 
@@ -419,8 +418,8 @@ module.exports = (session) => {
           });
 
           return Movie.query().then((result) => {
-            expect(result).to.eql([]);
-            expect(queries.length).to.equal(0);
+            expect(result).toEqual([]);
+            expect(queries.length).toBe(0);
           });
         });
 
@@ -430,8 +429,8 @@ module.exports = (session) => {
           });
 
           return Movie.query().then((result) => {
-            expect(result).to.eql(['lol']);
-            expect(queries.length).to.equal(0);
+            expect(result).toEqual(['lol']);
+            expect(queries.length).toBe(0);
           });
         });
       });
@@ -442,9 +441,9 @@ module.exports = (session) => {
             .findOne({ name: 'Hungergames' })
             .then((movie) => {
               Movie.beforeFind = createHookSpy(({ items }) => {
-                expect(items.length).to.equal(1);
+                expect(items.length).toBe(1);
 
-                chaiExpect(items).to.containSubset([
+                expect(items).toContainSubset([
                   {
                     name: 'Hungergames',
                   },
@@ -454,8 +453,8 @@ module.exports = (session) => {
               return movie.$query();
             })
             .then((result) => {
-              expect(result.name).to.equal('Hungergames');
-              expect(Movie.beforeFind.calls.length).to.equal(1);
+              expect(result.name).toBe('Hungergames');
+              expect(Movie.beforeFind.calls.length).toBe(1);
             });
         });
       });
@@ -467,23 +466,23 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.beforeFind = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies');
               })
               .then((movies) => {
-                expect(movies.length).to.equal(2);
+                expect(movies.length).toBe(2);
 
-                chaiExpect(movies).to.containSubset([
+                expect(movies).toContainSubset([
                   {
                     name: 'Silver Linings Playbook',
                   },
@@ -492,7 +491,7 @@ module.exports = (session) => {
                   },
                 ]);
 
-                expect(Movie.beforeFind.calls.length).to.equal(1);
+                expect(Movie.beforeFind.calls.length).toBe(1);
               });
           });
         });
@@ -503,23 +502,23 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.beforeFind = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets');
               })
               .then((pets) => {
-                expect(pets.length).to.equal(2);
+                expect(pets.length).toBe(2);
 
-                chaiExpect(pets).to.containSubset([
+                expect(pets).toContainSubset([
                   {
                     name: 'Doggo',
                     species: 'dog',
@@ -530,7 +529,7 @@ module.exports = (session) => {
                   },
                 ]);
 
-                expect(Pet.beforeFind.calls.length).to.equal(1);
+                expect(Pet.beforeFind.calls.length).toBe(1);
               });
           });
         });
@@ -541,25 +540,25 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.beforeFind = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner');
               })
               .then((person) => {
-                chaiExpect(person).to.containSubset({
+                expect(person).toMatchObject({
                   name: 'Jennifer',
                 });
 
-                expect(Person.beforeFind.calls.length).to.equal(1);
+                expect(Person.beforeFind.calls.length).toBe(1);
               });
           });
         });
@@ -568,9 +567,9 @@ module.exports = (session) => {
       describe('eager', () => {
         it('should have access to all parents and relation', () => {
           Pet.beforeFind = createHookSpy(({ items, relation }) => {
-            expect(items.length).to.equal(2);
+            expect(items.length).toBe(2);
 
-            chaiExpect(items).to.containSubset([
+            expect(items).toContainSubset([
               {
                 name: 'Jennifer',
               },
@@ -579,7 +578,7 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(relation).to.equal(Person.getRelation('pets'));
+            expect(relation).toBe(Person.getRelation('pets'));
           });
 
           Person.beforeFind = createHookSpy(({ items, relation }) => {
@@ -588,8 +587,8 @@ module.exports = (session) => {
               return;
             }
 
-            expect(items.length).to.equal(4);
-            chaiExpect(items).to.containSubset([
+            expect(items.length).toBe(4);
+            expect(items).toContainSubset([
               {
                 name: 'Doggo',
               },
@@ -604,13 +603,13 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(relation).to.equal(Pet.getRelation('owner'));
+            expect(relation).toBe(Pet.getRelation('owner'));
           });
 
           Movie.beforeFind = createHookSpy(({ items, relation }) => {
-            expect(items.length).to.equal(2);
+            expect(items.length).toBe(2);
 
-            chaiExpect(items).to.containSubset([
+            expect(items).toContainSubset([
               {
                 name: 'Jennifer',
               },
@@ -619,7 +618,7 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(relation).to.equal(Person.getRelation('movies'));
+            expect(relation).toBe(Person.getRelation('movies'));
           });
 
           return Person.query()
@@ -630,9 +629,9 @@ module.exports = (session) => {
               },
             })
             .then(() => {
-              expect(Movie.beforeFind.calls.length).to.equal(1);
-              expect(Pet.beforeFind.calls.length).to.equal(1);
-              expect(Person.beforeFind.calls.length).to.equal(2);
+              expect(Movie.beforeFind.calls.length).toBe(1);
+              expect(Pet.beforeFind.calls.length).toBe(1);
+              expect(Person.beforeFind.calls.length).toBe(2);
             });
         });
       });
@@ -696,9 +695,9 @@ module.exports = (session) => {
           Movie.afterFind = createHookSpy();
 
           return Movie.query().then((movies) => {
-            expect(movies.length).to.equal(2);
+            expect(movies.length).toBe(2);
 
-            chaiExpect(movies).to.containSubset([
+            expect(movies).toContainSubset([
               {
                 name: 'Silver Linings Playbook',
               },
@@ -707,7 +706,7 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(Movie.afterFind.calls.length).to.equal(1);
+            expect(Movie.afterFind.calls.length).toBe(1);
           });
         });
 
@@ -717,7 +716,7 @@ module.exports = (session) => {
           });
 
           return Movie.query().then((result) => {
-            chaiExpect(result).to.containSubset([
+            expect(result).toContainSubset([
               'some',
               'crap',
               [
@@ -729,7 +728,7 @@ module.exports = (session) => {
                 },
               ],
             ]);
-            expect(Movie.afterFind.calls.length).to.equal(1);
+            expect(Movie.afterFind.calls.length).toBe(1);
           });
         });
 
@@ -741,9 +740,9 @@ module.exports = (session) => {
           });
 
           return Movie.query().then((movies) => {
-            expect(movies.length).to.equal(2);
+            expect(movies.length).toBe(2);
 
-            chaiExpect(movies).to.containSubset([
+            expect(movies).toContainSubset([
               {
                 name: 'Silver Linings Playbook',
               },
@@ -752,30 +751,30 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(Movie.afterFind.calls.length).to.equal(1);
-            expect(Movie.afterFind.calls[0].itWorked).to.equal(true);
+            expect(Movie.afterFind.calls.length).toBe(1);
+            expect(Movie.afterFind.calls[0].itWorked).toBe(true);
           });
         });
 
         it('should have access to `context`', () => {
           Movie.afterFind = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.afterFind.calls.length).to.equal(1);
+              expect(Movie.afterFind.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.afterFind = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query().then(() => {
-            expect(Movie.afterFind.calls.length).to.equal(1);
+            expect(Movie.afterFind.calls.length).toBe(1);
           });
         });
       });
@@ -786,9 +785,9 @@ module.exports = (session) => {
             .findOne({ name: 'Hungergames' })
             .then((movie) => {
               Movie.afterFind = createHookSpy(({ items }) => {
-                expect(items.length).to.equal(1);
+                expect(items.length).toBe(1);
 
-                chaiExpect(items).to.containSubset([
+                expect(items).toContainSubset([
                   {
                     name: 'Hungergames',
                   },
@@ -798,8 +797,8 @@ module.exports = (session) => {
               return movie.$query();
             })
             .then((result) => {
-              expect(result.name).to.equal('Hungergames');
-              expect(Movie.afterFind.calls.length).to.equal(1);
+              expect(result.name).toBe('Hungergames');
+              expect(Movie.afterFind.calls.length).toBe(1);
             });
         });
       });
@@ -811,23 +810,23 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.afterFind = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies');
               })
               .then((movies) => {
-                expect(movies.length).to.equal(2);
+                expect(movies.length).toBe(2);
 
-                chaiExpect(movies).to.containSubset([
+                expect(movies).toContainSubset([
                   {
                     name: 'Silver Linings Playbook',
                   },
@@ -836,7 +835,7 @@ module.exports = (session) => {
                   },
                 ]);
 
-                expect(Movie.afterFind.calls.length).to.equal(1);
+                expect(Movie.afterFind.calls.length).toBe(1);
               });
           });
         });
@@ -847,23 +846,23 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.afterFind = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets');
               })
               .then((pets) => {
-                expect(pets.length).to.equal(2);
+                expect(pets.length).toBe(2);
 
-                chaiExpect(pets).to.containSubset([
+                expect(pets).toContainSubset([
                   {
                     name: 'Doggo',
                     species: 'dog',
@@ -874,7 +873,7 @@ module.exports = (session) => {
                   },
                 ]);
 
-                expect(Pet.afterFind.calls.length).to.equal(1);
+                expect(Pet.afterFind.calls.length).toBe(1);
               });
           });
         });
@@ -885,25 +884,25 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.afterFind = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner');
               })
               .then((person) => {
-                chaiExpect(person).to.containSubset({
+                expect(person).toMatchObject({
                   name: 'Jennifer',
                 });
 
-                expect(Person.afterFind.calls.length).to.equal(1);
+                expect(Person.afterFind.calls.length).toBe(1);
               });
           });
         });
@@ -912,9 +911,9 @@ module.exports = (session) => {
       describe('eager', () => {
         it('should have access to all parents and relation', () => {
           Pet.afterFind = createHookSpy(({ items, relation }) => {
-            expect(items.length).to.equal(2);
+            expect(items.length).toBe(2);
 
-            chaiExpect(items).to.containSubset([
+            expect(items).toContainSubset([
               {
                 name: 'Jennifer',
               },
@@ -923,7 +922,7 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(relation).to.equal(Person.getRelation('pets'));
+            expect(relation).toBe(Person.getRelation('pets'));
           });
 
           Person.afterFind = createHookSpy(({ items, relation }) => {
@@ -932,8 +931,8 @@ module.exports = (session) => {
               return;
             }
 
-            expect(items.length).to.equal(4);
-            chaiExpect(items).to.containSubset([
+            expect(items.length).toBe(4);
+            expect(items).toContainSubset([
               {
                 name: 'Doggo',
               },
@@ -948,13 +947,13 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(relation).to.equal(Pet.getRelation('owner'));
+            expect(relation).toBe(Pet.getRelation('owner'));
           });
 
           Movie.afterFind = createHookSpy(({ items, relation }) => {
-            expect(items.length).to.equal(2);
+            expect(items.length).toBe(2);
 
-            chaiExpect(items).to.containSubset([
+            expect(items).toContainSubset([
               {
                 name: 'Jennifer',
               },
@@ -963,7 +962,7 @@ module.exports = (session) => {
               },
             ]);
 
-            expect(relation).to.equal(Person.getRelation('movies'));
+            expect(relation).toBe(Person.getRelation('movies'));
           });
 
           return Person.query()
@@ -974,9 +973,9 @@ module.exports = (session) => {
               },
             })
             .then(() => {
-              expect(Movie.afterFind.calls.length).to.equal(1);
-              expect(Pet.afterFind.calls.length).to.equal(1);
-              expect(Person.afterFind.calls.length).to.equal(2);
+              expect(Movie.afterFind.calls.length).toBe(1);
+              expect(Pet.afterFind.calls.length).toBe(1);
+              expect(Person.afterFind.calls.length).toBe(2);
             });
         });
       });
@@ -1049,8 +1048,8 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(3);
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
+              expect(numUpdated).toBe(3);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
             });
         });
 
@@ -1064,42 +1063,42 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(3);
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
-              expect(Movie.beforeUpdate.calls[0].itWorked).to.equal(true);
+              expect(numUpdated).toBe(3);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
+              expect(Movie.beforeUpdate.calls[0].itWorked).toBe(true);
             });
         });
 
         it('should have access to `context`', () => {
           Movie.beforeUpdate = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
             .update({ name: 'Updated' })
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.beforeUpdate = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query()
             .update({ name: 'Updated' })
             .then(() => {
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
             });
         });
 
         it('should have access to `inputItems`', () => {
           Movie.beforeUpdate = createHookSpy(({ inputItems }) => {
-            expect(inputItems.length).to.equal(1);
-            expect(inputItems[0] instanceof Movie).to.equal(true);
-            chaiExpect(inputItems).to.containSubset([
+            expect(inputItems.length).toBe(1);
+            expect(inputItems[0] instanceof Movie).toBe(true);
+            expect(inputItems).toContainSubset([
               {
                 name: 'Updated',
               },
@@ -1109,7 +1108,7 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then(() => {
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
             });
         });
 
@@ -1119,8 +1118,8 @@ module.exports = (session) => {
               .select('name')
               .forUpdate()
               .then((moviesToBeUpdated) => {
-                chaiExpect(moviesToBeUpdated).to.have.length(1);
-                chaiExpect(moviesToBeUpdated).containSubset([
+                expect(moviesToBeUpdated).toHaveLength(1);
+                expect(moviesToBeUpdated).toContainSubset([
                   {
                     name: 'Hungergames',
                   },
@@ -1133,9 +1132,9 @@ module.exports = (session) => {
             .update({ name: 'Updated' })
             .where('name', 'like', '%gam%')
             .then(() => {
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
-              expect(Movie.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-              expect(queries.length).to.equal(2);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
+              expect(Movie.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+              expect(queries.length).toBe(2);
             });
         });
 
@@ -1143,8 +1142,8 @@ module.exports = (session) => {
           Movie.beforeUpdate = createHookSpy(async ({ asFindQuery }, call) => {
             const moviesToBeUpdated = await asFindQuery().select('name').forUpdate();
 
-            chaiExpect(moviesToBeUpdated).to.have.length(1);
-            chaiExpect(moviesToBeUpdated).containSubset([
+            expect(moviesToBeUpdated).toHaveLength(1);
+            expect(moviesToBeUpdated).toContainSubset([
               {
                 name: 'Hungergames',
               },
@@ -1154,39 +1153,39 @@ module.exports = (session) => {
           });
 
           const hungerGames = await Movie.query().findOne('name', 'like', '%gam%');
-          expect(queries.length).to.equal(1);
+          expect(queries.length).toBe(1);
 
           await Movie.query().patchAndFetchById(hungerGames.id, { name: 'Updated' });
-          expect(Movie.beforeUpdate.calls.length).to.equal(1);
-          expect(Movie.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
+          expect(Movie.beforeUpdate.calls.length).toBe(1);
+          expect(Movie.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
           // findOne + patch + fetch + asFindQuery()
-          expect(queries.length).to.equal(4);
+          expect(queries.length).toBe(4);
         });
 
         it('should be able to access modelOptions in beforeUpdate when using patchAndFetchById', async () => {
           Movie.beforeUpdate = createHookSpy(({ modelOptions }) => {
-            chaiExpect(modelOptions).to.deep.equal({ patch: true });
+            expect(modelOptions).toEqual({ patch: true });
           });
 
           const hungerGames = await Movie.query().findOne('name', 'like', '%gam%');
-          expect(queries.length).to.equal(1);
+          expect(queries.length).toBe(1);
 
           await Movie.query().patchAndFetchById(hungerGames.id, { name: 'Updated' });
-          expect(Movie.beforeUpdate.calls.length).to.equal(1);
+          expect(Movie.beforeUpdate.calls.length).toBe(1);
         });
 
         it('should populate modelOptions with old data when using upsertGraph', async () => {
           Movie.beforeUpdate = createHookSpy(({ modelOptions }) => {
-            expect(modelOptions).to.have.property('old');
+            expect(modelOptions).toHaveProperty('old');
 
-            chaiExpect(modelOptions.old).containSubset({ name: 'Hungergames' });
+            expect(modelOptions.old).toMatchObject({ name: 'Hungergames' });
           });
 
           const hungerGames = await Movie.query().findOne('name', 'like', '%gam%');
-          expect(queries.length).to.equal(1);
+          expect(queries.length).toBe(1);
 
           await Movie.query().upsertGraph({ id: hungerGames.id, name: 'Updated' });
-          expect(Movie.beforeUpdate.calls.length).to.equal(1);
+          expect(Movie.beforeUpdate.calls.length).toBe(1);
         });
 
         it('should be able to cancel the query', () => {
@@ -1197,8 +1196,8 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((numUpdated) => {
-              expect(numUpdated).to.eql(0);
-              expect(queries.length).to.equal(0);
+              expect(numUpdated).toBe(0);
+              expect(queries.length).toBe(0);
             });
         });
 
@@ -1210,8 +1209,8 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((result) => {
-              expect(result).to.eql(['lol']);
-              expect(queries.length).to.equal(0);
+              expect(result).toEqual(['lol']);
+              expect(queries.length).toBe(0);
             });
         });
       });
@@ -1222,16 +1221,16 @@ module.exports = (session) => {
             .findOne({ name: 'Silver Linings Playbook' })
             .then((movie) => {
               Movie.beforeUpdate = createHookSpy(({ items, inputItems }) => {
-                expect(items.length).to.equal(1);
-                expect(inputItems.length).to.equal(1);
+                expect(items.length).toBe(1);
+                expect(inputItems.length).toBe(1);
 
-                chaiExpect(items).to.containSubset([
+                expect(items).toContainSubset([
                   {
                     name: 'Silver Linings Playbook',
                   },
                 ]);
 
-                chaiExpect(inputItems).to.containSubset([
+                expect(inputItems).toContainSubset([
                   {
                     name: 'Updated',
                   },
@@ -1241,8 +1240,8 @@ module.exports = (session) => {
               return movie.$query().patch({ name: 'Updated' });
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
+              expect(numUpdated).toBe(1);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
             });
         });
 
@@ -1257,10 +1256,10 @@ module.exports = (session) => {
                   .select('name')
                   .forUpdate()
                   .then((moviesToBeUpdated) => {
-                    chaiExpect(moviesToBeUpdated).to.have.length(1);
+                    expect(moviesToBeUpdated).toHaveLength(1);
                     // Note: moviesToBeUpdated must be an array even though $query()
                     // would normally produce a single item.
-                    chaiExpect(moviesToBeUpdated).containSubset([
+                    expect(moviesToBeUpdated).toContainSubset([
                       {
                         name: 'Silver Linings Playbook',
                       },
@@ -1272,10 +1271,10 @@ module.exports = (session) => {
               return movie.$query().patch({ name: 'Updated' });
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
-              expect(Movie.beforeUpdate.calls.length).to.equal(1);
-              expect(Movie.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-              expect(queries.length).to.equal(2);
+              expect(numUpdated).toBe(1);
+              expect(Movie.beforeUpdate.calls.length).toBe(1);
+              expect(Movie.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+              expect(queries.length).toBe(2);
             });
         });
       });
@@ -1287,29 +1286,29 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.beforeUpdate = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'Updated',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies').update({ name: 'Updated' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(2);
-                expect(Movie.beforeUpdate.calls.length).to.equal(1);
+                expect(numUpdated).toBe(2);
+                expect(Movie.beforeUpdate.calls.length).toBe(1);
               });
           });
 
@@ -1324,9 +1323,9 @@ module.exports = (session) => {
                     .select('name')
                     .forUpdate()
                     .then((moviesToBeUpdated) => {
-                      expect(moviesToBeUpdated.length).to.equal(2);
+                      expect(moviesToBeUpdated.length).toBe(2);
 
-                      chaiExpect(moviesToBeUpdated).containSubset([
+                      expect(moviesToBeUpdated).toContainSubset([
                         {
                           name: 'Silver Linings Playbook',
                         },
@@ -1342,10 +1341,10 @@ module.exports = (session) => {
                 return person.$relatedQuery('movies').patch({ name: 'Updated' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(2);
-                expect(Movie.beforeUpdate.calls.length).to.equal(1);
-                expect(Movie.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-                expect(queries.length).to.equal(2);
+                expect(numUpdated).toBe(2);
+                expect(Movie.beforeUpdate.calls.length).toBe(1);
+                expect(Movie.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+                expect(queries.length).toBe(2);
               });
           });
         });
@@ -1356,29 +1355,29 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.beforeUpdate = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       species: 'Frog',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets').patch({ species: 'Frog' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(2);
-                expect(Pet.beforeUpdate.calls.length).to.equal(1);
+                expect(numUpdated).toBe(2);
+                expect(Pet.beforeUpdate.calls.length).toBe(1);
               });
           });
 
@@ -1393,9 +1392,9 @@ module.exports = (session) => {
                     .select('name')
                     .forUpdate()
                     .then((petsToBeUpdated) => {
-                      expect(petsToBeUpdated.length).to.equal(2);
+                      expect(petsToBeUpdated.length).toBe(2);
 
-                      chaiExpect(petsToBeUpdated).containSubset([
+                      expect(petsToBeUpdated).toContainSubset([
                         {
                           name: 'Doggo',
                         },
@@ -1411,10 +1410,10 @@ module.exports = (session) => {
                 return person.$relatedQuery('pets').patch({ name: 'Updated' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(2);
-                expect(Pet.beforeUpdate.calls.length).to.equal(1);
-                expect(Pet.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-                expect(queries.length).to.equal(2);
+                expect(numUpdated).toBe(2);
+                expect(Pet.beforeUpdate.calls.length).toBe(1);
+                expect(Pet.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+                expect(queries.length).toBe(2);
               });
           });
 
@@ -1422,8 +1421,8 @@ module.exports = (session) => {
             Pet.beforeUpdate = createHookSpy(async ({ asFindQuery }, call) => {
               const petsToBeRelated = await asFindQuery().select('name').forUpdate();
 
-              chaiExpect(petsToBeRelated).to.have.length(2);
-              chaiExpect(petsToBeRelated).containSubset([
+              expect(petsToBeRelated).toHaveLength(2);
+              expect(petsToBeRelated).toContainSubset([
                 {
                   name: 'Hamsto',
                 },
@@ -1441,17 +1440,17 @@ module.exports = (session) => {
             queries = [];
 
             await jennifer.$relatedQuery('pets').relate([hamsto.id, croco.id]);
-            expect(Pet.beforeUpdate.calls.length).to.equal(1);
-            expect(Pet.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-            expect(queries.length).to.equal(2);
+            expect(Pet.beforeUpdate.calls.length).toBe(1);
+            expect(Pet.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+            expect(queries.length).toBe(2);
           });
 
           it('should be able to fetch the rows about to be updated when unrelating', async () => {
             Pet.beforeUpdate = createHookSpy(async ({ asFindQuery }, call) => {
               const petsToBeUnrelated = await asFindQuery().select('name').forUpdate();
 
-              chaiExpect(petsToBeUnrelated).to.have.length(2);
-              chaiExpect(petsToBeUnrelated).containSubset([
+              expect(petsToBeUnrelated).toHaveLength(2);
+              expect(petsToBeUnrelated).toContainSubset([
                 {
                   name: 'Doggo',
                 },
@@ -1467,9 +1466,9 @@ module.exports = (session) => {
             queries = [];
 
             await jennifer.$relatedQuery('pets').unrelate();
-            expect(Pet.beforeUpdate.calls.length).to.equal(1);
-            expect(Pet.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-            expect(queries.length).to.equal(2);
+            expect(Pet.beforeUpdate.calls.length).toBe(1);
+            expect(Pet.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+            expect(queries.length).toBe(2);
           });
         });
 
@@ -1479,29 +1478,29 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.beforeUpdate = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'New Owner',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner').patch({ name: 'New Owner' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(1);
-                expect(Person.beforeUpdate.calls.length).to.equal(1);
+                expect(numUpdated).toBe(1);
+                expect(Person.beforeUpdate.calls.length).toBe(1);
               });
           });
 
@@ -1516,9 +1515,9 @@ module.exports = (session) => {
                     .select('name')
                     .forUpdate()
                     .then((peopleToBeUpdated) => {
-                      expect(peopleToBeUpdated.length).to.equal(1);
+                      expect(peopleToBeUpdated.length).toBe(1);
 
-                      chaiExpect(peopleToBeUpdated).containSubset([
+                      expect(peopleToBeUpdated).toContainSubset([
                         {
                           name: 'Jennifer',
                         },
@@ -1531,10 +1530,10 @@ module.exports = (session) => {
                 return pet.$relatedQuery('owner').patch({ name: 'Updated' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(1);
-                expect(Person.beforeUpdate.calls.length).to.equal(1);
-                expect(Person.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
-                expect(queries.length).to.equal(2);
+                expect(numUpdated).toBe(1);
+                expect(Person.beforeUpdate.calls.length).toBe(1);
+                expect(Person.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
+                expect(queries.length).toBe(2);
               });
           });
         });
@@ -1608,8 +1607,8 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(3);
-              expect(Movie.afterUpdate.calls.length).to.equal(1);
+              expect(numUpdated).toBe(3);
+              expect(Movie.afterUpdate.calls.length).toBe(1);
             });
         });
 
@@ -1623,7 +1622,7 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((result) => {
-              expect(result).to.eql({ numUpdated: 3 });
+              expect(result).toEqual({ numUpdated: 3 });
             });
         });
 
@@ -1637,42 +1636,42 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(3);
-              expect(Movie.afterUpdate.calls.length).to.equal(1);
-              expect(Movie.afterUpdate.calls[0].itWorked).to.equal(true);
+              expect(numUpdated).toBe(3);
+              expect(Movie.afterUpdate.calls.length).toBe(1);
+              expect(Movie.afterUpdate.calls[0].itWorked).toBe(true);
             });
         });
 
         it('should have access to `context`', () => {
           Movie.afterUpdate = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
             .update({ name: 'Updated' })
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.afterUpdate.calls.length).to.equal(1);
+              expect(Movie.afterUpdate.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.afterUpdate = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query()
             .update({ name: 'Updated' })
             .then(() => {
-              expect(Movie.afterUpdate.calls.length).to.equal(1);
+              expect(Movie.afterUpdate.calls.length).toBe(1);
             });
         });
 
         it('should have access to `inputItems`', () => {
           Movie.afterUpdate = createHookSpy(({ inputItems }) => {
-            expect(inputItems.length).to.equal(1);
-            expect(inputItems[0] instanceof Movie).to.equal(true);
-            chaiExpect(inputItems).to.containSubset([
+            expect(inputItems.length).toBe(1);
+            expect(inputItems[0] instanceof Movie).toBe(true);
+            expect(inputItems).toContainSubset([
               {
                 name: 'Updated',
               },
@@ -1682,7 +1681,7 @@ module.exports = (session) => {
           return Movie.query()
             .update({ name: 'Updated' })
             .then(() => {
-              expect(Movie.afterUpdate.calls.length).to.equal(1);
+              expect(Movie.afterUpdate.calls.length).toBe(1);
             });
         });
       });
@@ -1693,16 +1692,16 @@ module.exports = (session) => {
             .findOne({ name: 'Silver Linings Playbook' })
             .then((movie) => {
               Movie.afterUpdate = createHookSpy(({ items, inputItems }) => {
-                expect(items.length).to.equal(1);
-                expect(inputItems.length).to.equal(1);
+                expect(items.length).toBe(1);
+                expect(inputItems.length).toBe(1);
 
-                chaiExpect(items).to.containSubset([
+                expect(items).toContainSubset([
                   {
                     name: 'Silver Linings Playbook',
                   },
                 ]);
 
-                chaiExpect(inputItems).to.containSubset([
+                expect(inputItems).toContainSubset([
                   {
                     name: 'Updated',
                   },
@@ -1712,8 +1711,8 @@ module.exports = (session) => {
               return movie.$query().patch({ name: 'Updated' });
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
-              expect(Movie.afterUpdate.calls.length).to.equal(1);
+              expect(numUpdated).toBe(1);
+              expect(Movie.afterUpdate.calls.length).toBe(1);
             });
         });
       });
@@ -1725,29 +1724,29 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.afterUpdate = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'Updated',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies').update({ name: 'Updated' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(2);
-                expect(Movie.afterUpdate.calls.length).to.equal(1);
+                expect(numUpdated).toBe(2);
+                expect(Movie.afterUpdate.calls.length).toBe(1);
               });
           });
 
@@ -1762,9 +1761,9 @@ module.exports = (session) => {
 
             await person.$relatedQuery('movies').findById(movie.id).patch({ name: 'Updated' });
 
-            expect(Movie.afterUpdate.calls.length).to.equal(1);
-            chaiExpect(found).to.containSubset([{ name: 'Updated' }]);
-            expect(found.length).to.equal(1);
+            expect(Movie.afterUpdate.calls.length).toBe(1);
+            expect(found).toContainSubset([{ name: 'Updated' }]);
+            expect(found.length).toBe(1);
           });
 
           it('`asFindQuery` should return the updated rows with upsertGraph', async () => {
@@ -1785,9 +1784,9 @@ module.exports = (session) => {
               ),
             });
 
-            expect(Movie.afterUpdate.calls.length).to.equal(1);
-            chaiExpect(found).to.containSubset([{ name: 'Updated' }]);
-            expect(found.length).to.equal(1);
+            expect(Movie.afterUpdate.calls.length).toBe(1);
+            expect(found).toContainSubset([{ name: 'Updated' }]);
+            expect(found.length).toBe(1);
           });
         });
 
@@ -1797,29 +1796,29 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.afterUpdate = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       species: 'Frog',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets').patch({ species: 'Frog' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(2);
-                expect(Pet.afterUpdate.calls.length).to.equal(1);
+                expect(numUpdated).toBe(2);
+                expect(Pet.afterUpdate.calls.length).toBe(1);
               });
           });
         });
@@ -1830,29 +1829,29 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.afterUpdate = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'New Owner',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner').patch({ name: 'New Owner' });
               })
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(1);
-                expect(Person.afterUpdate.calls.length).to.equal(1);
+                expect(numUpdated).toBe(1);
+                expect(Person.afterUpdate.calls.length).toBe(1);
               });
           });
         });
@@ -1927,8 +1926,8 @@ module.exports = (session) => {
             .delete()
             .where('name', 'A Star is Born')
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
+              expect(numDeleted).toBe(1);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
             });
         });
 
@@ -1943,15 +1942,15 @@ module.exports = (session) => {
             .delete()
             .where('name', 'A Star is Born')
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
-              expect(Movie.beforeDelete.calls[0].itWorked).to.equal(true);
+              expect(numUpdated).toBe(1);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
+              expect(Movie.beforeDelete.calls[0].itWorked).toBe(true);
             });
         });
 
         it('should have access to `context`', () => {
           Movie.beforeDelete = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
@@ -1959,20 +1958,20 @@ module.exports = (session) => {
             .where('name', 'A Star is Born')
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.beforeDelete = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query()
             .delete()
             .where('name', 'A Star is Born')
             .then(() => {
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
             });
         });
 
@@ -1982,8 +1981,8 @@ module.exports = (session) => {
               .select('name')
               .forUpdate()
               .then((moviesToBeDeleted) => {
-                chaiExpect(moviesToBeDeleted).to.have.length(1);
-                chaiExpect(moviesToBeDeleted).containSubset([
+                expect(moviesToBeDeleted).toHaveLength(1);
+                expect(moviesToBeDeleted).toContainSubset([
                   {
                     name: 'A Star is Born',
                   },
@@ -1996,9 +1995,9 @@ module.exports = (session) => {
             .delete()
             .where('name', 'A Star is Born')
             .then(() => {
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
-              expect(Movie.beforeDelete.calls[0].queryWasAwaited).to.equal(true);
-              expect(queries.length).to.equal(2);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
+              expect(Movie.beforeDelete.calls[0].queryWasAwaited).toBe(true);
+              expect(queries.length).toBe(2);
             });
         });
 
@@ -2011,8 +2010,8 @@ module.exports = (session) => {
             .delete()
             .where('name', 'A Star is Born')
             .then((numDeleted) => {
-              expect(numDeleted).to.eql(0);
-              expect(queries.length).to.equal(0);
+              expect(numDeleted).toBe(0);
+              expect(queries.length).toBe(0);
             });
         });
 
@@ -2025,8 +2024,8 @@ module.exports = (session) => {
             .delete()
             .where('name', 'A Star is Born')
             .then((result) => {
-              expect(result).to.eql(['lol']);
-              expect(queries.length).to.equal(0);
+              expect(result).toEqual(['lol']);
+              expect(queries.length).toBe(0);
             });
         });
 
@@ -2042,14 +2041,14 @@ module.exports = (session) => {
             .findOne({ name: 'Silver Linings Playbook' })
             .delete();
 
-          expect(numPatched).to.equal(1);
-          expect(queries.length).to.equal(1);
-          expect(queries[0].bindings).to.eql(['deleted', 'Silver Linings Playbook']);
+          expect(numPatched).toBe(1);
+          expect(queries.length).toBe(1);
+          expect(queries[0].bindings).toEqual(['deleted', 'Silver Linings Playbook']);
 
           if (session.isMySql()) {
-            expect(queries[0].sql).to.equal('update `movies` set `name` = ? where `name` = ?');
+            expect(queries[0].sql).toBe('update `movies` set `name` = ? where `name` = ?');
           } else if (session.isPostgres()) {
-            expect(queries[0].sql).to.equal('update "movies" set "name" = ? where "name" = ?');
+            expect(queries[0].sql).toBe('update "movies" set "name" = ? where "name" = ?');
           }
         });
       });
@@ -2060,9 +2059,9 @@ module.exports = (session) => {
             .findOne({ name: 'Silver Linings Playbook' })
             .then((movie) => {
               Movie.beforeDelete = createHookSpy(({ items, inputItems }) => {
-                expect(items.length).to.equal(1);
+                expect(items.length).toBe(1);
 
-                chaiExpect(items).to.containSubset([
+                expect(items).toContainSubset([
                   {
                     name: 'Silver Linings Playbook',
                   },
@@ -2072,8 +2071,8 @@ module.exports = (session) => {
               return movie.$query().delete();
             })
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
+              expect(numDeleted).toBe(1);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
             });
         });
 
@@ -2088,10 +2087,10 @@ module.exports = (session) => {
                   .select('name')
                   .forUpdate()
                   .then((moviesToBeDeleted) => {
-                    chaiExpect(moviesToBeDeleted).to.have.length(1);
+                    expect(moviesToBeDeleted).toHaveLength(1);
                     // Note: moviesToBeDeleted must be an array even though $query()
                     // would normally produce a single item.
-                    chaiExpect(moviesToBeDeleted).containSubset([
+                    expect(moviesToBeDeleted).toContainSubset([
                       {
                         name: 'Silver Linings Playbook',
                       },
@@ -2103,10 +2102,10 @@ module.exports = (session) => {
               return movie.$query().delete();
             })
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
-              expect(Movie.beforeDelete.calls.length).to.equal(1);
-              expect(Movie.beforeDelete.calls[0].queryWasAwaited).to.equal(true);
-              expect(queries.length).to.equal(2);
+              expect(numDeleted).toBe(1);
+              expect(Movie.beforeDelete.calls.length).toBe(1);
+              expect(Movie.beforeDelete.calls[0].queryWasAwaited).toBe(true);
+              expect(queries.length).toBe(2);
             });
         });
       });
@@ -2118,22 +2117,22 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.beforeDelete = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(2);
-                expect(Movie.beforeDelete.calls.length).to.equal(1);
+                expect(numDeleted).toBe(2);
+                expect(Movie.beforeDelete.calls.length).toBe(1);
               });
           });
 
@@ -2148,9 +2147,9 @@ module.exports = (session) => {
                     .select('name')
                     .forUpdate()
                     .then((moviesToBeDeleted) => {
-                      expect(moviesToBeDeleted.length).to.equal(2);
+                      expect(moviesToBeDeleted.length).toBe(2);
 
-                      chaiExpect(moviesToBeDeleted).containSubset([
+                      expect(moviesToBeDeleted).toContainSubset([
                         {
                           name: 'Silver Linings Playbook',
                         },
@@ -2166,10 +2165,10 @@ module.exports = (session) => {
                 return person.$relatedQuery('movies').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(2);
-                expect(Movie.beforeDelete.calls.length).to.equal(1);
-                expect(Movie.beforeDelete.calls[0].queryWasAwaited).to.equal(true);
-                expect(queries.length).to.equal(2);
+                expect(numDeleted).toBe(2);
+                expect(Movie.beforeDelete.calls.length).toBe(1);
+                expect(Movie.beforeDelete.calls[0].queryWasAwaited).toBe(true);
+                expect(queries.length).toBe(2);
               });
           });
         });
@@ -2180,22 +2179,22 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.beforeDelete = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(2);
-                expect(Pet.beforeDelete.calls.length).to.equal(1);
+                expect(numDeleted).toBe(2);
+                expect(Pet.beforeDelete.calls.length).toBe(1);
               });
           });
 
@@ -2210,9 +2209,9 @@ module.exports = (session) => {
                     .select('name')
                     .forUpdate()
                     .then((moviesToBeDeleted) => {
-                      expect(moviesToBeDeleted.length).to.equal(2);
+                      expect(moviesToBeDeleted.length).toBe(2);
 
-                      chaiExpect(moviesToBeDeleted).containSubset([
+                      expect(moviesToBeDeleted).toContainSubset([
                         {
                           name: 'Doggo',
                         },
@@ -2228,10 +2227,10 @@ module.exports = (session) => {
                 return person.$relatedQuery('pets').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(2);
-                expect(Pet.beforeDelete.calls.length).to.equal(1);
-                expect(Pet.beforeDelete.calls[0].queryWasAwaited).to.equal(true);
-                expect(queries.length).to.equal(2);
+                expect(numDeleted).toBe(2);
+                expect(Pet.beforeDelete.calls.length).toBe(1);
+                expect(Pet.beforeDelete.calls[0].queryWasAwaited).toBe(true);
+                expect(queries.length).toBe(2);
               });
           });
         });
@@ -2242,22 +2241,22 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.beforeDelete = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(1);
-                expect(Person.beforeDelete.calls.length).to.equal(1);
+                expect(numDeleted).toBe(1);
+                expect(Person.beforeDelete.calls.length).toBe(1);
               });
           });
 
@@ -2272,9 +2271,9 @@ module.exports = (session) => {
                     .select('name')
                     .forUpdate()
                     .then((peopleToBeDeleted) => {
-                      expect(peopleToBeDeleted.length).to.equal(1);
+                      expect(peopleToBeDeleted.length).toBe(1);
 
-                      chaiExpect(peopleToBeDeleted).containSubset([
+                      expect(peopleToBeDeleted).toContainSubset([
                         {
                           name: 'Jennifer',
                         },
@@ -2287,10 +2286,10 @@ module.exports = (session) => {
                 return pet.$relatedQuery('owner').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(1);
-                expect(Person.beforeDelete.calls.length).to.equal(1);
-                expect(Person.beforeDelete.calls[0].queryWasAwaited).to.equal(true);
-                expect(queries.length).to.equal(2);
+                expect(numDeleted).toBe(1);
+                expect(Person.beforeDelete.calls.length).toBe(1);
+                expect(Person.beforeDelete.calls[0].queryWasAwaited).toBe(true);
+                expect(queries.length).toBe(2);
               });
           });
         });
@@ -2364,8 +2363,8 @@ module.exports = (session) => {
           return Movie.query()
             .delete()
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(3);
-              expect(Movie.afterDelete.calls.length).to.equal(1);
+              expect(numDeleted).toBe(3);
+              expect(Movie.afterDelete.calls.length).toBe(1);
             });
         });
 
@@ -2380,7 +2379,7 @@ module.exports = (session) => {
             .delete()
             .where('name', 'Hungergames')
             .then((result) => {
-              expect(result).to.eql({ numDeleted: 1 });
+              expect(result).toEqual({ numDeleted: 1 });
             });
         });
 
@@ -2395,15 +2394,15 @@ module.exports = (session) => {
             .delete()
             .where('name', 'Hungergames')
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
-              expect(Movie.afterDelete.calls.length).to.equal(1);
-              expect(Movie.afterDelete.calls[0].itWorked).to.equal(true);
+              expect(numDeleted).toBe(1);
+              expect(Movie.afterDelete.calls.length).toBe(1);
+              expect(Movie.afterDelete.calls[0].itWorked).toBe(true);
             });
         });
 
         it('should have access to `context`', () => {
           Movie.afterDelete = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
@@ -2411,20 +2410,20 @@ module.exports = (session) => {
             .where('name', 'Hungergames')
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.afterDelete.calls.length).to.equal(1);
+              expect(Movie.afterDelete.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.afterDelete = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query()
             .delete()
             .where('name', 'Hungergames')
             .then(() => {
-              expect(Movie.afterDelete.calls.length).to.equal(1);
+              expect(Movie.afterDelete.calls.length).toBe(1);
             });
         });
       });
@@ -2435,9 +2434,9 @@ module.exports = (session) => {
             .findOne({ name: 'Silver Linings Playbook' })
             .then((movie) => {
               Movie.afterDelete = createHookSpy(({ items }) => {
-                expect(items.length).to.equal(1);
+                expect(items.length).toBe(1);
 
-                chaiExpect(items).to.containSubset([
+                expect(items).toContainSubset([
                   {
                     name: 'Silver Linings Playbook',
                   },
@@ -2447,8 +2446,8 @@ module.exports = (session) => {
               return movie.$query().delete();
             })
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
-              expect(Movie.afterDelete.calls.length).to.equal(1);
+              expect(numDeleted).toBe(1);
+              expect(Movie.afterDelete.calls.length).toBe(1);
             });
         });
       });
@@ -2460,22 +2459,22 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.afterDelete = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(2);
-                expect(Movie.afterDelete.calls.length).to.equal(1);
+                expect(numDeleted).toBe(2);
+                expect(Movie.afterDelete.calls.length).toBe(1);
               });
           });
 
@@ -2492,10 +2491,10 @@ module.exports = (session) => {
               .where('movies.name', 'Hungergames')
               .delete();
 
-            expect(numDeleted).to.equal(1);
-            expect(Movie.afterDelete.calls.length).to.equal(1);
+            expect(numDeleted).toBe(1);
+            expect(Movie.afterDelete.calls.length).toBe(1);
             // The deleted row is gone. The remaining related row must not match.
-            expect(found).to.eql([]);
+            expect(found).toEqual([]);
           });
         });
 
@@ -2505,22 +2504,22 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.afterDelete = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(2);
-                expect(Pet.afterDelete.calls.length).to.equal(1);
+                expect(numDeleted).toBe(2);
+                expect(Pet.afterDelete.calls.length).toBe(1);
               });
           });
         });
@@ -2531,22 +2530,22 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.afterDelete = createHookSpy(({ items, relation }) => {
-                  expect(items.length).to.equal(1);
+                  expect(items.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner').delete();
               })
               .then((numDeleted) => {
-                expect(numDeleted).to.equal(1);
-                expect(Person.afterDelete.calls.length).to.equal(1);
+                expect(numDeleted).toBe(1);
+                expect(Person.afterDelete.calls.length).toBe(1);
               });
           });
         });
@@ -2620,8 +2619,8 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then((movie) => {
-              expect(movie.id).to.be.a('number');
-              expect(Movie.beforeInsert.calls.length).to.equal(1);
+              expect(movie.id).toBeTypeOf('number');
+              expect(Movie.beforeInsert.calls.length).toBe(1);
             });
         });
 
@@ -2635,42 +2634,42 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then((movie) => {
-              expect(movie.id).to.be.a('number');
-              expect(Movie.beforeInsert.calls.length).to.equal(1);
-              expect(Movie.beforeInsert.calls[0].itWorked).to.equal(true);
+              expect(movie.id).toBeTypeOf('number');
+              expect(Movie.beforeInsert.calls.length).toBe(1);
+              expect(Movie.beforeInsert.calls[0].itWorked).toBe(true);
             });
         });
 
         it('should have access to `context`', () => {
           Movie.beforeInsert = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
             .insert({ name: 'Inserted' })
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.beforeInsert.calls.length).to.equal(1);
+              expect(Movie.beforeInsert.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.beforeInsert = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then(() => {
-              expect(Movie.beforeInsert.calls.length).to.equal(1);
+              expect(Movie.beforeInsert.calls.length).toBe(1);
             });
         });
 
         it('should have access to `inputItems`', async () => {
           Movie.beforeInsert = createHookSpy(({ inputItems }) => {
-            expect(inputItems.length).to.equal(1);
-            expect(inputItems[0] instanceof Movie).to.equal(true);
-            chaiExpect(inputItems).to.containSubset([
+            expect(inputItems.length).toBe(1);
+            expect(inputItems[0] instanceof Movie).toBe(true);
+            expect(inputItems).toContainSubset([
               {
                 name: 'Inserted',
               },
@@ -2679,7 +2678,7 @@ module.exports = (session) => {
 
           await Movie.query().insert({ name: 'Inserted' });
           await Movie.query().insertAndFetch({ name: 'Inserted' });
-          expect(Movie.beforeInsert.calls.length).to.equal(2);
+          expect(Movie.beforeInsert.calls.length).toBe(2);
         });
 
         it('should be able to cancel the query', () => {
@@ -2690,9 +2689,9 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then((result) => {
-              expect(result.name).to.equal('Inserted');
-              expect(result.id).to.equal(undefined);
-              expect(queries.length).to.equal(0);
+              expect(result.name).toBe('Inserted');
+              expect(result.id).toBeUndefined();
+              expect(queries.length).toBe(0);
             });
         });
 
@@ -2704,8 +2703,8 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then((result) => {
-              expect(result.lol).to.equal(true);
-              expect(queries.length).to.equal(0);
+              expect(result.lol).toBe(true);
+              expect(queries.length).toBe(0);
             });
         });
       });
@@ -2715,16 +2714,16 @@ module.exports = (session) => {
           const movie = Movie.fromJson({ name: 'Inserted' });
 
           Movie.beforeInsert = createHookSpy(({ items, inputItems }) => {
-            expect(items.length).to.equal(1);
-            expect(inputItems.length).to.equal(1);
+            expect(items.length).toBe(1);
+            expect(inputItems.length).toBe(1);
 
-            chaiExpect(items).to.containSubset([
+            expect(items).toContainSubset([
               {
                 name: 'Inserted',
               },
             ]);
 
-            chaiExpect(inputItems).to.containSubset([
+            expect(inputItems).toContainSubset([
               {
                 name: 'Inserted',
               },
@@ -2735,8 +2734,8 @@ module.exports = (session) => {
             .$query()
             .insert()
             .then((result) => {
-              expect(result.id).to.be.a('number');
-              expect(Movie.beforeInsert.calls.length).to.equal(1);
+              expect(result.id).toBeTypeOf('number');
+              expect(Movie.beforeInsert.calls.length).toBe(1);
             });
         });
       });
@@ -2748,29 +2747,29 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.beforeInsert = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'Inserted',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies').insert({ name: 'Inserted' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.be.a('number');
-                expect(Movie.beforeInsert.calls.length).to.equal(1);
+                expect(inserted.id).toBeTypeOf('number');
+                expect(Movie.beforeInsert.calls.length).toBe(1);
               });
           });
 
@@ -2787,9 +2786,9 @@ module.exports = (session) => {
                 return person.$relatedQuery('movies').insert({ name: 'Inserted' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.equal(undefined);
-                expect(Movie.beforeInsert.calls.length).to.equal(1);
-                expect(queries.length).to.equal(0);
+                expect(inserted.id).toBeUndefined();
+                expect(Movie.beforeInsert.calls.length).toBe(1);
+                expect(queries.length).toBe(0);
               });
           });
         });
@@ -2800,30 +2799,30 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.beforeInsert = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       species: 'Frog',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets').insert({ species: 'Frog' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.be.a('number');
-                expect(inserted.species).to.equal('Frog');
-                expect(Pet.beforeInsert.calls.length).to.equal(1);
+                expect(inserted.id).toBeTypeOf('number');
+                expect(inserted.species).toBe('Frog');
+                expect(Pet.beforeInsert.calls.length).toBe(1);
               });
           });
         });
@@ -2836,39 +2835,39 @@ module.exports = (session) => {
                 Pet.beforeUpdate = createHookSpy(async ({ asFindQuery }, call) => {
                   const pets = await asFindQuery().select('name');
 
-                  expect(pets).to.have.length(1);
-                  expect(pets[0].name).to.equal('Doggo');
+                  expect(pets).toHaveLength(1);
+                  expect(pets[0].name).toBe('Doggo');
 
                   call.queryWasAwaited = true;
                 });
 
                 Person.beforeInsert = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'New Owner',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner').insert({ name: 'New Owner' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.be.a('number');
-                expect(inserted.name).to.equal('New Owner');
-                expect(Person.beforeInsert.calls.length).to.equal(1);
-                expect(Pet.beforeUpdate.calls.length).to.equal(1);
-                expect(Pet.beforeUpdate.calls[0].queryWasAwaited).to.equal(true);
+                expect(inserted.id).toBeTypeOf('number');
+                expect(inserted.name).toBe('New Owner');
+                expect(Person.beforeInsert.calls.length).toBe(1);
+                expect(Pet.beforeUpdate.calls.length).toBe(1);
+                expect(Pet.beforeUpdate.calls[0].queryWasAwaited).toBe(true);
               });
           });
 
@@ -2885,10 +2884,10 @@ module.exports = (session) => {
                 return pet.$relatedQuery('owner').insert({ name: 'New Owner' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.equal(undefined);
-                expect(inserted.name).to.equal('New Owner');
-                expect(Person.beforeInsert.calls.length).to.equal(1);
-                expect(queries.length).to.equal(0);
+                expect(inserted.id).toBeUndefined();
+                expect(inserted.name).toBe('New Owner');
+                expect(Person.beforeInsert.calls.length).toBe(1);
+                expect(queries.length).toBe(0);
               });
           });
         });
@@ -2962,8 +2961,8 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then((movie) => {
-              expect(movie.id).to.be.a('number');
-              expect(Movie.afterInsert.calls.length).to.equal(1);
+              expect(movie.id).toBeTypeOf('number');
+              expect(Movie.afterInsert.calls.length).toBe(1);
             });
         });
 
@@ -2978,8 +2977,8 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then((result) => {
-              expect(result.someId).to.be.a('number');
-              expect(result.someName).to.equal('Inserted');
+              expect(result.someId).toBeTypeOf('number');
+              expect(result.someName).toBe('Inserted');
             });
         });
 
@@ -2993,41 +2992,41 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then(() => {
-              expect(Movie.afterInsert.calls.length).to.equal(1);
-              expect(Movie.afterInsert.calls[0].itWorked).to.equal(true);
+              expect(Movie.afterInsert.calls.length).toBe(1);
+              expect(Movie.afterInsert.calls[0].itWorked).toBe(true);
             });
         });
 
         it('should have access to `context`', () => {
           Movie.afterInsert = createHookSpy(({ context }) => {
-            expect(context).to.eql({ a: 1 });
+            expect(context).toEqual({ a: 1 });
           });
 
           return Movie.query()
             .insert({ name: 'Inserted' })
             .context({ a: 1 })
             .then(() => {
-              expect(Movie.afterInsert.calls.length).to.equal(1);
+              expect(Movie.afterInsert.calls.length).toBe(1);
             });
         });
 
         it('should have access to `transaction`', () => {
           Movie.afterInsert = createHookSpy(({ transaction }) => {
-            expect(transaction).to.equal(Movie.knex());
+            expect(transaction).toBe(Movie.knex());
           });
 
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then(() => {
-              expect(Movie.afterInsert.calls.length).to.equal(1);
+              expect(Movie.afterInsert.calls.length).toBe(1);
             });
         });
 
         it('should have access to `inputItems`', () => {
           Movie.afterInsert = createHookSpy(({ inputItems }) => {
-            expect(inputItems.length).to.equal(1);
-            expect(inputItems[0] instanceof Movie).to.equal(true);
-            chaiExpect(inputItems).to.containSubset([
+            expect(inputItems.length).toBe(1);
+            expect(inputItems[0] instanceof Movie).toBe(true);
+            expect(inputItems).toContainSubset([
               {
                 name: 'Inserted',
               },
@@ -3037,7 +3036,7 @@ module.exports = (session) => {
           return Movie.query()
             .insert({ name: 'Inserted' })
             .then(() => {
-              expect(Movie.afterInsert.calls.length).to.equal(1);
+              expect(Movie.afterInsert.calls.length).toBe(1);
             });
         });
       });
@@ -3047,16 +3046,16 @@ module.exports = (session) => {
           const movie = Movie.fromJson({ name: 'Inserted' });
 
           Movie.afterInsert = createHookSpy(({ items, inputItems }) => {
-            expect(items.length).to.equal(1);
-            expect(inputItems.length).to.equal(1);
+            expect(items.length).toBe(1);
+            expect(inputItems.length).toBe(1);
 
-            chaiExpect(items).to.containSubset([
+            expect(items).toContainSubset([
               {
                 name: 'Inserted',
               },
             ]);
 
-            chaiExpect(inputItems).to.containSubset([
+            expect(inputItems).toContainSubset([
               {
                 name: 'Inserted',
               },
@@ -3067,8 +3066,8 @@ module.exports = (session) => {
             .$query()
             .insert()
             .then((movie) => {
-              expect(movie.id).to.be.a('number');
-              expect(Movie.afterInsert.calls.length).to.equal(1);
+              expect(movie.id).toBeTypeOf('number');
+              expect(Movie.afterInsert.calls.length).toBe(1);
             });
         });
       });
@@ -3080,29 +3079,29 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Movie.afterInsert = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'Inserted',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('movies'));
+                  expect(relation).toBe(Person.getRelation('movies'));
                 });
 
                 return person.$relatedQuery('movies').insert({ name: 'Inserted' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.be.a('number');
-                expect(Movie.afterInsert.calls.length).to.equal(1);
+                expect(inserted.id).toBeTypeOf('number');
+                expect(Movie.afterInsert.calls.length).toBe(1);
               });
           });
         });
@@ -3113,30 +3112,30 @@ module.exports = (session) => {
               .findOne({ name: 'Jennifer' })
               .then((person) => {
                 Pet.afterInsert = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Jennifer',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'Lol',
                       species: 'Frog',
                     },
                   ]);
 
-                  expect(relation).to.equal(Person.getRelation('pets'));
+                  expect(relation).toBe(Person.getRelation('pets'));
                 });
 
                 return person.$relatedQuery('pets').insert({ name: 'Lol', species: 'Frog' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.be.a('number');
-                expect(Pet.afterInsert.calls.length).to.equal(1);
+                expect(inserted.id).toBeTypeOf('number');
+                expect(Pet.afterInsert.calls.length).toBe(1);
               });
           });
         });
@@ -3147,29 +3146,29 @@ module.exports = (session) => {
               .findOne({ name: 'Doggo' })
               .then((pet) => {
                 Person.afterInsert = createHookSpy(({ items, inputItems, relation }) => {
-                  expect(items.length).to.equal(1);
-                  expect(inputItems.length).to.equal(1);
+                  expect(items.length).toBe(1);
+                  expect(inputItems.length).toBe(1);
 
-                  chaiExpect(items).to.containSubset([
+                  expect(items).toContainSubset([
                     {
                       name: 'Doggo',
                     },
                   ]);
 
-                  chaiExpect(inputItems).to.containSubset([
+                  expect(inputItems).toContainSubset([
                     {
                       name: 'New Owner',
                     },
                   ]);
 
-                  expect(relation).to.equal(Pet.getRelation('owner'));
+                  expect(relation).toBe(Pet.getRelation('owner'));
                 });
 
                 return pet.$relatedQuery('owner').insert({ name: 'New Owner' });
               })
               .then((inserted) => {
-                expect(inserted.id).to.be.a('number');
-                expect(Person.afterInsert.calls.length).to.equal(1);
+                expect(inserted.id).toBeTypeOf('number');
+                expect(Person.afterInsert.calls.length).toBe(1);
               });
           });
         });

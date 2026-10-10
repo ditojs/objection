@@ -1,8 +1,8 @@
-const Knex = require('knex');
-const { expect } = require('chai');
-const { Model, knexIdentifierMapping } = require('../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import Knex from 'knex';
+import { Model, knexIdentifierMapping } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('knexIdentifierMapping', () => {
     let knex;
 
@@ -59,7 +59,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       // Create schema with the knex instance that doesn't
       // have identifier mapping configured.
       return session.knex.schema
@@ -87,7 +87,7 @@ module.exports = (session) => {
         });
     });
 
-    before(() => {
+    beforeAll(() => {
       const config = Object.assign(
         {},
         session.opt.knexConfig,
@@ -110,7 +110,7 @@ module.exports = (session) => {
     describe('schema', () => {
       const table = 'snakeCaseTestTable';
 
-      before(() => {
+      beforeAll(() => {
         return knex.schema.dropTableIfExists(table);
       });
 
@@ -118,7 +118,7 @@ module.exports = (session) => {
         return knex.schema.dropTableIfExists(table);
       });
 
-      after(() => {
+      afterAll(() => {
         return knex.schema.dropTableIfExists(table);
       });
 
@@ -135,13 +135,13 @@ module.exports = (session) => {
             return knex(table);
           })
           .then((rows) => {
-            expect(rows).to.eql([{ id: 1, fName: 'fooBar' }]);
+            expect(rows).toEqual([{ id: 1, fName: 'fooBar' }]);
 
             // Query with a knex without case mapping.
             return session.knex('snake_case_test_table');
           })
           .then((rows) => {
-            expect(rows).to.eql([{ id: 1, first_name: 'fooBar' }]);
+            expect(rows).toEqual([{ id: 1, first_name: 'fooBar' }]);
           });
       });
 
@@ -160,13 +160,13 @@ module.exports = (session) => {
           })
           .hasTable(table)
           .then((hasTable) => {
-            expect(!!hasTable).to.equal(true);
+            expect(!!hasTable).toBe(true);
           });
       });
 
       it('hasTable (false)', () => {
         return knex.schema.hasTable(table).then((hasTable) => {
-          expect(hasTable).to.equal(false);
+          expect(hasTable).toBe(false);
         });
       });
     });
@@ -217,7 +217,7 @@ module.exports = (session) => {
             return model.$relatedQuery('pets', knex).orderBy('animalName');
           })
           .then((pets) => {
-            expect(pets).to.containSubset([
+            expect(pets).toContainSubset([
               {
                 animalName: 'Hurtta',
               },
@@ -237,8 +237,8 @@ module.exports = (session) => {
             [method]('[parent.parent, pets, movies]')
             .orderBy('person.fName')
             .then((people) => {
-              expect(people.length).to.equal(3);
-              expect(people).to.containSubset([
+              expect(people.length).toBe(3);
+              expect(people).toContainSubset([
                 {
                   rootFirstName: 'Seppo',
 
@@ -284,7 +284,7 @@ module.exports = (session) => {
       });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('person_movie')
         .dropTableIfExists('animal')
@@ -292,7 +292,7 @@ module.exports = (session) => {
         .dropTableIfExists('person');
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.destroy();
     });
   });

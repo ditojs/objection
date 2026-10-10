@@ -1,7 +1,6 @@
-import Ajv from 'ajv';
-import * as dbErrors from 'db-errors';
+import { Ajv } from 'ajv';
 import { Knex, knex } from 'knex';
-import * as objection from '../../';
+import * as objection from 'objection';
 import {
   DBError,
   fn,
@@ -13,7 +12,7 @@ import {
   RelationMappings,
   StaticHookArguments,
   val,
-} from '../../';
+} from 'objection';
 
 // This file exercises the Objection.js typings.
 
@@ -1261,7 +1260,6 @@ const plugin2 = {} as any as objection.Plugin;
   if (err instanceof objection.UniqueViolationError) {
     const columns: string[] = err.columns;
     const typed: objection.UniqueViolationError = err;
-    const fromDbErrors: dbErrors.UniqueViolationError = typed;
     const constraintError: objection.ConstraintViolationError = typed;
     const dbError: objection.DBError = constraintError;
   }

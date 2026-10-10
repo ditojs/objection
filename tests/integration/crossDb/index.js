@@ -1,9 +1,11 @@
-const knexUtils = require('../../../lib/utils/knexUtils');
+import { describe } from 'vitest';
+import mysql from './mysql.js';
 
-module.exports = (session) => {
-  describe('cross db', () => {
-    if (knexUtils.isMySql(session.knex)) {
-      require('./mysql')(session);
-    }
-  });
+export default (session) => {
+  // vitest fails on empty suites, so only add the suite for the databases that have tests.
+  if (session.isMySql()) {
+    describe('cross db', () => {
+      mysql(session);
+    });
+  }
 };

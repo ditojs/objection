@@ -1,14 +1,14 @@
-const Knex = require('knex');
-const { expect } = require('chai');
-const { Model, knexSnakeCaseMappers } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import Knex from 'knex';
+import { Model, knexSnakeCaseMappers } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('table.* selections with identifier mapping and withGraphFetched() #2288', () => {
     let knex;
     let BusinessUnit;
     let Field;
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('data_extension_field')
         .dropTableIfExists('data_extension')
@@ -29,7 +29,7 @@ module.exports = (session) => {
         });
     });
 
-    after(async () => {
+    afterAll(async () => {
       await session.knex.schema
         .dropTableIfExists('data_extension_field')
         .dropTableIfExists('data_extension')
@@ -38,7 +38,7 @@ module.exports = (session) => {
       await knex.destroy();
     });
 
-    before(() => {
+    beforeAll(() => {
       knex = Knex({ ...session.opt.knexConfig, ...knexSnakeCaseMappers() });
 
       BusinessUnit = class BusinessUnit extends Model {
@@ -77,7 +77,7 @@ module.exports = (session) => {
       describe(`tableName: '${tableName}', select('${selection}')`, () => {
         let DataExtension;
 
-        before(() => {
+        beforeAll(() => {
           DataExtension = class DataExtension extends Model {
             static get tableName() {
               return tableName;
@@ -112,10 +112,10 @@ module.exports = (session) => {
             .select(selection)
             .withGraphFetched('[businessUnit, fields]');
 
-          expect(result.id).to.equal(1);
-          expect(result.businessUnitId).to.equal(1);
-          expect(result.businessUnit.name).to.equal('Unit');
-          expect(result.fields.map((it) => it.name)).to.eql(['Field']);
+          expect(result.id).toBe(1);
+          expect(result.businessUnitId).toBe(1);
+          expect(result.businessUnit.name).toBe('Unit');
+          expect(result.fields.map((it) => it.name)).toEqual(['Field']);
         });
 
         it('should not select the relation columns again', () => {
@@ -125,8 +125,8 @@ module.exports = (session) => {
             .toKnexQuery()
             .toQuery();
 
-          expect(sql).to.not.match(/business_unit_id/);
-          expect(sql).to.not.match(/"?data_extension"?\."?id"?/);
+          expect(sql).not.toMatch(/business_unit_id/);
+          expect(sql).not.toMatch(/"?data_extension"?\."?id"?/);
         });
       });
     }

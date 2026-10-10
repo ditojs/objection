@@ -1,5 +1,5 @@
-const expect = require('expect.js');
-const { cloneDeep } = require('../lib/utils/clone');
+import { expect } from 'vitest';
+import { cloneDeep } from '../lib/utils/clone.js';
 
 /**
  * Expect that `result` contains all attributes of `partial` and their values equal.
@@ -19,7 +19,7 @@ const { cloneDeep } = require('../lib/utils/clone');
  */
 function expectPartialEqual(result, partial) {
   if (Array.isArray(result) && Array.isArray(partial)) {
-    expect(result).to.have.length(partial.length);
+    expect(result).toHaveLength(partial.length);
     result.forEach((value, idx) => {
       expectPartialEqual(result[idx], partial[idx]);
     });
@@ -30,10 +30,27 @@ function expectPartialEqual(result, partial) {
     !Array.isArray(result)
   ) {
     var partialKeys = Object.keys(partial);
-    expect(pick(result, partialKeys)).to.eql(partial);
+    expect(pick(result, partialKeys)).toEqual(partial);
   } else {
     throw new Error('result and partial must both be arrays or objects');
   }
+}
+
+/**
+ * Expect that `fn` throws, and pass the thrown error to `check` to make further
+ * assertions about it.
+ */
+function expectThrows(fn, check) {
+  let error;
+
+  try {
+    fn();
+  } catch (err) {
+    error = err;
+  }
+
+  expect(error, 'expected function to throw').toBeDefined();
+  check(error);
 }
 
 function createRejectionReflection(err) {
@@ -110,8 +127,9 @@ function sortBy(items, ...iteratees) {
   });
 }
 
-module.exports = {
+export {
   expectPartialEqual,
+  expectThrows,
   createRejectionReflection,
   delay,
   cloneDeep,

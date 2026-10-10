@@ -1,10 +1,11 @@
-const { Model } = require('../../../');
+import { describe, it, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('has one relation tree', () => {
     let TestModel;
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('has_one_relation_tree_test')
         .createTable('has_one_relation_tree_test', (table) => {
@@ -14,11 +15,11 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema.dropTableIfExists('has_one_relation_tree_test');
     });
 
-    before(() => {
+    beforeAll(() => {
       TestModel = class TestModel extends Model {
         static get tableName() {
           return 'has_one_relation_tree_test';

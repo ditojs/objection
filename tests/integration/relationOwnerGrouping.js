@@ -1,9 +1,9 @@
-const expect = require('expect.js');
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // The relation's owner condition must always be ANDed with the user's where
 // clauses as a group. Otherwise `orWhere` would find, update or delete rows of
 // other owners. See issues #2191 and #1909.
-module.exports = (session) => {
+export default (session) => {
   const { Model1, Model2 } = session.models;
 
   describe('relation owner condition grouping with orWhere (#2191)', () => {
@@ -60,7 +60,7 @@ module.exports = (session) => {
           .where('model2_prop1', 'a')
           .orWhere('model2_prop1', 'b');
 
-        expect(ids(pets)).to.eql([1, 2]);
+        expect(ids(pets)).toEqual([1, 2]);
       });
 
       it('delete', async () => {
@@ -70,8 +70,8 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .delete();
 
-        expect(numDeleted).to.equal(2);
-        expect(await model2Ids()).to.eql([3, 4, 5, 6, 7, 8, 9, 10]);
+        expect(numDeleted).toBe(2);
+        expect(await model2Ids()).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
       });
 
       it('patch', async () => {
@@ -81,8 +81,8 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .patch({ model2Prop2: 100 });
 
-        expect(numPatched).to.equal(2);
-        expect(await model2Ids((it) => it.model2_prop2 === 100)).to.eql([1, 2]);
+        expect(numPatched).toBe(2);
+        expect(await model2Ids((it) => it.model2_prop2 === 100)).toEqual([1, 2]);
       });
 
       it('update', async () => {
@@ -92,8 +92,8 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .update({ model2Prop1: 'x' });
 
-        expect(numUpdated).to.equal(2);
-        expect(await model2Ids((it) => it.model2_prop1 === 'x')).to.eql([1, 2]);
+        expect(numUpdated).toBe(2);
+        expect(await model2Ids((it) => it.model2_prop1 === 'x')).toEqual([1, 2]);
       });
 
       it('unrelate', async () => {
@@ -103,9 +103,9 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .unrelate();
 
-        expect(numUnrelated).to.equal(2);
-        expect(await model2Ids((it) => it.model1_id === 1)).to.eql([3]);
-        expect(await model2Ids((it) => it.model1_id === 2)).to.eql([4, 5]);
+        expect(numUnrelated).toBe(2);
+        expect(await model2Ids((it) => it.model1_id === 1)).toEqual([3]);
+        expect(await model2Ids((it) => it.model1_id === 2)).toEqual([4, 5]);
       });
 
       it('static relatedQuery().for() delete', async () => {
@@ -115,8 +115,8 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .delete();
 
-        expect(numDeleted).to.equal(2);
-        expect(await model2Ids()).to.eql([3, 4, 5, 6, 7, 8, 9, 10]);
+        expect(numDeleted).toBe(2);
+        expect(await model2Ids()).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
       });
     });
 
@@ -127,7 +127,7 @@ module.exports = (session) => {
           .where('model1Prop1', 'a')
           .orWhere('model1Prop1', 'b');
 
-        expect(ids([].concat(parents || []), 'id')).to.eql([3]);
+        expect(ids([].concat(parents || []), 'id')).toEqual([3]);
       });
 
       it('patch', async () => {
@@ -137,9 +137,9 @@ module.exports = (session) => {
           .orWhere('model1Prop1', 'b')
           .patch({ model1Prop2: 100 });
 
-        expect(numPatched).to.equal(1);
+        expect(numPatched).toBe(1);
         const rows = await session.knex('Model1').where('model1Prop2', 100);
-        expect(ids(rows, 'id')).to.eql([3]);
+        expect(ids(rows, 'id')).toEqual([3]);
       });
     });
 
@@ -150,7 +150,7 @@ module.exports = (session) => {
           .where('model2_prop1', 'a')
           .orWhere('model2_prop1', 'b');
 
-        expect(ids(related)).to.eql([6, 7]);
+        expect(ids(related)).toEqual([6, 7]);
       });
 
       it('delete', async () => {
@@ -160,8 +160,8 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .delete();
 
-        expect(numDeleted).to.equal(2);
-        expect(await model2Ids()).to.eql([1, 2, 3, 4, 5, 8, 9, 10]);
+        expect(numDeleted).toBe(2);
+        expect(await model2Ids()).toEqual([1, 2, 3, 4, 5, 8, 9, 10]);
       });
 
       it('patch', async () => {
@@ -171,8 +171,8 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .patch({ model2Prop2: 100 });
 
-        expect(numPatched).to.equal(2);
-        expect(await model2Ids((it) => it.model2_prop2 === 100)).to.eql([6, 7]);
+        expect(numPatched).toBe(2);
+        expect(await model2Ids((it) => it.model2_prop2 === 100)).toEqual([6, 7]);
       });
 
       it('unrelate', async () => {
@@ -182,9 +182,9 @@ module.exports = (session) => {
           .orWhere('model2_prop1', 'b')
           .unrelate();
 
-        expect(numUnrelated).to.equal(2);
+        expect(numUnrelated).toBe(2);
         const rows = await session.knex('Model1Model2');
-        expect(ids(rows, 'model2Id')).to.eql([8, 9, 10]);
+        expect(ids(rows, 'model2Id')).toEqual([8, 9, 10]);
       });
     });
 
@@ -200,7 +200,7 @@ module.exports = (session) => {
           .where('model1Prop1', 'nope')
           .orWhere('model1Prop1', 'owner 2');
 
-        expect(related).to.equal(undefined);
+        expect(related).toBeUndefined();
       });
     });
   });

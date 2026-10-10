@@ -1,9 +1,9 @@
-const expect = require('expect.js');
-const transaction = require('../../').transaction;
-const knexUtils = require('../../lib/utils/knexUtils');
-const { delay, range } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { transaction } from 'objection';
+import * as knexUtils from '../../lib/utils/knexUtils.js';
+import { delay, range } from '../../testUtils/testUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   let Model1 = session.models.Model1;
   let Model2 = session.models.Model2;
 
@@ -14,67 +14,54 @@ module.exports = (session) => {
 
     const noop = () => {};
 
-    before(() => {
-      // Disable unhandled exception logging. Some of the tests _should_ leak an exception
-      // but we don't want them to appear in the log.
-      session.addUnhandledRejectionHandler(noop);
+    beforeAll(() => {
+      // Some of the tests _should_ leak an exception, but we don't want vitest to report them.
+      // vitest leaves unhandled rejections alone when there's another listener for them.
+      process.on('unhandledRejection', noop);
     });
 
-    after(() => {
-      session.removeUnhandledRejectionHandler(noop);
+    afterAll(() => {
+      process.off('unhandledRejection', noop);
     });
 
-    it('should resolve an empty transaction', (done) => {
-      transaction(Model1, Model2, () => {
+    it('should resolve an empty transaction', () => {
+      return transaction(Model1, Model2, () => {
         return { a: 1 };
       }).then((result) => {
-        expect(result).to.eql({ a: 1 });
-        done();
+        expect(result).toEqual({ a: 1 });
       });
     });
 
-    it('should fail without models', (done) => {
-      transaction(() => {
-        return { a: 1 };
-      })
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          done();
-        });
-    });
-
-    it('should fail if one of the model classes is not a subclass of Model', (done) => {
-      transaction(
-        Model1,
-        function () {},
-        () => {
+    it('should fail without models', () => {
+      return expect(
+        transaction(() => {
           return { a: 1 };
-        },
-      )
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          done();
-        });
+        }),
+      ).rejects.toThrow();
     });
 
-    it('should fail if all ModelClasses are not bound to the same knex connection', (done) => {
-      transaction(Model1, Model2.bindKnex({}), () => {
-        return { a: 1 };
-      })
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          done();
-        });
+    it('should fail if one of the model classes is not a subclass of Model', () => {
+      return expect(
+        transaction(
+          Model1,
+          function () {},
+          () => {
+            return { a: 1 };
+          },
+        ),
+      ).rejects.toThrow();
     });
 
-    it('should commit transaction if no errors occur (1)', (done) => {
-      transaction(Model1, Model2, (Model1, Model2) => {
+    it('should fail if all ModelClasses are not bound to the same knex connection', () => {
+      return expect(
+        transaction(Model1, Model2.bindKnex({}), () => {
+          return { a: 1 };
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('should commit transaction if no errors occur (1)', () => {
+      return transaction(Model1, Model2, (Model1, Model2) => {
         return Model1.query()
           .insert({ model1Prop1: 'test 1' })
           .then(() => {
@@ -85,20 +72,18 @@ module.exports = (session) => {
           });
       })
         .then((result) => {
-          expect(result.model2Prop1).to.equal('test 3');
+          expect(result.model2Prop1).toBe('test 3');
           return session.knex('Model1');
         })
         .then((rows) => {
-          expect(rows).to.have.length(2);
-          expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+          expect(rows).toHaveLength(2);
+          expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
           return session.knex('model2');
         })
         .then((rows) => {
-          expect(rows).to.have.length(1);
-          expect(rows[0].model2_prop1).to.equal('test 3');
-          done();
-        })
-        .catch(done);
+          expect(rows).toHaveLength(1);
+          expect(rows[0].model2_prop1).toBe('test 3');
+        });
     });
 
     it('should commit transaction if no errors occur (Model.transaction)', async () => {
@@ -108,15 +93,15 @@ module.exports = (session) => {
         return Model2.query(trx).insert({ model2Prop1: 'test 3' });
       });
 
-      expect(result.model2Prop1).to.equal('test 3');
+      expect(result.model2Prop1).toBe('test 3');
       let rows = await session.knex('Model1');
 
-      expect(rows).to.have.length(2);
-      expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+      expect(rows).toHaveLength(2);
+      expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
       rows = await session.knex('model2');
 
-      expect(rows).to.have.length(1);
-      expect(rows[0].model2_prop1).to.equal('test 3');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].model2_prop1).toBe('test 3');
     });
 
     it('should commit transaction if no errors occur (Model.transaction with two args)', async () => {
@@ -126,19 +111,19 @@ module.exports = (session) => {
         return Model2.query(trx).insert({ model2Prop1: 'test 3' });
       });
 
-      expect(result.model2Prop1).to.equal('test 3');
+      expect(result.model2Prop1).toBe('test 3');
       let rows = await session.knex('Model1');
 
-      expect(rows).to.have.length(2);
-      expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+      expect(rows).toHaveLength(2);
+      expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
       rows = await session.knex('model2');
 
-      expect(rows).to.have.length(1);
-      expect(rows[0].model2_prop1).to.equal('test 3');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].model2_prop1).toBe('test 3');
     });
 
-    it('should commit transaction if no errors occur (2)', (done) => {
-      transaction(Model1, (Model1) => {
+    it('should commit transaction if no errors occur (2)', () => {
+      return transaction(Model1, (Model1) => {
         return Model1.query().insertGraph([
           {
             model1Prop1: 'a',
@@ -166,18 +151,16 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(3);
-          expect(rows1.map((it) => it.model1Prop1)).to.eql(['a', 'b', 'd']);
-          expect(rows2).to.have.length(1);
-          expect(rows2[0].model2_prop1).to.equal('c');
-          expect(rows3).to.have.length(1);
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(3);
+          expect(rows1.map((it) => it.model1Prop1)).toEqual(['a', 'b', 'd']);
+          expect(rows2).toHaveLength(1);
+          expect(rows2[0].model2_prop1).toBe('c');
+          expect(rows3).toHaveLength(1);
+        });
     });
 
-    it('should commit transaction if no errors occur (3)', (done) => {
-      Model1.knex()
+    it('should commit transaction if no errors occur (3)', () => {
+      return Model1.knex()
         .transaction((trx) => {
           return Model1.query(trx).insertGraph([
             {
@@ -206,18 +189,16 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(3);
-          expect(rows1.map((it) => it.model1Prop1)).to.eql(['a', 'b', 'd']);
-          expect(rows2).to.have.length(1);
-          expect(rows2[0].model2_prop1).to.equal('c');
-          expect(rows3).to.have.length(1);
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(3);
+          expect(rows1.map((it) => it.model1Prop1)).toEqual(['a', 'b', 'd']);
+          expect(rows2).toHaveLength(1);
+          expect(rows2[0].model2_prop1).toBe('c');
+          expect(rows3).toHaveLength(1);
+        });
     });
 
-    it('should rollback if an error occurs (1)', (done) => {
-      transaction(Model1, Model2, (Model1, Model2) => {
+    it('should rollback if an error occurs (1)', () => {
+      return transaction(Model1, Model2, (Model1, Model2) => {
         return Model1.query()
           .insert({ model1Prop1: 'test 1' })
           .then(() => {
@@ -231,18 +212,16 @@ module.exports = (session) => {
           });
       })
         .catch((err) => {
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
           return session.knex('Model1');
         })
         .then((rows) => {
-          expect(rows).to.have.length(0);
+          expect(rows).toHaveLength(0);
           return session.knex('model2');
         })
         .then((rows) => {
-          expect(rows).to.have.length(0);
-          done();
-        })
-        .catch(done);
+          expect(rows).toHaveLength(0);
+        });
     });
 
     it('should rollback if an error occurs (Model.transaction)', async () => {
@@ -257,18 +236,18 @@ module.exports = (session) => {
 
         throw new Error('should not get here');
       } catch (err) {
-        expect(err.message).to.equal('whoops');
+        expect(err.message).toBe('whoops');
 
         let rows = await session.knex('Model1');
-        expect(rows).to.have.length(0);
+        expect(rows).toHaveLength(0);
 
         rows = await session.knex('model2');
-        expect(rows).to.have.length(0);
+        expect(rows).toHaveLength(0);
       }
     });
 
-    it('should rollback if an error occurs (2)', (done) => {
-      transaction(Model1, (Model1) => {
+    it('should rollback if an error occurs (2)', () => {
+      return transaction(Model1, (Model1) => {
         return Model1.query()
           .insert({ model1Prop1: 'test 1' })
           .then((model) => {
@@ -279,22 +258,20 @@ module.exports = (session) => {
           });
       })
         .catch((err) => {
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
           return session.knex('Model1');
         })
         .then((rows) => {
-          expect(rows).to.have.length(0);
+          expect(rows).toHaveLength(0);
           return session.knex('model2');
         })
         .then((rows) => {
-          expect(rows).to.have.length(0);
-          done();
-        })
-        .catch(done);
+          expect(rows).toHaveLength(0);
+        });
     });
 
-    it('should rollback if an error occurs (3)', (done) => {
-      transaction(Model1, (Model1) => {
+    it('should rollback if an error occurs (3)', () => {
+      return transaction(Model1, (Model1) => {
         return Model1.query()
           .insertGraph([
             {
@@ -319,7 +296,7 @@ module.exports = (session) => {
           });
       })
         .catch((err) => {
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
 
           return Promise.all([
             session.knex('Model1'),
@@ -328,16 +305,14 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(0);
-          expect(rows2).to.have.length(0);
-          expect(rows3).to.have.length(0);
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(0);
+          expect(rows2).toHaveLength(0);
+          expect(rows3).toHaveLength(0);
+        });
     });
 
-    it('should rollback if an error occurs (4)', (done) => {
-      Model1.knex()
+    it('should rollback if an error occurs (4)', () => {
+      return Model1.knex()
         .transaction((trx) => {
           return Model1.query(trx)
             .insertGraph([
@@ -375,11 +350,11 @@ module.exports = (session) => {
               return Model1.query(trx)
                 .findById(models[0].id)
                 .then((it) => it.$fetchGraph('model1Relation1', { transaction: trx }))
-                .then((it) => expect(it.model1Relation1.model1Prop1).to.equal('b'))
+                .then((it) => expect(it.model1Relation1.model1Prop1).toBe('b'))
                 .then(() => models);
             })
             .then((models) => {
-              expect(models[0].$query(trx).knex() === trx);
+              expect(models[0].$query(trx).knex()).toBe(trx);
             })
             .then(() => {
               throw new Error('whoops');
@@ -387,7 +362,7 @@ module.exports = (session) => {
         })
         .catch((err) => {
           console.log(err);
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
 
           return Promise.all([
             session.knex('Model1'),
@@ -396,16 +371,14 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(0);
-          expect(rows2).to.have.length(0);
-          expect(rows3).to.have.length(0);
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(0);
+          expect(rows2).toHaveLength(0);
+          expect(rows3).toHaveLength(0);
+        });
     });
 
-    it('should rollback if an error occurs (5)', (done) => {
-      transaction(Model1.knex(), (trx) => {
+    it('should rollback if an error occurs (5)', () => {
+      return transaction(Model1.knex(), (trx) => {
         return Model1.query(trx)
           .insertGraph([
             {
@@ -442,18 +415,18 @@ module.exports = (session) => {
             return Model1.query(trx)
               .findById(models[0].id)
               .then((it) => it.$fetchGraph('model1Relation1', { transaction: trx }))
-              .then((it) => expect(it.model1Relation1.model1Prop1).to.equal('b'))
+              .then((it) => expect(it.model1Relation1.model1Prop1).toBe('b'))
               .then(() => models);
           })
           .then((models) => {
-            expect(models[0].$query(trx).knex() === trx);
+            expect(models[0].$query(trx).knex()).toBe(trx);
           })
           .then(() => {
             throw new Error('whoops');
           });
       })
         .catch((err) => {
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
 
           return Promise.all([
             session.knex('Model1'),
@@ -462,16 +435,14 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(0);
-          expect(rows2).to.have.length(0);
-          expect(rows3).to.have.length(0);
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(0);
+          expect(rows2).toHaveLength(0);
+          expect(rows3).toHaveLength(0);
+        });
     });
 
-    it('should rollback if the rollback method is called (no return)', (done) => {
-      transaction(Model1.knex(), (trx) => {
+    it('should rollback if the rollback method is called (no return)', () => {
+      return transaction(Model1.knex(), (trx) => {
         Model1.query(trx)
           .insertGraph([
             {
@@ -505,14 +476,14 @@ module.exports = (session) => {
               .then(() => models);
           })
           .then((models) => {
-            expect(models[0].$query(trx).knex() === trx);
+            expect(models[0].$query(trx).knex()).toBe(trx);
           })
           .then(() => {
             trx.rollback(new Error('whoops'));
           });
       })
         .catch((err) => {
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
 
           return Promise.all([
             session.knex('Model1'),
@@ -521,17 +492,14 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(0);
-          expect(rows2).to.have.length(0);
-          expect(rows3).to.have.length(0);
-
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(0);
+          expect(rows2).toHaveLength(0);
+          expect(rows3).toHaveLength(0);
+        });
     });
 
-    it('should rollback if the rollback method is called (with return)', (done) => {
-      transaction(Model1.knex(), (trx) => {
+    it('should rollback if the rollback method is called (with return)', () => {
+      return transaction(Model1.knex(), (trx) => {
         return Model1.query(trx)
           .insertGraph([
             {
@@ -556,7 +524,7 @@ module.exports = (session) => {
           });
       })
         .catch((err) => {
-          expect(err.message).to.equal('whoops');
+          expect(err.message).toBe('whoops');
 
           return Promise.all([
             session.knex('Model1'),
@@ -565,17 +533,14 @@ module.exports = (session) => {
           ]);
         })
         .then(([rows1, rows2, rows3]) => {
-          expect(rows1).to.have.length(0);
-          expect(rows2).to.have.length(0);
-          expect(rows3).to.have.length(0);
-
-          done();
-        })
-        .catch(done);
+          expect(rows1).toHaveLength(0);
+          expect(rows2).toHaveLength(0);
+          expect(rows3).toHaveLength(0);
+        });
     });
 
-    it('should skip queries after rollback', (done) => {
-      transaction(Model1, (Model1) => {
+    it('should skip queries after rollback', () => {
+      return transaction(Model1, (Model1) => {
         return Model1.query()
           .insert({ model1Prop1: '123' })
           .then(() => {
@@ -595,64 +560,54 @@ module.exports = (session) => {
           });
         })
         .then((rows) => {
-          expect(rows).to.have.length(0);
+          expect(rows).toHaveLength(0);
           return session.knex('model2');
         })
         .then((rows) => {
-          expect(rows).to.have.length(0);
-          done();
-        })
-        .catch(done);
+          expect(rows).toHaveLength(0);
+        });
     });
 
-    it('bound model class should accept unbound model instances', (done) => {
+    it('bound model class should accept unbound model instances', () => {
       let unboundModel = Model1.fromJson({ model1Prop1: '123' });
 
-      transaction(Model1, (Model1) => {
+      return transaction(Model1, (Model1) => {
         return Model1.query().insert(unboundModel);
       })
         .then((inserted) => {
-          expect(inserted.model1Prop1).to.equal('123');
+          expect(inserted.model1Prop1).toBe('123');
           return session.knex('Model1');
         })
         .then((rows) => {
-          expect(rows).to.have.length(1);
-          expect(rows[0].model1Prop1).to.equal('123');
-          done();
-        })
-        .catch(done);
+          expect(rows).toHaveLength(1);
+          expect(rows[0].model1Prop1).toBe('123');
+        });
     });
 
-    it('last argument should be the knex transaction object', (done) => {
-      transaction(Model1, Model2, (Model1, Model2, trx) => {
-        expect(trx).to.equal(Model1.knex());
-      })
-        .then(() => {
-          done();
-        })
-        .catch(done);
+    it('last argument should be the knex transaction object', () => {
+      return transaction(Model1, Model2, (Model1, Model2, trx) => {
+        expect(trx).toBe(Model1.knex());
+      });
     });
 
-    it('if knex instance is passed, should be equivalent to knex.transaction()', (done) => {
-      transaction(Model1.knex(), (trx) => {
+    it('if knex instance is passed, should be equivalent to knex.transaction()', () => {
+      return transaction(Model1.knex(), (trx) => {
         return trx('Model1').insert({ model1Prop1: '1' });
       })
         .then(() => {
           return session.knex('Model1');
         })
         .then((rows) => {
-          expect(rows).to.have.length(1);
-          expect(rows[0].model1Prop1).to.equal('1');
-          done();
-        })
-        .catch(done);
+          expect(rows).toHaveLength(1);
+          expect(rows[0].model1Prop1).toBe('1');
+        });
     });
 
     describe('transaction.start() / Model.startTransaction()', () => {
-      it('should commit transaction when the commit method is called', (done) => {
+      it('should commit transaction when the commit method is called', () => {
         let trx;
 
-        transaction
+        return transaction
           .start(Model1)
           .then((trans) => {
             trx = trans;
@@ -671,22 +626,20 @@ module.exports = (session) => {
             return session.knex('Model1');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+            expect(rows).toHaveLength(2);
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
             return session.knex('model2');
           })
           .then((rows) => {
-            expect(rows).to.have.length(1);
-            expect(rows[0].model2_prop1).to.equal('test 3');
-            done();
-          })
-          .catch(done);
+            expect(rows).toHaveLength(1);
+            expect(rows[0].model2_prop1).toBe('test 3');
+          });
       });
 
-      it('should commit transaction when the commit method is called (Model.startTransaction())', (done) => {
+      it('should commit transaction when the commit method is called (Model.startTransaction())', () => {
         let trx;
 
-        Model1.startTransaction()
+        return Model1.startTransaction()
           .then((trans) => {
             trx = trans;
             return Model1.bindKnex(trx).query().insert({ model1Prop1: 'test 1' });
@@ -704,19 +657,17 @@ module.exports = (session) => {
             return session.knex('Model1');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+            expect(rows).toHaveLength(2);
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
             return session.knex('model2');
           })
           .then((rows) => {
-            expect(rows).to.have.length(1);
-            expect(rows[0].model2_prop1).to.equal('test 3');
-            done();
-          })
-          .catch(done);
+            expect(rows).toHaveLength(1);
+            expect(rows[0].model2_prop1).toBe('test 3');
+          });
       });
 
-      it('commit should work with yield (and thus async/await)', async function () {
+      it('commit should work with yield (and thus async/await)', async () => {
         const trx = await transaction.start(Model1.knex());
 
         await Model1.query(trx).insert({ model1Prop1: 'test 1' });
@@ -727,14 +678,14 @@ module.exports = (session) => {
         const model1Rows = await session.knex('Model1');
         const model2Rows = await session.knex('model2');
 
-        expect(model1Rows).to.have.length(2);
-        expect(model1Rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+        expect(model1Rows).toHaveLength(2);
+        expect(model1Rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
 
-        expect(model2Rows).to.have.length(1);
-        expect(model2Rows[0].model2_prop1).to.equal('test 3');
+        expect(model2Rows).toHaveLength(1);
+        expect(model2Rows[0].model2_prop1).toBe('test 3');
       });
 
-      it('commit should work with yield (and thus async/await) (Model.startTransaction())', async function () {
+      it('commit should work with yield (and thus async/await) (Model.startTransaction())', async () => {
         const trx = await Model1.startTransaction();
 
         await Model1.query(trx).insert({ model1Prop1: 'test 1' });
@@ -745,14 +696,14 @@ module.exports = (session) => {
         const model1Rows = await session.knex('Model1');
         const model2Rows = await session.knex('model2');
 
-        expect(model1Rows).to.have.length(2);
-        expect(model1Rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+        expect(model1Rows).toHaveLength(2);
+        expect(model1Rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
 
-        expect(model2Rows).to.have.length(1);
-        expect(model2Rows[0].model2_prop1).to.equal('test 3');
+        expect(model2Rows).toHaveLength(1);
+        expect(model2Rows[0].model2_prop1).toBe('test 3');
       });
 
-      it('rollback should work with yield (and thus async/await)', async function () {
+      it('rollback should work with yield (and thus async/await)', async () => {
         const trx = await transaction.start(Model1.knex());
 
         await Model1.query(trx).insert({ model1Prop1: 'test 1' });
@@ -763,13 +714,13 @@ module.exports = (session) => {
         const model1Rows = await session.knex('Model1');
         const model2Rows = await session.knex('model2');
 
-        expect(model1Rows).to.have.length(0);
-        expect(model2Rows).to.have.length(0);
+        expect(model1Rows).toHaveLength(0);
+        expect(model2Rows).toHaveLength(0);
       });
 
-      it('should work when a knex connection is passed instead of a model', (done) => {
+      it('should work when a knex connection is passed instead of a model', () => {
         let trx;
-        transaction
+        return transaction
           .start(Model1.knex())
           .then((trans) => {
             trx = trans;
@@ -788,21 +739,19 @@ module.exports = (session) => {
             return session.knex('Model1');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['test 1', 'test 2']);
+            expect(rows).toHaveLength(2);
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['test 1', 'test 2']);
             return session.knex('model2');
           })
           .then((rows) => {
-            expect(rows).to.have.length(1);
-            expect(rows[0].model2_prop1).to.equal('test 3');
-            done();
-          })
-          .catch(done);
+            expect(rows).toHaveLength(1);
+            expect(rows[0].model2_prop1).toBe('test 3');
+          });
       });
 
-      it('should rollback transaction when the rollback method is called', (done) => {
+      it('should rollback transaction when the rollback method is called', () => {
         let trx;
-        transaction
+        return transaction
           .start(Model1)
           .then((trans) => {
             trx = trans;
@@ -821,25 +770,16 @@ module.exports = (session) => {
             return session.knex('Model1');
           })
           .then((rows) => {
-            expect(rows).to.have.length(0);
+            expect(rows).toHaveLength(0);
             return session.knex('model2');
           })
           .then((rows) => {
-            expect(rows).to.have.length(0);
-            done();
-          })
-          .catch(done);
+            expect(rows).toHaveLength(0);
+          });
       });
 
-      it('should fail if neither a model or a knex connection is passed', (done) => {
-        transaction
-          .start({})
-          .then(() => {
-            done(new Error('should not get here'));
-          })
-          .catch(() => {
-            done();
-          });
+      it('should fail if neither a model or a knex connection is passed', () => {
+        return expect(transaction.start({})).rejects.toThrow();
       });
     });
 
@@ -858,8 +798,8 @@ module.exports = (session) => {
           await Model1.query(trx).insert({ model1Prop1: 'test 1' });
         });
 
-        expect(await committed).to.equal(true);
-        expect(await session.knex('Model1')).to.have.length(1);
+        expect(await committed).toBe(true);
+        expect(await session.knex('Model1')).toHaveLength(1);
       });
 
       it('should reject on rollback (Model.transaction)', async () => {
@@ -870,8 +810,8 @@ module.exports = (session) => {
           throw new Error('rollback');
         }).catch(noop);
 
-        expect(await committed).to.equal(false);
-        expect(await session.knex('Model1')).to.have.length(0);
+        expect(await committed).toBe(false);
+        expect(await session.knex('Model1')).toHaveLength(0);
       });
 
       it('should resolve after commit (Model.startTransaction)', async () => {
@@ -880,8 +820,8 @@ module.exports = (session) => {
         await Model1.query(trx).insert({ model1Prop1: 'test 1' });
         await trx.commit();
 
-        expect(await committed).to.equal(true);
-        expect(await session.knex('Model1')).to.have.length(1);
+        expect(await committed).toBe(true);
+        expect(await session.knex('Model1')).toHaveLength(1);
       });
 
       it('should reject on rollback with an error (Model.startTransaction)', async () => {
@@ -890,14 +830,14 @@ module.exports = (session) => {
         await Model1.query(trx).insert({ model1Prop1: 'test 1' });
         await trx.rollback(new Error('rollback'));
 
-        expect(await committed).to.equal(false);
-        expect(await session.knex('Model1')).to.have.length(0);
+        expect(await committed).toBe(false);
+        expect(await session.knex('Model1')).toHaveLength(0);
       });
     });
 
     describe('model.$knex()', () => {
-      it("model.$knex() methods should return the model's transaction", (done) => {
-        transaction
+      it("model.$knex() methods should return the model's transaction", () => {
+        return transaction
           .start(Model1)
           .then((trx) => {
             return Model1.bindTransaction(trx).query().insert({ model1Prop1: 'test 1' });
@@ -915,14 +855,12 @@ module.exports = (session) => {
             return session.knex('Model1');
           })
           .then((rows) => {
-            expect(rows).to.have.length(0);
+            expect(rows).toHaveLength(0);
             return session.knex('model2');
           })
           .then((rows) => {
-            expect(rows).to.have.length(0);
-            done();
-          })
-          .catch(done);
+            expect(rows).toHaveLength(0);
+          });
       });
     });
   });
