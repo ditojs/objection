@@ -36,27 +36,45 @@ For a pull request to get merged it needs to have the following things:
 2. **Clone objection**
 
 ```bash
-git clone git@github.com:<your-account>/objection.js.git objection
+git clone git@github.com:<your-account>/objection.git
 ```
 
-3. **Run `npm install` at the root of the repo**
+3. **Run `npm ci` at the root of the repo**
 
-4. **Run `docker compose up` at the root of the repo**
-   - If you have local databases running, shut them down or port binding will conflict.
+4. **Run `npm run docs:dev` and go to `http://localhost:5173/objection/` to see the generated documentation site when you change the markdown files in the `doc` folder.**
 
-5. **Create test users and databases by running `node setup-test-db` at the root of the repo**
+## Running the tests
 
-6. **Run `npm test` in objection's root to see if everything works.**
-
-7. **Run `npm run docs:dev` and go to `http://localhost:5173/objection/` to see the generated documentation site when you change the markdown files in the `doc` folder.**
-
-You can run the tests on a subset of databases by setting the `DATABASES` env variable
+[Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases.:
 
 ```bash
-# Only run tests on sqlite. No need for docker compose.
-DATABASES=sqlite3 npm test
+npm ci
+npm run db:up # Start the PostgreSQL and MySQL test databases.
+npm test
+npm run db:down # Stop the test databases and delete their data.
 ```
 
-Code and tests need to be written in ES2015 subset supported by node 8.0.0. The best way to make sure of this is to develop with the correct node version. [nvm](https://github.com/creationix/nvm) is a great tool for swapping between node versions.
+Docker only runs the two database servers, PostgreSQL 17 and MySQL 8.4, as defined in `docker-compose.yml`, which needs Docker Compose 2.23.1 or newer. The tests themselves run on your machine with your Node.js, and SQLite runs inside the test process. The containers create the `objection` user and the `objection_test` database on their own, so there is nothing else to set up.
+
+`npm run db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `npm run db:down` removes the containers together with their data, and the next `npm run db:up` starts from scratch.
+
+You can run the tests on a subset of databases by setting the `DATABASES` env variable. SQLite needs no setup, so this works without Docker:
+
+```bash
+DATABASES=sqlite3 npm test
+DATABASES=postgres npm test
+```
+
+To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*` and `OBJECTION_TEST_MYSQL_*` env variables. The PostgreSQL user needs to own the database or be a superuser, as the tests create schemas in it. The MySQL user needs to be able to create databases and to use the `mysql_native_password` authentication plugin.
+
+| Variable                                   | Default for PostgreSQL | Default for MySQL |
+| ------------------------------------------ | ---------------------- | ----------------- |
+| `OBJECTION_TEST_{POSTGRES,MYSQL}_HOST`     | `127.0.0.1`            | `127.0.0.1`       |
+| `OBJECTION_TEST_{POSTGRES,MYSQL}_PORT`     | `55432`                | `33306`           |
+| `OBJECTION_TEST_{POSTGRES,MYSQL}_USER`     | `objection`            | `objection`       |
+| `OBJECTION_TEST_{POSTGRES,MYSQL}_PASSWORD` | none                   | none              |
+| `OBJECTION_TEST_{POSTGRES,MYSQL}_DATABASE` | `objection_test`       | `objection_test`  |
+
+The tests are run with [mocha](https://mochajs.org/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure.
 
 [prettier](https://prettier.io/) is used to format the code. Remember to run `npm run prettier` before committing code.
