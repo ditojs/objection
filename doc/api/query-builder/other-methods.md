@@ -25,7 +25,7 @@ Some objection queries, like when `withGraphFetched` is used, actually execute m
 In some rare cases the knex query cannot be built synchronously. In these cases you will get a clear error message. These cases can be handled by calling the optional [initialize](/api/objection/#initialize) method once before the failing `toKnexQuery` method is called.
 
 ```js
-const { initialize } = require('objection');
+import { initialize } from 'objection';
 
 await initialize([Person, Pet, Movie, SomeOtherModelClass]);
 ```

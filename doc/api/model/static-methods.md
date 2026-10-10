@@ -278,7 +278,9 @@ If you want to use multiple databases, you can instead pass the knex instance to
 Set a knex instance:
 
 ```js
-const knex = require('knex')({
+import Knex from 'knex';
+
+const knex = Knex({
   client: 'sqlite3',
   connection: {
     filename: 'database.db'
@@ -625,14 +627,16 @@ Also check out the [model binding pattern for transactions](/guide/transactions.
 ##### Examples
 
 ```js
-const knex1 = require('knex')({
+import Knex from 'knex';
+
+const knex1 = Knex({
   client: 'sqlite3',
   connection: {
     filename: 'database1.db'
   }
 });
 
-const knex2 = require('knex')({
+const knex2 = Knex({
   client: 'sqlite3',
   connection: {
     filename: 'database2.db'
@@ -667,8 +671,8 @@ Alias for [bindKnex](/api/model/static-methods.html#static-bindknex).
 ##### Examples
 
 ```js
-const { transaction } = require('objection');
-const Person = require('./models/Person');
+import { transaction } from 'objection';
+import Person from './models/Person.js';
 
 await transaction(Person.knex(), async trx => {
   const TransactingPerson = Person.bindTransaction(trx);
@@ -684,8 +688,8 @@ await transaction(Person.knex(), async trx => {
 This is 100% equivalent to the example above:
 
 ```js
-const { transaction } = require('objection');
-const Person = require('./models/Person');
+import { transaction } from 'objection';
+import Person from './models/Person.js';
 
 await transaction(Person, async TransactingPerson => {
   await TransactingPerson.query().insert({ firstName: 'Jennifer' });
@@ -821,7 +825,7 @@ class BaseModel extends Model {
 The default implementation:
 
 ```js
-const AjvValidator = require('objection').AjvValidator;
+import { AjvValidator } from 'objection';
 
 class Model {
   static createValidator() {

@@ -35,16 +35,18 @@ Vocabulary for the relation descriptions:
 class Animal extends Model {
   static tableName = 'animals';
 
-  static relationMappings = {
-    owner: {
-      relation: Model.BelongsToOneRelation,
-      modelClass: Person,
-      join: {
-        from: 'animals.ownerId',
-        to: 'persons.id'
+  static get relationMappings() {
+    return {
+      owner: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Person,
+        join: {
+          from: 'animals.ownerId',
+          to: 'persons.id'
+        }
       }
-    }
-  };
+    };
+  }
 }
 ```
 
@@ -54,16 +56,18 @@ class Animal extends Model {
 class Person extends Model {
   static tableName = 'persons';
 
-  static relationMappings = {
-    animals: {
-      relation: Model.HasManyRelation,
-      modelClass: Animal,
-      join: {
-        from: 'persons.id',
-        to: 'animals.ownerId'
+  static get relationMappings() {
+    return {
+      animals: {
+        relation: Model.HasManyRelation,
+        modelClass: Animal,
+        join: {
+          from: 'persons.id',
+          to: 'animals.ownerId'
+        }
       }
-    }
-  };
+    };
+  }
 }
 ```
 
@@ -73,16 +77,18 @@ class Person extends Model {
 class Person extends Model {
   static tableName = 'persons';
 
-  static relationMappings = {
-    animal: {
-      relation: Model.HasOneRelation,
-      modelClass: Animal,
-      join: {
-        from: 'persons.id',
-        to: 'animals.ownerId'
+  static get relationMappings() {
+    return {
+      animal: {
+        relation: Model.HasOneRelation,
+        modelClass: Animal,
+        join: {
+          from: 'persons.id',
+          to: 'animals.ownerId'
+        }
       }
-    }
-  };
+    };
+  }
 }
 ```
 
@@ -92,115 +98,11 @@ class Person extends Model {
 class Person extends Model {
   static tableName = 'persons';
 
-  static relationMappings = {
-    movies: {
-      relation: Model.ManyToManyRelation,
-      modelClass: Movie,
-      join: {
-        from: 'persons.id',
-        through: {
-          // persons_movies is the join table.
-          from: 'persons_movies.personId',
-          to: 'persons_movies.movieId'
-        },
-        to: 'movies.id'
-      }
-    }
-  };
-}
-```
-
-`HasOneThroughRelation`: Use this relation when the model is related to a single model through a join table
-
-```js
-class Person extends Model {
-  static tableName = 'persons';
-
-  static relationMappings = {
-    movie: {
-      relation: Model.HasOneThroughRelation,
-      modelClass: Movie,
-      join: {
-        from: 'persons.id',
-        through: {
-          // persons_movies is the join table.
-          from: 'persons_movies.personId',
-          to: 'persons_movies.movieId'
-        },
-        to: 'movies.id'
-      }
-    }
-  };
-}
-```
-
-## Require loops (non ECMAScript modules only)
-
-Require loops (circular dependencies, circular requires) are a very common problem when defining relations. Whenever a module `A` imports module `B` that immediately (synchronously) imports module `A`, you create a require loop that node.js or objection cannot solve automatically. A require loop usually leads to the other imported value to be an empty object which causes all kinds of problems. Objection attempts to detect these situations and mention the words `require loop` in the thrown error. Objection offers multiple solutions to this problem. See the circular dependency solutions examples in this section. In addition to objection's solutions, you can always organize your code so that such loops are not created.
-
-If you are using [ECMAScript modules](https://nodejs.org/api/esm.html), circular imports are not a problem. You can just do:
-
-```js
-import Animal from "./Animal.js";
-
-class Person extends Model {
-  static get tableName() {
-    return "persons";
-  }
-
   static get relationMappings() {
     return {
-      pets: {
-        relation: Model.HasManyRelation,
-        modelClass: Animal,
-        join: {
-          from: "persons.id",
-          to: "animals.ownerId",
-        },
-      },
-    };
-  }
-}
-```
-
-However if you are not using ECMAScript modules, solutions to require loops are:
-
-```js
-class Person extends Model {
-  static get tableName() {
-    return 'persons';
-  }
-
-  static get relationMappings() {
-    // Solution 1:
-    //
-    // relationMappings getter is accessed lazily when you execute
-    // your first query that needs it. Therefore if you `require`
-    // your models inside the getter, you don't end up with a require loop.
-    // Note that only one end of the relation needs to be required like
-    // this, not both. `relationMappings` can also be a method or
-    // a thunk if you prefer those instead of getters.
-    const Animal = require('./Animal');
-
-    return {
-      pets: {
-        relation: Model.HasManyRelation,
-        modelClass: Animal,
-        join: {
-          from: 'persons.id',
-          to: 'animals.ownerId'
-        }
-      },
-
       movies: {
         relation: Model.ManyToManyRelation,
-        // Solution 2:
-        //
-        // Absolute file path to a module that exports the model class.
-        // This is similar to solution 1, but objection calls `require`
-        // under the hood. The downside here is that you need to give
-        // an absolute file path because of the way `require` works.
-        modelClass: path.join(__dirname, 'Movie'),
+        modelClass: Movie,
         join: {
           from: 'persons.id',
           through: {
@@ -210,19 +112,27 @@ class Person extends Model {
           },
           to: 'movies.id'
         }
-      },
+      }
+    };
+  }
+}
+```
 
-      movies: {
-        relation: Model.ManyToManyRelation,
-        // Solution 3:
-        //
-        // Use only a module name and define a `modelPaths` property
-        // for your model (or a superclass of your model). Search for
-        // `modelPaths` from the docs for more info.
-        modelClass: 'Movie',
+`HasOneThroughRelation`: Use this relation when the model is related to a single model through a join table
+
+```js
+class Person extends Model {
+  static tableName = 'persons';
+
+  static get relationMappings() {
+    return {
+      movie: {
+        relation: Model.HasOneThroughRelation,
+        modelClass: Movie,
         join: {
           from: 'persons.id',
           through: {
+            // persons_movies is the join table.
             from: 'persons_movies.personId',
             to: 'persons_movies.movieId'
           },
@@ -234,3 +144,89 @@ class Person extends Model {
 }
 ```
 
+## Circular imports (require loops)
+
+Circular imports (circular dependencies, require loops) are a very common problem when defining relations. Whenever a module `A` imports module `B` that imports module `A`, one of the two modules is evaluated before the other one has finished. With ECMAScript modules, accessing the other module's class during that time throws a `ReferenceError`. With CommonJS modules, `require()` returns an incomplete, often empty, exports object instead, which causes all kinds of problems. In CommonJS, objection attempts to detect these situations and mention the words `require loop` in the thrown error. Objection offers multiple solutions to this problem. See the circular dependency solutions examples in this section. In addition to objection's solutions, you can always organize your code so that such loops are not created.
+
+```js
+import { Model } from 'objection';
+import Animal from './Animal.js';
+
+class Person extends Model {
+  static get tableName() {
+    return 'persons';
+  }
+
+  static get relationMappings() {
+    // Solution 1:
+    //
+    // relationMappings getter is accessed lazily when you execute
+    // your first query that needs it. By then all modules have been
+    // evaluated, so you can use the imported models inside the getter
+    // even if the modules import each other. `relationMappings` can
+    // also be a method or a thunk if you prefer those instead of getters.
+    return {
+      pets: {
+        relation: Model.HasManyRelation,
+        modelClass: Animal,
+        join: {
+          from: 'persons.id',
+          to: 'animals.ownerId'
+        }
+      }
+    };
+  }
+}
+```
+
+The other solutions replace the `modelClass` of a relation, and also work when `relationMappings` is a static class field, which is evaluated when the class is defined:
+
+```js
+import path from 'node:path';
+import { Model } from 'objection';
+import Movie from './Movie.js';
+
+class Person extends Model {
+  static tableName = 'persons';
+
+  static relationMappings = {
+    movies: {
+      relation: Model.ManyToManyRelation,
+      // Solution 2:
+      //
+      // A thunk that returns the model class. objection calls it
+      // lazily, when the relation is first needed.
+      modelClass: () => Movie,
+
+      // Solution 3:
+      //
+      // Absolute file path to a module that exports the model class.
+      // objection loads the module under the hood when it is first
+      // needed. The downside here is that you need to give an
+      // absolute file path.
+      // modelClass: path.join(import.meta.dirname, 'Movie.js'),
+
+      // Solution 4:
+      //
+      // Use only a module name and define a `modelPaths` property
+      // for your model (or a superclass of your model). Search for
+      // `modelPaths` from the docs for more info.
+      // modelClass: 'Movie',
+
+      join: {
+        from: 'persons.id',
+        through: {
+          // persons_movies is the join table.
+          from: 'persons_movies.personId',
+          to: 'persons_movies.movieId'
+        },
+        to: 'movies.id'
+      }
+    }
+  };
+}
+```
+
+In CommonJS modules, solution 1 only works if you `require()` the models inside the getter instead of at the top of the file, because `require()` returns an incomplete exports object while the other module is still being evaluated. Only one end of the relation needs to be required like this, not both.
+
+For solutions 3 and 4, objection loads the file synchronously with `require()`, which on node 20.19 and newer loads both CommonJS modules and ECMAScript modules that don't use top-level await, or import modules that do. An ECMAScript module needs to export the model class as its default export, or as its only exported model class. Paths without a file extension are resolved the way `require()` resolves them, which finds `.js` files, but not `.mjs` files.
