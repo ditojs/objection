@@ -1,5 +1,6 @@
 import { expect } from 'vitest';
-import { cloneDeep } from '../lib/utils/objectUtils.js';
+
+export { cloneDeep } from '../lib/utils/objectUtils.js';
 
 /**
  * Expect that `result` contains all attributes of `partial` and their values equal.
@@ -17,7 +18,7 @@ import { cloneDeep } from '../lib/utils/objectUtils.js';
  * expectPartialEqual({a: 1}, {a: 2});
  * ```
  */
-function expectPartialEqual(result, partial) {
+export function expectPartialEqual(result, partial) {
   if (Array.isArray(result) && Array.isArray(partial)) {
     expect(result).toHaveLength(partial.length);
     result.forEach((value, idx) => {
@@ -40,7 +41,7 @@ function expectPartialEqual(result, partial) {
  * Expect that `fn` throws, and pass the thrown error to `check` to make further
  * assertions about it.
  */
-function expectThrows(fn, check) {
+export function expectThrows(fn, check) {
   let error;
 
   try {
@@ -53,7 +54,7 @@ function expectThrows(fn, check) {
   check(error);
 }
 
-function createRejectionReflection(err) {
+export function createRejectionReflection(err) {
   return {
     isRejected: () => true,
     isFulfilled: () => false,
@@ -61,7 +62,7 @@ function createRejectionReflection(err) {
   };
 }
 
-function delay(ms) {
+export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -71,7 +72,7 @@ function isObject(value) {
 }
 
 // Like lodash's `pick`: copies the given keys (own or inherited) that exist in `obj`.
-function pick(obj, ...keys) {
+export function pick(obj, ...keys) {
   const result = {};
 
   if (obj != null) {
@@ -86,7 +87,7 @@ function pick(obj, ...keys) {
 }
 
 // Like lodash's `range`: `range(end)` or `range(start, end[, step])`.
-function range(start, end, step) {
+export function range(start, end, step) {
   if (end === undefined) {
     end = start;
     start = 0;
@@ -102,7 +103,7 @@ function range(start, end, step) {
 
 // Like lodash's `sortBy`: a stable ascending sort by property names or
 // functions, or by the items themselves. `null` and `undefined` sort last.
-function sortBy(items, ...iteratees) {
+export function sortBy(items, ...iteratees) {
   const getters = iteratees
     .flat()
     .map((it) => (typeof it === 'function' ? it : (item) => item[it]));
@@ -126,14 +127,3 @@ function sortBy(items, ...iteratees) {
     return 0;
   });
 }
-
-export {
-  expectPartialEqual,
-  expectThrows,
-  createRejectionReflection,
-  delay,
-  cloneDeep,
-  pick,
-  range,
-  sortBy,
-};
