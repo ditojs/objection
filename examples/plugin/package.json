@@ -1,22 +1,23 @@
 {
   "name": "objection-plugin-example",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "description": "An example plugin for objection",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "node --test"
   },
   "engines": {
-    "node": ">=20.17.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "peerDependencies": {
-    "objection": "^3.0.0"
+    "objection": "^4.0.0"
   },
   "author": "Sami Koskimäki",
   "license": "MIT",
   "devDependencies": {
     "knex": "^3.3.0",
-    "objection": "^3.5.0",
-    "sqlite3": "^6.0.1"
+    "objection": "^4.0.0",
+    "sqlite3": "^5.1.7"
   }
 }

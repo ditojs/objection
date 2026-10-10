@@ -1,9 +1,7 @@
-'use strict'
+import Person from './models/Person.js'
+import Movie from './models/Movie.js'
 
-const Person = require('./models/Person')
-const Movie = require('./models/Movie')
-
-module.exports = (router) => {
+export default (router) => {
   /**
    * Create a new Person.
    *

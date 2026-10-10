@@ -1,4 +1,4 @@
-exports.up = (knex) => {
+export function up(knex) {
   return knex.schema
     .createTable('persons', (table) => {
       table.increments('id').primary()
@@ -55,7 +55,7 @@ exports.up = (knex) => {
     })
 }
 
-exports.down = (knex) => {
+export function down(knex) {
   return knex.schema
     .dropTableIfExists('persons_movies')
     .dropTableIfExists('animals')

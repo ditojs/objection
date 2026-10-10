@@ -9,16 +9,14 @@ automatically based on the given session.
 Usage example:
 
 ```js
-const { Model } = require('objection');
-const Session = require('path/to/this/example');
+import { Model } from 'objection';
+import Session from 'path/to/this/example/index.js';
 
-class Person extends Session(Model) {
+export default class Person extends Session(Model) {
   static get tableName() {
     return 'Person';
   }
 }
-
-module.exports = Person;
 ```
 
 ```js

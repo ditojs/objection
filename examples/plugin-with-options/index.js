@@ -1,5 +1,3 @@
-'use strict';
-
 // Objection.js plugins are class mixins. Read this excellent article for detailed description:
 // http://justinfagnani.com/2015/12/21/real-mixins-with-javascript-classes/
 //
@@ -8,7 +6,7 @@
 //
 // If the plugin takes options the main module should be a factory function that returns a
 // mixin. This plugin is exactly the same as the `plugin` example, but adds a couple of options.
-module.exports = (options) => {
+export default (options) => {
   // Provide good defaults for the options if possible.
   options = {
     setModifiedBy: true,

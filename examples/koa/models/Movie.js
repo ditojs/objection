@@ -1,8 +1,7 @@
-'use strict'
+import { Model } from 'objection'
+import Person from './Person.js'
 
-const { Model } = require('objection')
-
-class Movie extends Model {
+export default class Movie extends Model {
   // Table name is the only required property.
   static get tableName() {
     return 'movies'
@@ -23,17 +22,15 @@ class Movie extends Model {
     }
   }
 
+  // This object defines the relations to other models. The getter is only
+  // accessed once the relations are needed, after all modules are loaded, so
+  // the circular imports between the models are not a problem.
   static get relationMappings() {
-    // One way to prevent circular references
-    // is to require the model classes here.
-    const Person = require('./Person')
-
     return {
       actors: {
         relation: Model.ManyToManyRelation,
 
-        // The related model. This can be either a Model subclass constructor or an
-        // absolute file path to a module that exports one.
+        // The related model.
         modelClass: Person,
 
         join: {
@@ -49,5 +46,3 @@ class Movie extends Model {
     }
   }
 }
-
-module.exports = Movie
