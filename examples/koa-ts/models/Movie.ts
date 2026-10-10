@@ -1,11 +1,11 @@
-import { Model } from 'objection'
-import Person from './Person'
+import { Model, type Generated, type TypedRelationMappings } from 'objection'
+import Person from './Person.js'
 
 export default class Movie extends Model {
-  id!: number
-  name!: string
+  declare id: Generated<number>
+  declare name: string
 
-  actors!: Person[]
+  declare actors?: Person[]
 
   // Table name is the only required property.
   static tableName = 'movies'
@@ -23,26 +23,29 @@ export default class Movie extends Model {
     },
   }
 
-  // This object defines the relations to other models. The relationMappings
-  // property can be a thunk to prevent circular dependencies.
-  static relationMappings = () => ({
-    actors: {
-      relation: Model.ManyToManyRelation,
+  // This object defines the relations to other models. The thunk is only
+  // called once the relations are needed, after all modules are loaded, so
+  // the circular imports between the models are not a problem. `satisfies`
+  // checks the mappings against the relation properties declared above.
+  static relationMappings = () =>
+    ({
+      actors: {
+        relation: Model.ManyToManyRelation,
 
-      // The related model.
-      modelClass: Person,
+        // The related model.
+        modelClass: Person,
 
-      join: {
-        from: 'movies.id',
+        join: {
+          from: 'movies.id',
 
-        // ManyToMany relation needs the `through` object to describe the join table.
-        through: {
-          from: 'persons_movies.movieId',
-          to: 'persons_movies.personId',
+          // ManyToMany relation needs the `through` object to describe the join table.
+          through: {
+            from: 'persons_movies.movieId',
+            to: 'persons_movies.personId',
+          },
+
+          to: 'persons.id',
         },
-
-        to: 'persons.id',
       },
-    },
-  })
+    }) satisfies TypedRelationMappings<Movie>
 }

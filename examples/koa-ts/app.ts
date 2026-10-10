@@ -1,10 +1,10 @@
-import Koa, { Context } from 'koa'
-import KoaRouter from 'koa-router'
-import bodyParser from 'koa-bodyparser'
+import Koa, { type Context, type Next } from 'koa'
+import Router from '@koa/router'
+import { bodyParser } from '@koa/bodyparser'
 import Knex from 'knex'
-import knexConfig from './knexfile'
-import registerApi from './api'
 import { Model, ForeignKeyViolationError, ValidationError } from 'objection'
+import knexConfig from './knexfile.js'
+import registerApi from './api.js'
 
 // Initialize knex.
 const knex = Knex(knexConfig.development)
@@ -14,7 +14,7 @@ const knex = Knex(knexConfig.development)
 // the Model.bindKnex() method.
 Model.knex(knex)
 
-const router = new KoaRouter()
+const router = new Router()
 const app = new Koa()
 
 // Register our REST API.
@@ -34,7 +34,7 @@ app.listen(port, () => {
 //
 // NOTE: This is not a good error handler, this is a simple one. See the error handing
 //       recipe for a better handler: https://ditojs.github.io/objection/recipes/error-handling.html
-async function errorHandler(ctx: Context, next: () => Promise<any>) {
+async function errorHandler(ctx: Context, next: Next) {
   try {
     await next()
   } catch (err: any) {

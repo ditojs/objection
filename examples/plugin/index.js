@@ -16,48 +16,40 @@ module.exports = (Model) => {
       // queries created by this builder and also in the model hooks. `session` is
       // not a reserved word or some objection.js concept. You can store any data
       // to the query context.
-      return this.mergeContext({
-        session: session,
-      });
+      return this.context({ session });
     }
   }
 
   // A Plugin always needs to return the extended model class.
   //
   // IMPORTANT: Don't give a name for the returned class! This way the returned
-  // class inherits the super class's name (starting from node 8).
+  // class inherits the super class's name.
   return class extends Model {
     // Make our model use the extended QueryBuilder.
     static get QueryBuilder() {
       return SessionQueryBuilder;
     }
 
-    $beforeUpdate(opt, context) {
+    async $beforeUpdate(opt, context) {
       // If you extend existing methods like this one, always remember to call the
-      // super implementation. Check the documentation to see if the function can be
-      // async and prepare for that also.
-      const maybePromise = super.$beforeUpdate(opt, context);
+      // super implementation. The hooks can be async, so always await the result.
+      await super.$beforeUpdate(opt, context);
 
-      return Promise.resolve(maybePromise).then(() => {
-        if (context.session) {
-          this.modifiedAt = new Date().toISOString();
-          this.modifiedBy = context.session.userId;
-        }
-      });
+      if (context.session) {
+        this.modifiedAt = new Date().toISOString();
+        this.modifiedBy = context.session.userId;
+      }
     }
 
-    $beforeInsert(context) {
+    async $beforeInsert(context) {
       // If you extend existing methods like this one, always remember to call the
-      // super implementation. Check the documentation to see if the function can be
-      // async and prepare for that also.
-      const maybePromise = super.$beforeInsert(context);
+      // super implementation. The hooks can be async, so always await the result.
+      await super.$beforeInsert(context);
 
-      return Promise.resolve(maybePromise).then(() => {
-        if (context.session) {
-          this.createdAt = new Date().toISOString();
-          this.createdBy = context.session.userId;
-        }
-      });
+      if (context.session) {
+        this.createdAt = new Date().toISOString();
+        this.createdBy = context.session.userId;
+      }
     }
   };
 };

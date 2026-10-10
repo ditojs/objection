@@ -4,18 +4,19 @@
   "description": "An example plugin for objection",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --slow 10 --timeout 15000 --reporter spec tests.js"
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.17.0"
   },
   "peerDependencies": {
-    "objection": "0.x"
+    "objection": "^3.0.0"
   },
   "author": "Sami Koskimäki",
   "license": "MIT",
   "devDependencies": {
-    "expect.js": "^0.3.1",
-    "knex": "^0.14.6",
-    "mocha": "^5.1.1",
-    "objection": "^1.4.0",
-    "sqlite3": "^4.0.0"
+    "knex": "^3.3.0",
+    "objection": "^3.5.0",
+    "sqlite3": "^6.0.1"
   }
 }

@@ -2,29 +2,29 @@
   "name": "objection-example-koa-ts",
   "version": "3.0.0",
   "description": "Objection.js koa typescript example",
-  "main": "app.js",
+  "main": "dist/app.js",
   "scripts": {
     "migrate": "knex migrate:latest",
-    "start": "npm run migrate && rm -rf dist && tsc && node dist/app.js"
+    "build": "rm -rf dist && tsc",
+    "start": "npm run migrate && npm run build && node dist/app.js"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=20.17.0"
   },
   "author": "Sami Koskimäki",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.19.0",
-    "knex": "^0.95.13",
-    "koa": "^2.11.0",
-    "koa-bodyparser": "^4.2.1",
-    "koa-router": "^7.4.0",
-    "objection": "^3.0.0-rc.4",
-    "sqlite3": "^5.0.2"
+    "@koa/bodyparser": "^6.1.0",
+    "@koa/router": "^15.7.0",
+    "axios": "^1.20.0",
+    "knex": "^3.3.0",
+    "koa": "^3.2.1",
+    "objection": "^3.5.0",
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
-    "@types/koa": "^2.11.0",
-    "@types/koa-bodyparser": "^4.3.0",
-    "@types/koa-router": "^7.0.42",
-    "typescript": "4.4.4"
+    "@types/koa": "^3.0.3",
+    "@types/node": "^20.19.0",
+    "typescript": "^7.0.2"
   }
 }
