@@ -1,6 +1,6 @@
-const expect = require('expect.js');
+import { describe, it, expect, beforeEach } from 'vitest';
 
-module.exports = (session) => {
+export default (session) => {
   describe('multiple results with a one-to-one relation', () => {
     beforeEach(() => {
       // This tests insertGraph.
@@ -31,7 +31,7 @@ module.exports = (session) => {
         .whereIn('id', [1, 3])
         .withGraphFetched('model1Relation1')
         .then((models) => {
-          expect(models).to.eql([
+          expect(models).toEqual([
             {
               id: 1,
               model1Id: 2,
@@ -69,7 +69,7 @@ module.exports = (session) => {
         .whereIn('id', [2, 4])
         .withGraphFetched('model1Relation1Inverse')
         .then((models) => {
-          expect(models).to.eql([
+          expect(models).toEqual([
             {
               id: 2,
               model1Id: null,

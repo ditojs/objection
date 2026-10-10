@@ -1,7 +1,39 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const TestSession = require('./../../testUtils/TestSession');
+import { describe, beforeAll, afterAll } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import TestSession from '../../testUtils/TestSession.js';
+import misc from './misc/index.js';
+import find from './find.js';
+import insert from './insert.js';
+import insertGraph from './insertGraph.js';
+import upsertGraph from './upsertGraph.js';
+import update from './update.js';
+import patch from './patch.js';
+import deleteTests from './delete.js';
+import relate from './relate.js';
+import unrelate from './unrelate.js';
+import manyToManyModify from './manyToManyModify.js';
+import withGraph from './withGraph.js';
+import transactions from './transactions.js';
+import queryContext from './queryContext.js';
+import compositeKeys from './compositeKeys.js';
+import crossDb from './crossDb/index.js';
+import viewsAndAliases from './viewsAndAliases.js';
+import schema from './schema.js';
+import knexSnakeCase from './knexSnakeCase.js';
+import snakeCase from './snakeCase.js';
+import knexIdentifierMapping from './knexIdentifierMapping.js';
+import GraphInsert from './graph/GraphInsert.js';
+import relationModify from './relationModify.js';
+import nonPrimaryKeyRelations from './nonPrimaryKeyRelations.js';
+import staticHooks from './staticHooks.js';
+import modifiers from './modifiers.js';
+import toKnexQuery from './toKnexQuery.js';
+import relationOwnerGrouping from './relationOwnerGrouping.js';
+import jsonQueries from './jsonQueries.js';
+import jsonRelations from './jsonRelations.js';
+import jsonQueriesMySql from './jsonQueriesMySql.js';
 
 // DATABASES environment variable can contain a comma separated list
 // of databases to test.
@@ -76,53 +108,53 @@ describe('integration tests', () => {
     });
 
     describe(knexConfig.client, () => {
-      before(() => {
+      beforeAll(() => {
         return session.createDb();
       });
 
-      require('./misc')(session);
-      require('./find')(session);
-      require('./insert')(session);
-      require('./insertGraph')(session);
-      require('./upsertGraph')(session);
-      require('./update')(session);
-      require('./patch')(session);
-      require('./delete')(session);
-      require('./relate')(session);
-      require('./unrelate')(session);
-      require('./manyToManyModify')(session);
-      require('./withGraph')(session);
-      require('./transactions')(session);
-      require('./queryContext')(session);
-      require('./compositeKeys')(session);
-      require('./crossDb')(session);
-      require('./viewsAndAliases')(session);
-      require('./schema')(session);
-      require('./knexSnakeCase')(session);
-      require('./snakeCase')(session);
-      require('./knexIdentifierMapping')(session);
-      require('./graph/GraphInsert')(session);
-      require('./relationModify')(session);
-      require('./nonPrimaryKeyRelations')(session);
-      require('./staticHooks')(session);
-      require('./modifiers')(session);
-      require('./toKnexQuery')(session);
-      require('./relationOwnerGrouping')(session);
+      misc(session);
+      find(session);
+      insert(session);
+      insertGraph(session);
+      upsertGraph(session);
+      update(session);
+      patch(session);
+      deleteTests(session);
+      relate(session);
+      unrelate(session);
+      manyToManyModify(session);
+      withGraph(session);
+      transactions(session);
+      queryContext(session);
+      compositeKeys(session);
+      crossDb(session);
+      viewsAndAliases(session);
+      schema(session);
+      knexSnakeCase(session);
+      snakeCase(session);
+      knexIdentifierMapping(session);
+      GraphInsert(session);
+      relationModify(session);
+      nonPrimaryKeyRelations(session);
+      staticHooks(session);
+      modifiers(session);
+      toKnexQuery(session);
+      relationOwnerGrouping(session);
 
       if (session.isPostgres()) {
-        require('./jsonQueries')(session);
-        require('./jsonRelations')(session);
+        jsonQueries(session);
+        jsonRelations(session);
       }
 
       if (session.isMySql()) {
-        require('./jsonQueriesMySql')(session);
+        jsonQueriesMySql(session);
       }
     });
 
     return session;
   });
 
-  after(async () => {
+  afterAll(async () => {
     await Promise.all(
       sessions.map((session) => {
         return session.destroy();

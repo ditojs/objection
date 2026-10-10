@@ -1,5 +1,5 @@
-const expect = require('expect.js');
-const { GraphOptions } = require('../../../lib/queryBuilder/graph/GraphOptions');
+import { describe, it, expect } from 'vitest';
+import { GraphOptions } from '../../../lib/queryBuilder/graph/GraphOptions.js';
 
 describe('GraphOptions', () => {
   function createNode(relationPathKey) {
@@ -37,14 +37,14 @@ describe('GraphOptions', () => {
       ['a.^2', 'a.a.a', false],
     ]) {
       it(`'${expression}' should ${expected ? '' : 'not '}match '${relationPathKey}'`, () => {
-        expect(matches(expression, relationPathKey)).to.equal(expected);
+        expect(matches(expression, relationPathKey)).toBe(expected);
       });
     }
 
     it('should match the full relation path in recursive upserts', () => {
-      expect(matches('a.b', 'b', ['a'])).to.equal(true);
-      expect(matches('a.b', '', ['a'])).to.equal(false);
-      expect(matches('a', '', ['a'])).to.equal(true);
+      expect(matches('a.b', 'b', ['a'])).toBe(true);
+      expect(matches('a.b', '', ['a'])).toBe(false);
+      expect(matches('a', '', ['a'])).toBe(true);
     });
 
     for (const [expression, message] of [
@@ -55,11 +55,11 @@ describe('GraphOptions', () => {
       ['a.[b, c as d]', 'aliases like "c as d" are not supported'],
     ]) {
       it(`should throw for '${expression}'`, () => {
-        expect(() => new GraphOptions({ noInsert: expression })).to.throwException((err) => {
-          expect(err.message).to.equal(
-            `invalid relation expression "${expression}" in noInsert option: ${message}`,
-          );
-        });
+        expect(() => new GraphOptions({ noInsert: expression })).toThrow(
+          expect.objectContaining({
+            message: `invalid relation expression "${expression}" in noInsert option: ${message}`,
+          }),
+        );
       });
     }
   });
@@ -68,7 +68,7 @@ describe('GraphOptions', () => {
     it('should only keep the relation paths below the new root', () => {
       const options = new GraphOptions({ noInsert: ['a', 'a.b', 'ab.c', 'a.b.c', 'x.a'] });
       const rebased = options.rebasedOptions(createNode('a'));
-      expect(rebased.options.noInsert).to.eql(['b', 'b.c']);
+      expect(rebased.options.noInsert).toEqual(['b', 'b.c']);
     });
   });
 });

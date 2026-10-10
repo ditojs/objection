@@ -1,16 +1,16 @@
-const expect = require('expect.js');
-const { Model, ref, val, raw } = require('../../');
-const { cloneDeep } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { Model, ref, val, raw } from 'objection';
+import { cloneDeep } from '../../testUtils/testUtils.js';
 
 function expectIdsEqual(resultArray, expectedIds) {
   expectArraysEqual(resultArray.map((it) => it.id).sort(), expectedIds);
 }
 
 function expectArraysEqual(arr1, arr2) {
-  expect({ arr: arr1 }).to.eql({ arr: arr2 });
+  expect({ arr: arr1 }).toEqual({ arr: arr2 });
 }
 
-module.exports = (session) => {
+export default (session) => {
   describe('JSON queries', () => {
     class ModelJson extends Model {
       static get tableName() {
@@ -32,7 +32,7 @@ module.exports = (session) => {
 
     let BoundModel = ModelJson.bindKnex(session.knex);
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('ModelJson')
         .createTable('ModelJson', (table) => {
@@ -45,7 +45,7 @@ module.exports = (session) => {
 
     describe('QueryBuilder using ref() in normal query builder methods', () => {
       describe('Querying rows', () => {
-        before(() => {
+        beforeAll(() => {
           return BoundModel.query()
             .delete()
             .then(() => {
@@ -63,8 +63,8 @@ module.exports = (session) => {
             .select(ref('jsonArray:[0]').as('foo'))
             .orderBy('foo', 'desc')
             .then((result) => {
-              expect(result).to.have.length(4);
-              expect(result[0]).eql({ foo: 4 });
+              expect(result).toHaveLength(4);
+              expect(result[0]).toEqual({ foo: 4 });
             });
         });
 
@@ -73,8 +73,8 @@ module.exports = (session) => {
             .select([ref('jsonObject:attr').castBigInt().as('bar'), ref('jsonArray:[0]').as('foo')])
             .orderBy('foo')
             .then((result) => {
-              expect(result).to.have.length(4);
-              expect(result[0]).eql({ foo: 1, bar: null });
+              expect(result).toHaveLength(4);
+              expect(result[0]).toEqual({ foo: 1, bar: null });
             });
         });
 
@@ -93,9 +93,9 @@ module.exports = (session) => {
             ])
             .orderBy('firstArrayItem', 'desc')
             .then((result) => {
-              expect(result).to.have.length(4);
+              expect(result).toHaveLength(4);
               // foo is always name of the last row of the table (quite a nonsense query)
-              expect(result[0]).eql({ foo: 'test4', firstArrayItem: 4 });
+              expect(result[0]).toEqual({ foo: 'test4', firstArrayItem: 4 });
             });
         });
 
@@ -103,7 +103,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where(ref('jsonArray:[0]').castBigInt(), ref('jsonObject:attr').castBigInt())
             .then((result) => {
-              expect(result).to.have.length(3);
+              expect(result).toHaveLength(3);
             });
         });
 
@@ -113,7 +113,7 @@ module.exports = (session) => {
               builder.where(ref('jsonArray:[0]').castBigInt(), ref('jsonObject:attr').castBigInt());
             })
             .then((result) => {
-              expect(result).to.have.length(3);
+              expect(result).toHaveLength(3);
             });
         });
 
@@ -123,7 +123,7 @@ module.exports = (session) => {
             .join('ModelJson as t2', ref('ModelJson.jsonArray:[0]'), '=', ref('t2.jsonObject:attr'))
             .select('t2.*')
             .then((result) => {
-              expect(result).to.have.length(3);
+              expect(result).toHaveLength(3);
             });
         });
 
@@ -140,7 +140,7 @@ module.exports = (session) => {
             })
             .select('t2.*')
             .then((result) => {
-              expect(result).to.have.length(3);
+              expect(result).toHaveLength(3);
             });
         });
 
@@ -148,9 +148,9 @@ module.exports = (session) => {
           return BoundModel.query()
             .orderBy(ref('jsonObject:attr'), 'desc')
             .then((result) => {
-              expect(result).to.have.length(4);
+              expect(result).toHaveLength(4);
               // null is first
-              expect(result[0].name).to.equal('test1');
+              expect(result[0].name).toBe('test1');
             });
         });
 
@@ -161,8 +161,8 @@ module.exports = (session) => {
             .having('id', '>=', ref('jsonObject:attr').castInt())
             .orderBy('foo')
             .then((result) => {
-              expect(result).to.have.length(3);
-              expect(result[0]).to.eql({ id: 2, foo: 2 });
+              expect(result).toHaveLength(3);
+              expect(result[0]).toEqual({ id: 2, foo: 2 });
             });
         });
 
@@ -173,8 +173,8 @@ module.exports = (session) => {
             .having(ref('id').castInt(), '>=', ref('jsonObject:attr').castInt())
             .orderBy('foo')
             .then((result) => {
-              expect(result).to.have.length(3);
-              expect(result[0]).to.eql({ id: 2, foo: 2 });
+              expect(result).toHaveLength(3);
+              expect(result[0]).toEqual({ id: 2, foo: 2 });
             });
         });
 
@@ -190,8 +190,8 @@ module.exports = (session) => {
             })
             .orderBy('foo')
             .then((result) => {
-              expect(result).to.have.length(3);
-              expect(result[0]).to.eql({ id: 2, foo: 2 });
+              expect(result).toHaveLength(3);
+              expect(result[0]).toEqual({ id: 2, foo: 2 });
             });
         });
       });
@@ -230,7 +230,7 @@ module.exports = (session) => {
               jsonArray: BoundModel.knex().raw('to_jsonb(??)', ['name']),
             })
             .then((result) => {
-              expect(result).to.be(4);
+              expect(result).toBe(4);
             });
         });
 
@@ -252,7 +252,7 @@ module.exports = (session) => {
             .where('id', 1)
             .returning('*')
             .then((result) => {
-              expect(result).to.eql([
+              expect(result).toEqual([
                 {
                   id: 1,
                   name: '1',
@@ -274,7 +274,7 @@ module.exports = (session) => {
             .where('id', 1)
             .returning('*')
             .then((result) => {
-              expect(result).to.eql([
+              expect(result).toEqual([
                 {
                   id: 1,
                   name: '1',
@@ -293,7 +293,7 @@ module.exports = (session) => {
             .findById(1)
             .then(() => BoundModel.query().findById(1).select('jsonObject'))
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 jsonObject: { attr: [1, 2, 5, 7] },
               });
             });
@@ -307,7 +307,7 @@ module.exports = (session) => {
             .where('id', 1)
             .then(() => BoundModel.query().findById(1).select('jsonObject'))
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 jsonObject: { attr: { foo: 'bar' } },
               });
             });
@@ -321,7 +321,7 @@ module.exports = (session) => {
             .where('id', 2)
             .then(() => BoundModel.query().findById(2).select('jsonObject'))
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 jsonObject: { attr: 'baz' },
               });
             });
@@ -335,7 +335,7 @@ module.exports = (session) => {
             .where('id', 2)
             .then(() => BoundModel.query().findById(2).select('jsonObject'))
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 jsonObject: { attr: 'baz' },
               });
             });
@@ -350,7 +350,7 @@ module.exports = (session) => {
             .where('id', 2)
             .then(() => BoundModel.query().findById(2).select('jsonObject'))
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 jsonObject: {
                   attr: 2,
                   attr1: 'foo',
@@ -373,7 +373,7 @@ module.exports = (session) => {
               return BoundModel.query().findById(1).select('name', 'jsonObject');
             })
             .then((result) => {
-              expect(result).to.eql({
+              expect(result).toEqual({
                 name: 'updated name',
                 jsonObject: {
                   attr: 'bar',
@@ -385,7 +385,7 @@ module.exports = (session) => {
         it('should not have the json reference property in the result object', async () => {
           const item = await BoundModel.query().findById(1);
           await item.$query().patch({ 'jsonObject:attr': 'bar' }).returning('*');
-          expect(item).to.eql({
+          expect(item).toEqual({
             id: 1,
             name: 'test1',
             jsonObject: { attr: 'bar' },
@@ -410,7 +410,7 @@ module.exports = (session) => {
           const result = await BoundModel.query()
             .select('id', ref('jsonObject:[""].a').as('a'), ref("jsonObject:['x, y']").as('xy'))
             .where(ref("jsonObject:[''].a").castInt(), 2);
-          expect(result).to.eql([{ id: 2, a: 2, xy: 2 }]);
+          expect(result).toEqual([{ id: 2, a: 2, xy: 2 }]);
         });
 
         it('should be able to use empty keys in json where methods', async () => {
@@ -421,7 +421,7 @@ module.exports = (session) => {
         it('should be able to patch empty keys', async () => {
           await BoundModel.query().findById(1).patch({ 'jsonObject:[""].a': 3 });
           const item = await BoundModel.query().findById(1);
-          expect(item.jsonObject).to.eql({ '': { a: 3 }, 'x, y': 1 });
+          expect(item.jsonObject).toEqual({ '': { a: 3 }, 'x, y': 1 });
         });
       });
 
@@ -453,7 +453,7 @@ module.exports = (session) => {
               .select('id', ref(`${expr(key)}.a`).as('a'))
               .where(ref(`${expr(key)}.a`).castInt(), 1)
               .orWhere(ref(`${expr(key)}.a`), 2);
-            expect(result).to.eql([{ id: 1, a: 1 }]);
+            expect(result).toEqual([{ id: 1, a: 1 }]);
           });
 
           it(`should use a key with ${name} in json where methods`, async () => {
@@ -469,17 +469,17 @@ module.exports = (session) => {
               .findById(1)
               .patch({ [`${expr(key)}.a`]: 3 });
             const items = await BoundModel.query().orderBy('id');
-            expect(items[0].jsonObject[key]).to.eql({ a: 3 });
+            expect(items[0].jsonObject[key]).toEqual({ a: 3 });
             expect(
               Object.fromEntries(Object.entries(items[0].jsonObject).filter(([k]) => k !== key)),
-            ).to.eql(
+            ).toEqual(
               Object.fromEntries(
                 Object.entries(keys)
                   .filter(([n]) => n !== name)
                   .map(([, k]) => [k, { a: 1 }]),
               ),
             );
-            expect(items[1].jsonObject).to.eql({ x: { a: 2 } });
+            expect(items[1].jsonObject).toEqual({ x: { a: 2 } });
           });
         }
       });
@@ -518,7 +518,7 @@ module.exports = (session) => {
         it('should be able to patch fields of json columns', async () => {
           await StrictModel.query().findById(1).patch({ 'jsonObject:other': 'foo' });
           const item = await StrictModel.query().findById(1);
-          expect(item.jsonObject).to.eql({ attr: 1, other: 'foo' });
+          expect(item.jsonObject).toEqual({ attr: 1, other: 'foo' });
         });
 
         it('should validate patched fields against the json column schema', async () => {
@@ -530,8 +530,8 @@ module.exports = (session) => {
             error = err;
           }
 
-          expect(error).to.be.a(StrictModel.ValidationError);
-          expect(error.data).to.have.key('jsonObject.unknown');
+          expect(error).toBeInstanceOf(StrictModel.ValidationError);
+          expect(Object.keys(error.data)).toContain('jsonObject.unknown');
 
           error = null;
 
@@ -541,11 +541,11 @@ module.exports = (session) => {
             error = err;
           }
 
-          expect(error).to.be.a(StrictModel.ValidationError);
-          expect(error.data).to.have.key('jsonObject.other');
+          expect(error).toBeInstanceOf(StrictModel.ValidationError);
+          expect(Object.keys(error.data)).toContain('jsonObject.other');
 
           const item = await StrictModel.query().findById(1);
-          expect(item.jsonObject).to.eql({ attr: 1 });
+          expect(item.jsonObject).toEqual({ attr: 1 });
         });
       });
     });
@@ -553,7 +553,7 @@ module.exports = (session) => {
     describe('QueryBuilder JSON queries', () => {
       let complexJsonObj;
 
-      before(() => {
+      beforeAll(() => {
         complexJsonObj = {
           id: 1,
           name: 'complex line',
@@ -636,7 +636,7 @@ module.exports = (session) => {
 
       it('should have test data', () => {
         return BoundModel.query().then((all) => {
-          expect(all.find((it) => it.name === 'complex line').jsonObject.stringField).to.be(
+          expect(all.find((it) => it.name === 'complex line').jsonObject.stringField).toBe(
             complexJsonObj.jsonObject.stringField,
           );
         });
@@ -646,7 +646,7 @@ module.exports = (session) => {
         it('should quote ModelJson.jsonArray column reference properly', () => {
           expect(
             BoundModel.query().whereJsonIsArray('ModelJson.jsonArray').toKnexQuery().toString(),
-          ).to.contain('"ModelJson"."jsonArray"');
+          ).toContain('"ModelJson"."jsonArray"');
         });
 
         it('should quote ModelJson.jsonArray:[10] column reference properly', () => {
@@ -655,7 +655,7 @@ module.exports = (session) => {
               .whereJsonIsArray('ModelJson.jsonArray:[50]')
               .toKnexQuery()
               .toString(),
-          ).to.contain('"ModelJson"."jsonArray"');
+          ).toContain('"ModelJson"."jsonArray"');
         });
       });
 
@@ -688,7 +688,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonArray', val({}))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -696,7 +696,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonObject', val([]))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -728,7 +728,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonObject', val({ a: '1' }))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -744,7 +744,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where(ref('jsonArray:[0].arrayField[0]'), val({ noMoreLevels: false }))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -776,7 +776,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonArray', val([2, 1]))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -869,7 +869,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonSupersetOf('jsonArray', {})
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -877,7 +877,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonArray', '@>', val({}))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -885,7 +885,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonSupersetOf('jsonObject', [])
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -893,7 +893,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonObject', '@>', val([]))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -987,7 +987,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonSupersetOf('jsonObject:objectField', obj)
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -998,7 +998,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where(ref('jsonObject:objectField'), '@>', val(obj))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1008,7 +1008,7 @@ module.exports = (session) => {
               object: 'something else',
             })
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1022,7 +1022,7 @@ module.exports = (session) => {
               }),
             )
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1128,7 +1128,7 @@ module.exports = (session) => {
             .skipUndefined()
             .orWhereJsonSupersetOf('jsonObject', undefined)
             .then((results) => {
-              expect(results.length).to.equal(7);
+              expect(results.length).toBe(7);
             });
         });
       });
@@ -1154,7 +1154,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonSubsetOf('jsonArray', {})
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1162,7 +1162,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonArray', '<@', val({}))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1170,7 +1170,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonSubsetOf('jsonObject', [])
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1178,7 +1178,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .where('jsonObject', '<@', val([]))
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1258,7 +1258,7 @@ module.exports = (session) => {
               object: 'something else',
             })
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1272,7 +1272,7 @@ module.exports = (session) => {
               }),
             )
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1342,7 +1342,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonIsArray('jsonObject:objectField')
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1397,7 +1397,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonIsObject('jsonObject:arrayField')
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1405,7 +1405,7 @@ module.exports = (session) => {
           return BoundModel.query()
             .whereJsonIsObject('jsonObject:arrayField.imNot')
             .then((results) => {
-              expect(results).to.have.length(0);
+              expect(results).toHaveLength(0);
             });
         });
 
@@ -1448,40 +1448,16 @@ module.exports = (session) => {
       });
 
       describe('.whereJsonHasAny(fieldExpr, keys) and .whereJsonHasAll(fieldExpr, keys)', () => {
-        it('should throw error if null in input array', (done) => {
-          BoundModel.query()
-            .whereJsonHasAny('jsonObject', [null])
-            .then(() => {
-              done(new Error('should not get here'));
-            })
-            .catch((err) => {
-              done();
-            })
-            .catch(done);
+        it('should throw error if null in input array', () => {
+          return expect(BoundModel.query().whereJsonHasAny('jsonObject', [null])).rejects.toThrow();
         });
 
-        it('should throw error if number in input array', (done) => {
-          BoundModel.query()
-            .whereJsonHasAny('jsonObject', 1)
-            .then(() => {
-              done(new Error('should not get here'));
-            })
-            .catch((err) => {
-              done();
-            })
-            .catch(done);
+        it('should throw error if number in input array', () => {
+          return expect(BoundModel.query().whereJsonHasAny('jsonObject', 1)).rejects.toThrow();
         });
 
-        it('should throw error if boolean in input array', (done) => {
-          BoundModel.query()
-            .whereJsonHasAny('jsonObject', false)
-            .then(() => {
-              done(new Error('should not get here'));
-            })
-            .catch((err) => {
-              done();
-            })
-            .catch(done);
+        it('should throw error if boolean in input array', () => {
+          return expect(BoundModel.query().whereJsonHasAny('jsonObject', false)).rejects.toThrow();
         });
 
         it('should find results for a', () => {
@@ -1565,9 +1541,9 @@ module.exports = (session) => {
             .range(0, 1)
             .whereJsonHasAny('jsonObject:b', '2')
             .then((result) => {
-              expect(result.results).to.have.length(1);
-              expect(result.total).to.equal(1);
-              expect(result.results[0].id).to.equal(7);
+              expect(result.results).toHaveLength(1);
+              expect(result.total).toBe(1);
+              expect(result.results[0].id).toBe(7);
             });
         });
       });

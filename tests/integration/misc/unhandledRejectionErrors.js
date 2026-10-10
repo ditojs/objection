@@ -1,6 +1,6 @@
-const expect = require('expect.js');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-module.exports = (session) => {
+export default (session) => {
   // Tests that various queries that start multiple queries behind the scenes
   // don't cause unhandled rejection errors if one of the queries fail.
   describe('unhandler rejection errors', () => {
@@ -12,12 +12,12 @@ module.exports = (session) => {
       unhandledErrors.push(err);
     };
 
-    before(() => {
-      session.addUnhandledRejectionHandler(unhandledRejectionHandler);
+    beforeAll(() => {
+      process.on('unhandledRejection', unhandledRejectionHandler);
     });
 
-    after(() => {
-      session.removeUnhandledRejectionHandler(unhandledRejectionHandler);
+    afterAll(() => {
+      process.off('unhandledRejection', unhandledRejectionHandler);
     });
 
     beforeEach(() => {
@@ -55,16 +55,9 @@ module.exports = (session) => {
       ]);
     });
 
-    it('range', (done) => {
-      Model1.query()
-        .table('doesnt_exist')
-        .range(1, 2)
-        .then(() => done(new Error('should not get here')))
-        .catch((err) => {
-          expect(unhandledErrors).to.be.empty();
-          done();
-        })
-        .catch(done);
+    it('range', async () => {
+      await expect(Model1.query().table('doesnt_exist').range(1, 2)).rejects.toThrow();
+      expect(unhandledErrors).toHaveLength(0);
     });
   });
 };

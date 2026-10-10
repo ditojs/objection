@@ -1,13 +1,13 @@
-const { expect } = require('chai');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('asFindQuery() in static hooks ignores runAfter() of the original query #2093', () => {
     const { knex } = session;
     let Person;
     let hookResults;
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('as_find_query_person')
         .createTable('as_find_query_person', (table) => {
@@ -16,11 +16,11 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('as_find_query_person');
     });
 
-    before(() => {
+    beforeAll(() => {
       Person = class Person extends Model {
         static get tableName() {
           return 'as_find_query_person';
@@ -62,10 +62,10 @@ module.exports = (session) => {
           return result;
         });
 
-      expect(result).to.equal(1);
-      expect(calls).to.equal(1);
-      expect(hookResults).to.have.length(1);
-      expect(hookResults[0].map((it) => it.id)).to.eql([1]);
+      expect(result).toBe(1);
+      expect(calls).toBe(1);
+      expect(hookResults).toHaveLength(1);
+      expect(hookResults[0].map((it) => it.id)).toEqual([1]);
     });
 
     it('should not throw because of throwIfNotFound() on the original query', async () => {
@@ -78,23 +78,19 @@ module.exports = (session) => {
       }
 
       // The delete itself throws, but the hook's find query just returns no rows.
-      expect(error).to.be.an.instanceOf(Person.NotFoundError);
-      expect(hookResults).to.eql([[]]);
+      expect(error).toBeInstanceOf(Person.NotFoundError);
+      expect(hookResults).toEqual([[]]);
     });
 
     it('should return an empty array for a findById() query that finds nothing', async () => {
       const result = await Person.query().deleteById(1000);
 
-      expect(result).to.equal(0);
-      expect(hookResults).to.eql([[]]);
+      expect(result).toBe(0);
+      expect(hookResults).toEqual([[]]);
     });
 
-    it('should not traverse the results of the find query', async function () {
-      if (session.isMySql()) {
-        // MySQL doesn't support `returning()`, so there are no models to traverse.
-        return this.skip();
-      }
-
+    // MySQL doesn't support `returning()`, so there are no models to traverse.
+    it.skipIf(session.isMySql())('should not traverse the results of the find query', async () => {
       const traversed = [];
 
       await Person.query()
@@ -104,8 +100,8 @@ module.exports = (session) => {
         .traverse((model) => traversed.push(model.id));
 
       // Only the patched rows are traversed, not the rows of the hook's find query.
-      expect(traversed).to.eql([2]);
-      expect(hookResults[0].map((it) => it.id)).to.eql([2]);
+      expect(traversed).toEqual([2]);
+      expect(hookResults[0].map((it) => it.id)).toEqual([2]);
     });
 
     it('should still run runAfter() callbacks added to the find query itself', async () => {
@@ -121,7 +117,7 @@ module.exports = (session) => {
         Person.beforeUpdate = beforeUpdate;
       }
 
-      expect(hookResults).to.eql([['Jennifer']]);
+      expect(hookResults).toEqual([['Jennifer']]);
     });
   });
 };

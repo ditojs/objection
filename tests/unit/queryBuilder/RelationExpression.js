@@ -1,9 +1,5 @@
-const chai = require('chai');
-const chaiSubset = require('chai-subset');
-const expect = require('expect.js');
-const { RelationExpression } = require('../../../');
-
-chai.use(chaiSubset);
+import { describe, it, expect } from 'vitest';
+import { RelationExpression } from 'objection';
 
 describe('RelationExpression', () => {
   describe('parse', () => {
@@ -1300,7 +1296,7 @@ describe('RelationExpression', () => {
         items.push({ exprName: expr.node.$name, relation });
       });
 
-      expect(items).to.eql([
+      expect(items).toEqual([
         { exprName: 'a', relation: 'aa' },
         { exprName: 'b', relation: 'bb' },
         { exprName: 'd', relation: 'dd' },
@@ -1333,7 +1329,7 @@ describe('RelationExpression', () => {
         });
       });
 
-      expect(items).to.eql([
+      expect(items).toEqual([
         { exprName: 'a', relation: 'aa' },
         { exprName: 'a', relation: 'aa' },
         { exprName: 'a', relation: 'aa' },
@@ -1366,7 +1362,7 @@ describe('RelationExpression', () => {
         });
       });
 
-      expect(items).to.eql([
+      expect(items).toEqual([
         { exprName: 'a', relation: 'aa' },
         { exprName: 'a', relation: 'aa' },
       ]);
@@ -1404,7 +1400,7 @@ describe('RelationExpression', () => {
         });
       });
 
-      expect(items).to.eql([
+      expect(items).toEqual([
         { exprName: 'a', relation: 'aa' },
         { exprName: 'b', relation: 'bb' },
         { exprName: 'c', relation: 'cc' },
@@ -1414,61 +1410,59 @@ describe('RelationExpression', () => {
   });
 
   function testParse(str, parsed) {
-    chai.expect(RelationExpression.create(str).node).to.containSubset(parsed);
+    expect(RelationExpression.create(str).node).toContainSubset(parsed);
   }
 
   function testClone(expr, cloned) {
-    chai.expect(RelationExpression.create(expr).clone().node).to.containSubset(cloned);
+    expect(RelationExpression.create(expr).clone().node).toContainSubset(cloned);
   }
 
   function testMerge(str1, str2, parsed) {
     it(str1 + ' + ' + str2 + ' --> ' + parsed, () => {
-      expect(RelationExpression.create(str1).merge(str2).toString()).to.equal(parsed);
+      expect(RelationExpression.create(str1).merge(str2).toString()).toBe(parsed);
       expect(
         RelationExpression.create(str1).merge(RelationExpression.create(str2)).toString(),
-      ).to.equal(parsed);
+      ).toBe(parsed);
     });
   }
 
   function testPath(str, path, expected) {
-    chai
-      .expect(
-        RelationExpression.create(str)
-          .expressionsAtPath(path)
-          .map((it) => it.node),
-      )
-      .to.containSubset(expected);
+    expect(
+      RelationExpression.create(str)
+        .expressionsAtPath(path)
+        .map((it) => it.node),
+    ).toContainSubset(expected);
   }
 
   function testToString(str) {
     it(str, () => {
-      expect(RelationExpression.create(str).toString()).to.equal(str);
+      expect(RelationExpression.create(str).toString()).toBe(str);
     });
   }
 
   function testToJSON(str, expectedJson) {
     it(str, () => {
       const json = RelationExpression.create(str).toJSON();
-      expect(json).to.eql(expectedJson);
-      expect(RelationExpression.create(json).toString()).to.eql(str);
+      expect(json).toEqual(expectedJson);
+      expect(RelationExpression.create(json).toString()).toEqual(str);
     });
   }
 
   function testParseFail(str) {
     expect(() => {
       RelationExpression.create(str);
-    }).to.throwException();
+    }).toThrow();
   }
 
   function testSubExpression(str, subStr) {
     it('"' + subStr + '" is a sub expression of "' + str + '"', () => {
-      expect(RelationExpression.create(str).isSubExpression(subStr)).to.equal(true);
+      expect(RelationExpression.create(str).isSubExpression(subStr)).toBe(true);
     });
   }
 
   function testNotSubExpression(str, subStr) {
     it('"' + subStr + '" is not a sub expression of "' + str + '"', () => {
-      expect(RelationExpression.create(str).isSubExpression(subStr)).to.equal(false);
+      expect(RelationExpression.create(str).isSubExpression(subStr)).toBe(false);
     });
   }
 });

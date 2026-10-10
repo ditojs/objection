@@ -1,5 +1,5 @@
-const expect = require('expect.js'),
-  parser = require('../../../lib/queryBuilder/parsers/jsonFieldExpressionParser.js');
+import { describe, it, expect } from 'vitest';
+import * as parser from '../../../lib/queryBuilder/parsers/jsonFieldExpressionParser.js';
 
 describe('jsonFieldExpressionParser', () => {
   // basic index and field references
@@ -112,12 +112,12 @@ describe('jsonFieldExpressionParser', () => {
     it('should fail if wrong start rule in parser options', () => {
       expect(() => {
         parser.parse('col', { startRule: 'undefined is not a function' });
-      }).to.throwException();
+      }).toThrow();
     });
 
     it('should be able to give start rule as parameter', () => {
       let result = parser.parse('col', { startRule: 'start' });
-      expect(result.columnName).to.be('col');
+      expect(result.columnName).toBe('col');
     });
   });
 });
@@ -126,7 +126,7 @@ function testParsing(expr, expected) {
   it(expr, () => {
     let result = parser.parse(expr);
     let resultArray = [result.columnName].concat(result.access.map((it) => it.ref));
-    expect(JSON.stringify(resultArray)).to.eql(JSON.stringify(expected));
+    expect(JSON.stringify(resultArray)).toEqual(JSON.stringify(expected));
   });
 }
 
@@ -134,6 +134,6 @@ function testFail(expr) {
   it(expr + ' should fail', () => {
     expect(() => {
       parser.parse(expr);
-    }).to.throwException();
+    }).toThrow();
   });
 }

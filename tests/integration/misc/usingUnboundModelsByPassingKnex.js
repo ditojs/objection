@@ -1,8 +1,8 @@
-const expect = require('expect.js');
-const { createRejectionReflection, sortBy } = require('../../../testUtils/testUtils');
-const { try: promiseTry } = require('../../../lib/utils/promiseUtils');
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createRejectionReflection, sortBy } from '../../../testUtils/testUtils.js';
+import { try as promiseTry } from '../../../lib/utils/promiseUtils/index.js';
 
-module.exports = (session) => {
+export default (session) => {
   describe('using unbound models by passing a knex to query', () => {
     let Model1 = session.unboundModels.Model1;
     let Model2 = session.unboundModels.Model2;
@@ -80,7 +80,7 @@ module.exports = (session) => {
       const query = Model1.query().orWhereNot('id', '>', 10).whereIn('id', [1, 8, 11]);
 
       return query.knex(session.knex).then((models) => {
-        expect(models[0].model1Prop1).to.equal('hello 1');
+        expect(models[0].model1Prop1).toBe('hello 1');
       });
     });
 
@@ -88,7 +88,7 @@ module.exports = (session) => {
       const query = Model1.query().findById(1);
 
       return query.knex(session.knex).then((model) => {
-        expect(model.model1Prop1).to.equal('hello 1');
+        expect(model.model1Prop1).toBe('hello 1');
       });
     });
 
@@ -102,7 +102,7 @@ module.exports = (session) => {
       const query = TestModel.query().findById([1, 'hello 1']);
 
       return query.knex(session.knex).then((model) => {
-        expect(model.model1Prop1).to.equal('hello 1');
+        expect(model.model1Prop1).toBe('hello 1');
       });
     });
 
@@ -129,7 +129,7 @@ module.exports = (session) => {
           ),
       ]).then((results) => {
         results.forEach((models) => {
-          expect(sortRelations(models)).to.eql({
+          expect(sortRelations(models)).toEqual({
             id: 1,
             model1Id: 2,
             model1Prop1: 'hello 1',
@@ -210,7 +210,7 @@ module.exports = (session) => {
         const query = Model1.query().whereIn('id', Model1.query().select('id').where('id', 5));
 
         return query.knex(session.knex).then((models) => {
-          expect(models[0].model1Prop1).to.equal('hello 5');
+          expect(models[0].model1Prop1).toBe('hello 5');
         });
       });
 
@@ -224,7 +224,7 @@ module.exports = (session) => {
         );
 
         return query.knex(session.knex).then((models) => {
-          expect(models[0].id).to.equal(3);
+          expect(models[0].id).toBe(3);
         });
       });
 
@@ -234,7 +234,7 @@ module.exports = (session) => {
           .select('Model1.*', Model1.relatedQuery('model1Relation2').count().as('count'));
 
         return query.knex(session.knex).then((model) => {
-          expect(model.count).to.eql(2);
+          expect(Number(model.count)).toBe(2);
         });
       });
     });
@@ -266,7 +266,7 @@ module.exports = (session) => {
               return model.$relatedQuery('model2Relation1', session.knex);
             }),
         ]).then((results) => {
-          expect(results[0]).to.eql({
+          expect(results[0]).toEqual({
             id: 2,
             model1Id: 3,
             model1Prop1: 'hello 2',
@@ -274,7 +274,7 @@ module.exports = (session) => {
             $afterFindCalled: 1,
           });
 
-          expect(results[1]).to.eql({
+          expect(results[1]).toEqual({
             id: 1,
             model1Id: 2,
             model1Prop1: 'hello 1',
@@ -282,7 +282,7 @@ module.exports = (session) => {
             $afterFindCalled: 1,
           });
 
-          expect(sortBy(results[2], 'idCol')).to.eql([
+          expect(sortBy(results[2], 'idCol')).toEqual([
             {
               idCol: 1,
               model1Id: 1,
@@ -299,7 +299,7 @@ module.exports = (session) => {
             },
           ]);
 
-          expect(sortBy(results[3], 'id')).to.eql([
+          expect(sortBy(results[3], 'id')).toEqual([
             {
               id: 5,
               model1Id: null,
@@ -330,7 +330,7 @@ module.exports = (session) => {
               return model.$query(session.knex);
             }),
         ]).then((model) => {
-          expect(model).to.eql([
+          expect(model).toEqual([
             {
               id: 1,
               model1Id: 2,
@@ -347,7 +347,7 @@ module.exports = (session) => {
           .$query(session.knex)
           .insert()
           .then((model) => {
-            expect(model).to.eql({
+            expect(model).toEqual({
               id: 100,
               model1Prop1: 'foo',
               $afterInsertCalled: 1,
@@ -361,7 +361,7 @@ module.exports = (session) => {
           .$query(session.knex)
           .insertAndFetch()
           .then((model) => {
-            expect(model).to.eql({
+            expect(model).toEqual({
               id: 101,
               model1Id: null,
               model1Prop1: 'foo',
@@ -378,7 +378,7 @@ module.exports = (session) => {
         .select('Model1.id as id', 'model1Relation1.id as relId')
         .innerJoinRelated('model1Relation1')
         .then((models) => {
-          expect(sortBy(models, 'id')).to.eql([
+          expect(sortBy(models, 'id')).toEqual([
             { id: 1, relId: 2, $afterFindCalled: 1 },
             { id: 2, relId: 3, $afterFindCalled: 1 },
             { id: 3, relId: 4, $afterFindCalled: 1 },
@@ -392,7 +392,7 @@ module.exports = (session) => {
         .select('Model1.id as id', 'model1Relation3.id_col as relId')
         .innerJoinRelated('model1Relation3')
         .then((models) => {
-          expect(sortBy(models, 'id')).to.eql([
+          expect(sortBy(models, 'id')).toEqual([
             { id: 5, relId: 2, $afterFindCalled: 1 },
             { id: 6, relId: 2, $afterFindCalled: 1 },
           ]);
@@ -470,8 +470,8 @@ module.exports = (session) => {
         }).catch((err) => createRejectionReflection(err)),
       ]).then((results) => {
         results.forEach((result) => {
-          expect(result.isRejected()).to.equal(true);
-          expect(result.reason().message).to.match(
+          expect(result.isRejected()).toBe(true);
+          expect(result.reason().message).toMatch(
             /no database connection available for a query. You need to bind the model class or the query to a knex instance./,
           );
         });

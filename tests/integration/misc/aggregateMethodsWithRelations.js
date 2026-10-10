@@ -1,6 +1,6 @@
-const expect = require('expect.js');
+import { describe, it, expect, beforeEach } from 'vitest';
 
-module.exports = (session) => {
+export default (session) => {
   describe('aggregate methods with relations', () => {
     beforeEach(() => {
       return session.populate([
@@ -27,8 +27,8 @@ module.exports = (session) => {
         .groupBy('Model1.id')
         .orderBy('Model1.model1Prop1')
         .then((models) => {
-          expect(models[0].relCount).to.eql(3);
-          expect(models[1].relCount).to.eql(2);
+          expect(Number(models[0].relCount)).toBe(3);
+          expect(Number(models[1].relCount)).toBe(2);
         });
     });
   });

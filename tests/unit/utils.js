@@ -1,8 +1,8 @@
-const expect = require('expect.js');
-const classUtils = require('../../lib/utils/classUtils');
-const { delay, range } = require('../../testUtils/testUtils');
+import { describe, it, expect } from 'vitest';
+import * as classUtils from '../../lib/utils/classUtils.js';
+import { delay, range } from '../../testUtils/testUtils.js';
 
-const {
+import {
   snakeCase,
   camelCase,
   snakeCaseKeys,
@@ -10,11 +10,11 @@ const {
   snakeCaseMappers,
   knexSnakeCaseMappers,
   knexIdentifierMapping,
-} = require('../../lib/utils/identifierMapping');
+} from '../../lib/utils/identifierMapping.js';
 
-const { compose, mixin } = require('../../lib/utils/mixin');
-const { map } = require('../../lib/utils/promiseUtils');
-const { cloneDeep, jsonEquals, uniqBy, union } = require('../../lib/utils/objectUtils');
+import { compose, mixin } from '../../lib/utils/mixin.js';
+import { map } from '../../lib/utils/promiseUtils/index.js';
+import { cloneDeep, jsonEquals, uniqBy, union } from '../../lib/utils/objectUtils.js';
 
 describe('utils', () => {
   describe('mixin', () => {
@@ -38,19 +38,19 @@ describe('utils', () => {
       const Y = mixin(X, m1, m2);
       const y = new Y();
 
-      expect(y.f()).to.equal(2);
+      expect(y.f()).toBe(2);
 
       if (process.version >= 'v8.0.0') {
-        expect(Y.name).to.equal('X');
+        expect(Y.name).toBe('X');
       }
 
       const Z = mixin(X, [m1, m2]);
       const z = new Z();
 
-      expect(z.f()).to.equal(2);
+      expect(z.f()).toBe(2);
 
       if (process.version >= 'v8.0.0') {
-        expect(Z.name).to.equal('X');
+        expect(Z.name).toBe('X');
       }
     });
   });
@@ -79,19 +79,19 @@ describe('utils', () => {
       const Y = m3(X);
       const y = new Y();
 
-      expect(y.f()).to.equal(2);
+      expect(y.f()).toBe(2);
 
       if (process.version >= 'v8.0.0') {
-        expect(Y.name).to.equal('X');
+        expect(Y.name).toBe('X');
       }
 
       const Z = m4(X);
       const z = new Z();
 
-      expect(z.f()).to.equal(2);
+      expect(z.f()).toBe(2);
 
       if (process.version >= 'v8.0.0') {
-        expect(Z.name).to.equal('X');
+        expect(Z.name).toBe('X');
       }
     });
   });
@@ -206,11 +206,13 @@ describe('utils', () => {
         backToCamel = backToCamel || camel;
 
         it(`${camel} --> ${snake} --> ${backToCamel}`, () => {
-          expect(snakeCase(camel)).to.equal(snake);
-          expect(snakeCaseKeys({ [camel]: 'foo' })).to.eql({ [snake]: 'foo' });
+          expect(snakeCase(camel)).toBe(snake);
+          expect(snakeCaseKeys({ [camel]: 'foo' })).toEqual({ [snake]: 'foo' });
 
-          expect(camelCase(snakeCase(camel))).to.equal(backToCamel);
-          expect(camelCaseKeys(snakeCaseKeys({ [camel]: 'foo' }))).to.eql({ [backToCamel]: 'foo' });
+          expect(camelCase(snakeCase(camel))).toBe(backToCamel);
+          expect(camelCaseKeys(snakeCaseKeys({ [camel]: 'foo' }))).toEqual({
+            [backToCamel]: 'foo',
+          });
         });
       }
 
@@ -219,8 +221,8 @@ describe('utils', () => {
         const opt = { underscoreBeforeDigits: true };
 
         it(`${camel} --> ${snake} --> ${backToCamel}`, () => {
-          expect(snakeCase(camel, opt)).to.equal(snake);
-          expect(camelCase(snakeCase(camel, opt), opt)).to.equal(backToCamel);
+          expect(snakeCase(camel, opt)).toBe(snake);
+          expect(camelCase(snakeCase(camel, opt), opt)).toBe(backToCamel);
         });
       }
 
@@ -229,8 +231,8 @@ describe('utils', () => {
         const opt = { underscoreBetweenUppercaseLetters: true };
 
         it(`${camel} --> ${snake} --> ${backToCamel}`, () => {
-          expect(snakeCase(camel, opt)).to.equal(snake);
-          expect(camelCase(snakeCase(camel, opt), opt)).to.equal(backToCamel);
+          expect(snakeCase(camel, opt)).toBe(snake);
+          expect(camelCase(snakeCase(camel, opt), opt)).toBe(backToCamel);
         });
       }
 
@@ -239,15 +241,15 @@ describe('utils', () => {
         const opt = { noDoubleUnderscores: true, ...extraOpt };
 
         it(`${camel} --> ${snake} --> ${backToCamel} (${JSON.stringify(opt)})`, () => {
-          expect(snakeCase(camel, opt)).to.equal(snake);
-          expect(camelCase(snakeCase(camel, opt), opt)).to.equal(backToCamel);
+          expect(snakeCase(camel, opt)).toBe(snake);
+          expect(camelCase(snakeCase(camel, opt), opt)).toBe(backToCamel);
 
           const mappers = snakeCaseMappers(opt);
-          expect(mappers.format({ [camel]: 1 })).to.eql({ [snake]: 1 });
+          expect(mappers.format({ [camel]: 1 })).toEqual({ [snake]: 1 });
 
           const knexMappers = knexSnakeCaseMappers(opt);
-          expect(knexMappers.wrapIdentifier(camel, (id) => id)).to.equal(snake);
-          expect(knexMappers.postProcessResponse({ [snake]: 1 })).to.eql({ [backToCamel]: 1 });
+          expect(knexMappers.wrapIdentifier(camel, (id) => id)).toBe(snake);
+          expect(knexMappers.postProcessResponse({ [snake]: 1 })).toEqual({ [backToCamel]: 1 });
         });
       }
     });
@@ -262,7 +264,7 @@ describe('utils', () => {
             'jsonCol:someKey.otherKey': 2,
             fooBar: 3,
           }),
-        ).to.eql({
+        ).toEqual({
           'json_col:[0][inner_key]': 1,
           'json_col:some_key.other_key': 2,
           foo_bar: 3,
@@ -280,7 +282,7 @@ describe('utils', () => {
             'json_col:someKey': 4,
             fooBar: 5,
           }),
-        ).to.eql({
+        ).toEqual({
           'json_col:[0][innerKey]': 1,
           'json_col:someKey.otherKey': 2,
           'json_col:[a:bC]': 3,
@@ -292,7 +294,7 @@ describe('utils', () => {
       it('combines `preserveJsonKeys` with other options', () => {
         const mappers = snakeCaseMappers({ preserveJsonKeys: true, upperCase: true });
 
-        expect(mappers.format({ 'jsonCol:someKey': 1, fooBar: 2 })).to.eql({
+        expect(mappers.format({ 'jsonCol:someKey': 1, fooBar: 2 })).toEqual({
           'JSON_COL:someKey': 1,
           FOO_BAR: 2,
         });
@@ -301,7 +303,7 @@ describe('utils', () => {
       it('`preserveJsonKeys` does not affect parse', () => {
         const mappers = snakeCaseMappers({ preserveJsonKeys: true });
 
-        expect(mappers.parse({ foo_bar: 1, 'rel:some_prop': 2 })).to.eql(
+        expect(mappers.parse({ foo_bar: 1, 'rel:some_prop': 2 })).toEqual(
           snakeCaseMappers().parse({ foo_bar: 1, 'rel:some_prop': 2 }),
         );
       });
@@ -322,7 +324,7 @@ describe('utils', () => {
       it('only maps the top level keys by default (unchanged behaviour)', () => {
         const mappers = knexSnakeCaseMappers();
 
-        expect(mappers.postProcessResponse(rows())).to.eql([
+        expect(mappers.postProcessResponse(rows())).toEqual([
           {
             someTable: { id: 1, foo_bar: 'a', created_at: date, data_blob: buffer },
             otherTable: { id: 2, some_name: null, json_col: '{"foo_bar":1}' },
@@ -330,7 +332,7 @@ describe('utils', () => {
           },
         ]);
 
-        expect(mappers.postProcessResponse({ json_col: { foo_bar: 1 } })).to.eql({
+        expect(mappers.postProcessResponse({ json_col: { foo_bar: 1 } })).toEqual({
           jsonCol: { foo_bar: 1 },
         });
       });
@@ -339,20 +341,20 @@ describe('utils', () => {
         const mappers = knexSnakeCaseMappers({ mapNestedKeys: true });
         const [row] = mappers.postProcessResponse(rows());
 
-        expect(row).to.eql({
+        expect(row).toEqual({
           someTable: { id: 1, fooBar: 'a', createdAt: date, dataBlob: buffer },
           otherTable: { id: 2, someName: null, jsonCol: '{"foo_bar":1}' },
           '': { rowCount: 3 },
         });
 
-        expect(row.someTable.createdAt).to.equal(date);
-        expect(row.someTable.dataBlob).to.equal(buffer);
+        expect(row.someTable.createdAt).toBe(date);
+        expect(row.someTable.dataBlob).toBe(buffer);
       });
 
       it('maps a single nested row with `mapNestedKeys: true`', () => {
         const mappers = knexSnakeCaseMappers({ mapNestedKeys: true });
 
-        expect(mappers.postProcessResponse({ some_table: { foo_bar: [{ baz_qux: 1 }] } })).to.eql({
+        expect(mappers.postProcessResponse({ some_table: { foo_bar: [{ baz_qux: 1 }] } })).toEqual({
           someTable: { fooBar: [{ baz_qux: 1 }] },
         });
       });
@@ -362,16 +364,16 @@ describe('utils', () => {
 
         expect(
           mappers.postProcessResponse([{ some_table_foo_bar: 1, created_at: date, tags: ['a_b'] }]),
-        ).to.eql([{ someTableFooBar: 1, createdAt: date, tags: ['a_b'] }]);
+        ).toEqual([{ someTableFooBar: 1, createdAt: date, tags: ['a_b'] }]);
 
-        expect(mappers.postProcessResponse(1)).to.equal(1);
-        expect(mappers.postProcessResponse(null)).to.equal(null);
+        expect(mappers.postProcessResponse(1)).toBe(1);
+        expect(mappers.postProcessResponse(null)).toBeNull();
       });
 
       it('combines `mapNestedKeys` with other options', () => {
         const mappers = knexSnakeCaseMappers({ mapNestedKeys: true, upperCase: true });
 
-        expect(mappers.postProcessResponse([{ SOME_TABLE: { FOO_BAR: 1 } }])).to.eql([
+        expect(mappers.postProcessResponse([{ SOME_TABLE: { FOO_BAR: 1 } }])).toEqual([
           { someTable: { fooBar: 1 } },
         ]);
       });
@@ -381,13 +383,13 @@ describe('utils', () => {
 
         expect(
           knexIdentifierMapping(colToProp).postProcessResponse([{ MyTable: { MyProp: 1 } }]),
-        ).to.eql([{ myTable: { MyProp: 1 } }]);
+        ).toEqual([{ myTable: { MyProp: 1 } }]);
 
         expect(
           knexIdentifierMapping(colToProp, { mapNestedKeys: true }).postProcessResponse([
             { MyTable: { MyProp: 1 } },
           ]),
-        ).to.eql([{ myTable: { prop: 1 } }]);
+        ).toEqual([{ myTable: { prop: 1 } }]);
       });
     });
   });
@@ -412,19 +414,19 @@ describe('utils', () => {
               return result;
             });
         }).then((result) => {
-          expect(maxRunning).to.equal(numItems);
-          expect(result).to.eql(range(numItems).map((it) => it * 2));
-          expect(startOrder).to.eql(range(numItems));
+          expect(maxRunning).toBe(numItems);
+          expect(result).toEqual(range(numItems).map((it) => it * 2));
+          expect(startOrder).toEqual(range(numItems));
         });
       });
 
-      it('should not start new operations after an error has been thrown', (done) => {
+      it('should not start new operations after an error has been thrown', () => {
         const numItems = 20;
 
         let errorThrown = false;
         let callbackCalledAfterError = false;
 
-        map(range(numItems), (item, index) => {
+        return map(range(numItems), (item, index) => {
           if (errorThrown) {
             callbackCalledAfterError = true;
           }
@@ -439,14 +441,12 @@ describe('utils', () => {
           });
         })
           .then(() => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err.message).to.equal('fail');
-            expect(callbackCalledAfterError).to.equal(false);
-            done();
-          })
-          .catch(done);
+            expect(err.message).toBe('fail');
+            expect(callbackCalledAfterError).toBe(false);
+          });
       });
 
       it('should only run opt.concurrency operations at a time', () => {
@@ -461,7 +461,7 @@ describe('utils', () => {
           (item, index) => {
             startOrder.push(item);
             running++;
-            expect(running).to.be.lessThan(concurrency + 1);
+            expect(running).toBeLessThan(concurrency + 1);
 
             return delay(Math.round(Math.random() * 10))
               .then(() => 2 * item)
@@ -472,8 +472,8 @@ describe('utils', () => {
           },
           { concurrency },
         ).then((result) => {
-          expect(result).to.eql(range(numItems).map((it) => it * 2));
-          expect(startOrder).to.eql(range(numItems));
+          expect(result).toEqual(range(numItems).map((it) => it * 2));
+          expect(startOrder).toEqual(range(numItems));
         });
       });
 
@@ -490,8 +490,8 @@ describe('utils', () => {
           },
           { concurrency },
         ).then((result) => {
-          expect(result).to.eql(range(numItems).map((it) => it * 2));
-          expect(startOrder).to.eql(range(numItems));
+          expect(result).toEqual(range(numItems).map((it) => it * 2));
+          expect(startOrder).toEqual(range(numItems));
         });
       });
     });
@@ -502,11 +502,11 @@ describe('utils', () => {
       const value = { a: 1, b: { c: [1, { d: 'x' }] }, e: null };
       const clone = cloneDeep(value);
 
-      expect(clone).to.eql(value);
-      expect(clone).not.to.be(value);
-      expect(clone.b).not.to.be(value.b);
-      expect(clone.b.c).not.to.be(value.b.c);
-      expect(clone.b.c[1]).not.to.be(value.b.c[1]);
+      expect(clone).toEqual(value);
+      expect(clone).not.toBe(value);
+      expect(clone.b).not.toBe(value.b);
+      expect(clone.b.c).not.toBe(value.b.c);
+      expect(clone.b.c[1]).not.toBe(value.b.c[1]);
     });
 
     it('keeps the prototype of class instances', () => {
@@ -518,15 +518,15 @@ describe('utils', () => {
 
       const clone = cloneDeep({ point: new Point(1) });
 
-      expect(clone.point).to.be.a(Point);
-      expect(clone.point.x).to.equal(1);
+      expect(clone.point).toBeInstanceOf(Point);
+      expect(clone.point.x).toBe(1);
     });
 
     it('keeps null prototypes', () => {
       const clone = cloneDeep(Object.assign(Object.create(null), { a: 1 }));
 
-      expect(Object.getPrototypeOf(clone)).to.be(null);
-      expect(clone.a).to.equal(1);
+      expect(Object.getPrototypeOf(clone)).toBeNull();
+      expect(clone.a).toBe(1);
     });
 
     it('copies own enumerable properties, including symbols', () => {
@@ -537,17 +537,17 @@ describe('utils', () => {
       });
       const clone = cloneDeep(value);
 
-      expect(clone[symbol]).to.eql({ b: 2 });
-      expect(clone[symbol]).not.to.be(value[symbol]);
-      expect(clone).not.to.have.property('hidden');
+      expect(clone[symbol]).toEqual({ b: 2 });
+      expect(clone[symbol]).not.toBe(value[symbol]);
+      expect(clone).not.toHaveProperty('hidden');
     });
 
     it('copies a `__proto__` key as a property', () => {
       const clone = cloneDeep(JSON.parse('{ "__proto__": { "x": 1 } }'));
 
-      expect(Object.getPrototypeOf(clone)).to.be(Object.prototype);
-      expect(clone.x).to.be(undefined);
-      expect(Object.keys(clone)).to.eql(['__proto__']);
+      expect(Object.getPrototypeOf(clone)).toBe(Object.prototype);
+      expect(clone.x).toBeUndefined();
+      expect(Object.keys(clone)).toEqual(['__proto__']);
     });
 
     it('clones dates, regular expressions, maps, sets and binary data', () => {
@@ -568,25 +568,25 @@ describe('utils', () => {
 
       const clone = cloneDeep(value);
 
-      expect(clone.date).not.to.be(value.date);
-      expect(clone.date.getTime()).to.equal(1000);
-      expect(clone.regExp).not.to.be(value.regExp);
-      expect(String(clone.regExp)).to.equal('/a+/g');
-      expect(clone.regExp.lastIndex).to.equal(2);
-      expect(clone.map.get(key)).to.eql({ a: 1 });
-      expect(clone.map.get(key)).not.to.be(value.map.get(key));
-      expect([...clone.set]).to.eql([{ b: 2 }]);
-      expect([...clone.set][0]).not.to.be([...value.set][0]);
-      expect(Buffer.isBuffer(clone.buffer)).to.equal(true);
-      expect(clone.buffer.toString()).to.equal('abc');
-      expect(clone.buffer).not.to.be(value.buffer);
-      expect([...clone.typedArray]).to.eql([1, 2, 3]);
-      expect(clone.typedArray.buffer).not.to.be(value.typedArray.buffer);
-      expect([...new Uint8Array(clone.arrayBuffer)]).to.eql([4, 5]);
-      expect(clone.arrayBuffer).not.to.be(value.arrayBuffer);
-      expect(clone.dataView.getUint8(0)).to.equal(7);
-      expect(clone.dataView.byteLength).to.equal(2);
-      expect(clone.dataView.buffer).not.to.be(value.dataView.buffer);
+      expect(clone.date).not.toBe(value.date);
+      expect(clone.date.getTime()).toBe(1000);
+      expect(clone.regExp).not.toBe(value.regExp);
+      expect(String(clone.regExp)).toBe('/a+/g');
+      expect(clone.regExp.lastIndex).toBe(2);
+      expect(clone.map.get(key)).toEqual({ a: 1 });
+      expect(clone.map.get(key)).not.toBe(value.map.get(key));
+      expect([...clone.set]).toEqual([{ b: 2 }]);
+      expect([...clone.set][0]).not.toBe([...value.set][0]);
+      expect(Buffer.isBuffer(clone.buffer)).toBe(true);
+      expect(clone.buffer.toString()).toBe('abc');
+      expect(clone.buffer).not.toBe(value.buffer);
+      expect([...clone.typedArray]).toEqual([1, 2, 3]);
+      expect(clone.typedArray.buffer).not.toBe(value.typedArray.buffer);
+      expect([...new Uint8Array(clone.arrayBuffer)]).toEqual([4, 5]);
+      expect(clone.arrayBuffer).not.toBe(value.arrayBuffer);
+      expect(clone.dataView.getUint8(0)).toBe(7);
+      expect(clone.dataView.byteLength).toBe(2);
+      expect(clone.dataView.buffer).not.toBe(value.dataView.buffer);
     });
 
     it('keeps circular and shared references', () => {
@@ -596,69 +596,69 @@ describe('utils', () => {
 
       const clone = cloneDeep(value);
 
-      expect(clone.self).to.be(clone);
-      expect(clone.x).to.be(clone.y[0]);
-      expect(clone.x).not.to.be(shared);
+      expect(clone.self).toBe(clone);
+      expect(clone.x).toBe(clone.y[0]);
+      expect(clone.x).not.toBe(shared);
     });
 
     it("keeps values it can't clone", () => {
       const value = { fn() {}, error: new Error('error'), weakMap: new WeakMap() };
       const clone = cloneDeep(value);
 
-      expect(clone.fn).to.be(value.fn);
-      expect(clone.error).to.be(value.error);
-      expect(clone.weakMap).to.be(value.weakMap);
+      expect(clone.fn).toBe(value.fn);
+      expect(clone.error).toBe(value.error);
+      expect(clone.weakMap).toBe(value.weakMap);
     });
   });
 
   describe('jsonEquals', () => {
     it('should work with primitives', () => {
-      expect(jsonEquals(1, 1)).to.equal(true);
-      expect(jsonEquals('foo', 'foo')).to.equal(true);
-      expect(jsonEquals(false, false)).to.equal(true);
-      expect(jsonEquals(true, true)).to.equal(true);
+      expect(jsonEquals(1, 1)).toBe(true);
+      expect(jsonEquals('foo', 'foo')).toBe(true);
+      expect(jsonEquals(false, false)).toBe(true);
+      expect(jsonEquals(true, true)).toBe(true);
       const date = new Date();
-      expect(jsonEquals(date, date)).to.equal(true);
-      expect(jsonEquals(date, new Date(date))).to.equal(true);
-      expect(jsonEquals(new Date(date), date)).to.equal(true);
+      expect(jsonEquals(date, date)).toBe(true);
+      expect(jsonEquals(date, new Date(date))).toBe(true);
+      expect(jsonEquals(new Date(date), date)).toBe(true);
 
-      expect(jsonEquals(1, 2)).to.equal(false);
-      expect(jsonEquals('foo', 'bar')).to.equal(false);
-      expect(jsonEquals(true, false)).to.equal(false);
-      expect(jsonEquals(0, false)).to.equal(false);
-      expect(jsonEquals(false, 0)).to.equal(false);
-      expect(jsonEquals('1', 1)).to.equal(false);
-      expect(jsonEquals(1, '1')).to.equal(false);
-      expect(jsonEquals(true, false)).to.equal(false);
-      expect(jsonEquals('true', true)).to.equal(false);
-      expect(jsonEquals(true, 'true')).to.equal(false);
-      expect(jsonEquals(new Date(), new Date(Date.now() + 1))).to.equal(false);
+      expect(jsonEquals(1, 2)).toBe(false);
+      expect(jsonEquals('foo', 'bar')).toBe(false);
+      expect(jsonEquals(true, false)).toBe(false);
+      expect(jsonEquals(0, false)).toBe(false);
+      expect(jsonEquals(false, 0)).toBe(false);
+      expect(jsonEquals('1', 1)).toBe(false);
+      expect(jsonEquals(1, '1')).toBe(false);
+      expect(jsonEquals(true, false)).toBe(false);
+      expect(jsonEquals('true', true)).toBe(false);
+      expect(jsonEquals(true, 'true')).toBe(false);
+      expect(jsonEquals(new Date(), new Date(Date.now() + 1))).toBe(false);
     });
 
     it('should work with arrays', () => {
-      expect(jsonEquals([], [])).to.equal(true);
-      expect(jsonEquals([1], [1])).to.equal(true);
-      expect(jsonEquals([1, 2], [1, 2])).to.equal(true);
-      expect(jsonEquals(['foo', 'bar'], ['foo', 'bar'])).to.equal(true);
+      expect(jsonEquals([], [])).toBe(true);
+      expect(jsonEquals([1], [1])).toBe(true);
+      expect(jsonEquals([1, 2], [1, 2])).toBe(true);
+      expect(jsonEquals(['foo', 'bar'], ['foo', 'bar'])).toBe(true);
 
-      expect(jsonEquals(['1', 2], [1, '2'])).to.equal(false);
-      expect(jsonEquals([1], 1)).to.equal(false);
-      expect(jsonEquals(2, [2])).to.equal(false);
-      expect(jsonEquals([0], [])).to.equal(false);
-      expect(jsonEquals([], [0])).to.equal(false);
-      expect(jsonEquals([1], [2])).to.equal(false);
-      expect(jsonEquals([1, 2], [2, 1])).to.equal(false);
-      expect(jsonEquals([1, 2], [1, 2, 3])).to.equal(false);
-      expect(jsonEquals([1, 2, 3], [1, 2])).to.equal(false);
-      expect(jsonEquals(['2', 2], [1, '2'])).to.equal(false);
+      expect(jsonEquals(['1', 2], [1, '2'])).toBe(false);
+      expect(jsonEquals([1], 1)).toBe(false);
+      expect(jsonEquals(2, [2])).toBe(false);
+      expect(jsonEquals([0], [])).toBe(false);
+      expect(jsonEquals([], [0])).toBe(false);
+      expect(jsonEquals([1], [2])).toBe(false);
+      expect(jsonEquals([1, 2], [2, 1])).toBe(false);
+      expect(jsonEquals([1, 2], [1, 2, 3])).toBe(false);
+      expect(jsonEquals([1, 2, 3], [1, 2])).toBe(false);
+      expect(jsonEquals(['2', 2], [1, '2'])).toBe(false);
     });
 
     it('should work with objects', () => {
-      expect(jsonEquals({}, {})).to.equal(true);
-      expect(jsonEquals({ a: 1, b: 2 }, { b: 2, a: 1 })).to.equal(true);
-      expect(jsonEquals({ a: 1, b: 2 }, { b: 2, a: 2 })).to.equal(false);
-      expect(jsonEquals({ a: 1, b: 2 }, { a: 1, b: 2, c: 3 })).to.equal(false);
-      expect(jsonEquals({ a: 1, b: 2, c: 3 }, { a: 1, b: 2 })).to.equal(false);
+      expect(jsonEquals({}, {})).toBe(true);
+      expect(jsonEquals({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true);
+      expect(jsonEquals({ a: 1, b: 2 }, { b: 2, a: 2 })).toBe(false);
+      expect(jsonEquals({ a: 1, b: 2 }, { a: 1, b: 2, c: 3 })).toBe(false);
+      expect(jsonEquals({ a: 1, b: 2, c: 3 }, { a: 1, b: 2 })).toBe(false);
     });
 
     it('should work with nested stuff', () => {
@@ -671,7 +671,7 @@ describe('utils', () => {
             a: [1, { b: 'foo' }, false],
           },
         ),
-      ).to.equal(true);
+      ).toBe(true);
 
       expect(
         jsonEquals(
@@ -682,7 +682,7 @@ describe('utils', () => {
             a: [1, { b: 'bar' }, false],
           },
         ),
-      ).to.equal(false);
+      ).toBe(false);
 
       expect(
         jsonEquals(
@@ -693,7 +693,7 @@ describe('utils', () => {
             a: [1, { b: 'foo' }, true],
           },
         ),
-      ).to.equal(false);
+      ).toBe(false);
 
       expect(
         jsonEquals(
@@ -710,7 +710,7 @@ describe('utils', () => {
             1,
           ],
         ),
-      ).to.equal(true);
+      ).toBe(true);
 
       expect(
         jsonEquals(
@@ -727,7 +727,7 @@ describe('utils', () => {
             1,
           ],
         ),
-      ).to.equal(false);
+      ).toBe(false);
     });
   });
   describe('uniqBy', () => {
@@ -738,23 +738,23 @@ describe('utils', () => {
     ];
     it('should work with Buffer items', () => {
       const itemsForTest = items.map(([value]) => value);
-      expect(uniqBy(itemsForTest)).to.eql(itemsForTest);
+      expect(uniqBy(itemsForTest)).toEqual(itemsForTest);
     });
     it('should work with Buffer[] items', () => {
-      expect(uniqBy(items)).to.eql(items);
+      expect(uniqBy(items)).toEqual(items);
     });
     it('should work with Buffer[] items with custom keyGetter function', () => {
       expect(
         uniqBy(items, (item) =>
           item.map((x) => (Buffer.isBuffer(x) ? x.toString('hex') : x)).join(','),
         ),
-      ).to.eql(items);
+      ).toEqual(items);
     });
   });
 
   describe('union', () => {
     it('does not keep duplicates from the first array', () => {
-      expect(union([1, 1, 2], [2, 3])).to.eql([1, 2, 3]);
+      expect(union([1, 1, 2], [2, 3])).toEqual([1, 2, 3]);
     });
   });
 });

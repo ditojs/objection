@@ -79,7 +79,7 @@ To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*` and `OBJE
 
 The SQLite tests use a new database file in the system's temporary directory for each run, which is deleted afterwards. Set `OBJECTION_TEST_SQLITE_FILE` to use a file of your choice, which is kept.
 
-The tests are run with [mocha](https://mochajs.org/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure.
+The tests are run with [vitest](https://vitest.dev/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure, or `npm run test:watch` to rerun them whenever files change.
 
 [prettier](https://prettier.io/) is used to format the code. Remember to run `npm run prettier` before committing code.
 

@@ -1,10 +1,9 @@
-const utils = require('../../lib/utils/knexUtils');
-const expect = require('expect.js');
-const chai = require('chai');
-const inheritModel = require('../../lib/model/inheritModel').inheritModel;
-const knexMocker = require('../../testUtils/mockKnex');
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import * as utils from '../../lib/utils/knexUtils.js';
+import { inheritModel } from '../../lib/model/inheritModel.js';
+import knexMocker from '../../testUtils/mockKnex.js';
 
-module.exports = (session) => {
+export default (session) => {
   let Model1;
   let Model2;
   let mockKnex;
@@ -14,7 +13,7 @@ module.exports = (session) => {
   // multiple other test sets.
 
   describe('Query context', () => {
-    before(() => {
+    beforeAll(() => {
       mockKnex = knexMocker(session.knex, function (mock, origImpl, args) {
         mock.executedQueries.push(this.toString());
 
@@ -83,10 +82,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$afterFind = (queryContext) => {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -94,7 +93,7 @@ module.exports = (session) => {
         .context(context)
         .where('id', 1)
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -104,10 +103,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$beforeUpdate = function (opt, queryContext) {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -116,7 +115,7 @@ module.exports = (session) => {
         .update({ model1Prop1: 'updated' })
         .where('id', 1)
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -126,10 +125,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$afterUpdate = function (opt, queryContext) {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -138,7 +137,7 @@ module.exports = (session) => {
         .update({ model1Prop1: 'updated' })
         .where('id', 1)
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -148,10 +147,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$beforeInsert = (queryContext) => {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -159,7 +158,7 @@ module.exports = (session) => {
         .context(context)
         .insert({ model1Prop1: 'new' })
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -169,10 +168,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$afterInsert = (queryContext) => {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -180,7 +179,7 @@ module.exports = (session) => {
         .context(context)
         .insert({ model1Prop1: 'new' })
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -190,10 +189,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$beforeDelete = (queryContext) => {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -202,7 +201,7 @@ module.exports = (session) => {
         .context(context)
         .delete()
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -212,10 +211,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$afterDelete = (queryContext) => {
-        expect(queryContext).to.eql(context);
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(context);
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -224,7 +223,7 @@ module.exports = (session) => {
         .context(context)
         .delete()
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -236,10 +235,10 @@ module.exports = (session) => {
       let called = false;
 
       Model.prototype.$afterDelete = (queryContext) => {
-        expect(queryContext).to.eql(Object.assign({}, context, merge1, merge2));
-        expect(context.transaction).to.equal(undefined);
-        expect(queryContext.transaction).to.equal(mockKnex);
-        expect(Object.keys(queryContext).indexOf('transaction')).to.equal(-1);
+        expect(queryContext).toEqual(Object.assign({}, context, merge1, merge2));
+        expect(context.transaction).toBeUndefined();
+        expect(queryContext.transaction).toBe(mockKnex);
+        expect(Object.keys(queryContext).indexOf('transaction')).toBe(-1);
         called = true;
       };
 
@@ -250,7 +249,7 @@ module.exports = (session) => {
         .delete()
         .context(merge2)
         .then(() => {
-          expect(called).to.equal(true);
+          expect(called).toBe(true);
         });
     });
 
@@ -277,13 +276,13 @@ module.exports = (session) => {
               },
             })
             .then((model) => {
-              expect(mockKnex.executedQueries).to.eql(queries);
-              expect(mockKnex.executedQueries).to.eql([
+              expect(mockKnex.executedQueries).toEqual(queries);
+              expect(mockKnex.executedQueries).toEqual([
                 'insert into "public"."Model1" ("model1Prop1") values (\'new\') returning *',
                 'select "Model1".* from "public"."Model1" where "Model1"."id" in (5)',
               ]);
 
-              expect(model.toJSON()).to.eql({
+              expect(model.toJSON()).toEqual({
                 model1Prop1: 'new',
                 id: 5,
                 model1Id: null,
@@ -312,13 +311,13 @@ module.exports = (session) => {
               },
             })
             .then((model) => {
-              expect(mockKnex.executedQueries).to.eql(queries);
-              expect(mockKnex.executedQueries).to.eql([
+              expect(mockKnex.executedQueries).toEqual(queries);
+              expect(mockKnex.executedQueries).toEqual([
                 'update "public"."Model1" set "model1Prop1" = \'updated\' where "Model1"."id" = 1 returning *',
                 'select "Model1".* from "public"."Model1" where "Model1"."id" = 1',
               ]);
 
-              expect(model.toJSON()).to.eql({
+              expect(model.toJSON()).toEqual({
                 model1Prop1: 'updated',
                 id: 1,
                 model1Id: 2,
@@ -396,20 +395,18 @@ module.exports = (session) => {
               },
             })
             .then((model) => {
-              expect(mockKnex.executedQueries.length).to.equal(4);
-              expect(mockKnex.executedQueries.length).to.equal(queries.length);
+              expect(mockKnex.executedQueries.length).toBe(4);
+              expect(mockKnex.executedQueries.length).toBe(queries.length);
 
-              chai.expect(mockKnex.executedQueries).to.containSubset(queries);
-              chai
-                .expect(mockKnex.executedQueries)
-                .to.containSubset([
-                  'insert into "public"."Model1" ("model1Prop1") values (\'new 2\'), (\'new 4\') returning "id", "model1Prop1" || \' computed1\' as computed',
-                  'insert into "public"."Model1" ("model1Id", "model1Prop1") values (5, \'new 1\') returning "id", "model1Prop1" || \' computed1\' as computed',
-                  'insert into "public"."model2" ("model1_id", "model2_prop1") values (5, \'new 3\') returning "id_col", "model2_prop1" || \' computed2\' as computed',
-                  'insert into "public"."Model1Model2" ("model1Id", "model2Id") values (6, 3) returning "model1Id"',
-                ]);
+              expect(mockKnex.executedQueries).toContainSubset(queries);
+              expect(mockKnex.executedQueries).toContainSubset([
+                'insert into "public"."Model1" ("model1Prop1") values (\'new 2\'), (\'new 4\') returning "id", "model1Prop1" || \' computed1\' as computed',
+                'insert into "public"."Model1" ("model1Id", "model1Prop1") values (5, \'new 1\') returning "id", "model1Prop1" || \' computed1\' as computed',
+                'insert into "public"."model2" ("model1_id", "model2_prop1") values (5, \'new 3\') returning "id_col", "model2_prop1" || \' computed2\' as computed',
+                'insert into "public"."Model1Model2" ("model1Id", "model2Id") values (6, 3) returning "model1Id"',
+              ]);
 
-              expect(model.$toJson()).to.eql({
+              expect(model.$toJson()).toEqual({
                 id: 7,
                 model1Id: 5,
                 model1Prop1: 'new 1',
@@ -490,7 +487,7 @@ module.exports = (session) => {
               builder.orderBy('id_col');
             })
             .then((models) => {
-              expect(queries).to.eql([
+              expect(queries).toEqual([
                 'select "Model1".*, "model1Prop1" || \' computed1\' as computed from "public"."Model1" where "id" = 1',
                 'select "Model1".*, "model1Prop1" || \' computed1\' as computed from "public"."Model1" where "Model1"."id" in (2)',
                 'select "Model1".*, "model1Prop1" || \' computed1\' as computed from "public"."Model1" where "Model1"."id" in (3)',
@@ -498,7 +495,7 @@ module.exports = (session) => {
                 'select "Model1Model2"."model2Id" as "objectiontmpjoin0", "Model1".*, "model1Prop1" || \' computed1\' as computed from "public"."Model1" inner join "public"."Model1Model2" on "Model1"."id" = "Model1Model2"."model1Id" where "Model1Model2"."model2Id" in (1, 2)',
               ]);
 
-              expect(models).to.eql([
+              expect(models).toEqual([
                 {
                   id: 1,
                   model1Id: 2,
@@ -573,8 +570,8 @@ module.exports = (session) => {
             },
           })
           .then(() => {
-            expect(queries).to.eql(mockKnex.executedQueries);
-            expect(queries).to.eql([
+            expect(queries).toEqual(mockKnex.executedQueries);
+            expect(queries).toEqual([
               'select (select avg("model2Prop1") from "someSchema"."model2") as "avg" from "public"."Model1"',
             ]);
           });
@@ -596,8 +593,8 @@ module.exports = (session) => {
             },
           })
           .then(() => {
-            expect(queries).to.eql(mockKnex.executedQueries);
-            expect(queries).to.eql([
+            expect(queries).toEqual(mockKnex.executedQueries);
+            expect(queries).toEqual([
               'select (select avg("model2Prop1") from "someSchema"."model2") as "avg" from "public"."Model1"',
             ]);
           });
@@ -621,8 +618,8 @@ module.exports = (session) => {
             },
           })
           .then(() => {
-            expect(queries).to.eql(mockKnex.executedQueries);
-            expect(queries).to.eql([
+            expect(queries).toEqual(mockKnex.executedQueries);
+            expect(queries).toEqual([
               'select (select avg("model2Prop1") from "someSchema"."model2") as "avg" from "public"."Model1"',
             ]);
           });
@@ -646,8 +643,8 @@ module.exports = (session) => {
             },
           })
           .then(() => {
-            expect(queries).to.eql(mockKnex.executedQueries);
-            expect(queries).to.eql([
+            expect(queries).toEqual(mockKnex.executedQueries);
+            expect(queries).toEqual([
               'select (select avg("model2Prop1") from "someSchema"."model2") as "avg" from "public"."Model1"',
             ]);
           });
@@ -700,13 +697,13 @@ module.exports = (session) => {
                   },
                 })
                 .then((model) => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'insert into "public"."Model1" ("model1Prop1") values (\'new\') returning "id", "model1Prop1" || \' computed1\' as computed',
                     'update "public"."Model1" set "model1Id" = 5 where "Model1"."id" in (4) returning "id", "model1Prop1" || \' computed1\' as computed',
                   ]);
 
-                  expect(model.toJSON()).to.eql({
+                  expect(model.toJSON()).toEqual({
                     model1Prop1: 'new',
                     id: 5,
                     computed: 'new computed1',
@@ -735,15 +732,15 @@ module.exports = (session) => {
                   },
                 })
                 .then(() => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'update "public"."Model1" set "model1Id" = 1 where "Model1"."id" in (4) returning *',
                   ]);
 
                   return session.knex('Model1').where('id', 4);
                 })
                 .then((rows) => {
-                  expect(rows[0].model1Id).to.eql(1);
+                  expect(rows[0].model1Id).toBe(1);
                 })
             );
           });
@@ -768,15 +765,15 @@ module.exports = (session) => {
                   },
                 })
                 .then(() => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'update "public"."Model1" set "model1Id" = NULL where "Model1"."id" in (2) returning *',
                   ]);
 
                   return session.knex('Model1').where('id', 2);
                 })
                 .then((rows) => {
-                  expect(rows[0].model1Id).to.eql(null);
+                  expect(rows[0].model1Id).toBeNull();
                 })
             );
           });
@@ -820,15 +817,15 @@ module.exports = (session) => {
                   },
                 })
                 .then(() => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'update "public"."model2" set "model1_id" = 2 where "model2"."id_col" in (3) returning *',
                   ]);
 
                   return session.knex('model2').where('id_col', newModel.idCol);
                 })
                 .then((rows) => {
-                  expect(rows[0].model1_id).to.eql(2);
+                  expect(rows[0].model1_id).toBe(2);
                 })
             );
           });
@@ -853,8 +850,8 @@ module.exports = (session) => {
                   },
                 })
                 .then(() => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'update "public"."model2" set "model1_id" = NULL where "model2"."model1_id" in (2) returning *',
                   ]);
 
@@ -862,7 +859,7 @@ module.exports = (session) => {
                 })
                 .then((rows) => {
                   rows.forEach((row) => {
-                    expect(row.model1_id).to.equal(null);
+                    expect(row.model1_id).toBeNull();
                   });
                 })
             );
@@ -907,13 +904,13 @@ module.exports = (session) => {
                   },
                 })
                 .then((model) => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'insert into "public"."Model1" ("model1Prop1") values (\'new\') returning "id", "model1Prop1" || \' computed1\' as computed',
                     'insert into "public"."Model1Model2" ("model1Id", "model2Id") values (5, 1) returning "model1Id"',
                   ]);
 
-                  expect(model.toJSON()).to.eql({
+                  expect(model.toJSON()).toEqual({
                     model1Prop1: 'new',
                     id: 5,
                     computed: 'new computed1',
@@ -942,17 +939,17 @@ module.exports = (session) => {
                   },
                 })
                 .then(() => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     'insert into "public"."Model1Model2" ("model1Id", "model2Id") values (1, 1) returning *',
                   ]);
 
                   return session.knex('Model1Model2');
                 })
                 .then((rows) => {
-                  expect(
-                    rows.filter((it) => it.model1Id === 1 && it.model2Id === 1).length,
-                  ).to.equal(1);
+                  expect(rows.filter((it) => it.model1Id === 1 && it.model2Id === 1).length).toBe(
+                    1,
+                  );
                 })
             );
           });
@@ -975,15 +972,15 @@ module.exports = (session) => {
                   },
                 })
                 .then(() => {
-                  expect(mockKnex.executedQueries).to.eql(queries);
-                  expect(mockKnex.executedQueries).to.eql([
+                  expect(mockKnex.executedQueries).toEqual(queries);
+                  expect(mockKnex.executedQueries).toEqual([
                     `delete from \"public\".\"Model1Model2\" where (\"Model1Model2\".\"tableoid\",\"Model1Model2\".\"ctid\") in (select \"Model1Model2\".\"tableoid\", \"Model1Model2\".\"ctid\" from \"public\".\"Model1\" inner join \"public\".\"Model1Model2\" on \"Model1\".\"id\" = \"Model1Model2\".\"model1Id\" where \"Model1Model2\".\"model2Id\" in (1) and \"Model1\".\"id\" = 4) and \"Model1Model2\".\"model2Id\" in (1)`,
                   ]);
 
                   return session.knex('Model1Model2');
                 })
                 .then((rows) => {
-                  expect(rows).to.have.length(0);
+                  expect(rows).toHaveLength(0);
                 })
             );
           });

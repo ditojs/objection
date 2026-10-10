@@ -1,7 +1,8 @@
-const addFormats = require('ajv-formats');
-const { AjvValidator, Model, raw, val, ref } = require('../../../');
-const expect = require('expect.js');
-const Knex = require('knex');
+import { describe, it, expect } from 'vitest';
+import addFormats from 'ajv-formats';
+import { AjvValidator, Model, raw, val, ref } from 'objection';
+import Knex from 'knex';
+import { expectThrows } from '../../../testUtils/testUtils.js';
 
 function modelClass(tableName, schema) {
   return class TestModel extends Model {
@@ -33,15 +34,15 @@ describe('AjvValidator', () => {
       const ModelA = modelClass('test', schemaA);
       const ModelB = modelClass('test', schemaB);
 
-      expect(ModelA.uniqueTag()).to.equal(ModelB.uniqueTag());
+      expect(ModelA.uniqueTag()).toBe(ModelB.uniqueTag());
 
       const validatorA = validator.getValidator(ModelA, ModelA.getJsonSchema(), false);
       const validatorB = validator.getValidator(ModelB, ModelB.getJsonSchema(), false);
 
-      expect(validatorA).to.not.be(validatorB);
-      expect(validatorA({ a: 'x' })).to.be(true);
-      expect(validatorB({ a: 'x' })).to.be(false);
-      expect(validatorB({ b: 'x' })).to.be(true);
+      expect(validatorA).not.toBe(validatorB);
+      expect(validatorA({ a: 'x' })).toBe(true);
+      expect(validatorB({ a: 'x' })).toBe(false);
+      expect(validatorB({ b: 'x' })).toBe(true);
     });
 
     it('should not recompile validators for bound model classes with a shared validator', () => {
@@ -75,16 +76,16 @@ describe('AjvValidator', () => {
       const BoundModel1 = TestModel.bindKnex(Knex({ client: 'pg' }));
       const BoundModel2 = TestModel.bindKnex(Knex({ client: 'pg' }));
 
-      expect(BoundModel1).to.not.be(BoundModel2);
-      expect(BoundModel1.getJsonSchema()).to.not.be(BoundModel2.getJsonSchema());
+      expect(BoundModel1).not.toBe(BoundModel2);
+      expect(BoundModel1.getJsonSchema()).not.toBe(BoundModel2.getJsonSchema());
 
       BoundModel1.fromJson({ a: 'x' });
       BoundModel2.fromJson({ a: 'x' });
       TestModel.fromJson({ a: 'x' });
 
-      expect(compileCount).to.be(1);
-      expect(validator.cache.size).to.be(1);
-      expect(() => BoundModel2.fromJson({})).to.throwException();
+      expect(compileCount).toBe(1);
+      expect(validator.cache.size).toBe(1);
+      expect(() => BoundModel2.fromJson({})).toThrow();
     });
 
     it('should cache validators separately for patch and non-patch validation', () => {
@@ -95,11 +96,11 @@ describe('AjvValidator', () => {
       const normalValidator = validator.getValidator(ModelA, jsonSchema, false);
       const patchValidator = validator.getValidator(ModelA, jsonSchema, true);
 
-      expect(normalValidator).to.not.be(patchValidator);
-      expect(validator.getValidator(ModelA, jsonSchema, false)).to.be(normalValidator);
-      expect(validator.getValidator(ModelA, jsonSchema, true)).to.be(patchValidator);
-      expect(normalValidator({})).to.be(false);
-      expect(patchValidator({})).to.be(true);
+      expect(normalValidator).not.toBe(patchValidator);
+      expect(validator.getValidator(ModelA, jsonSchema, false)).toBe(normalValidator);
+      expect(validator.getValidator(ModelA, jsonSchema, true)).toBe(patchValidator);
+      expect(normalValidator({})).toBe(false);
+      expect(patchValidator({})).toBe(true);
     });
 
     it('should reuse validators for equal schemas returned by $beforeValidate', () => {
@@ -109,9 +110,9 @@ describe('AjvValidator', () => {
       const validator1 = validator.getValidator(ModelA, JSON.parse(JSON.stringify(schemaB)), false);
       const validator2 = validator.getValidator(ModelA, JSON.parse(JSON.stringify(schemaB)), false);
 
-      expect(validator1).to.be(validator2);
-      expect(validator1({ b: 'x' })).to.be(true);
-      expect(validator1({ a: 'x' })).to.be(false);
+      expect(validator1).toBe(validator2);
+      expect(validator1({ b: 'x' })).toBe(true);
+      expect(validator1({ a: 'x' })).toBe(false);
     });
   });
 
@@ -219,8 +220,8 @@ describe('AjvValidator', () => {
       const validators = validator.getValidator(modelClass('test', schema), schema, true);
       const definitions = Object.values(validators.schema.definitions);
 
-      expect(definitions.length).to.be(2);
-      definitions.forEach((d) => expect(d.required).to.be(undefined));
+      expect(definitions.length).toBe(2);
+      definitions.forEach((d) => expect(d.required).toBeUndefined());
     });
 
     it('should remove required fields from $defs', () => {
@@ -228,8 +229,8 @@ describe('AjvValidator', () => {
       const validators = validator.getValidator(modelClass('test', schemaBis), schemaBis, true);
       const $defs = Object.values(validators.schema.$defs);
 
-      expect($defs.length).to.be(2);
-      $defs.forEach((d) => expect(d.required).to.be(undefined));
+      expect($defs.length).toBe(2);
+      $defs.forEach((d) => expect(d.required).toBeUndefined());
     });
 
     it('should not remove required fields if there is a discriminator', () => {
@@ -239,21 +240,21 @@ describe('AjvValidator', () => {
         },
       });
       const validators = validator.getValidator(modelClass('test', schema2), schema2, true);
-      expect(validators.schema.required).to.eql(['foo']);
+      expect(validators.schema.required).toEqual(['foo']);
     });
 
     it('should add ajv formats by default', () => {
       expect(() => {
         const validator = new AjvValidator({});
         validator.getValidator(modelClass('test', schema3), schema3, true);
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should remove required fields in inner properties', () => {
       const validator = new AjvValidator({});
       const validators = validator.getValidator(modelClass('test', schema4), schema4, true);
-      expect(validators.schema.properties.address.properties).to.not.be(undefined);
-      expect(validators.schema.properties.address.required).to.be(undefined);
+      expect(validators.schema.properties.address.properties).not.toBeUndefined();
+      expect(validators.schema.properties.address.required).toBeUndefined();
     });
 
     it('should not throw errors when adding formats in onCreateAjv hook', () => {
@@ -263,7 +264,7 @@ describe('AjvValidator', () => {
             addFormats(ajv);
           },
         });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should handle empty definitions', () => {
@@ -315,9 +316,9 @@ describe('AjvValidator', () => {
         },
       };
       const validate = patchValidator(schema);
-      expect(validate.schema.oneOf).to.eql([{ not: { required: ['a'] } }]);
-      expect(validate({ b: 'str' })).to.be(true);
-      expect(validate({ a: 'str' })).to.be(false);
+      expect(validate.schema.oneOf).toEqual([{ not: { required: ['a'] } }]);
+      expect(validate({ b: 'str' })).toBe(true);
+      expect(validate({ a: 'str' })).toBe(false);
     });
 
     for (const prop of ['anyOf', 'oneOf']) {
@@ -330,10 +331,10 @@ describe('AjvValidator', () => {
           },
         };
         const validate = patchValidator(schema);
-        expect(validate.schema[prop]).to.be(undefined);
-        expect(validate({ a: 'str', b: 'str' })).to.be(true);
-        expect(validate({ b: 1 })).to.be(true);
-        expect(validate({ a: 1 })).to.be(false);
+        expect(validate.schema[prop]).toBeUndefined();
+        expect(validate({ a: 'str', b: 'str' })).toBe(true);
+        expect(validate({ b: 1 })).toBe(true);
+        expect(validate({ a: 1 })).toBe(false);
       });
 
       it(`should not require nested objects to match other ${prop} options if one only has required`, () => {
@@ -354,11 +355,11 @@ describe('AjvValidator', () => {
           },
         };
         const validate = patchValidator(schema);
-        expect(validate.schema.properties.data[prop]).to.be(undefined);
-        expect(validate({ data: {} })).to.be(true);
-        expect(validate({ data: { b: 1 } })).to.be(true);
-        expect(validate({ data: { b: 'str' } })).to.be(true);
-        expect(validate({ data: { a: 1 } })).to.be(false);
+        expect(validate.schema.properties.data[prop]).toBeUndefined();
+        expect(validate({ data: {} })).toBe(true);
+        expect(validate({ data: { b: 1 } })).toBe(true);
+        expect(validate({ data: { b: 'str' } })).toBe(true);
+        expect(validate({ data: { a: 1 } })).toBe(false);
       });
     }
 
@@ -367,8 +368,8 @@ describe('AjvValidator', () => {
         allOf: [{ required: ['a'] }, { required: ['b'], properties: { b: { type: 'number' } } }],
       };
       const validate = patchValidator(schema);
-      expect(validate.schema.allOf).to.eql([{ properties: { b: { type: 'number' } } }]);
-      expect(validate({ b: 'str' })).to.be(false);
+      expect(validate.schema.allOf).toEqual([{ properties: { b: { type: 'number' } } }]);
+      expect(validate({ b: 'str' })).toBe(false);
     });
 
     it('should keep top-level not schemas intact', () => {
@@ -383,10 +384,10 @@ describe('AjvValidator', () => {
         },
       };
       const validate = patchValidator(schema);
-      expect(validate.schema.required).to.be(undefined);
-      expect(validate.schema.not).to.eql({ required: ['b', 'c'] });
-      expect(validate({ b: 'str' })).to.be(true);
-      expect(validate({ b: 'str', c: 'str' })).to.be(false);
+      expect(validate.schema.required).toBeUndefined();
+      expect(validate.schema.not).toEqual({ required: ['b', 'c'] });
+      expect(validate({ b: 'str' })).toBe(true);
+      expect(validate({ b: 'str', c: 'str' })).toBe(false);
     });
 
     it('should remove required fields in inner properties of nullable objects', () => {
@@ -409,11 +410,11 @@ describe('AjvValidator', () => {
         },
       };
       const validate = patchValidator(schema);
-      expect(validate.schema.properties.address.required).to.be(undefined);
-      expect(validate.schema.properties.address.properties.inner.required).to.be(undefined);
-      expect(validate({ address: { zip: '123', inner: {} } })).to.be(true);
-      expect(validate({ address: null })).to.be(true);
-      expect(validate({ address: { zip: 123 } })).to.be(false);
+      expect(validate.schema.properties.address.required).toBeUndefined();
+      expect(validate.schema.properties.address.properties.inner.required).toBeUndefined();
+      expect(validate({ address: { zip: '123', inner: {} } })).toBe(true);
+      expect(validate({ address: null })).toBe(true);
+      expect(validate({ address: { zip: 123 } })).toBe(false);
     });
 
     it('should remove required fields in inner properties of untyped schemas', () => {
@@ -430,10 +431,10 @@ describe('AjvValidator', () => {
         },
       };
       const validate = patchValidator(schema);
-      expect(validate.schema.required).to.be(undefined);
-      expect(validate.schema.properties.address.required).to.be(undefined);
-      expect(validate({ address: { zip: '123' } })).to.be(true);
-      expect(validate({ address: { zip: 123 } })).to.be(false);
+      expect(validate.schema.required).toBeUndefined();
+      expect(validate.schema.properties.address.required).toBeUndefined();
+      expect(validate({ address: { zip: '123' } })).toBe(true);
+      expect(validate({ address: { zip: 123 } })).toBe(false);
     });
 
     it('should keep properties named like schema keywords in untyped schemas', () => {
@@ -446,12 +447,12 @@ describe('AjvValidator', () => {
         },
       };
       const validate = patchValidator(schema);
-      expect(validate.schema.properties).to.eql(schema.properties);
-      expect(validate({ required: 'a', not: 'b', anyOf: 'c', properties: 'd' })).to.be(true);
-      expect(validate({ required: 1 })).to.be(false);
-      expect(validate({ not: 1 })).to.be(false);
-      expect(validate({ anyOf: 1 })).to.be(false);
-      expect(validate({ properties: 1 })).to.be(false);
+      expect(validate.schema.properties).toEqual(schema.properties);
+      expect(validate({ required: 'a', not: 'b', anyOf: 'c', properties: 'd' })).toBe(true);
+      expect(validate({ required: 1 })).toBe(false);
+      expect(validate({ not: 1 })).toBe(false);
+      expect(validate({ anyOf: 1 })).toBe(false);
+      expect(validate({ properties: 1 })).toBe(false);
     });
   });
 
@@ -503,7 +504,7 @@ describe('AjvValidator', () => {
       try {
         fn();
       } catch (err) {
-        expect(err).to.be.a(TestModel.ValidationError);
+        expect(err).toBeInstanceOf(TestModel.ValidationError);
         return err.data;
       }
       throw new Error('expected a validation error');
@@ -511,17 +512,17 @@ describe('AjvValidator', () => {
 
     it('should validate field expression keys against the nested schema', () => {
       const model = TestModel.fromJson({ 'meta:b': 'foo' }, { patch: true });
-      expect(model['meta:b']).to.equal('foo');
+      expect(model['meta:b']).toBe('foo');
 
       const data = validationErrorData(() => TestModel.fromJson({ 'meta:b': 1 }, { patch: true }));
-      expect(Object.keys(data)).to.eql(['meta.b']);
-      expect(data['meta.b'][0].keyword).to.equal('type');
+      expect(Object.keys(data)).toEqual(['meta.b']);
+      expect(data['meta.b'][0].keyword).toBe('type');
     });
 
     it('should not fail on nested required properties of untouched siblings', () => {
       expect(() => {
         TestModel.fromJson({ 'meta:nested.y': 1, 'meta:b': 'foo' }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should validate multiple field expression keys of the same column', () => {
@@ -530,54 +531,54 @@ describe('AjvValidator', () => {
           { name: 'foo', 'meta:a': 'a', 'meta:b': 'b', 'meta:nested.x': 1 },
           { patch: true },
         );
-      }).to.not.throwException();
+      }).not.toThrow();
 
       const data = validationErrorData(() =>
         TestModel.fromJson({ 'meta:a': 1, 'meta:nested.x': 'x' }, { patch: true }),
       );
-      expect(Object.keys(data).sort()).to.eql(['meta.a', 'meta.nested.x']);
+      expect(Object.keys(data).sort()).toEqual(['meta.a', 'meta.nested.x']);
     });
 
     it('should report additional properties inside the json column', () => {
       const data = validationErrorData(() =>
         TestModel.fromJson({ 'meta:c': 'foo' }, { patch: true }),
       );
-      expect(Object.keys(data)).to.eql(['meta.c']);
-      expect(data['meta.c'][0].keyword).to.equal('additionalProperties');
+      expect(Object.keys(data)).toEqual(['meta.c']);
+      expect(data['meta.c'][0].keyword).toBe('additionalProperties');
     });
 
     it('should report unknown columns of field expression keys', () => {
       const data = validationErrorData(() =>
         TestModel.fromJson({ 'unknown:b': 'foo' }, { patch: true }),
       );
-      expect(Object.keys(data)).to.eql(['unknown']);
-      expect(data.unknown[0].keyword).to.equal('additionalProperties');
+      expect(Object.keys(data)).toEqual(['unknown']);
+      expect(data.unknown[0].keyword).toBe('additionalProperties');
     });
 
     it('should support table prefixes in field expression keys', () => {
       expect(() => {
         TestModel.fromJson({ 'test.meta:b': 'foo' }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should not validate field expression keys with array access', () => {
       expect(() => {
         TestModel.fromJson({ 'tags:[0]': 'foo', 'meta:nested[0]': 1 }, { patch: true });
-      }).to.not.throwException();
+      }).not.toThrow();
     });
 
     it('should not modify the input json', () => {
       const json = { name: 'foo', 'meta:b': 'foo' };
       const model = TestModel.fromJson(json, { patch: true });
-      expect(json).to.eql({ name: 'foo', 'meta:b': 'foo' });
-      expect(model).to.eql({ name: 'foo', 'meta:b': 'foo' });
+      expect(json).toEqual({ name: 'foo', 'meta:b': 'foo' });
+      expect(model).toEqual({ name: 'foo', 'meta:b': 'foo' });
     });
 
     it('should apply type coercion to field expression values', () => {
       const CoercingModel = createModelClass({ coerceTypes: true });
       const model = CoercingModel.fromJson({ 'meta:b': 1, 'meta:nested.x': '2' }, { patch: true });
-      expect(model['meta:b']).to.equal('1');
-      expect(model['meta:nested.x']).to.equal(2);
+      expect(model['meta:b']).toBe('1');
+      expect(model['meta:nested.x']).toBe(2);
     });
 
     it('should apply removeAdditional to field expression keys', () => {
@@ -586,12 +587,12 @@ describe('AjvValidator', () => {
         { 'meta:b': 'foo', 'meta:c': 'bar', 'unknown:a': 1 },
         { patch: true },
       );
-      expect(model).to.eql({ 'meta:b': 'foo' });
+      expect(model).toEqual({ 'meta:b': 'foo' });
     });
 
     it('should not change the validation of field expression keys in non-patch mode', () => {
       const data = validationErrorData(() => TestModel.fromJson({ name: 'foo', 'meta:b': 'foo' }));
-      expect(Object.keys(data)).to.eql(['meta:b']);
+      expect(Object.keys(data)).toEqual(['meta:b']);
     });
   });
 
@@ -610,7 +611,7 @@ describe('AjvValidator', () => {
       try {
         fn();
       } catch (err) {
-        expect(err).to.be.a(TestModel.ValidationError);
+        expect(err).toBeInstanceOf(TestModel.ValidationError);
         return err.data;
       }
       throw new Error('expected a validation error');
@@ -621,30 +622,30 @@ describe('AjvValidator', () => {
         a: val(['x']).asArray().castTo('uuid[]'),
         b: raw('?', 1),
       });
-      expect(model.c).to.equal('c');
-      expect(TestModel.fromJson({ a: ['x'], b: ref('c') }).a).to.eql(['x']);
-      expect(TestModel.fromJson({ a: TestModel.query().select('a'), b: 1 }).b).to.equal(1);
+      expect(model.c).toBe('c');
+      expect(TestModel.fromJson({ a: ['x'], b: ref('c') }).a).toEqual(['x']);
+      expect(TestModel.fromJson({ a: TestModel.query().select('a'), b: 1 }).b).toBe(1);
     });
 
     it('should still require the other required properties', () => {
       const data = validationErrorData(() => TestModel.fromJson({ a: raw('?', 1) }));
-      expect(Object.keys(data)).to.eql(['b']);
-      expect(data.b[0].keyword).to.equal('required');
-      expect(Object.keys(validationErrorData(() => TestModel.fromJson({ b: raw('1') })))).to.eql([
+      expect(Object.keys(data)).toEqual(['b']);
+      expect(data.b[0].keyword).toBe('required');
+      expect(Object.keys(validationErrorData(() => TestModel.fromJson({ b: raw('1') })))).toEqual([
         'a',
       ]);
     });
 
     it('should still validate the other properties', () => {
       const data = validationErrorData(() => TestModel.fromJson({ a: raw('?', 1), b: 'x' }));
-      expect(Object.keys(data)).to.eql(['b']);
-      expect(data.b[0].keyword).to.equal('type');
+      expect(Object.keys(data)).toEqual(['b']);
+      expect(data.b[0].keyword).toBe('type');
     });
 
     it('should not affect the validation of models without query properties', () => {
       TestModel.fromJson({ a: raw('?', 1), b: raw('?', 1) });
       const data = validationErrorData(() => TestModel.fromJson({}));
-      expect(Object.keys(data).sort()).to.eql(['a', 'b']);
+      expect(Object.keys(data).sort()).toEqual(['a', 'b']);
     });
 
     it('should work with schemas that have an $id', () => {
@@ -663,12 +664,15 @@ describe('AjvValidator', () => {
       });
 
       IdModel.fromJson({ a: 'x', b: 1 });
-      expect(IdModel.fromJson({ a: 'x', b: raw('?', 1) }).a).to.equal('x');
-      expect(IdModel.fromJson({ a: raw('?', 'x'), b: 1 }).b).to.equal(1);
-      expect(IdModel.fromJson({ a: raw('?', 'x'), b: raw('?', 1) })).to.be.an(IdModel);
-      expect(() => IdModel.fromJson({ a: raw('?', 'x'), b: 'x' })).to.throwException((err) => {
-        expect(err.data.b[0].keyword).to.equal('type');
-      });
+      expect(IdModel.fromJson({ a: 'x', b: raw('?', 1) }).a).toBe('x');
+      expect(IdModel.fromJson({ a: raw('?', 'x'), b: 1 }).b).toBe(1);
+      expect(IdModel.fromJson({ a: raw('?', 'x'), b: raw('?', 1) })).toBeInstanceOf(IdModel);
+      expectThrows(
+        () => IdModel.fromJson({ a: raw('?', 'x'), b: 'x' }),
+        (err) => {
+          expect(err.data.b[0].keyword).toBe('type');
+        },
+      );
     });
   });
 });

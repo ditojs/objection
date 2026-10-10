@@ -1,7 +1,7 @@
-const { Model } = require('../../../');
-const { expect } = require('chai');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   const { knex } = session;
 
   describe('#ref attack', () => {
@@ -30,7 +30,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('users')
         .dropTableIfExists('roles')
@@ -47,7 +47,7 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('users').dropTableIfExists('roles');
     });
 
@@ -106,10 +106,10 @@ module.exports = (session) => {
 
       const user3 = await User.query(knex).findById(3).withGraphFetched('roles');
 
-      expect(user2.firstName).to.equal('dork 2');
-      expect(user2.roles[0].name).to.equal(null);
-      expect(user3.firstName).to.equal(null);
-      expect(user3.roles[0].name).to.equal(null);
+      expect(user2.firstName).toBe('dork 2');
+      expect(user2.roles[0].name).toBeNull();
+      expect(user3.firstName).toBeNull();
+      expect(user3.roles[0].name).toBeNull();
     });
   });
 };

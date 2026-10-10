@@ -1,12 +1,12 @@
-const expect = require('expect.js');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   if (session.isMySql()) {
     describe('mysql binary columns', () => {
       let TestModel;
 
-      before(() => {
+      beforeAll(() => {
         return session.knex.schema
           .dropTableIfExists('mysql_binary_test')
           .createTable('mysql_binary_test', (table) => {
@@ -15,11 +15,11 @@ module.exports = (session) => {
           });
       });
 
-      after(() => {
+      afterAll(() => {
         return session.knex.schema.dropTableIfExists('mysql_binary_test');
       });
 
-      before(() => {
+      beforeAll(() => {
         TestModel = class TestModel extends Model {
           static get tableName() {
             return 'mysql_binary_test';
@@ -50,11 +50,11 @@ module.exports = (session) => {
         return TestModel.query()
           .insert({ binary: buffer() })
           .then((ret) => {
-            expect(bufferEquals(buffer(), ret.binary)).to.equal(true);
+            expect(bufferEquals(buffer(), ret.binary)).toBe(true);
             return session.knex(TestModel.getTableName());
           })
           .then((rows) => {
-            expect(bufferEquals(buffer(), rows[0].binary)).to.equal(true);
+            expect(bufferEquals(buffer(), rows[0].binary)).toBe(true);
           });
       });
     });
