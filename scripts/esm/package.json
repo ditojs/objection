@@ -1,0 +1,19 @@
+{
+  "name": "objection-esm-migration",
+  "private": true,
+  "description": "Converts objection from CommonJS to ES modules",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "migrate": "node migrate.mjs"
+  },
+  "dependencies": {
+    "acorn": "8.19.0",
+    "db-errors": "0.2.3",
+    "magic-string": "1.4.3",
+    "peggy": "5.1.0",
+    "prettier": "3.9.9"
+  }
+}
