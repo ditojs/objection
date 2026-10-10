@@ -1,13 +1,11 @@
-'use strict';
-
-exports.up = (knex) => {
+export function up(knex) {
   return knex.schema.createTable('persons', (table) => {
     table.increments('id').primary();
     table.string('firstName');
     table.string('lastName');
   });
-};
+}
 
-exports.down = (knex) => {
+export function down(knex) {
   return knex.schema.dropTableIfExists('persons');
-};
+}

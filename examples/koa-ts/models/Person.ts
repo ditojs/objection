@@ -1,17 +1,23 @@
-import { Model, Modifiers } from 'objection'
-import Movie from './Movie'
-import Animal from './Animal'
+import { Model, type Generated, type Modifiers, type TypedRelationMappings } from 'objection'
+import Animal from './Animal.js'
+import Movie from './Movie.js'
 
 export default class Person extends Model {
-  id!: number
-  firstName!: string
-  lastName!: string
-  age!: number
+  declare id: Generated<number>
+  declare parentId: number | null
+  declare firstName: string
+  declare lastName: string
+  declare age?: number
+  declare address?: {
+    street?: string
+    city?: string
+    zipCode?: string
+  }
 
-  pets?: Animal[]
-  movies?: Movie[]
-  children?: Person[]
-  parent?: Person
+  declare pets?: Animal[]
+  declare movies?: Movie[]
+  declare children?: Person[]
+  declare parent?: Person
 
   // Table name is the only required property.
   static tableName = 'persons'
@@ -60,50 +66,52 @@ export default class Person extends Model {
     },
   }
 
-  // This object defines the relations to other models. The relationMappings
-  // property can be a thunk to prevent circular dependencies.
-  static relationMappings = () => ({
-    pets: {
-      relation: Model.HasManyRelation,
-      // The related model. This can be either a Model subclass constructor or an
-      // absolute file path to a module that exports one.
-      modelClass: Animal,
-      join: {
-        from: 'persons.id',
-        to: 'animals.ownerId',
-      },
-    },
-
-    movies: {
-      relation: Model.ManyToManyRelation,
-      modelClass: Movie,
-      join: {
-        from: 'persons.id',
-        // ManyToMany relation needs the `through` object to describe the join table.
-        through: {
-          from: 'persons_movies.personId',
-          to: 'persons_movies.movieId',
+  // This object defines the relations to other models. The thunk is only
+  // called once the relations are needed, after all modules are loaded, so
+  // the circular imports between the models are not a problem. `satisfies`
+  // checks the mappings against the relation properties declared above.
+  static relationMappings = () =>
+    ({
+      pets: {
+        relation: Model.HasManyRelation,
+        // The related model.
+        modelClass: Animal,
+        join: {
+          from: 'persons.id',
+          to: 'animals.ownerId',
         },
-        to: 'movies.id',
       },
-    },
 
-    children: {
-      relation: Model.HasManyRelation,
-      modelClass: Person,
-      join: {
-        from: 'persons.id',
-        to: 'persons.parentId',
+      movies: {
+        relation: Model.ManyToManyRelation,
+        modelClass: Movie,
+        join: {
+          from: 'persons.id',
+          // ManyToMany relation needs the `through` object to describe the join table.
+          through: {
+            from: 'persons_movies.personId',
+            to: 'persons_movies.movieId',
+          },
+          to: 'movies.id',
+        },
       },
-    },
 
-    parent: {
-      relation: Model.BelongsToOneRelation,
-      modelClass: Person,
-      join: {
-        from: 'persons.parentId',
-        to: 'persons.id',
+      children: {
+        relation: Model.HasManyRelation,
+        modelClass: Person,
+        join: {
+          from: 'persons.id',
+          to: 'persons.parentId',
+        },
       },
-    },
-  })
+
+      parent: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Person,
+        join: {
+          from: 'persons.parentId',
+          to: 'persons.id',
+        },
+      },
+    }) satisfies TypedRelationMappings<Person>
 }

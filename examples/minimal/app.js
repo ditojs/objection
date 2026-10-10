@@ -1,10 +1,7 @@
-'use strict';
-
-const Knex = require('knex');
-const knexConfig = require('./knexfile');
-
-const { Model } = require('objection');
-const { Person } = require('./models/Person');
+import Knex from 'knex';
+import { Model } from 'objection';
+import knexConfig from './knexfile.js';
+import { Person } from './models/Person.js';
 
 // Initialize knex.
 const knex = Knex(knexConfig.development);
@@ -14,7 +11,7 @@ const knex = Knex(knexConfig.development);
 // your model classes.
 Model.knex(knex);
 
-async function main() {
+try {
   // Delete all persons from the db.
   await Person.query().delete();
 
@@ -28,11 +25,6 @@ async function main() {
   const people = await Person.query();
 
   console.log(people);
+} finally {
+  await knex.destroy();
 }
-
-main()
-  .then(() => knex.destroy())
-  .catch((err) => {
-    console.error(err);
-    return knex.destroy();
-  });

@@ -1,11 +1,13 @@
-import { Model } from 'objection'
-import Person from './Person'
+import { Model, type Generated, type TypedRelationMappings } from 'objection'
+import Person from './Person.js'
 
 export default class Animal extends Model {
-  id!: number
-  name!: string
+  declare id: Generated<number>
+  declare ownerId: number | null
+  declare name: string
+  declare species: string
 
-  owner?: Person
+  declare owner?: Person
 
   // Table name is the only required property.
   static tableName = 'animals'
@@ -25,18 +27,21 @@ export default class Animal extends Model {
     },
   }
 
-  // This object defines the relations to other models. The relationMappings
-  // property can be a thunk to prevent circular dependencies.
-  static relationMappings = () => ({
-    owner: {
-      relation: Model.BelongsToOneRelation,
-      // The related model.
-      modelClass: Person,
+  // This object defines the relations to other models. The thunk is only
+  // called once the relations are needed, after all modules are loaded, so
+  // the circular imports between the models are not a problem. `satisfies`
+  // checks the mappings against the relation properties declared above.
+  static relationMappings = () =>
+    ({
+      owner: {
+        relation: Model.BelongsToOneRelation,
+        // The related model.
+        modelClass: Person,
 
-      join: {
-        from: 'animals.ownerId',
-        to: 'persons.id',
+        join: {
+          from: 'animals.ownerId',
+          to: 'persons.id',
+        },
       },
-    },
-  })
+    }) satisfies TypedRelationMappings<Animal>
 }

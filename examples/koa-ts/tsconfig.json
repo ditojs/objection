@@ -1,19 +1,15 @@
 {
   "compilerOptions": {
-    "allowUnreachableCode": false,
-    "alwaysStrict": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
+    "target": "es2023",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "strict": true,
-    "strictNullChecks": true,
-    "esModuleInterop": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowUnreachableCode": false,
     "allowJs": true,
-    "target": "esnext",
-    "rootDir": "./",
+    "rootDir": ".",
     "outDir": "dist"
-  }
+  },
+  "exclude": ["dist", "node_modules"]
 }

@@ -1,19 +1,17 @@
-'use strict'
-
 /**
  * This file contains a bunch of HTTP requests that use the
- * API defined in api.js.
+ * API defined in api.ts.
  */
 
-const axios = require('axios')
-const qs = require('querystring')
+import axios from 'axios'
 
 const req = axios.create({
   baseURL: 'http://localhost:8641/',
-  paramsSerializer: qs.stringify,
+  // Serialize arrays as `select=firstName&select=lastName`.
+  paramsSerializer: { indexes: null },
 })
 
-;(async () => {
+try {
   const matt = await insertPersonWithRelations()
   await fetchPeople()
 
@@ -39,13 +37,14 @@ const req = axios.create({
   const departed = await insertMovie({ name: 'The Departed' })
   await addPersonToMovieAsActor(departed, matt)
   await removePersonFromMovie(departed, matt)
-})().catch((err) => {
+} catch (err) {
   if (err.response) {
     console.error('error:', err.response.status, err.response.data)
   } else {
     console.error('error:', err)
   }
-})
+  process.exitCode = 1
+}
 
 async function insertPersonWithRelations() {
   console.log(`
