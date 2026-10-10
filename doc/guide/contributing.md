@@ -58,6 +58,8 @@ Docker only runs the two database servers, PostgreSQL 17 and MySQL 8.4, as defin
 
 `npm run db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `npm run db:down` removes the containers together with their data, and the next `npm run db:up` starts from scratch.
 
+CI also runs the tests on MySQL 5.7. To do that locally, add its override file: `COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml npm run db:up`.
+
 You can run the tests on a subset of databases by setting the `DATABASES` env variable. SQLite needs no setup, so this works without Docker:
 
 ```bash
