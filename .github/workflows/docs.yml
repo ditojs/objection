@@ -1,6 +1,6 @@
 name: Docs
 
-# The docs are deployed from the 3.x branch until 4.0 is released.
+# The docs are deployed from the main branch.
 on:
   workflow_dispatch:
 
