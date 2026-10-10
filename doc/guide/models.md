@@ -15,7 +15,7 @@ Note that in addition to `idColumn`, you don't define properties, indexes or any
 A working model with minimal amount of code:
 
 ```js
-const { Model } = require('objection');
+import { Model } from 'objection';
 
 class MinimalModel extends Model {
   static get tableName() {
@@ -23,13 +23,15 @@ class MinimalModel extends Model {
   }
 }
 
-module.exports = MinimalModel;
+export default MinimalModel;
 ```
 
 Model with custom methods, json schema validation and relations. This model is used in the examples:
 
 ```js
-const { Model } = require('objection');
+import { Model } from 'objection';
+import Animal from './Animal.js';
+import Movie from './Movie.js';
 
 class Person extends Model {
   // Table name is the only required property.
@@ -89,10 +91,8 @@ class Person extends Model {
 
   // This object defines the relations to other models.
   static get relationMappings() {
-    // Importing models here is one way to avoid require loops.
-    const Animal = require('./Animal');
-    const Movie = require('./Movie');
-
+    // Accessing the imported models in a getter is one way to
+    // avoid problems with circular imports.
     return {
       pets: {
         relation: Model.HasManyRelation,

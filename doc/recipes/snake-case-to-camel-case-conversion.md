@@ -9,18 +9,18 @@ You may want to use snake_cased names in database and camelCased names in code. 
 Let's assume this is our schema:
 
 ```js
-exports.up = knex => {
+export function up(knex) {
   return knex.schema.createTable('persons_table', table => {
     table.increments('id_column').primary();
     table.string('first_name');
     table.string('last_name');
     table.integer('parent_id').references('persons_table.id_column');
   });
-};
+}
 
-exports.down = knex => {
+export function down(knex) {
   return knex.schema.dropTableIfExists('persons_table');
-};
+}
 ```
 
 **knexSnakeCaseMappers:**
@@ -28,8 +28,8 @@ exports.down = knex => {
 See [here](/api/objection/#knexsnakecasemappers) for the full list of options that can be passed to `knexSnakeCaseMappers`. Results are only converted one level deep, so column names in the nested rows of knex's `nestTables: true` option on MySQL need the `mapNestedKeys` option: `knexSnakeCaseMappers({ mapNestedKeys: true })`.
 
 ```js
-const Knex = require('knex');
-const { Model, knexSnakeCaseMappers } = require('objection');
+import Knex from 'knex';
+import { Model, knexSnakeCaseMappers } from 'objection';
 
 const knex = Knex({
   client: 'postgres',
@@ -83,7 +83,7 @@ await Person.query().where('firstName', 'Jennifer');
 See [here](/api/objection/#snakecasemappers) for the full list of options that can be passed to `snakeCaseMappers`.
 
 ```js
-const { Model, snakeCaseMappers } = require('objection');
+import { Model, snakeCaseMappers } from 'objection';
 
 // When `snakeCaseMappers` is used, you still define tables,
 // columns and relation mappings using snake_case.

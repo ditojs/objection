@@ -141,7 +141,7 @@ export default defineConfig({
         activeMatch: '^/release-notes/',
         items: [
           { text: 'Changelog', link: '/release-notes/changelog' },
-          { text: 'Migration to 3.0', link: '/release-notes/migration' },
+          { text: 'Migration to 4.0', link: '/release-notes/migration' },
           {
             text: 'v2.x documentation',
             link: 'https://github.com/Vincit/objection.js/tree/v2/doc',

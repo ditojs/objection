@@ -11,7 +11,9 @@ Here's how you could create your models:
 
 ```js
 // User.js
-const { Model } = require('objection');
+import { Model } from 'objection';
+import Group from './Group.js';
+import Permission from './Permission.js';
 
 class User extends Model {
   static get tableName() {
@@ -22,7 +24,7 @@ class User extends Model {
     return {
       groups: {
         relation: Model.ManyToManyRelation,
-        modelClass: require('./Group'),
+        modelClass: Group,
         join: {
           from: 'user.id',
           through: {
@@ -36,7 +38,7 @@ class User extends Model {
 
       permissions: {
         relation: Model.ManyToManyRelation,
-        modelClass: require('./Permission'),
+        modelClass: Permission,
         join: {
           from: 'user.id',
           through: {
@@ -51,12 +53,14 @@ class User extends Model {
   }
 }
 
-module.exports = User;
+export default User;
 ```
 
 ```js
 // Group.js
-const { Model } = require('objection');
+import { Model } from 'objection';
+import User from './User.js';
+import Permission from './Permission.js';
 
 class Group extends Model {
   static get tableName() {
@@ -67,7 +71,7 @@ class Group extends Model {
     return {
       users: {
         relation: Model.ManyToManyRelation,
-        modelClass: require('./User'),
+        modelClass: User,
         join: {
           from: 'group.id',
           through: {
@@ -81,7 +85,7 @@ class Group extends Model {
 
       permissions: {
         relation: Model.ManyToManyRelation,
-        modelClass: require('./Permission'),
+        modelClass: Permission,
         join: {
           from: 'group.id',
           through: {
@@ -96,12 +100,14 @@ class Group extends Model {
   }
 }
 
-module.exports = Group;
+export default Group;
 ```
 
 ```js
 // Permission.js
-const { Model } = require('objection');
+import { Model } from 'objection';
+import User from './User.js';
+import Group from './Group.js';
 
 class Permission extends Model {
   static get tableName() {
@@ -112,7 +118,7 @@ class Permission extends Model {
     return {
       users: {
         relation: Model.ManyToManyRelation,
-        modelClass: require('./User'),
+        modelClass: User,
         join: {
           from: 'permission.id',
           through: {
@@ -126,7 +132,7 @@ class Permission extends Model {
 
       groups: {
         relation: Model.ManyToManyRelation,
-        modelClass: require('./Group'),
+        modelClass: Group,
         join: {
           from: 'permission.id',
           through: {
@@ -141,12 +147,15 @@ class Permission extends Model {
   }
 }
 
-module.exports = Permission;
+export default Permission;
 ```
 
 ```js
 // UserGroupPermission.js
-const { Model } = require('objection');
+import { Model } from 'objection';
+import User from './User.js';
+import Group from './Group.js';
+import Permission from './Permission.js';
 
 class UserGroupPermission extends Model {
   static get tableName() {
@@ -161,7 +170,7 @@ class UserGroupPermission extends Model {
     return {
       user: {
         relation: Model.BelongsToOneRelation,
-        modelClass: require('./User'),
+        modelClass: User,
         join: {
           from: 'user_group_permission.user_id',
           to: 'user.id'
@@ -170,7 +179,7 @@ class UserGroupPermission extends Model {
 
       group: {
         relation: Model.BelongsToOneRelation,
-        modelClass: require('./Group'),
+        modelClass: Group,
         join: {
           from: 'user_group_permission.group_id',
           to: 'group.id'
@@ -179,7 +188,7 @@ class UserGroupPermission extends Model {
 
       permission: {
         relation: Model.BelongsToOneRelation,
-        modelClass: require('./Permission'),
+        modelClass: Permission,
         join: {
           from: 'user_group_permission.permission_id',
           to: 'permission.id'
@@ -189,7 +198,7 @@ class UserGroupPermission extends Model {
   }
 }
 
-module.exports = UserGroupPermission;
+export default UserGroupPermission;
 ```
 
 Here's how you can query your models:

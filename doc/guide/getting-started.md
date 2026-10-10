@@ -4,36 +4,36 @@ To use objection.js all you need to do is [initialize knex](https://knexjs.org/g
 
 The next step is to create some migrations and models and start using objection.js. The best way to get started is to check out one of our example projects:
 
-- [The minimal example](https://github.com/Vincit/objection.js/tree/main/examples/minimal) contains the bare minimum for you to start testing out things with objection.
+- [The minimal example](https://github.com/ditojs/objection/tree/main/examples/minimal) contains the bare minimum for you to start testing out things with objection.
 
 ```bash
-git clone git@github.com:Vincit/objection.js.git objection
+git clone git@github.com:ditojs/objection.git objection
 cd objection/examples/minimal
 npm install
 npm start
 ```
 
-- [The koa example project](https://github.com/Vincit/objection.js/tree/main/examples/koa) is a simple [koa](https://koajs.com) server. The `client.js` file contains a bunch of http requests for you to start playing with the REST API.
+- [The koa example project](https://github.com/ditojs/objection/tree/main/examples/koa) is a simple [koa](https://koajs.com) server. The `client.js` file contains a bunch of http requests for you to start playing with the REST API.
 
 ```bash
-git clone git@github.com:Vincit/objection.js.git objection
+git clone git@github.com:ditojs/objection.git objection
 cd objection/examples/koa
 npm install
 npm start
 ```
 
-We also have a [typescript version](https://github.com/Vincit/objection.js/tree/main/examples/koa-ts) of the example.
+We also have a [typescript version](https://github.com/ditojs/objection/tree/main/examples/koa-ts) of the example.
 
 Also check out our [API reference](/api/query-builder/) and [recipe book](/recipes/raw-queries.html).
 
-If installing the example project seems like too much work, here is a simple standalone example. Just copy this into a file and run it:
+If installing the example project seems like too much work, here is a simple standalone example. Just copy this into a file called `example.mjs` and run it with `node example.mjs`:
 
 ```js
 // run the following command to install:
 // npm install objection knex sqlite3
 
-const { Model } = require('objection');
-const Knex = require('knex');
+import { Model } from 'objection';
+import Knex from 'knex';
 
 // Initialize knex.
 const knex = Knex({

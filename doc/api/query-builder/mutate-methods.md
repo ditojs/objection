@@ -64,7 +64,7 @@ console.log(actors[1].firstName);
 You can also give raw expressions and subqueries as values like this:
 
 ```js
-const { raw } = require('objection');
+import { raw } from 'objection';
 
 await Person.query().insert({
   age: Person.query().avg('age'),
@@ -204,7 +204,7 @@ const numberOfAffectedRows = await Person.query()
 You can also give raw expressions, subqueries and `ref()` as values and [FieldExpressions](/api/types/#type-fieldexpression) as keys. Note that the values given as raw expressions, subqueries and `ref()` are not validated. Objection cannot know what their values will be at the time the validation is done.
 
 ```js
-const { ref, raw } = require('objection');
+import { ref, raw } from 'objection';
 
 await Person.query().patch({
   age: Person.query().avg('age'),
@@ -344,7 +344,7 @@ console.log(numberOfAffectedRows);
 You can also give raw expressions, subqueries and `ref()` as values like this:
 
 ```js
-const { raw, ref } = require('objection');
+import { raw, ref } from 'objection';
 
 await Person.query().update({
   firstName: raw("'Jenni' || 'fer'"),

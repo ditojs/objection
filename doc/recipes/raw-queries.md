@@ -9,7 +9,7 @@ There are also some helper methods such as [whereRaw](/api/query-builder/find-me
 ## Examples
 
 ```js
-const { raw } = require('objection');
+import { raw } from 'objection';
 const ageToAdd = 10;
 
 await Person.query().patch({
@@ -18,7 +18,7 @@ await Person.query().patch({
 ```
 
 ```js
-const { raw } = require('objection');
+import { raw } from 'objection';
 
 const childAgeSums = await Person.query()
   .select(raw('coalesce(sum(??), 0)', 'age').as('childAgeSum'))
@@ -34,7 +34,7 @@ console.log(childAgeSums[0].childAgeSum);
 Also see the [fn](/api/objection/#fn) helper for calling SQL functions. The following example is equivalent the previous one.
 
 ```js
-const { fn, ref } = require('objection');
+import { fn, ref } from 'objection';
 
 const childAgeSums = await Person.query()
   .select(fn.coalesce(fn.sum(ref('age')), 0).as('childAgeSum'))
@@ -50,7 +50,7 @@ console.log(childAgeSums[0].childAgeSum);
 Binding arguments can be other [raw](/api/objection/#raw) instances, [QueryBuilders](/api/query-builder/) or pretty much anything you can think of.
 
 ```js
-const { raw, ref } = require('objection');
+import { raw, ref } from 'objection';
 
 const people = await Person
   .query()
