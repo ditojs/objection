@@ -6,11 +6,11 @@
  */
 
 const axios = require('axios')
-const qs = require('querystring')
 
 const req = axios.create({
   baseURL: 'http://localhost:8641/',
-  paramsSerializer: qs.stringify,
+  // Serialize arrays as `select=firstName&select=lastName`.
+  paramsSerializer: { indexes: null },
 })
 
 ;(async () => {
@@ -40,7 +40,12 @@ const req = axios.create({
   await addPersonToMovieAsActor(departed, matt)
   await removePersonFromMovie(departed, matt)
 })().catch((err) => {
-  console.error('error:', err.response.status, err.response.data)
+  if (err.response) {
+    console.error('error:', err.response.status, err.response.data)
+  } else {
+    console.error('error:', err)
+  }
+  process.exitCode = 1
 })
 
 async function insertPersonWithRelations() {

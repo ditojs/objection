@@ -10,15 +10,13 @@
 // mixin. This plugin is exactly the same as the `plugin` example, but adds a couple of options.
 module.exports = (options) => {
   // Provide good defaults for the options if possible.
-  options = Object.assign(
-    {
-      setModifiedBy: true,
-      setModifiedAt: true,
-      setCreatedBy: true,
-      setCreatedAt: true,
-    },
-    options,
-  );
+  options = {
+    setModifiedBy: true,
+    setModifiedAt: true,
+    setCreatedBy: true,
+    setCreatedAt: true,
+    ...options,
+  };
 
   // Return the mixin. If your plugin doesn't take options, you can simply export
   // the mixin. The factory function is not needed.
@@ -33,58 +31,50 @@ module.exports = (options) => {
         // queries created by this builder and also in the model hooks. `session` is
         // not a reserved word or some objection.js concept. You can store any data
         // to the query context.
-        return this.mergeContext({
-          session: session,
-        });
+        return this.context({ session });
       }
     }
 
     // A Plugin always needs to return the extended model class.
     //
     // IMPORTANT: Don't give a name for the returned class! This way the returned
-    // class inherits the super class's name (starting from node 8).
+    // class inherits the super class's name.
     return class extends Model {
       // Make our model use the extended QueryBuilder.
       static get QueryBuilder() {
         return SessionQueryBuilder;
       }
 
-      $beforeUpdate(opt, context) {
+      async $beforeUpdate(opt, context) {
         // If you extend existing methods like this one, always remember to call the
-        // super implementation. Check the documentation to see if the function can be
-        // async and prepare for that also.
-        const maybePromise = super.$beforeUpdate(opt, context);
+        // super implementation. The hooks can be async, so always await the result.
+        await super.$beforeUpdate(opt, context);
 
-        return Promise.resolve(maybePromise).then(() => {
-          if (context.session) {
-            if (options.setModifiedAt) {
-              this.modifiedAt = new Date().toISOString();
-            }
-
-            if (options.setModifiedBy) {
-              this.modifiedBy = context.session.userId;
-            }
+        if (context.session) {
+          if (options.setModifiedAt) {
+            this.modifiedAt = new Date().toISOString();
           }
-        });
+
+          if (options.setModifiedBy) {
+            this.modifiedBy = context.session.userId;
+          }
+        }
       }
 
-      $beforeInsert(context) {
-        // If you exetend existing methods like this one, always remember to call the
-        // super implementation. Check the documentation to see if the function can be
-        // async and prepare for that also.
-        const maybePromise = super.$beforeInsert(context);
+      async $beforeInsert(context) {
+        // If you extend existing methods like this one, always remember to call the
+        // super implementation. The hooks can be async, so always await the result.
+        await super.$beforeInsert(context);
 
-        return Promise.resolve(maybePromise).then(() => {
-          if (context.session) {
-            if (options.setCreatedAt) {
-              this.createdAt = new Date().toISOString();
-            }
-
-            if (options.setCreatedBy) {
-              this.createdBy = context.session.userId;
-            }
+        if (context.session) {
+          if (options.setCreatedAt) {
+            this.createdAt = new Date().toISOString();
           }
-        });
+
+          if (options.setCreatedBy) {
+            this.createdBy = context.session.userId;
+          }
+        }
       }
     };
   };

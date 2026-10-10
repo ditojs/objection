@@ -2,15 +2,15 @@
 
 /**
  * This file contains a bunch of HTTP requests that use the
- * API defined in api.js.
+ * API defined in api.ts.
  */
 
 const axios = require('axios')
-const qs = require('querystring')
 
 const req = axios.create({
   baseURL: 'http://localhost:8641/',
-  paramsSerializer: qs.stringify,
+  // Serialize arrays as `select=firstName&select=lastName`.
+  paramsSerializer: { indexes: null },
 })
 
 ;(async () => {
@@ -45,6 +45,7 @@ const req = axios.create({
   } else {
     console.error('error:', err)
   }
+  process.exitCode = 1
 })
 
 async function insertPersonWithRelations() {

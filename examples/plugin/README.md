@@ -9,7 +9,7 @@ automatically based on the given session.
 Usage example:
 
 ```js
-const Model = require('objection').Model;
+const { Model } = require('objection');
 const Session = require('path/to/this/example');
 
 class Person extends Session(Model) {
@@ -23,19 +23,25 @@ module.exports = Person;
 
 ```js
 // expressjs route.
-router.post('/persons', (req, res) => {
-  return (
-    Person.query()
-      // The following method was added by our plugin.
-      .session(req.session)
-      .insert(req.body)
-      .then(person => {
-        // Our plugin set the following properties.
-        console.log(person.createdAt);
-        console.log(person.createdBy);
+router.post('/persons', async (req, res) => {
+  const person = await Person.query()
+    // The following method was added by our plugin.
+    .session(req.session)
+    .insert(req.body);
 
-        res.send(person);
-      })
-  );
+  // Our plugin set the following properties.
+  console.log(person.createdAt);
+  console.log(person.createdBy);
+
+  res.send(person);
 });
+```
+
+# Install and run the tests
+
+```sh
+git clone git@github.com:ditojs/objection.git objection
+cd objection/examples/plugin
+npm install
+npm test
 ```

@@ -1,10 +1,10 @@
-import Person from './models/Person'
-import Movie from './models/Movie'
-import KoaRouter from 'koa-router'
-import { PartialModelGraph, PartialModelObject } from 'objection'
-import Animal from './models/Animal'
+import type Router from '@koa/router'
+import type { PartialModelGraph, PartialModelObject } from 'objection'
+import Animal from './models/Animal.js'
+import Movie from './models/Movie.js'
+import Person from './models/Person.js'
 
-export default (router: KoaRouter) => {
+export default (router: Router) => {
   /**
    * Create a new Person.
    *

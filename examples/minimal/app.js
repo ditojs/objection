@@ -1,9 +1,8 @@
 'use strict';
 
 const Knex = require('knex');
-const knexConfig = require('./knexfile');
-
 const { Model } = require('objection');
+const knexConfig = require('./knexfile');
 const { Person } = require('./models/Person');
 
 // Initialize knex.
@@ -31,8 +30,8 @@ async function main() {
 }
 
 main()
-  .then(() => knex.destroy())
   .catch((err) => {
     console.error(err);
-    return knex.destroy();
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => knex.destroy());
