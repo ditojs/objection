@@ -4,9 +4,9 @@ You can extend the [QueryBuilder](/api/query-builder/) returned by [query()](/ap
 
 ```js
 // MyQueryBuilder.js
-const { QueryBuilder } = require('objection');
+import { QueryBuilder } from 'objection';
 
-class MyQueryBuilder extends QueryBuilder {
+export class MyQueryBuilder extends QueryBuilder {
   myCustomMethod(something) {
     doSomething(something);
     return this;
@@ -14,7 +14,7 @@ class MyQueryBuilder extends QueryBuilder {
 }
 
 // Person.js
-const { MyQueryBuilder } = require('./MyQueryBuilder');
+import { MyQueryBuilder } from './MyQueryBuilder.js';
 
 class Person extends Model {
   static get QueryBuilder() {
@@ -33,16 +33,16 @@ If you want to set the custom query builder for all model classes you can just s
 
 ```js
 // BaseModel.js
-const { MyQueryBuilder } = require('./MyQueryBuilder');
+import { MyQueryBuilder } from './MyQueryBuilder.js';
 
-class BaseModel extends Model {
+export class BaseModel extends Model {
   static get QueryBuilder() {
     return MyQueryBuilder;
   }
 }
 
 // Person.js
-const { BaseModel } = require('./BaseModel');
+import { BaseModel } from './BaseModel.js';
 
 // Person now uses MyQueryBuilder
 class Person extends BaseModel {}

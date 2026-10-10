@@ -3,23 +3,18 @@
  * They create a simple IMDB-style database. Try to add minimal modifications to this file to reproduce
  * your bug.
  *
+ * Save this file as reproduction-template.mjs, so that node runs it as an ES module.
+ *
  * install:
- *    npm install objection knex sqlite3 chai
+ *    npm install objection knex sqlite3
  *
  * run:
- *    node reproduction-template
+ *    node reproduction-template.mjs
  */
 
-let Model;
-
-try {
-  Model = require('./').Model;
-} catch (err) {
-  Model = require('objection').Model;
-}
-
-const Knex = require('knex');
-const chai = require('chai');
+import { Model } from 'objection';
+import Knex from 'knex';
+import assert from 'node:assert/strict';
 
 async function main() {
   await createSchema();
@@ -42,7 +37,7 @@ async function main() {
 
   const jennifer = await Person.query().findOne({ firstName: 'Jennifer' }).withGraphFetched('pets');
 
-  chai.expect(jennifer.pets[0].name).to.equal('Doggo');
+  assert.equal(jennifer.pets[0].name, 'Doggo');
 }
 
 ///////////////////////////////////////////////////////////////

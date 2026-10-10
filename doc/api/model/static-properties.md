@@ -38,7 +38,7 @@ Further reading:
 ##### Examples
 
 ```js
-const { Model, ref } = require('objection');
+import { Model, ref } from 'objection';
 
 class Person extends Model {
   static get tableName() {
@@ -300,7 +300,7 @@ Person.query()
 ```js
 class Person extends Model {
   static get modelPaths() {
-    return [__dirname];
+    return [import.meta.dirname];
   }
 }
 ```
@@ -322,21 +322,17 @@ shared configuration such as this there.
 Using a shared `BaseModel` superclass:
 
 ```js
-const { Model } = require('objection');
-
 // models/BaseModel.js
-class BaseModel extends Model {
+import { Model } from 'objection';
+
+export class BaseModel extends Model {
   static get modelPaths() {
-    return [__dirname];
+    return [import.meta.dirname];
   }
 }
 
-module.exports = {
-  BaseModel
-};
-
 // models/Person.js
-const { BaseModel } = require('./BaseModel');
+import { BaseModel } from './BaseModel.js';
 
 class Person extends BaseModel {
   ...
@@ -396,7 +392,7 @@ TLDR; Set this setting to `false` if you have large jsonb columns and you see th
 ## `static` columnNameMappers
 
 ```js
-const { Model, snakeCaseMappers } = require('objection');
+import { Model, snakeCaseMappers } from 'objection';
 
 class Person extends Model {
   static get columnNameMappers() {
@@ -417,7 +413,7 @@ Further reading:
 If your columns are UPPER_SNAKE_CASE:
 
 ```js
-const { Model, snakeCaseMappers } = require('objection');
+import { Model, snakeCaseMappers } from 'objection';
 
 class Person extends Model {
   static get columnNameMappers() {

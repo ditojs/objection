@@ -1,3 +1,72 @@
+# Migration from objection 3.x to 4.0
+
+This section lists the breaking changes in objection 4.0.
+
+- [objection is an ES module package](#objection-is-an-es-module-package)
+- [Dropped support for node < 20.19](#dropped-support-for-node-20-19)
+- [Dropped support for knex < 3.3](#dropped-support-for-knex-3-3)
+- [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
+- [Model files given as paths](#model-files-given-as-paths)
+- [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
+
+## objection is an ES module package
+
+objection is now published as an ES module only. Import it like any other ES module:
+
+```js
+import { Model, raw, ref } from 'objection';
+```
+
+objection has no default export. Replace `import objection from 'objection'` with a namespace import, which contains the same values:
+
+```js
+import * as objection from 'objection';
+```
+
+CommonJS code can still load objection with `require()`, because node 20.19 and newer can `require()` ES modules that don't use top-level await:
+
+```js
+const { Model, raw, ref } = require('objection');
+```
+
+`require('objection')` returns the module namespace object, with all the named exports.
+
+The package now has an `exports` map, so only `objection` and `objection/package.json` can be imported. Deep imports of internal files like `objection/lib/...` no longer work.
+
+## Dropped support for node < 20.19
+
+Objection 4.0 needs at least node 20.19, the first version of node 20 that can `require()` ES modules without a flag. Node 22 needs at least 22.12.
+
+## Dropped support for knex < 3.3
+
+Objection 4.0 needs at least knex 3.3.
+
+## Database errors are objection's own classes
+
+The database error classes (`DBError`, `UniqueViolationError`, `NotNullViolationError`, `ForeignKeyViolationError`, `ConstraintViolationError`, `CheckViolationError` and `DataError`) are no longer imported from the [db-errors](https://github.com/Vincit/db-errors) library. objection includes its own copy of it, and doesn't depend on the `db-errors` package anymore.
+
+The classes have the same names and properties, but `instanceof` checks against classes imported directly from the `db-errors` package no longer match the errors objection throws. Import the classes from objection instead:
+
+```js
+// Before:
+const { UniqueViolationError } = require('db-errors');
+
+// After:
+import { UniqueViolationError } from 'objection';
+```
+
+## Model files given as paths
+
+`modelClass` can still be an absolute file path, or a module name resolved using [modelPaths](/api/model/static-properties.html#static-modelpaths). objection loads the file synchronously with `require()`, so the file can be a CommonJS module or an ES module. An ES module needs to export the model class as its default export, or as its only exported model class.
+
+ES module model files can't use top-level await, or import modules that do, because `require()` can't load those. Paths without a file extension are resolved like `require()` resolves them, which finds `.js` files, but not `.mjs` files. Give the full file name for those, or pass the model class itself, or a function that returns it, which also avoids the problem of circular imports.
+
+## typescript: The typings are ES module declarations
+
+The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.
+
+TypeScript projects that compile to CommonJS and use `"module": "nodenext"` need at least TypeScript 5.8, which understands that node can `require()` ES modules. With `"module": "node16"`, TypeScript refuses to `require()` objection from CommonJS files. On TypeScript < 7, projects that use `"module": "commonjs"` with the old `"moduleResolution": "node"` keep working. TypeScript 7 removed that resolution mode, so CommonJS projects need `"module": "nodenext"` there.
+
 # Migration from objection 2.x to 3.0
 
 This document guides you through each breaking change in objection 3.0 and attempts to provide clear steps to follow. If you find something missing, please open an issue and we'll fix this guide ASAP.
