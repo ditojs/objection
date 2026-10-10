@@ -1,13 +1,7 @@
 name: Docs
 
+# The docs are deployed from the main branch.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'doc/**'
-      - '.github/workflows/docs.yml'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
 
 permissions:
