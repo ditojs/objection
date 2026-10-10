@@ -379,7 +379,7 @@ module.exports = (session) => {
                 .then(() => models);
             })
             .then((models) => {
-              expect(models[0].$query(trx).knex() === trx);
+              expect(models[0].$query(trx).knex()).to.be(trx);
             })
             .then(() => {
               throw new Error('whoops');
@@ -446,7 +446,7 @@ module.exports = (session) => {
               .then(() => models);
           })
           .then((models) => {
-            expect(models[0].$query(trx).knex() === trx);
+            expect(models[0].$query(trx).knex()).to.be(trx);
           })
           .then(() => {
             throw new Error('whoops');
@@ -505,7 +505,7 @@ module.exports = (session) => {
               .then(() => models);
           })
           .then((models) => {
-            expect(models[0].$query(trx).knex() === trx);
+            expect(models[0].$query(trx).knex()).to.be(trx);
           })
           .then(() => {
             trx.rollback(new Error('whoops'));

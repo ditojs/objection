@@ -883,16 +883,17 @@ module.exports = (session) => {
       },
     );
 
-    it('should fail fast on incorrect table name', function (done) {
-      Model1.query()
+    it('should fail fast on incorrect table name', () => {
+      return Model1.query()
         .findById(1)
         .withGraphJoined('model1Relation111')
-        .then(() => {})
+        .then(() => {
+          throw new Error('should not get here');
+        })
         .catch((err) => {
           expect(err.message).to.equal(
             'unknown relation "model1Relation111" in a relation expression',
           );
-          done();
         });
     });
 
