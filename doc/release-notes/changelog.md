@@ -24,6 +24,7 @@
 ### Types
 
 - `InsertGraphOptions` includes `noInsert` and `noRelate`, which `insertGraph()` supports [#84](https://github.com/ditojs/objection/issues/84)
+- Custom query builders declare one `RebindType` member instead of the five `*QueryBuilderType` members to keep their type through `first()`, `findById()`, `patch()`, `page()` and the other methods that change the result type: `declare RebindType: MyQueryBuilder<this['~M'], this['~R']>`. Builders that declare the five members keep working. [#16](https://github.com/ditojs/objection/issues/16) [#319](https://github.com/Vincit/objection.js/issues/319)
 
 ### Other
 
