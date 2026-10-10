@@ -10,6 +10,10 @@
 
 - `upsertGraph()` patches the related models of many-to-many relations by their id, and their extra properties in the join row by the ids of both ends. Until now these patches filtered by a subquery that joins the join table, and on MySQL, the patches of a graph upserted without a transaction deadlocked each other. The SQL of these patches changes. [#135](https://github.com/ditojs/objection/issues/135)
 
+### Other
+
+- Replace the custom build of lodash's `cloneDeep()` from 2018 with a small implementation, which `$clone()`, `toJSON()` and validation use to copy objects in model properties. It copies the same values, 2 to 4 times faster. Objects with a `null` prototype keep it instead of getting `Object.prototype`, and `BigInt64Array` / `BigUint64Array` are copied instead of shared.
+
 ## 3.5.1
 
 ### Fixes

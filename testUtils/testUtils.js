@@ -1,5 +1,5 @@
 const expect = require('expect.js');
-const { cloneDeep } = require('../lib/utils/clone');
+const { cloneDeep } = require('../lib/utils/objectUtils');
 
 /**
  * Expect that `result` contains all attributes of `partial` and their values equal.

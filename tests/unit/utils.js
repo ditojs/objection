@@ -14,7 +14,7 @@ const {
 
 const { compose, mixin } = require('../../lib/utils/mixin');
 const { map } = require('../../lib/utils/promiseUtils');
-const { jsonEquals, uniqBy, union } = require('../../lib/utils/objectUtils');
+const { cloneDeep, jsonEquals, uniqBy, union } = require('../../lib/utils/objectUtils');
 
 describe('utils', () => {
   describe('mixin', () => {
@@ -494,6 +494,120 @@ describe('utils', () => {
           expect(startOrder).to.eql(range(numItems));
         });
       });
+    });
+  });
+
+  describe('cloneDeep', () => {
+    it('clones nested objects and arrays', () => {
+      const value = { a: 1, b: { c: [1, { d: 'x' }] }, e: null };
+      const clone = cloneDeep(value);
+
+      expect(clone).to.eql(value);
+      expect(clone).not.to.be(value);
+      expect(clone.b).not.to.be(value.b);
+      expect(clone.b.c).not.to.be(value.b.c);
+      expect(clone.b.c[1]).not.to.be(value.b.c[1]);
+    });
+
+    it('keeps the prototype of class instances', () => {
+      class Point {
+        constructor(x) {
+          this.x = x;
+        }
+      }
+
+      const clone = cloneDeep({ point: new Point(1) });
+
+      expect(clone.point).to.be.a(Point);
+      expect(clone.point.x).to.equal(1);
+    });
+
+    it('keeps null prototypes', () => {
+      const clone = cloneDeep(Object.assign(Object.create(null), { a: 1 }));
+
+      expect(Object.getPrototypeOf(clone)).to.be(null);
+      expect(clone.a).to.equal(1);
+    });
+
+    it('copies own enumerable properties, including symbols', () => {
+      const symbol = Symbol('symbol');
+      const value = Object.defineProperty({ a: 1, [symbol]: { b: 2 } }, 'hidden', {
+        value: 3,
+        enumerable: false,
+      });
+      const clone = cloneDeep(value);
+
+      expect(clone[symbol]).to.eql({ b: 2 });
+      expect(clone[symbol]).not.to.be(value[symbol]);
+      expect(clone).not.to.have.property('hidden');
+    });
+
+    it('copies a `__proto__` key as a property', () => {
+      const clone = cloneDeep(JSON.parse('{ "__proto__": { "x": 1 } }'));
+
+      expect(Object.getPrototypeOf(clone)).to.be(Object.prototype);
+      expect(clone.x).to.be(undefined);
+      expect(Object.keys(clone)).to.eql(['__proto__']);
+    });
+
+    it('clones dates, regular expressions, maps, sets and binary data', () => {
+      const key = { key: true };
+      const regExp = /a+/g;
+      regExp.lastIndex = 2;
+
+      const value = {
+        date: new Date(1000),
+        regExp,
+        map: new Map([[key, { a: 1 }]]),
+        set: new Set([{ b: 2 }]),
+        buffer: Buffer.from('abc'),
+        typedArray: new Uint8Array([1, 2, 3]),
+        arrayBuffer: new Uint8Array([4, 5]).buffer,
+        dataView: new DataView(new Uint8Array([6, 7, 8]).buffer, 1, 2),
+      };
+
+      const clone = cloneDeep(value);
+
+      expect(clone.date).not.to.be(value.date);
+      expect(clone.date.getTime()).to.equal(1000);
+      expect(clone.regExp).not.to.be(value.regExp);
+      expect(String(clone.regExp)).to.equal('/a+/g');
+      expect(clone.regExp.lastIndex).to.equal(2);
+      expect(clone.map.get(key)).to.eql({ a: 1 });
+      expect(clone.map.get(key)).not.to.be(value.map.get(key));
+      expect([...clone.set]).to.eql([{ b: 2 }]);
+      expect([...clone.set][0]).not.to.be([...value.set][0]);
+      expect(Buffer.isBuffer(clone.buffer)).to.equal(true);
+      expect(clone.buffer.toString()).to.equal('abc');
+      expect(clone.buffer).not.to.be(value.buffer);
+      expect([...clone.typedArray]).to.eql([1, 2, 3]);
+      expect(clone.typedArray.buffer).not.to.be(value.typedArray.buffer);
+      expect([...new Uint8Array(clone.arrayBuffer)]).to.eql([4, 5]);
+      expect(clone.arrayBuffer).not.to.be(value.arrayBuffer);
+      expect(clone.dataView.getUint8(0)).to.equal(7);
+      expect(clone.dataView.byteLength).to.equal(2);
+      expect(clone.dataView.buffer).not.to.be(value.dataView.buffer);
+    });
+
+    it('keeps circular and shared references', () => {
+      const shared = { shared: true };
+      const value = { x: shared, y: [shared] };
+      value.self = value;
+
+      const clone = cloneDeep(value);
+
+      expect(clone.self).to.be(clone);
+      expect(clone.x).to.be(clone.y[0]);
+      expect(clone.x).not.to.be(shared);
+    });
+
+    it("keeps values it can't clone", () => {
+      const value = { fn() {}, error: new Error('error'), weakMap: new WeakMap() };
+      const clone = cloneDeep(value);
+
+      expect(clone.fn).to.be(value.fn);
+      expect(clone.error).to.be(value.error);
+      expect(clone.weakMap).to.be(value.weakMap);
     });
   });
 
