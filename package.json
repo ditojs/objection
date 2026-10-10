@@ -2,7 +2,15 @@
   "name": "objection",
   "version": "3.5.0",
   "description": "An SQL-friendly ORM for Node.js",
+  "type": "module",
   "main": "lib/objection.js",
+  "exports": {
+    ".": {
+      "types": "./typings/objection/index.d.ts",
+      "default": "./lib/objection.js"
+    },
+    "./package.json": "./package.json"
+  },
   "license": "MIT",
   "scripts": {
     "test": "npm run eslint && mocha --slow 10 --timeout 15000 --reporter spec --recursive tests --exclude \"tests/unit/relations/files/**\" && npm run test:typings",
@@ -38,7 +46,7 @@
   },
   "homepage": "https://ditojs.github.io/objection/",
   "engines": {
-    "node": ">=14.0.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "keywords": [
     "orm",
@@ -63,7 +71,7 @@
     "db-errors": "^0.2.3"
   },
   "peerDependencies": {
-    "knex": ">=2.3.0"
+    "knex": "^3.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
