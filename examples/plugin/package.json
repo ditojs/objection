@@ -18,6 +18,6 @@
   "devDependencies": {
     "knex": "^3.3.0",
     "objection": "^4.0.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^6.0.1"
   }
 }
