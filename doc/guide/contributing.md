@@ -82,3 +82,5 @@ The SQLite tests use a new database file in the system's temporary directory for
 The tests are run with [mocha](https://mochajs.org/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure.
 
 [prettier](https://prettier.io/) is used to format the code. Remember to run `npm run prettier` before committing code.
+
+The parsers of relation expressions and JSON field expressions in `lib/queryBuilder/parsers` are generated from the `.pegjs` grammars next to them with [Peggy](https://peggyjs.org/). After changing a grammar, run `npm run build:parsers` and commit the generated files with it. CI checks that they match the grammars.
