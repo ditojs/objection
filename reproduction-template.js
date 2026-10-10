@@ -35,14 +35,12 @@ async function main() {
     pets: [
       {
         name: 'Doggo',
-        species: 'dog'
-      }
-    ]
+        species: 'dog',
+      },
+    ],
   });
 
-  const jennifer = await Person.query()
-    .findOne({ firstName: 'Jennifer' })
-    .withGraphFetched('pets');
+  const jennifer = await Person.query().findOne({ firstName: 'Jennifer' }).withGraphFetched('pets');
 
   chai.expect(jennifer.pets[0].name).to.equal('Doggo');
 }
@@ -56,8 +54,8 @@ const knex = Knex({
   useNullAsDefault: true,
   debug: false,
   connection: {
-    filename: ':memory:'
-  }
+    filename: ':memory:',
+  },
 });
 
 Model.knex(knex);
@@ -88,10 +86,10 @@ class Person extends Model {
           properties: {
             street: { type: 'string' },
             city: { type: 'string' },
-            zipCode: { type: 'string' }
-          }
-        }
-      }
+            zipCode: { type: 'string' },
+          },
+        },
+      },
     };
   }
 
@@ -102,8 +100,8 @@ class Person extends Model {
         modelClass: Animal,
         join: {
           from: 'Person.id',
-          to: 'Animal.ownerId'
-        }
+          to: 'Animal.ownerId',
+        },
       },
 
       movies: {
@@ -113,10 +111,10 @@ class Person extends Model {
           from: 'Person.id',
           through: {
             from: 'Person_Movie.personId',
-            to: 'Person_Movie.movieId'
+            to: 'Person_Movie.movieId',
           },
-          to: 'Movie.id'
-        }
+          to: 'Movie.id',
+        },
       },
 
       children: {
@@ -124,8 +122,8 @@ class Person extends Model {
         modelClass: Person,
         join: {
           from: 'Person.id',
-          to: 'Person.parentId'
-        }
+          to: 'Person.parentId',
+        },
       },
 
       parent: {
@@ -133,9 +131,9 @@ class Person extends Model {
         modelClass: Person,
         join: {
           from: 'Person.parentId',
-          to: 'Person.id'
-        }
-      }
+          to: 'Person.id',
+        },
+      },
     };
   }
 }
@@ -154,8 +152,8 @@ class Animal extends Model {
         id: { type: 'integer' },
         ownerId: { type: ['integer', 'null'] },
         name: { type: 'string', minLength: 1, maxLength: 255 },
-        species: { type: 'string', minLength: 1, maxLength: 255 }
-      }
+        species: { type: 'string', minLength: 1, maxLength: 255 },
+      },
     };
   }
 
@@ -166,9 +164,9 @@ class Animal extends Model {
         modelClass: Person,
         join: {
           from: 'Animal.ownerId',
-          to: 'Person.id'
-        }
-      }
+          to: 'Person.id',
+        },
+      },
     };
   }
 }
@@ -185,8 +183,8 @@ class Movie extends Model {
 
       properties: {
         id: { type: 'integer' },
-        name: { type: 'string', minLength: 1, maxLength: 255 }
-      }
+        name: { type: 'string', minLength: 1, maxLength: 255 },
+      },
     };
   }
 
@@ -199,11 +197,11 @@ class Movie extends Model {
           from: 'Movie.id',
           through: {
             from: 'Person_Movie.movieId',
-            to: 'Person_Movie.personId'
+            to: 'Person_Movie.personId',
           },
-          to: 'Person.id'
-        }
-      }
+          to: 'Person.id',
+        },
+      },
     };
   }
 }
@@ -220,46 +218,28 @@ async function createSchema() {
     .dropTableIfExists('Person');
 
   await knex.schema
-    .createTable('Person', table => {
+    .createTable('Person', (table) => {
       table.increments('id').primary();
-      table
-        .integer('parentId')
-        .unsigned()
-        .references('id')
-        .inTable('Person');
+      table.integer('parentId').unsigned().references('id').inTable('Person');
       table.string('firstName');
       table.string('lastName');
       table.integer('age');
       table.json('address');
     })
-    .createTable('Movie', table => {
+    .createTable('Movie', (table) => {
       table.increments('id').primary();
       table.string('name');
     })
-    .createTable('Animal', table => {
+    .createTable('Animal', (table) => {
       table.increments('id').primary();
-      table
-        .integer('ownerId')
-        .unsigned()
-        .references('id')
-        .inTable('Person');
+      table.integer('ownerId').unsigned().references('id').inTable('Person');
       table.string('name');
       table.string('species');
     })
-    .createTable('Person_Movie', table => {
+    .createTable('Person_Movie', (table) => {
       table.increments('id').primary();
-      table
-        .integer('personId')
-        .unsigned()
-        .references('id')
-        .inTable('Person')
-        .onDelete('CASCADE');
-      table
-        .integer('movieId')
-        .unsigned()
-        .references('id')
-        .inTable('Movie')
-        .onDelete('CASCADE');
+      table.integer('personId').unsigned().references('id').inTable('Person').onDelete('CASCADE');
+      table.integer('movieId').unsigned().references('id').inTable('Movie').onDelete('CASCADE');
     });
 }
 
@@ -268,7 +248,7 @@ main()
     console.log('success');
     return knex.destroy();
   })
-  .catch(err => {
+  .catch((err) => {
     console.error(err);
     return knex.destroy();
   });
