@@ -1,0 +1,10 @@
+# Runs the MySQL tests on MySQL 5.7, used by its own CI job:
+# COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml npm run db:up
+services:
+  mysql:
+    image: 'public.ecr.aws/docker/library/mysql:5.7'
+    # There is no arm64 image of MySQL 5.7.
+    platform: linux/amd64
+    # MySQL 5.7 doesn't know 8.4's options, and uses mysql_native_password by
+    # default.
+    command: --default-authentication-plugin=mysql_native_password
