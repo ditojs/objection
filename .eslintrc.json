@@ -1,6 +1,7 @@
 {
   "parserOptions": {
-    "ecmaVersion": "latest"
+    "ecmaVersion": "latest",
+    "sourceType": "module"
   },
   "plugins": [
     "prettier"
@@ -11,7 +12,14 @@
   },
   "env": {
     "es6": true,
-    "node": true,
-    "mocha": true
-  }
+    "node": true
+  },
+  "overrides": [
+    {
+      "files": ["tests/unit/relations/files/*.js"],
+      "parserOptions": {
+        "sourceType": "script"
+      }
+    }
+  ]
 }
