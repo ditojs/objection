@@ -75,6 +75,8 @@ To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*` and `OBJE
 | `OBJECTION_TEST_{POSTGRES,MYSQL}_PASSWORD` | none                   | none              |
 | `OBJECTION_TEST_{POSTGRES,MYSQL}_DATABASE` | `objection_test`       | `objection_test`  |
 
+The SQLite tests use a new database file in the system's temporary directory for each run, which is deleted afterwards. Set `OBJECTION_TEST_SQLITE_FILE` to use a file of your choice, which is kept.
+
 The tests are run with [mocha](https://mochajs.org/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure.
 
 [prettier](https://prettier.io/) is used to format the code. Remember to run `npm run prettier` before committing code.
