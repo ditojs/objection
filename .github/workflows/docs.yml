@@ -1,13 +1,7 @@
 name: Docs
 
+# The docs are deployed from the 3.x branch until 4.0 is released.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'doc/**'
-      - '.github/workflows/docs.yml'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
 
 permissions:
