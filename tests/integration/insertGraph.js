@@ -545,6 +545,41 @@ module.exports = (session) => {
           });
       });
 
+      for (const relate of ['model1Relation1.^', '*']) {
+        it(`relate: '${relate}' option should relate models with id at any depth`, () => {
+          return Model1.query()
+            .insertGraph(
+              {
+                model1Prop1: 'hello',
+
+                model1Relation1: {
+                  // This should get inserted.
+                  model1Prop1: 'parent',
+
+                  model1Relation1: {
+                    // This should get related.
+                    id: population.id,
+                  },
+                },
+              },
+              { relate },
+            )
+            .then((model) => {
+              return Model1.query()
+                .findById(model.id)
+                .withGraphFetched('model1Relation1.model1Relation1');
+            })
+            .then((model) => {
+              expect(model.model1Prop1).to.equal('hello');
+              expect(model.model1Relation1.model1Prop1).to.equal('parent');
+              expect(model.model1Relation1.model1Relation1.id).to.equal(population.id);
+              expect(model.model1Relation1.model1Relation1.model1Prop1).to.equal(
+                population.model1Prop1,
+              );
+            });
+        });
+      }
+
       if (utils.isPostgres(session.knex)) {
         it('query building methods should be applied to the root models', () => {
           return Model1.query()

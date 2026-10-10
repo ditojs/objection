@@ -97,6 +97,24 @@ import { Person } from '../fixtures/person';
   );
 
   await Person.query().insertGraph(
+    {
+      firstName: 'Jennifer',
+      lastName: 'Lawrence',
+
+      movies: [
+        {
+          title: 'Silver Linings Playbook',
+          actors: [{ id: 2636 }],
+        },
+      ],
+    },
+    {
+      // Relates the actors, but inserts the movies.
+      relate: 'movies.actors',
+    },
+  );
+
+  await Person.query().insertGraph(
     [
       {
         firstName: 'Jennifer',
