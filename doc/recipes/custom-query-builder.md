@@ -70,19 +70,15 @@ TIP: Consider using [modifiers](/recipes/modifiers.html#usage-in-a-query) instea
 
 # Extending the query builder in typescript
 
-With typescript, you need to add some extra type properties for the custom query builder. These are necessary until typescript fully supports our use case. The good news is that you only need to define them once for the shared `BaseModel`. If you don't already have one, it's time to create it.
+With typescript, you need to add an extra type property to the custom query builder, so that methods like `first()`, `findById()`, `patch()` or `page()` return your query builder instead of the plain `QueryBuilder`. You also need to declare the query builder type on the model. The good news is that you only need to define it once for the shared `BaseModel`. If you don't already have one, it's time to create it.
 
 ```ts
-import { Model, Page } from 'objection';
+import { Model, QueryBuilder } from 'objection';
 
 class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  // These are necessary. You can just copy-paste them and change the
-  // name of the query builder class.
-  declare ArrayQueryBuilderType: MyQueryBuilder<M, M[]>;
-  declare SingleQueryBuilderType: MyQueryBuilder<M, M>;
-  declare MaybeSingleQueryBuilderType: MyQueryBuilder<M, M | undefined>;
-  declare NumberQueryBuilderType: MyQueryBuilder<M, number>;
-  declare PageQueryBuilderType: MyQueryBuilder<M, Page<M>>;
+  // This is necessary. You can just copy-paste it and change the name of the
+  // query builder class.
+  declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
 
   myCustomMethod(something: number): this {
     doSomething(something);
@@ -105,6 +101,21 @@ class Person extends BaseModel {
 }
 
 await Person.query().where('id', 1).myCustomMethod(1).where('foo', 'bar');
+await Person.query().findById(1).myCustomMethod(1);
+```
+
+`RebindType` was added in objection 3.5. Older versions need the following five type properties instead. Custom query builders that declare them keep working:
+
+```ts
+import { Model, Page, QueryBuilder } from 'objection';
+
+class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
+  declare ArrayQueryBuilderType: MyQueryBuilder<M, M[]>;
+  declare SingleQueryBuilderType: MyQueryBuilder<M, M>;
+  declare MaybeSingleQueryBuilderType: MyQueryBuilder<M, M | undefined>;
+  declare NumberQueryBuilderType: MyQueryBuilder<M, number>;
+  declare PageQueryBuilderType: MyQueryBuilder<M, Page<M>>;
+}
 ```
 
 ::: tip
