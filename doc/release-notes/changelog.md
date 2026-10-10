@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.5.1
+
+### Fixes
+
+- The warning from 3.4.0 about owner models missing a join property skips the foreign key of a `BelongsToOneRelation`, unless it's part of the id. It's also missing when it was never set, e.g. on models returned by `insert()` or created with `fromJson()`, where no related model is the right result. A foreign key left out of a partial `select()` looks the same and no longer warns either. Join properties of all other relations still warn, including non-id columns. [#132](https://github.com/ditojs/objection/issues/132)
+
 ## 3.5.0
 
 ### What's new
