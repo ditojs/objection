@@ -1,5 +1,5 @@
-import { transaction } from '../../../';
-import { Person } from '../fixtures/person';
+import { transaction } from 'objection';
+import { Person } from '../fixtures/person.js';
 
 (async () => {
   try {

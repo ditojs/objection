@@ -1,5 +1,5 @@
-import { Animal } from '../../fixtures/animal';
-import { Person } from '../../fixtures/person';
+import { Animal } from '../../fixtures/animal.js';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   const person = await Person.query().findById(1);

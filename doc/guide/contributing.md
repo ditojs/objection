@@ -45,7 +45,7 @@ git clone git@github.com:<your-account>/objection.git
 
 ## Running the tests
 
-[Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases.:
+You need Node.js `^20.19.0 || >=22.12.0`. [Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases:
 
 ```bash
 npm ci

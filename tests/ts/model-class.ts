@@ -1,6 +1,6 @@
-import { Person } from './fixtures/person';
-import { Animal } from './fixtures/animal';
-import { Model, ModelClass } from '../../';
+import { Person } from './fixtures/person.js';
+import { Animal } from './fixtures/animal.js';
+import { Model, ModelClass } from 'objection';
 
 (async () => {
   const query = Person.query();

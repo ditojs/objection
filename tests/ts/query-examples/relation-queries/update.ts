@@ -1,5 +1,5 @@
-import { raw, ref } from '../../../../';
-import { Person } from '../../fixtures/person';
+import { raw, ref } from 'objection';
+import { Person } from '../../fixtures/person.js';
 
 (async () => {
   const numberOfAffectedRows = await Person.query()

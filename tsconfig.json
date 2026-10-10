@@ -2,14 +2,14 @@
   "compilerOptions": {
     "allowJs": false,
     "experimentalDecorators": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "noEmit": true,
     "noImplicitReturns": true,
-    "noImplicitUseStrict": false,
     "noImplicitAny": true,
     "strict": true,
-    "target": "es6"
+    "target": "es2022",
+    "types": ["node"]
   },
   "include": ["tests/ts/**/*.ts"]
 }

@@ -1,4 +1,4 @@
-import { Model, Page, QueryBuilder } from '../../../';
+import { Model, Page, QueryBuilder } from 'objection';
 
 export class Program extends Model {
   static tableName = 'programs';
