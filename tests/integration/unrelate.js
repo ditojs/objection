@@ -1,22 +1,13 @@
-const expect = require('expect.js');
-const chai = require('chai');
+import { describe, it, expect, beforeEach } from 'vitest';
 
-module.exports = (session) => {
+export default (session) => {
   let Model1 = session.models.Model1;
   let Model2 = session.models.Model2;
 
   describe('Model unrelate queries', () => {
     describe('.$query()', () => {
-      it('should reject the query', (done) => {
-        Model1.fromJson({ id: 1 })
-          .$query()
-          .unrelate()
-          .then(() => {
-            done(new Error('should not get here'));
-          })
-          .catch(() => {
-            done();
-          });
+      it('should reject the query', () => {
+        return expect(Model1.fromJson({ id: 1 }).$query().unrelate()).rejects.toThrow();
       });
     });
 
@@ -59,34 +50,32 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation1').unrelate();
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              expect(rows[0].model1Id).to.equal(null);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(4);
-              expect(rows[3].model1Id).to.equal(null);
+              expect(rows).toHaveLength(4);
+              expect(rows[0].model1Id).toBeNull();
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBe(4);
+              expect(rows[3].model1Id).toBeNull();
             });
         });
 
-        it('should fail if arguments are given', (done) => {
-          Model1.query()
+        it('should fail if arguments are given', () => {
+          return Model1.query()
             .findById(1)
             .then((model) => {
               return model.$relatedQuery('model1Relation1').unrelate(1);
             })
             .then(() => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 `Don't pass arguments to unrelate(). You should use it like this: unrelate().where('foo', 'bar').andWhere(...)`,
               );
-              done();
-            })
-            .catch(done);
+            });
         });
       });
 
@@ -136,15 +125,15 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation2').unrelate().where('id_col', 2);
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              expect(rows[0].model1_id).to.equal(1);
-              expect(rows[1].model1_id).to.equal(null);
-              expect(rows[2].model1_id).to.equal(1);
-              expect(rows[3].model1_id).to.equal(2);
+              expect(rows).toHaveLength(4);
+              expect(rows[0].model1_id).toBe(1);
+              expect(rows[1].model1_id).toBeNull();
+              expect(rows[2].model1_id).toBe(1);
+              expect(rows[3].model1_id).toBe(2);
             });
         });
 
@@ -156,34 +145,32 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation2').unrelate().where('id_col', '>', 1);
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              expect(rows[0].model1_id).to.equal(1);
-              expect(rows[1].model1_id).to.equal(null);
-              expect(rows[2].model1_id).to.equal(null);
-              expect(rows[3].model1_id).to.equal(2);
+              expect(rows).toHaveLength(4);
+              expect(rows[0].model1_id).toBe(1);
+              expect(rows[1].model1_id).toBeNull();
+              expect(rows[2].model1_id).toBeNull();
+              expect(rows[3].model1_id).toBe(2);
             });
         });
 
-        it('should fail if arguments are given', (done) => {
-          Model1.query()
+        it('should fail if arguments are given', () => {
+          return Model1.query()
             .findById(1)
             .then((model) => {
               return model.$relatedQuery('model1Relation2').unrelate([1, 2]);
             })
             .then((numUpdated) => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 `Don't pass arguments to unrelate(). You should use it like this: unrelate().where('foo', 'bar').andWhere(...)`,
               );
-              done();
-            })
-            .catch(done);
+            });
         });
       });
 
@@ -245,15 +232,15 @@ module.exports = (session) => {
               return model.$relatedQuery('model2Relation1').unrelate().where('Model1.id', 4);
             })
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
+              expect(numDeleted).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).to.have.length(0);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
+              expect(rows).toHaveLength(3);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).toHaveLength(0);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
             });
         });
 
@@ -267,34 +254,32 @@ module.exports = (session) => {
                 .where('model1Prop1', '>', 'blaa 1');
             })
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(2);
+              expect(numDeleted).toBe(2);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(2);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).to.have.length(0);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(0);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
+              expect(rows).toHaveLength(2);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).toHaveLength(0);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(0);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
             });
         });
 
-        it('should fail if arguments are given', (done) => {
-          Model2.query()
+        it('should fail if arguments are given', () => {
+          return Model2.query()
             .findById(1)
             .then((model) => {
               return model.$relatedQuery('model2Relation1').unrelate([1, 2]);
             })
             .then((numUpdated) => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 `Don't pass arguments to unrelate(). You should use it like this: unrelate().where('foo', 'bar').andWhere(...)`,
               );
-              done();
-            })
-            .catch(done);
+            });
         });
       });
 
@@ -352,12 +337,12 @@ module.exports = (session) => {
               return model.$relatedQuery('model2Relation2').unrelate();
             })
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
+              expect(numDeleted).toBe(1);
               return session.knex('Model1Model2One');
             })
             .then((rows) => {
-              expect(rows).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
+              expect(rows).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
             });
         });
       });
@@ -400,12 +385,12 @@ module.exports = (session) => {
             .for(1)
             .unrelate()
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id: 1, model1Id: null },
                 { id: 2, model1Id: null },
                 { id: 3, model1Id: 4 },
@@ -419,12 +404,12 @@ module.exports = (session) => {
             .for([1, 3])
             .unrelate()
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id: 1, model1Id: null },
                 { id: 2, model1Id: null },
                 { id: 3, model1Id: null },
@@ -438,12 +423,12 @@ module.exports = (session) => {
             .for(Model1.query().findByIds([1, 3]))
             .unrelate()
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id: 1, model1Id: null },
                 { id: 2, model1Id: null },
                 { id: 3, model1Id: null },
@@ -461,12 +446,12 @@ module.exports = (session) => {
               .unrelate()
               .where('model1Prop1', '!=', 'hello 2')
               .then((numUpdated) => {
-                expect(numUpdated).to.equal(1);
+                expect(numUpdated).toBe(1);
                 return session.knex(Model1.getTableName()).orderBy('id');
               })
               .then((rows) => {
-                expect(rows).to.have.length(4);
-                chai.expect(rows).containSubset([
+                expect(rows).toHaveLength(4);
+                expect(rows).toContainSubset([
                   { id: 1, model1Id: 2 },
                   { id: 2, model1Id: null },
                   { id: 3, model1Id: null },
@@ -476,20 +461,18 @@ module.exports = (session) => {
           });
         }
 
-        it('should fail if arguments are given', (done) => {
-          Model1.relatedQuery('model1Relation1')
+        it('should fail if arguments are given', () => {
+          return Model1.relatedQuery('model1Relation1')
             .for(1)
             .unrelate(1)
             .then(() => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 `Don't pass arguments to unrelate(). You should use it like this: unrelate().where('foo', 'bar').andWhere(...)`,
               );
-              done();
-            })
-            .catch(done);
+            });
         });
       });
 
@@ -537,12 +520,12 @@ module.exports = (session) => {
             .unrelate()
             .whereIn('id_col', [2, 4])
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: null },
                 { id_col: 3, model1_id: 1 },
@@ -557,12 +540,12 @@ module.exports = (session) => {
             .unrelate()
             .whereIn('id_col', [2, 4])
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: null },
                 { id_col: 3, model1_id: 1 },
@@ -577,12 +560,12 @@ module.exports = (session) => {
             .unrelate()
             .whereIn('id_col', [2, 4])
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: null },
                 { id_col: 3, model1_id: 1 },
@@ -597,12 +580,12 @@ module.exports = (session) => {
             .unrelate()
             .where('id_col', '>', 1)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: null },
                 { id_col: 3, model1_id: null },
@@ -611,20 +594,18 @@ module.exports = (session) => {
             });
         });
 
-        it('should fail if arguments are given', (done) => {
-          Model1.relatedQuery('model1Relation2')
+        it('should fail if arguments are given', () => {
+          return Model1.relatedQuery('model1Relation2')
             .for(1)
             .unrelate([1, 2])
             .then(() => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 `Don't pass arguments to unrelate(). You should use it like this: unrelate().where('foo', 'bar').andWhere(...)`,
               );
-              done();
-            })
-            .catch(done);
+            });
         });
       });
 
@@ -684,12 +665,12 @@ module.exports = (session) => {
             .unrelate()
             .whereIn('Model1.id', [4, 6])
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(1);
+              expect(numDeleted).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(3);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5 },
                 { model2Id: 2, model1Id: 6 },
@@ -703,12 +684,12 @@ module.exports = (session) => {
             .unrelate()
             .whereIn('Model1.id', [4, 6])
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(2);
+              expect(numDeleted).toBe(2);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(2);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(2);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5 },
               ]);
@@ -721,12 +702,12 @@ module.exports = (session) => {
             .unrelate()
             .whereIn('Model1.id', [4, 6])
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(2);
+              expect(numDeleted).toBe(2);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(2);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(2);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5 },
               ]);
@@ -739,34 +720,32 @@ module.exports = (session) => {
             .unrelate()
             .where('model1Prop1', '>', 'blaa 1')
             .then((numDeleted) => {
-              expect(numDeleted).to.equal(2);
+              expect(numDeleted).toBe(2);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(2);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).to.have.length(0);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(0);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
+              expect(rows).toHaveLength(2);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 4)).toHaveLength(0);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(0);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
             });
         });
 
-        it('should fail if arguments are given', (done) => {
-          Model2.query()
+        it('should fail if arguments are given', () => {
+          return Model2.query()
             .findById(1)
             .then((model) => {
               return model.$relatedQuery('model2Relation1').unrelate([1, 2]);
             })
             .then(() => {
-              done(new Error('should not get here'));
+              throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 `Don't pass arguments to unrelate(). You should use it like this: unrelate().where('foo', 'bar').andWhere(...)`,
               );
-              done();
-            })
-            .catch(done);
+            });
         });
       });
     });

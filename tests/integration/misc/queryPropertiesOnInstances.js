@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model, ValidationError, raw } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model, ValidationError, raw } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   const { knex } = session;
 
   describe('query properties of model instances #202', () => {
@@ -30,7 +30,7 @@ module.exports = (session) => {
 
     let TestPost;
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema.dropTableIfExists('Post').createTable('Post', (table) => {
         // SQL Server can't update identity columns, and the tests patch whole instances:
         table.integer('id').primary();
@@ -44,7 +44,7 @@ module.exports = (session) => {
       });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('Post');
     });
 
@@ -58,20 +58,20 @@ module.exports = (session) => {
     it('should write a value assigned after a write with a query property', async () => {
       const { id } = await TestPost.query().insert({ id: 1, name: 'a', views: 0 });
       const post = await TestPost.query().patchAndFetchById(id, { views: raw('views + 1') });
-      expect(post.views).to.equal(1);
+      expect(post.views).toBe(1);
       post.views = 100;
       await post.$query().patch();
-      expect(await fetchViews(id)).to.equal(100);
+      expect(await fetchViews(id)).toBe(100);
     });
 
     if (session.isPostgres()) {
       it('should write a json column assigned after a write with a field expression', async () => {
         const { id } = await TestPost.query().insert({ id: 1, name: 'a', data: { a: 1 } });
         const post = await TestPost.query().patchAndFetchById(id, { 'data:a': raw('2') });
-        expect(post.data).to.eql({ a: 2 });
+        expect(post.data).toEqual({ a: 2 });
         post.data = { a: 3 };
         await post.$query().patch();
-        expect((await TestPost.query().findById(id)).data).to.eql({ a: 3 });
+        expect((await TestPost.query().findById(id)).data).toEqual({ a: 3 });
       });
 
       const expectJsonColumnError = async (promise) => {
@@ -83,8 +83,8 @@ module.exports = (session) => {
           error = err;
         }
 
-        expect(error).to.be.an.instanceOf(ValidationError);
-        expect(error.message).to.equal(
+        expect(error).toBeInstanceOf(ValidationError);
+        expect(error.message).toBe(
           "data:b: can't be combined with a value for the json column 'data'",
         );
       };
@@ -93,7 +93,7 @@ module.exports = (session) => {
         await TestPost.query().insert({ id: 1, name: 'a', data: { a: 1 } });
         const post = TestPost.fromJson({ id: 1, data: { a: 2 }, 'data:b': raw('2') });
         await expectJsonColumnError(TestPost.query().patch(post).where('id', 1));
-        expect((await TestPost.query().findById(1)).data).to.eql({ a: 1 });
+        expect((await TestPost.query().findById(1)).data).toEqual({ a: 1 });
       });
 
       it('should fail to write a field expression given to an instance with a value for its json column', async () => {
@@ -101,7 +101,7 @@ module.exports = (session) => {
         const post = await TestPost.query().findById(1);
         post.$setJson({ 'data:b': raw('2') });
         await expectJsonColumnError(post.$query().patch());
-        expect((await TestPost.query().findById(1)).data).to.eql({ a: 1 });
+        expect((await TestPost.query().findById(1)).data).toEqual({ a: 1 });
       });
     }
 
@@ -110,7 +110,7 @@ module.exports = (session) => {
       const post = await TestPost.query().patchAndFetchById(id, { views: raw('views + 1') });
       post.$setJson({ views: 200 });
       await post.$query().patch();
-      expect(await fetchViews(id)).to.equal(200);
+      expect(await fetchViews(id)).toBe(200);
     });
 
     it('should not run the query property again in a later write', async () => {
@@ -118,14 +118,14 @@ module.exports = (session) => {
       const post = await TestPost.query().patchAndFetchById(id, { views: raw('views + 1') });
       post.name = 'b';
       await post.$query().patch();
-      expect(await fetchViews(id)).to.equal(1);
+      expect(await fetchViews(id)).toBe(1);
     });
 
     it('should write a value assigned to an inserted instance', async () => {
       const post = await TestPost.query().insert({ id: 1, name: 'a', views: raw('10') });
       post.views = 1;
       await TestPost.query().patch(post).where('id', post.id);
-      expect(await fetchViews(post.id)).to.equal(1);
+      expect(await fetchViews(post.id)).toBe(1);
     });
 
     it('should write a value assigned to a clone', async () => {
@@ -133,38 +133,38 @@ module.exports = (session) => {
       const clone = post.$clone();
       clone.views = 3;
       const { id } = await TestPost.query().insert(clone);
-      expect(await fetchViews(id)).to.equal(3);
+      expect(await fetchViews(id)).toBe(3);
     });
 
     it('should keep the query properties of an unchanged clone', async () => {
       const clone = TestPost.fromJson({ id: 1, name: 'a', views: raw('10') }).$clone();
       const { id } = await TestPost.query().insert(clone);
-      expect(await fetchViews(id)).to.equal(10);
+      expect(await fetchViews(id)).toBe(10);
     });
 
     it('should write a query property instead of the schema default', async () => {
       const { id } = await TestPost.query().insert({ id: 1, name: 'a', views: raw('10') });
-      expect(await fetchViews(id)).to.equal(10);
+      expect(await fetchViews(id)).toBe(10);
     });
 
     it('should not set the schema default on the model for a query property', () => {
       const post = TestPost.fromJson({ id: 1, name: 'a', views: raw('10') });
-      expect(post.views).to.equal(undefined);
-      expect(post.toJSON()).to.eql({ id: 1, name: 'a' });
+      expect(post.views).toBe(undefined);
+      expect(post.toJSON()).toEqual({ id: 1, name: 'a' });
     });
 
     it('should write a query property set with $setJson() over a value', async () => {
       const post = TestPost.fromJson({ id: 1, name: 'a', views: 5 });
       post.$setJson({ views: raw('10') });
       const { id } = await TestPost.query().insert(post);
-      expect(await fetchViews(id)).to.equal(10);
+      expect(await fetchViews(id)).toBe(10);
     });
 
     it('should keep the query properties of earlier $setJson() calls', async () => {
       const post = TestPost.fromJson({ id: 1, views: raw('10') });
       post.$setJson({ name: raw('?', ['a']) });
       const { id } = await TestPost.query().insert(post);
-      expect(await TestPost.query().findById(id)).to.containSubset({ name: 'a', views: 10 });
+      expect(await TestPost.query().findById(id)).toMatchObject({ name: 'a', views: 10 });
     });
 
     it('should write a query property instead of the schema default in upsertGraph()', async () => {
@@ -173,7 +173,7 @@ module.exports = (session) => {
         { id, name: 'b', views: raw('views + 1') },
         { update: true },
       );
-      expect(await fetchViews(id)).to.equal(6);
+      expect(await fetchViews(id)).toBe(6);
     });
 
     it('should write query properties over values set in hooks', async () => {
@@ -184,7 +184,7 @@ module.exports = (session) => {
       }
 
       const { id } = await HookPost.query().insert({ id: 1, name: 'a', views: raw('10') });
-      expect(await fetchViews(id)).to.equal(10);
+      expect(await fetchViews(id)).toBe(10);
     });
 
     it('should not write the values set in insert hooks over query properties in later writes', async () => {
@@ -197,7 +197,7 @@ module.exports = (session) => {
       const post = await HookPost.query().insert({ id: 1, name: 'a', views: raw('10') });
       post.name = 'b';
       await post.$query().patch();
-      expect(await fetchViews(post.id)).to.equal(10);
+      expect(await fetchViews(post.id)).toBe(10);
     });
 
     it('should not write the values set in update hooks over query properties in later writes', async () => {
@@ -212,7 +212,7 @@ module.exports = (session) => {
       await post.$query().patch();
       post.name = 'b';
       await post.$query().patch();
-      expect(await fetchViews(post.id)).to.equal(10);
+      expect(await fetchViews(post.id)).toBe(10);
     });
 
     it('should write the foreign key set by a relation over a query property', async () => {
@@ -221,7 +221,7 @@ module.exports = (session) => {
       const child = await parent
         .$relatedQuery('children')
         .insert({ id: 2, name: 'c', parentId: raw('9') });
-      expect((await TestPost.query().findById(child.id)).parentId).to.equal(1);
+      expect((await TestPost.query().findById(child.id)).parentId).toBe(1);
     });
 
     it('should run the query properties each time the same builder runs', async () => {
@@ -231,7 +231,7 @@ module.exports = (session) => {
         .findById(id);
       await builder;
       await builder.clone();
-      expect(await fetchViews(id)).to.equal(2);
+      expect(await fetchViews(id)).toBe(2);
     });
   });
 };

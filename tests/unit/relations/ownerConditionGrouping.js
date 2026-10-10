@@ -1,7 +1,7 @@
-const Knex = require('knex');
-const expect = require('expect.js');
-const { Model } = require('../../../');
-const mockKnexFactory = require('../../../testUtils/mockKnex');
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import Knex from 'knex';
+import { Model } from 'objection';
+import mockKnexFactory from '../../../testUtils/mockKnex.js';
 
 // The relation's owner condition must always be ANDed with the user's where
 // clauses as a group. Otherwise `orWhere` would leak rows of other owners.
@@ -13,7 +13,7 @@ describe('relation owner condition grouping (#2191)', () => {
   let Pet = null;
   let Toy = null;
 
-  before(() => {
+  beforeAll(() => {
     const knex = Knex({ client: 'pg' });
 
     mockKnex = mockKnexFactory(knex, function (mock, oldImpl, args) {
@@ -120,19 +120,19 @@ describe('relation owner condition grouping (#2191)', () => {
 
   describe('HasManyRelation', () => {
     it('find', () => {
-      expect(sql(owner().$relatedQuery('pets').where('name', 'a').orWhere('name', 'b'))).to.equal(
+      expect(sql(owner().$relatedQuery('pets').where('name', 'a').orWhere('name', 'b'))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("name" = 'a' or "name" = 'b')`,
       );
     });
 
     it('find with a single orWhere', () => {
-      expect(sql(owner().$relatedQuery('pets').orWhere('name', 'a'))).to.equal(
+      expect(sql(owner().$relatedQuery('pets').orWhere('name', 'a'))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("name" = 'a')`,
       );
     });
 
     it('find with whereRaw', () => {
-      expect(sql(owner().$relatedQuery('pets').whereRaw(`name = 'a' or name = 'b'`))).to.equal(
+      expect(sql(owner().$relatedQuery('pets').whereRaw(`name = 'a' or name = 'b'`))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and (name = 'a' or name = 'b')`,
       );
     });
@@ -145,13 +145,13 @@ describe('relation owner condition grouping (#2191)', () => {
             .where('name', 'a')
             .onBuild((query) => query.orWhere('name', 'b')),
         ),
-      ).to.equal(
+      ).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("name" = 'a' or "name" = 'b')`,
       );
     });
 
     it('find with orWhere in a modifier', () => {
-      expect(sql(owner().$relatedQuery('pets').modify('dogsOrCats'))).to.equal(
+      expect(sql(owner().$relatedQuery('pets').modify('dogsOrCats'))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("species" = 'dog' or "species" = 'cat')`,
       );
     });
@@ -159,9 +159,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('delete', () => {
       expect(
         sql(owner().$relatedQuery('pets').where('name', 'a').orWhere('name', 'b').delete()),
-      ).to.equal(
-        `delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`,
-      );
+      ).toBe(`delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`);
     });
 
     it('patch', () => {
@@ -173,7 +171,7 @@ describe('relation owner condition grouping (#2191)', () => {
             .orWhere('name', 'b')
             .patch({ name: 'c' }),
         ),
-      ).to.equal(
+      ).toBe(
         `update "pets" set "name" = 'c' where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`,
       );
     });
@@ -187,7 +185,7 @@ describe('relation owner condition grouping (#2191)', () => {
             .orWhere('name', 'b')
             .update({ name: 'c' }),
         ),
-      ).to.equal(
+      ).toBe(
         `update "pets" set "name" = 'c' where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`,
       );
     });
@@ -195,7 +193,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('unrelate', async () => {
       await owner().$relatedQuery('pets').where('name', 'a').orWhere('name', 'b').unrelate();
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `update "pets" set "ownerId" = NULL where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`,
       ]);
     });
@@ -203,17 +201,17 @@ describe('relation owner condition grouping (#2191)', () => {
     it('relate', async () => {
       await owner().$relatedQuery('pets').where('name', 'a').orWhere('name', 'b').relate(5);
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `update "pets" set "ownerId" = 1 where ("name" = 'a' or "name" = 'b') and "pets"."id" in (5)`,
       ]);
     });
 
     it('queries without orWhere are unchanged', () => {
-      expect(sql(owner().$relatedQuery('pets').where('name', 'a').where('age', 2))).to.equal(
+      expect(sql(owner().$relatedQuery('pets').where('name', 'a').where('age', 2))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and "name" = 'a' and "age" = 2`,
       );
 
-      expect(sql(owner().$relatedQuery('pets').where('name', 'a').delete())).to.equal(
+      expect(sql(owner().$relatedQuery('pets').where('name', 'a').delete())).toBe(
         `delete from "pets" where "name" = 'a' and "pets"."ownerId" in (1)`,
       );
     });
@@ -226,17 +224,15 @@ describe('relation owner condition grouping (#2191)', () => {
             .where((query) => query.where('name', 'a').orWhere('name', 'b'))
             .delete(),
         ),
-      ).to.equal(
-        `delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`,
-      );
+      ).toBe(`delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`);
     });
 
     it('relation filter with orWhere', () => {
-      expect(sql(owner().$relatedQuery('filteredPets'))).to.equal(
+      expect(sql(owner().$relatedQuery('filteredPets'))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("species" = 'dog' or "species" = 'cat')`,
       );
 
-      expect(sql(owner().$relatedQuery('filteredPets').delete())).to.equal(
+      expect(sql(owner().$relatedQuery('filteredPets').delete())).toBe(
         `delete from "pets" where "pets"."ownerId" in (1) and ("species" = 'dog' or "species" = 'cat')`,
       );
     });
@@ -244,7 +240,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('relation filter with orWhere combined with user orWhere', () => {
       expect(
         sql(owner().$relatedQuery('filteredPets').where('name', 'a').orWhere('name', 'b')),
-      ).to.equal(
+      ).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("species" = 'dog' or "species" = 'cat') and ("name" = 'a' or "name" = 'b')`,
       );
     });
@@ -252,7 +248,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('unrelate with relation filter with orWhere', async () => {
       await owner().$relatedQuery('filteredPets').unrelate();
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `update "pets" set "ownerId" = NULL where "pets"."ownerId" in (1) and ("species" = 'dog' or "species" = 'cat')`,
       ]);
     });
@@ -260,9 +256,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('static relatedQuery().for()', () => {
       expect(
         sql(Owner.relatedQuery('pets').for(1).where('name', 'a').orWhere('name', 'b').delete()),
-      ).to.equal(
-        `delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`,
-      );
+      ).toBe(`delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."ownerId" in (1)`);
     });
 
     it('static relatedQuery() as a subquery', () => {
@@ -272,7 +266,7 @@ describe('relation owner condition grouping (#2191)', () => {
             Owner.relatedQuery('pets').where('name', 'a').orWhere('name', 'b'),
           ),
         ),
-      ).to.equal(
+      ).toBe(
         `select "owners".* from "owners" where exists (select "pets".* from "pets" where "pets"."ownerId" = "owners"."id" and ("name" = 'a' or "name" = 'b'))`,
       );
     });
@@ -281,7 +275,7 @@ describe('relation owner condition grouping (#2191)', () => {
       const owners = [Owner.fromJson({ id: 1 }), Owner.fromJson({ id: 2 })];
       await Owner.fetchGraph(owners, 'pets(dogsOrCats)');
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `select "pets".* from "pets" where "pets"."ownerId" in (1, 2) and ("species" = 'dog' or "species" = 'cat')`,
       ]);
     });
@@ -297,7 +291,7 @@ describe('relation owner condition grouping (#2191)', () => {
             .orWhere('name', 'b')
             .patchAndFetchById(1, { name: 'c' }),
         ),
-      ).to.equal(
+      ).toBe(
         `update "pets" set "name" = 'c' where ("name" = 'a' or "name" = 'b') and "pets"."id" = 1 and "pets"."ownerId" in (1)`,
       );
     });
@@ -307,7 +301,7 @@ describe('relation owner condition grouping (#2191)', () => {
         sql(
           Pet.query().where('name', 'a').orWhere('name', 'b').patchAndFetchById(1, { name: 'c' }),
         ),
-      ).to.equal(
+      ).toBe(
         `update "pets" set "name" = 'c' where ("name" = 'a' or "name" = 'b') and "pets"."id" = 1`,
       );
     });
@@ -321,31 +315,31 @@ describe('relation owner condition grouping (#2191)', () => {
             .where('name', 'a')
             .orWhere('name', 'b'),
         ),
-      ).to.equal(
+      ).toBe(
         `update "pets" set "name" = 'c' where "pets"."id" = 1 and ("name" = 'a' or "name" = 'b')`,
       );
     });
 
     it('deleteById() with orWhere', () => {
-      expect(sql(Pet.query().deleteById(1).where('name', 'a').orWhere('name', 'b'))).to.equal(
+      expect(sql(Pet.query().deleteById(1).where('name', 'a').orWhere('name', 'b'))).toBe(
         `delete from "pets" where "pets"."id" = 1 and ("name" = 'a' or "name" = 'b')`,
       );
     });
 
     it('patchById() with orWhere', () => {
-      expect(sql(Pet.query().patchById(1, { name: 'c' }).orWhere('name', 'b'))).to.equal(
+      expect(sql(Pet.query().patchById(1, { name: 'c' }).orWhere('name', 'b'))).toBe(
         `update "pets" set "name" = 'c' where "pets"."id" = 1 and ("name" = 'b')`,
       );
     });
 
     it('updateById() with orWhere', () => {
-      expect(sql(Pet.query().updateById(1, { name: 'c' }).orWhere('name', 'b'))).to.equal(
+      expect(sql(Pet.query().updateById(1, { name: 'c' }).orWhere('name', 'b'))).toBe(
         `update "pets" set "name" = 'c' where "pets"."id" = 1 and ("name" = 'b')`,
       );
     });
 
     it('findById() called by the user stays in the user group', () => {
-      expect(sql(owner().$relatedQuery('pets').findById(1).orWhere('name', 'b'))).to.equal(
+      expect(sql(owner().$relatedQuery('pets').findById(1).orWhere('name', 'b'))).toBe(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("pets"."id" = 1 or "name" = 'b')`,
       );
     });
@@ -365,10 +359,10 @@ describe('relation owner condition grouping (#2191)', () => {
         .patchAndFetchById(1, { name: 'c' })
         .orWhere('name', 'b');
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `update "pets" set "name" = 'c' where "pets"."id" = 1 and "pets"."ownerId" in (1) and ("name" = 'b')`,
       ]);
-      expect(findQueries).to.eql([
+      expect(findQueries).toEqual([
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and "pets"."id" = 1 and ("name" = 'b')`,
       ]);
     });
@@ -402,15 +396,15 @@ describe('relation owner condition grouping (#2191)', () => {
         .orWhere('name', 'b')
         .patch({ name: 'c' });
 
-      expect(executedQueries).to.eql([`update "pets" set "name" = 'c' ${where}`]);
-      expect(findQueries).to.eql([findQuery]);
+      expect(executedQueries).toEqual([`update "pets" set "name" = 'c' ${where}`]);
+      expect(findQueries).toEqual([findQuery]);
     });
 
     it('delete() with orWhere and an onBuild() hook', async () => {
       await onBuild(owner().$relatedQuery('pets')).where('name', 'a').orWhere('name', 'b').delete();
 
-      expect(executedQueries).to.eql([`delete from "pets" ${where}`]);
-      expect(findQueries).to.eql([findQuery]);
+      expect(executedQueries).toEqual([`delete from "pets" ${where}`]);
+      expect(findQueries).toEqual([findQuery]);
     });
 
     it('patch() with orWhere and an onBuild() hook in a modifier', async () => {
@@ -421,8 +415,8 @@ describe('relation owner condition grouping (#2191)', () => {
         .orWhere('name', 'b')
         .patch({ name: 'c' });
 
-      expect(executedQueries).to.eql([`update "pets" set "name" = 'c' ${where}`]);
-      expect(findQueries).to.eql([findQuery]);
+      expect(executedQueries).toEqual([`update "pets" set "name" = 'c' ${where}`]);
+      expect(findQueries).toEqual([findQuery]);
     });
   });
 
@@ -436,7 +430,7 @@ describe('relation owner condition grouping (#2191)', () => {
               query.where('age', 2);
             }),
         ),
-      ).to.equal(`select "pets".* from "pets" where "name" = 'a' and "age" = 2`);
+      ).toBe(`select "pets".* from "pets" where "name" = 'a' and "age" = 2`);
     });
   });
 
@@ -444,7 +438,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('find', () => {
       expect(
         sql(owner().$relatedQuery('favoritePet').where('name', 'a').orWhere('name', 'b')),
-      ).to.equal(
+      ).toBe(
         `select "pets".* from "pets" where "pets"."id" in (2) and ("name" = 'a' or "name" = 'b')`,
       );
     });
@@ -452,7 +446,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('delete', () => {
       expect(
         sql(owner().$relatedQuery('favoritePet').where('name', 'a').orWhere('name', 'b').delete()),
-      ).to.equal(`delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."id" in (2)`);
+      ).toBe(`delete from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."id" in (2)`);
     });
 
     it('patch', () => {
@@ -464,7 +458,7 @@ describe('relation owner condition grouping (#2191)', () => {
             .orWhere('name', 'b')
             .patch({ name: 'c' }),
         ),
-      ).to.equal(
+      ).toBe(
         `update "pets" set "name" = 'c' where ("name" = 'a' or "name" = 'b') and "pets"."id" in (2)`,
       );
     });
@@ -472,7 +466,7 @@ describe('relation owner condition grouping (#2191)', () => {
 
   describe('ManyToManyRelation', () => {
     it('find', () => {
-      expect(sql(owner().$relatedQuery('toys').where('name', 'a').orWhere('name', 'b'))).to.equal(
+      expect(sql(owner().$relatedQuery('toys').where('name', 'a').orWhere('name', 'b'))).toBe(
         `select "toys".* from "toys" inner join "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and ("name" = 'a' or "name" = 'b')`,
       );
     });
@@ -480,7 +474,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('delete', () => {
       expect(
         sql(owner().$relatedQuery('toys').where('name', 'a').orWhere('name', 'b').delete()),
-      ).to.equal(
+      ).toBe(
         `delete from "toys" where "toys"."id" in (select "toys"."id" from "toys" inner join "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and ("name" = 'a' or "name" = 'b'))`,
       );
     });
@@ -494,7 +488,7 @@ describe('relation owner condition grouping (#2191)', () => {
             .orWhere('name', 'b')
             .patch({ name: 'c' }),
         ),
-      ).to.equal(
+      ).toBe(
         `update "toys" set "name" = 'c' where "toys"."id" in (select "toys"."id" from "toys" inner join "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and ("name" = 'a' or "name" = 'b'))`,
       );
     });
@@ -502,13 +496,13 @@ describe('relation owner condition grouping (#2191)', () => {
     it('unrelate', async () => {
       await owner().$relatedQuery('toys').where('name', 'a').orWhere('name', 'b').unrelate();
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `delete from "ownersToys" where "ownersToys"."ownerId" in (1) and exists (select 1 from "toys" where "toys"."id" = "ownersToys"."toyId" and ("name" = 'a' or "name" = 'b'))`,
       ]);
     });
 
     it('relation filter and join table modify with orWhere', () => {
-      expect(sql(owner().$relatedQuery('filteredToys'))).to.equal(
+      expect(sql(owner().$relatedQuery('filteredToys'))).toBe(
         `select "toys".* from "toys" inner join (select "ownersToys".* from "ownersToys" where "shared" = false or "primary" = true) as "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and ("color" = 'red' or "color" = 'blue')`,
       );
     });
@@ -516,7 +510,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('unrelate with relation filter and join table modify with orWhere', async () => {
       await owner().$relatedQuery('filteredToys').unrelate();
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         `delete from "ownersToys" where "ownersToys"."ownerId" in (1) and exists (select 1 from "toys" where "toys"."id" = "ownersToys"."toyId" and ("color" = 'red' or "color" = 'blue')) and ("shared" = false or "primary" = true)`,
       ]);
     });
@@ -524,9 +518,7 @@ describe('relation owner condition grouping (#2191)', () => {
 
   describe('HasOneThroughRelation', () => {
     it('find', () => {
-      expect(
-        sql(owner().$relatedQuery('bestToy').where('name', 'a').orWhere('name', 'b')),
-      ).to.equal(
+      expect(sql(owner().$relatedQuery('bestToy').where('name', 'a').orWhere('name', 'b'))).toBe(
         `select "toys".* from "toys" inner join "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and ("name" = 'a' or "name" = 'b')`,
       );
     });
@@ -534,7 +526,7 @@ describe('relation owner condition grouping (#2191)', () => {
     it('delete', () => {
       expect(
         sql(owner().$relatedQuery('bestToy').where('name', 'a').orWhere('name', 'b').delete()),
-      ).to.equal(
+      ).toBe(
         `delete from "toys" where "toys"."id" in (select "toys"."id" from "toys" inner join "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and ("name" = 'a' or "name" = 'b'))`,
       );
     });

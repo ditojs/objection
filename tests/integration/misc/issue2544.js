@@ -1,0 +1,159 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
+
+export default (session) => {
+  describe('upsertGraph relate with a composite id that contains the foreign key #2544', () => {
+    const { knex } = session;
+    let Order;
+    let OrderItem;
+    let OrderNote;
+
+    beforeAll(() => {
+      return knex.schema
+        .dropTableIfExists('order_notes_2544')
+        .dropTableIfExists('order_items_2544')
+        .dropTableIfExists('orders_2544')
+        .createTable('orders_2544', (table) => {
+          table.integer('id').primary();
+          table.string('name');
+        })
+        .createTable('order_items_2544', (table) => {
+          table.integer('order_id');
+          table.integer('product_id');
+          table.integer('quantity');
+          table.primary(['order_id', 'product_id']);
+        })
+        .createTable('order_notes_2544', (table) => {
+          table.integer('order_id').primary();
+          table.string('text');
+        });
+    });
+
+    afterAll(() => {
+      return knex.schema
+        .dropTableIfExists('order_notes_2544')
+        .dropTableIfExists('order_items_2544')
+        .dropTableIfExists('orders_2544');
+    });
+
+    beforeAll(() => {
+      OrderItem = class OrderItem extends Model {
+        static get tableName() {
+          return 'order_items_2544';
+        }
+
+        static get idColumn() {
+          return ['order_id', 'product_id'];
+        }
+      };
+
+      // A one-to-one child whose id is the foreign key itself.
+      OrderNote = class OrderNote extends Model {
+        static get tableName() {
+          return 'order_notes_2544';
+        }
+
+        static get idColumn() {
+          return 'order_id';
+        }
+      };
+
+      Order = class Order extends Model {
+        static get tableName() {
+          return 'orders_2544';
+        }
+
+        static get relationMappings() {
+          return {
+            items: {
+              relation: Model.HasManyRelation,
+              modelClass: OrderItem,
+              join: {
+                from: 'orders_2544.id',
+                to: 'order_items_2544.order_id',
+              },
+            },
+
+            note: {
+              relation: Model.HasOneRelation,
+              modelClass: OrderNote,
+              join: {
+                from: 'orders_2544.id',
+                to: 'order_notes_2544.order_id',
+              },
+            },
+          };
+        }
+      };
+
+      Order.knex(knex);
+    });
+
+    beforeEach(() => {
+      return knex('order_notes_2544')
+        .delete()
+        .then(() => knex('order_items_2544').delete())
+        .then(() => knex('orders_2544').delete());
+    });
+
+    const items = () =>
+      knex('order_items_2544').select('order_id', 'product_id', 'quantity').orderBy('product_id');
+
+    it('should insert children of a new parent', async () => {
+      const order = await Order.query().upsertGraphAndFetch(
+        { id: 1, name: 'order', items: [{ product_id: 2, quantity: 3 }] },
+        { relate: true, insertMissing: true },
+      );
+
+      expect(order.items.map((it) => it.toJSON())).toEqual([
+        { order_id: 1, product_id: 2, quantity: 3 },
+      ]);
+      expect(await items()).toEqual([{ order_id: 1, product_id: 2, quantity: 3 }]);
+    });
+
+    it('should insert children of a new parent using insertGraph', async () => {
+      await Order.query().insertGraph(
+        { id: 1, name: 'order', items: [{ product_id: 2, quantity: 3 }] },
+        { relate: true },
+      );
+
+      expect(await items()).toEqual([{ order_id: 1, product_id: 2, quantity: 3 }]);
+    });
+
+    it('should replace children of an existing parent', async () => {
+      await Order.query().insertGraph({
+        id: 1,
+        name: 'order',
+        items: [{ product_id: 2, quantity: 3 }],
+      });
+
+      await Order.query().upsertGraph(
+        { id: 1, items: [{ product_id: 2, quantity: 5 }] },
+        { relate: true },
+      );
+
+      expect(await items()).toEqual([{ order_id: 1, product_id: 2, quantity: 5 }]);
+    });
+
+    const notes = () => knex('order_notes_2544').select('order_id', 'text');
+
+    it('should insert a HasOne child whose id is the foreign key using insertGraph', async () => {
+      await Order.query().insertGraph(
+        { id: 1, name: 'order', note: { text: 'note' } },
+        { relate: true },
+      );
+
+      expect(await notes()).toEqual([{ order_id: 1, text: 'note' }]);
+    });
+
+    it('should insert a HasOne child whose id is the foreign key using upsertGraph', async () => {
+      const order = await Order.query().upsertGraphAndFetch(
+        { id: 1, name: 'order', note: { text: 'note' } },
+        { relate: true, insertMissing: true },
+      );
+
+      expect(order.note.toJSON()).toEqual({ order_id: 1, text: 'note' });
+      expect(await notes()).toEqual([{ order_id: 1, text: 'note' }]);
+    });
+  });
+};

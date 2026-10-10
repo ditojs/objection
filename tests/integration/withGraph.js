@@ -1,11 +1,11 @@
-const chai = require('chai');
-const expect = require('expect.js');
-const { ValidationError, raw, ref } = require('../..');
-const mockKnexFactory = require('../../testUtils/mockKnex');
-const { map: promiseMap } = require('../../lib/utils/promiseUtils');
-const { pick, range, sortBy } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { ValidationError, raw, ref } from 'objection';
+import mockKnexFactory from '../../testUtils/mockKnex.js';
+import { map as promiseMap } from '../../lib/utils/promiseUtils/index.js';
+import { pick, range, sortBy } from '../../testUtils/testUtils.js';
+import Knex from 'knex';
 
-module.exports = (session) => {
+export default (session) => {
   const Model1 = session.models.Model1;
   const Model2 = session.models.Model2;
 
@@ -87,7 +87,7 @@ module.exports = (session) => {
     });
 
     test('model1Relation1', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -104,12 +104,12 @@ module.exports = (session) => {
         },
       ]);
 
-      expect(models[0]).to.be.a(Model1);
-      expect(models[0].model1Relation1).to.be.a(Model1);
+      expect(models[0]).toBeInstanceOf(Model1);
+      expect(models[0].model1Relation1).toBeInstanceOf(Model1);
     });
 
     test({ model1Relation1: true }, (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -126,12 +126,12 @@ module.exports = (session) => {
         },
       ]);
 
-      expect(models[0]).to.be.a(Model1);
-      expect(models[0].model1Relation1).to.be.a(Model1);
+      expect(models[0]).toBeInstanceOf(Model1);
+      expect(models[0].model1Relation1).toBeInstanceOf(Model1);
     });
 
     test('model1Relation1(select:model1Prop1)', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -145,8 +145,8 @@ module.exports = (session) => {
         },
       ]);
 
-      expect(models[0]).to.be.a(Model1);
-      expect(models[0].model1Relation1).to.be.a(Model1);
+      expect(models[0]).toBeInstanceOf(Model1);
+      expect(models[0].model1Relation1).toBeInstanceOf(Model1);
     });
 
     test(
@@ -156,7 +156,7 @@ module.exports = (session) => {
         },
       },
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -170,13 +170,13 @@ module.exports = (session) => {
           },
         ]);
 
-        expect(models[0]).to.be.a(Model1);
-        expect(models[0].model1Relation1).to.be.a(Model1);
+        expect(models[0]).toBeInstanceOf(Model1);
+        expect(models[0].model1Relation1).toBeInstanceOf(Model1);
       },
     );
 
     test('model1Relation1.model1Relation1', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -202,7 +202,7 @@ module.exports = (session) => {
     });
 
     test({ model1Relation1: { model1Relation1: {} } }, (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -228,7 +228,7 @@ module.exports = (session) => {
     });
 
     test('model1Relation1.model1Relation1Inverse', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -256,7 +256,7 @@ module.exports = (session) => {
     test(
       'model1Relation1.^',
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -292,7 +292,7 @@ module.exports = (session) => {
     );
 
     test('model1Relation1.^2', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -325,7 +325,7 @@ module.exports = (session) => {
         },
       },
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -355,7 +355,7 @@ module.exports = (session) => {
     test(
       'model1Relation1(selectId).^',
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -394,7 +394,7 @@ module.exports = (session) => {
     test(
       'model1Relation1(selectId).^4',
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -429,7 +429,7 @@ module.exports = (session) => {
     );
 
     test('model1Relation2.model2Relation2', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -465,12 +465,12 @@ module.exports = (session) => {
         },
       ]);
 
-      expect(models[0]).to.be.a(Model1);
-      expect(models[0].model1Relation2[0].model2Relation2).to.be.a(Model1);
+      expect(models[0]).toBeInstanceOf(Model1);
+      expect(models[0].model1Relation2[0].model2Relation2).toBeInstanceOf(Model1);
     });
 
     test('model1Relation2.model2Relation2.model1Relation1', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -514,12 +514,12 @@ module.exports = (session) => {
         },
       ]);
 
-      expect(models[0]).to.be.a(Model1);
-      expect(models[0].model1Relation2[0].model2Relation2.model1Relation1).to.be.a(Model1);
+      expect(models[0]).toBeInstanceOf(Model1);
+      expect(models[0].model1Relation2[0].model2Relation2.model1Relation1).toBeInstanceOf(Model1);
     });
 
     test('[model1Relation1, model1Relation2]', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -554,14 +554,14 @@ module.exports = (session) => {
         },
       ]);
 
-      expect(models[0]).to.be.a(Model1);
-      expect(models[0].model1Relation2[0]).to.be.a(Model2);
+      expect(models[0]).toBeInstanceOf(Model1);
+      expect(models[0].model1Relation2[0]).toBeInstanceOf(Model2);
     });
 
     test(
       '[model1Relation1, model1Relation2(orderByDesc, selectProps)]',
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -609,7 +609,7 @@ module.exports = (session) => {
     );
 
     test('[model1Relation1, model1Relation2.model2Relation1]', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -666,7 +666,7 @@ module.exports = (session) => {
     });
 
     test('[model1Relation2.model2Relation1, model1Relation1]', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -723,7 +723,7 @@ module.exports = (session) => {
     });
 
     test('[model1Relation1, model1Relation2.model2Relation1.[model1Relation1, model1Relation2]]', (models) => {
-      expect(models).to.eql([
+      expect(models).toEqual([
         {
           id: 1,
           model1Id: 2,
@@ -811,7 +811,7 @@ module.exports = (session) => {
       ]
     ]`,
       (models) => {
-        expect(models).to.eql([
+        expect(models).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -891,9 +891,7 @@ module.exports = (session) => {
           throw new Error('should not get here');
         })
         .catch((err) => {
-          expect(err.message).to.equal(
-            'unknown relation "model1Relation111" in a relation expression',
-          );
+          expect(err.message).toBe('unknown relation "model1Relation111" in a relation expression');
         });
     });
 
@@ -919,7 +917,7 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').limit(1),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2]],
           [4, [4]],
           [6, [3]],
@@ -933,7 +931,7 @@ module.exports = (session) => {
           {},
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, []],
           [4, [4]],
           [6, []],
@@ -945,7 +943,7 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').limit(1).offset(1),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [1]],
           [4, []],
           [6, []],
@@ -957,7 +955,7 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').first(),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2]],
           [4, [4]],
           [6, [3]],
@@ -969,7 +967,7 @@ module.exports = (session) => {
           query.orderByRaw('case when id_col = ? then 0 else 1 end, id_col desc', [1]).limit(1),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [1]],
           [4, [4]],
           [6, [3]],
@@ -984,12 +982,12 @@ module.exports = (session) => {
             query.orderBy('model2_prop1', 'asc', nulls).limit(1),
           );
 
-        expect(relatedIds(await fetchFirst('first'), 'model1Relation2')).to.eql([
+        expect(relatedIds(await fetchFirst('first'), 'model1Relation2')).toEqual([
           [1, [2]],
           [4, [4]],
           [6, [3]],
         ]);
-        expect(relatedIds(await fetchFirst('last'), 'model1Relation2')).to.eql([
+        expect(relatedIds(await fetchFirst('last'), 'model1Relation2')).toEqual([
           [1, [1]],
           [4, [4]],
           [6, [3]],
@@ -1001,7 +999,7 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').onBuildKnex((knexQuery) => knexQuery.limit(1)),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2]],
           [4, [4]],
           [6, [3]],
@@ -1013,7 +1011,7 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').limit(null),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2, 1]],
           [4, [4]],
           [6, [3]],
@@ -1025,7 +1023,7 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').range(0, 0).limit(2),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, []],
           [4, [4]],
           [6, [3]],
@@ -1045,8 +1043,8 @@ module.exports = (session) => {
             error = err;
           }
 
-          expect(error).to.be.a(Error);
-          expect(error.message).to.contain('Defined query timeout of 50ms exceeded');
+          expect(error).toBeInstanceOf(Error);
+          expect(error.message).toContain('Defined query timeout of 50ms exceeded');
         });
       }
 
@@ -1055,13 +1053,13 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').limit(2),
         );
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2, 1]],
           [4, [4]],
           [6, [3]],
         ]);
-        expect(models[0].model1Relation2[0]).to.be.a(Model2);
-        expect(models[0].model1Relation2[0]).to.not.have.property('objectiontmprownum');
+        expect(models[0].model1Relation2[0]).toBeInstanceOf(Model2);
+        expect(models[0].model1Relation2[0]).not.toHaveProperty('objectiontmprownum');
       });
 
       it('should fetch nested relations of the limited models', async () => {
@@ -1069,12 +1067,12 @@ module.exports = (session) => {
           query.orderBy('id_col', 'desc').limit(1),
         ).modifyGraph('model1Relation2.model2Relation1', (query) => query.orderBy('id'));
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2]],
           [4, [4]],
           [6, [3]],
         ]);
-        expect(relatedIds(models[0].model1Relation2, 'model2Relation1', 'id')).to.eql([
+        expect(relatedIds(models[0].model1Relation2, 'model2Relation1', 'id')).toEqual([
           [2, [5, 6]],
         ]);
       });
@@ -1089,12 +1087,12 @@ module.exports = (session) => {
           .modifyGraph('model2Relation1', (query) => query.orderBy('id', 'desc').limit(1))
           .orderBy('id_col');
 
-        expect(relatedIds(models, 'model2Relation1', 'id')).to.eql([
+        expect(relatedIds(models, 'model2Relation1', 'id')).toEqual([
           [1, [5]],
           [2, [6]],
           [3, []],
         ]);
-        expect(models[1].model2Relation1[0].aliasedExtra).to.equal('extra 6');
+        expect(models[1].model2Relation1[0].aliasedExtra).toBe('extra 6');
       });
 
       // SQLite can't select `schema.table.*`.
@@ -1156,7 +1154,7 @@ module.exports = (session) => {
               )
               .orderBy('id');
 
-            expect(relatedIds(model1s, 'model1Relation2')).to.eql([
+            expect(relatedIds(model1s, 'model1Relation2')).toEqual([
               [1, [2]],
               [4, [4]],
               [6, [3]],
@@ -1169,7 +1167,7 @@ module.exports = (session) => {
             .modifyGraph('model2Relation1', (query) => query.orderBy('id', 'desc').limit(1))
             .orderBy('id_col');
 
-          expect(relatedIds(model2s, 'model2Relation1', 'id')).to.eql([
+          expect(relatedIds(model2s, 'model2Relation1', 'id')).toEqual([
             [1, []],
             [2, [6]],
             [3, []],
@@ -1197,7 +1195,7 @@ module.exports = (session) => {
           .whereExists(Model1Latest.relatedQuery('latestModel2'))
           .orderBy('id');
 
-        expect(relatedIds(models, 'latestModel2')).to.eql([
+        expect(relatedIds(models, 'latestModel2')).toEqual([
           [1, 2],
           [4, 4],
           [6, 3],
@@ -1217,7 +1215,7 @@ module.exports = (session) => {
           .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc').limit(1))
           .orderBy('id');
 
-        expect(relatedIds(models, 'model1Relation2')).to.eql([
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
           [1, [2]],
           [4, [4]],
           [6, [3]],
@@ -1239,11 +1237,11 @@ module.exports = (session) => {
               }),
             );
 
-          before(() => {
-            knex = require('knex')({ ...session.opt.knexConfig, version: '5.7.0' });
+          beforeAll(() => {
+            knex = Knex({ ...session.opt.knexConfig, version: '5.7.0' });
           });
 
-          after(() => {
+          afterAll(() => {
             return knex.destroy();
           });
 
@@ -1259,13 +1257,13 @@ module.exports = (session) => {
               .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc').first())
               .orderBy('id');
 
-            expect(relatedIds(models, 'model1Relation2')).to.eql([
+            expect(relatedIds(models, 'model1Relation2')).toEqual([
               [1, [2]],
               [4, [4]],
               [6, [3]],
             ]);
-            expect(queries).to.have.length(4);
-            expect(queries.join()).to.not.contain('row_number');
+            expect(queries).toHaveLength(4);
+            expect(queries.join()).not.toContain('row_number');
           });
 
           it('should fetch the related models of each parent separately for a relation mapping modify', async () => {
@@ -1289,12 +1287,12 @@ module.exports = (session) => {
               .whereExists(TestModel.relatedQuery('latestModel2'))
               .orderBy('id');
 
-            expect(relatedIds(models, 'latestModel2')).to.eql([
+            expect(relatedIds(models, 'latestModel2')).toEqual([
               [1, 2],
               [4, 4],
               [6, 3],
             ]);
-            expect(queries).to.have.length(4);
+            expect(queries).toHaveLength(4);
           });
 
           it('should fetch the related models of all parents together without a limit', async () => {
@@ -1305,12 +1303,12 @@ module.exports = (session) => {
               .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc'))
               .orderBy('id');
 
-            expect(relatedIds(models, 'model1Relation2')).to.eql([
+            expect(relatedIds(models, 'model1Relation2')).toEqual([
               [1, [2, 1]],
               [4, [4]],
               [6, [3]],
             ]);
-            expect(queries).to.have.length(2);
+            expect(queries).toHaveLength(2);
           });
         });
       }
@@ -1326,7 +1324,7 @@ module.exports = (session) => {
         })
         .orderBy('id')
         .then((result) => {
-          expect(result).to.eql([
+          expect(result).toEqual([
             {
               id: 1,
               model1Id: 2,
@@ -1415,7 +1413,7 @@ module.exports = (session) => {
                 [method]('[model1Relation1, model1Relation2.model2Relation1]');
             })
             .then((models) => {
-              expect(models).to.eql([
+              expect(models).toEqual([
                 {
                   id: 0,
                   model1Prop1: 'hello 0',
@@ -1471,7 +1469,7 @@ module.exports = (session) => {
           qb.select('Model1.id').orderBy('Model1.id'),
         )
         .then((res) => {
-          expect(res).to.eql({
+          expect(res).toEqual({
             id: 1,
             model1Id: 2,
             $afterFindCalled: 1,
@@ -1518,8 +1516,8 @@ module.exports = (session) => {
         .withGraphFetched('[model1Relation1, model1Relation2]')
         .range(0, 0)
         .then((res) => {
-          expect(res.results[0].model1Relation1.id).to.equal(2);
-          expect(res.results[0].model1Relation2).to.have.length(2);
+          expect(res.results[0].model1Relation1.id).toBe(2);
+          expect(res.results[0].model1Relation2).toHaveLength(2);
         });
     });
 
@@ -1529,7 +1527,7 @@ module.exports = (session) => {
         .withGraphJoined('model1Relation1')
         .range(0, 0)
         .then((res) => {
-          expect(res.results[0].model1Relation1.id).to.equal(2);
+          expect(res.results[0].model1Relation1.id).toBe(2);
         });
     });
 
@@ -1541,28 +1539,27 @@ module.exports = (session) => {
         .withGraphJoined('model1Relation2')
         .resultSize()
         .then((size) => {
-          expect(size).to.equal(2);
+          expect(size).toBe(2);
         });
     });
 
-    it('resultSize should support aliased selections in groupBy and having with joinEager', function () {
-      // Postgres and SQL Server don't support selection aliases in `having`.
-      if (session.isPostgres() || session.isMsSql()) {
-        return this.skip();
-      }
+    it.skipIf(session.isPostgres() || session.isMsSql())(
+      'resultSize should support aliased selections in groupBy and having with joinEager',
+      () => {
+        // Postgres and SQL Server don't support selection aliases in `having`.
+        const query = Model1.query()
+          .select('Model1.id', 'Model1.model1Prop1 as prop')
+          .whereIn('Model1.id', [1, 6])
+          .withGraphJoined('model1Relation2')
+          .groupBy('Model1.id', 'model1Relation2.id_col')
+          .having('prop', '=', 'hello 1');
 
-      const query = Model1.query()
-        .select('Model1.id', 'Model1.model1Prop1 as prop')
-        .whereIn('Model1.id', [1, 6])
-        .withGraphJoined('model1Relation2')
-        .groupBy('Model1.id', 'model1Relation2.id_col')
-        .having('prop', '=', 'hello 1');
-
-      return Promise.all([query, query.resultSize()]).then(([models, size]) => {
-        expect(models.map((it) => it.id)).to.eql([1]);
-        expect(size).to.equal(1);
-      });
-    });
+        return Promise.all([query, query.resultSize()]).then(([models, size]) => {
+          expect(models.map((it) => it.id)).toEqual([1]);
+          expect(size).toBe(1);
+        });
+      },
+    );
 
     it('resultSize should support a column selected twice with groupBy and joinEager', async () => {
       const query = Model1.query()
@@ -1586,89 +1583,86 @@ module.exports = (session) => {
         );
 
       const [models, size] = await Promise.all([query, query.resultSize()]);
-      expect(models.map((it) => it.id).sort()).to.eql([1, 6]);
-      expect(size).to.equal(2);
+      expect(models.map((it) => it.id).sort()).toEqual([1, 6]);
+      expect(size).toBe(2);
     });
 
-    it('resultSize should support an aliased selection in groupBy with joinEager', async function () {
-      // SQL Server doesn't support selection aliases in `groupBy`.
-      if (session.isMsSql()) {
-        return this.skip();
-      }
-
-      const query = Model1.query()
-        .select('Model1.id', 'Model1.model1Prop1 as prop')
-        .whereIn('Model1.id', [1, 6])
-        .withGraphJoined('model1Relation2')
-        .groupBy('Model1.id', 'prop', 'model1Relation2.id_col');
-
-      const [models, size] = await Promise.all([query, query.resultSize()]);
-      expect(models.map((it) => it.id).sort()).to.eql([1, 6]);
-      expect(size).to.equal(2);
-    });
-
-    it('resultSize and page should respect distinctOn with joinEager', async function () {
-      if (!session.isPostgres()) {
-        return this.skip();
-      }
-
-      // `model1Prop2` is null for all models, so `distinctOn` returns one.
-      for (const relation of ['model1Relation1', 'model1Relation2']) {
+    it.skipIf(session.isMsSql())(
+      'resultSize should support an aliased selection in groupBy with joinEager',
+      async () => {
+        // SQL Server doesn't support selection aliases in `groupBy`.
         const query = Model1.query()
-          .distinctOn('Model1.model1Prop2')
-          .withGraphJoined(relation)
-          .orderBy('Model1.model1Prop2')
-          .orderBy('Model1.id');
-
-        const [models, size, page] = await Promise.all([
-          query,
-          query.resultSize(),
-          query.clone().page(0, 10),
-        ]);
-        expect(models.map((it) => it.id)).to.eql([1]);
-        expect(size).to.equal(1);
-        expect(page.total).to.equal(1);
-      }
-    });
-
-    it('resultSize and page should respect the order of distinctOn on a joined column with joinEager', async function () {
-      if (!session.isPostgres()) {
-        return this.skip();
-      }
-
-      await session.populate([
-        {
-          id: 1,
-          model1Relation2: [
-            { idCol: 1, model2Prop1: 'a' },
-            { idCol: 2, model2Prop1: 'b' },
-          ],
-        },
-        {
-          id: 2,
-          model1Relation2: [{ idCol: 3, model2Prop1: 'b' }],
-        },
-      ]);
-
-      // The order decides whether 'b' picks the row of model 1 or model 2, and
-      // without it, `distinctOn` picks the same row in both directions.
-      for (const direction of ['asc', 'desc']) {
-        const query = Model1.query()
-          .distinctOn('model1Relation2.model2_prop1')
+          .select('Model1.id', 'Model1.model1Prop1 as prop')
+          .whereIn('Model1.id', [1, 6])
           .withGraphJoined('model1Relation2')
-          .orderBy('model1Relation2.model2_prop1')
-          .orderBy('Model1.id', direction);
+          .groupBy('Model1.id', 'prop', 'model1Relation2.id_col');
 
-        const [models, size, page] = await Promise.all([
-          query,
-          query.resultSize(),
-          query.clone().page(0, 10),
+        const [models, size] = await Promise.all([query, query.resultSize()]);
+        expect(models.map((it) => it.id).sort()).toEqual([1, 6]);
+        expect(size).toBe(2);
+      },
+    );
+
+    it.skipIf(!session.isPostgres())(
+      'resultSize and page should respect distinctOn with joinEager',
+      async () => {
+        // `model1Prop2` is null for all models, so `distinctOn` returns one.
+        for (const relation of ['model1Relation1', 'model1Relation2']) {
+          const query = Model1.query()
+            .distinctOn('Model1.model1Prop2')
+            .withGraphJoined(relation)
+            .orderBy('Model1.model1Prop2')
+            .orderBy('Model1.id');
+
+          const [models, size, page] = await Promise.all([
+            query,
+            query.resultSize(),
+            query.clone().page(0, 10),
+          ]);
+          expect(models.map((it) => it.id)).toEqual([1]);
+          expect(size).toBe(1);
+          expect(page.total).toBe(1);
+        }
+      },
+    );
+
+    it.skipIf(!session.isPostgres())(
+      'resultSize and page should respect the order of distinctOn on a joined column with joinEager',
+      async () => {
+        await session.populate([
+          {
+            id: 1,
+            model1Relation2: [
+              { idCol: 1, model2Prop1: 'a' },
+              { idCol: 2, model2Prop1: 'b' },
+            ],
+          },
+          {
+            id: 2,
+            model1Relation2: [{ idCol: 3, model2Prop1: 'b' }],
+          },
         ]);
-        expect(models.map((it) => it.id).sort()).to.eql(direction === 'asc' ? [1] : [1, 2]);
-        expect(size).to.equal(models.length);
-        expect(page.total).to.equal(models.length);
-      }
-    });
+
+        // The order decides whether 'b' picks the row of model 1 or model 2, and
+        // without it, `distinctOn` picks the same row in both directions.
+        for (const direction of ['asc', 'desc']) {
+          const query = Model1.query()
+            .distinctOn('model1Relation2.model2_prop1')
+            .withGraphJoined('model1Relation2')
+            .orderBy('model1Relation2.model2_prop1')
+            .orderBy('Model1.id', direction);
+
+          const [models, size, page] = await Promise.all([
+            query,
+            query.resultSize(),
+            query.clone().page(0, 10),
+          ]);
+          expect(models.map((it) => it.id).sort()).toEqual(direction === 'asc' ? [1] : [1, 2]);
+          expect(size).toBe(models.length);
+          expect(page.total).toBe(models.length);
+        }
+      },
+    );
 
     it('page should count the root models with joinEager', () => {
       return Model1.query()
@@ -1677,10 +1671,10 @@ module.exports = (session) => {
         .orderBy('Model1.id')
         .page(0, 10)
         .then((res) => {
-          expect(res.total).to.equal(2);
-          expect(res.results.map((it) => it.id)).to.eql([1, 6]);
-          expect(res.results[0].model1Relation2).to.have.length(2);
-          expect(res.results[1].model1Relation2).to.have.length(1);
+          expect(res.total).toBe(2);
+          expect(res.results.map((it) => it.id)).toEqual([1, 6]);
+          expect(res.results[0].model1Relation2).toHaveLength(2);
+          expect(res.results[1].model1Relation2).toHaveLength(1);
         });
     });
 
@@ -1693,7 +1687,7 @@ module.exports = (session) => {
         })
         .findOne({ model1Prop1: 'hello 1' })
         .then((result) => {
-          chai.expect(result).to.containSubset({
+          expect(result).toMatchObject({
             model1Prop1: 'hello 1',
 
             model1Relation1: {
@@ -1711,7 +1705,7 @@ module.exports = (session) => {
         .where('Model1.model1Prop1', 'hello 1')
         .first()
         .then((result) => {
-          chai.expect(result).to.containSubset({
+          expect(result).toMatchObject({
             model1Prop1: 'hello 1',
 
             model1Relation1: {
@@ -1726,7 +1720,7 @@ module.exports = (session) => {
         .modifyGraph('foo', () => {})
         .findOne({ model1Prop1: 'hello 1' })
         .then((result) => {
-          expect(result.model1Prop1).to.equal('hello 1');
+          expect(result.model1Prop1).toBe('hello 1');
         });
     });
 
@@ -1802,7 +1796,7 @@ module.exports = (session) => {
             },
           });
 
-        expect(result).to.eql([
+        expect(result).toEqual([
           {
             idCol: 1,
             model1Id: 1,
@@ -1858,11 +1852,7 @@ module.exports = (session) => {
       });
     }
 
-    it('distinctOn should not select its columns', async function () {
-      if (!session.isPostgres()) {
-        return this.skip();
-      }
-
+    it.skipIf(!session.isPostgres())('distinctOn should not select its columns', async () => {
       for (const method of ['withGraphFetched', 'withGraphJoined']) {
         const [{ model1Relation2, ...model }] = await Model1.query()
           .distinctOn('Model1.model1Prop1')
@@ -1874,15 +1864,15 @@ module.exports = (session) => {
             },
           });
 
-        expect(model).to.eql({
+        expect(model).toEqual({
           id: 1,
           model1Id: 2,
           model1Prop1: 'hello 1',
           model1Prop2: null,
           $afterFindCalled: 1,
         });
-        expect(model1Relation2).to.have.length(1);
-        expect(Object.keys(model1Relation2[0]).sort()).to.eql([
+        expect(model1Relation2).toHaveLength(1);
+        expect(Object.keys(model1Relation2[0]).sort()).toEqual([
           '$afterFindCalled',
           'idCol',
           'model1Id',
@@ -1896,11 +1886,11 @@ module.exports = (session) => {
     it.skip('should fail with a clear error when a duplicate relation is detected', () => {
       expect(() => {
         Model1.query().withGraphFetched('[model1Relation1, model1Relation1.model1Relation2]');
-      }).to.throwException((err) => {
-        expect(err.message).to.equal(
-          `Duplicate relation name "model1Relation1" in relation expression "[model1Relation1, model1Relation1.model1Relation2]". Use "a.[b, c]" instead of "[a.b, a.c]".`,
-        );
-      });
+      }).toThrow(
+        expect.objectContaining({
+          message: `Duplicate relation name "model1Relation1" in relation expression "[model1Relation1, model1Relation1.model1Relation2]". Use "a.[b, c]" instead of "[a.b, a.c]".`,
+        }),
+      );
     });
 
     describe('skipFetched option', () => {
@@ -1925,8 +1915,8 @@ module.exports = (session) => {
         queries = [];
         const result = await TestModel.fetchGraph(models, 'model1Relation1', { skipFetched: true });
 
-        expect(queries).to.have.length(0);
-        expect(models).to.eql(result);
+        expect(queries).toHaveLength(0);
+        expect(models).toEqual(result);
       });
 
       it('should not fetch an existing nested relation when `skipFetched` option is true', async () => {
@@ -1939,7 +1929,7 @@ module.exports = (session) => {
           skipFetched: true,
         });
 
-        expect(queries).to.have.length(1);
+        expect(queries).toHaveLength(1);
       });
 
       it('should fetch an existing relation when `skipFetched` option is true if not all needed relation props exist', async () => {
@@ -1953,8 +1943,8 @@ module.exports = (session) => {
         queries = [];
         await model.$fetchGraph('model1Relation1.model1Relation1', { skipFetched: true });
 
-        expect(queries).to.have.length(2);
-        expect(model).to.eql({
+        expect(queries).toHaveLength(2);
+        expect(model).toEqual({
           id: 1,
           model1Id: 2,
           model1Prop1: 'hello 1',
@@ -1988,7 +1978,7 @@ module.exports = (session) => {
         queries = [];
         await model.$fetchGraph('model1Relation1.model1Relation2', { skipFetched: true });
 
-        expect(queries).to.have.length(2);
+        expect(queries).toHaveLength(2);
       });
 
       it('should fetch other relations when `skipFetched` option is true', async () => {
@@ -2001,8 +1991,8 @@ module.exports = (session) => {
           { skipFetched: true },
         );
 
-        expect(queries).to.have.length(2);
-        expect(result).to.eql([
+        expect(queries).toHaveLength(2);
+        expect(result).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -2055,8 +2045,8 @@ module.exports = (session) => {
           { skipFetched: true },
         );
 
-        expect(queries).to.have.length(1);
-        expect(result).to.eql([
+        expect(queries).toHaveLength(1);
+        expect(result).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -2109,8 +2099,8 @@ module.exports = (session) => {
           { skipFetched: true },
         );
 
-        expect(queries).to.have.length(0);
-        expect(result).to.eql([
+        expect(queries).toHaveLength(0);
+        expect(result).toEqual([
           {
             id: 1,
             model1Id: 2,
@@ -2161,7 +2151,7 @@ module.exports = (session) => {
           .where('model1Relation2:model2Relation1.id', 6)
           .withGraphJoined('[model1Relation1, model1Relation2.model2Relation1]')
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Prop1: 'hello 1',
@@ -2209,28 +2199,27 @@ module.exports = (session) => {
           .orderBy('Model1.id')
           .limit(2);
 
-        expect(models.map((it) => it.id)).to.eql([1, 4]);
+        expect(models.map((it) => it.id)).toEqual([1, 4]);
       });
 
-      it('distinctOn + select * should select the distinct column', async function () {
-        if (!session.isPostgres()) {
-          return this.skip();
-        }
+      it.skipIf(!session.isPostgres())(
+        'distinctOn + select * should select the distinct column',
+        async () => {
+          const models = await Model1.query()
+            .distinctOn('Model1.model1Prop1')
+            .select('*')
+            .where('Model1.id', 1)
+            .withGraphJoined('model1Relation2');
 
-        const models = await Model1.query()
-          .distinctOn('Model1.model1Prop1')
-          .select('*')
-          .where('Model1.id', 1)
-          .withGraphJoined('model1Relation2');
-
-        expect(models.map((it) => it.model1Prop1)).to.eql(['hello 1']);
-      });
+          expect(models.map((it) => it.model1Prop1)).toEqual(['hello 1']);
+        },
+      );
 
       it("should fail if the user's selections select other columns under the names of its columns", async () => {
         const expectError = async (query, selection, alias, column) => {
           const err = await query.withGraphJoined('model1Relation1').catch((err) => err);
 
-          expect(err.message).to.equal(
+          expect(err.message).toBe(
             `withGraphJoined: the selection '${selection}' selects '${alias}', ` +
               `the name under which the column '${column}' is selected. ` +
               'Select it under a different name.',
@@ -2264,7 +2253,7 @@ module.exports = (session) => {
             .where('model1Relation2:model2Relation1.id', 6)
             .withGraphJoined('[model1Relation1, model1Relation2.model2Relation1]')
             .then((models) => {
-              expect(models).to.eql([
+              expect(models).toEqual([
                 {
                   id: 1,
                   model1Prop1: 'hello 1',
@@ -2321,7 +2310,7 @@ module.exports = (session) => {
               },
             })
             .then((models) => {
-              expect(models).to.eql([
+              expect(models).toEqual([
                 {
                   id: 1,
                   $afterFindCalled: 1,
@@ -2379,9 +2368,9 @@ module.exports = (session) => {
             },
           })
           .then((models) => {
-            expect(models).to.have.length(1);
-            expect(models[0].id).to.equal(1);
-            expect(sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+            expect(models).toHaveLength(1);
+            expect(models[0].id).toBe(1);
+            expect(sortBy(models[0].model1Relation2, 'idCol')).toEqual([
               { idCol: 1, ownerProp: 'hello 1', ownerId: 1, $afterFindCalled: 1 },
               { idCol: 2, ownerProp: 'hello 1', ownerId: 1, $afterFindCalled: 1 },
             ]);
@@ -2409,18 +2398,18 @@ module.exports = (session) => {
             },
           })
           .then((models) => {
-            expect(models).to.have.length(1);
-            expect(+models[0].relation2Count).to.equal(2);
+            expect(models).toHaveLength(1);
+            expect(+models[0].relation2Count).toBe(2);
             expect(
               pick(models[0], ['id', 'model1Id', 'model1Prop1', 'model1Prop2', '$afterFindCalled']),
-            ).to.eql({
+            ).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'hello 1',
               model1Prop2: null,
               $afterFindCalled: 1,
             });
-            expect(sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+            expect(sortBy(models[0].model1Relation2, 'idCol')).toEqual([
               {
                 idCol: 1,
                 model1Id: 1,
@@ -2456,9 +2445,9 @@ module.exports = (session) => {
             },
           })
           .then((models) => {
-            expect(models).to.have.length(1);
-            expect(models[0].id).to.equal(1);
-            expect(sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+            expect(models).toHaveLength(1);
+            expect(models[0].id).toBe(1);
+            expect(sortBy(models[0].model1Relation2, 'idCol')).toEqual([
               { idCol: 1, upperProp: 'HEJSAN 1', lowerProp: 'hejsan 1', $afterFindCalled: 1 },
               { idCol: 2, upperProp: 'HEJSAN 2', lowerProp: 'hejsan 2', $afterFindCalled: 1 },
             ]);
@@ -2476,7 +2465,7 @@ module.exports = (session) => {
             },
           })
           .then((models) => {
-            expect(models).to.have.length(1);
+            expect(models).toHaveLength(1);
             expect(
               pick(models[0], [
                 'id',
@@ -2486,7 +2475,7 @@ module.exports = (session) => {
                 'upper_prop',
                 '$afterFindCalled',
               ]),
-            ).to.eql({
+            ).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'hello 1',
@@ -2494,7 +2483,7 @@ module.exports = (session) => {
               upper_prop: 'HELLO 1',
               $afterFindCalled: 1,
             });
-            expect(sortBy(models[0].model1Relation2, 'idCol')).to.eql([
+            expect(sortBy(models[0].model1Relation2, 'idCol')).toEqual([
               {
                 idCol: 1,
                 model1Id: 1,
@@ -2523,7 +2512,7 @@ module.exports = (session) => {
           .where('model1Relation2:model2Relation1.id', 6)
           .withGraphJoined('[model1Relation1, model1Relation2.model2Relation1]')
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 theId: 1,
                 leProp: 'hello 1',
@@ -2570,7 +2559,7 @@ module.exports = (session) => {
           .then((models) => {
             // With innerJoin we should only get `Model1` instances that have one
             // or more `model2Relation2` relations.
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Prop1: 'hello 1',
@@ -2657,7 +2646,7 @@ module.exports = (session) => {
             .orderBy('Model1.id'),
         ]).then((results) => {
           for (const models of results) {
-            expect(summarize(models)).to.eql(expected);
+            expect(summarize(models)).toEqual(expected);
           }
         });
       });
@@ -2672,7 +2661,7 @@ module.exports = (session) => {
             separator: '->',
           })
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Prop1: 'hello 1',
@@ -2718,7 +2707,7 @@ module.exports = (session) => {
           .withGraphJoined('[model1Relation1, model1Relation2.model2Relation1]')
           .orderBy(['Model1.id', 'model1Relation2:model2Relation1.id'])
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Id: 2,
@@ -2778,7 +2767,7 @@ module.exports = (session) => {
           })
           .orderBy(['Model1.id', 'mr2:model2Relation1.id'])
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Id: 2,
@@ -2827,51 +2816,47 @@ module.exports = (session) => {
           });
       });
 
-      it('relation references longer that 63 chars should throw an exception on postgres', function (done) {
-        if (!session.isPostgres()) {
-          // MySQL allows 256 characters, SQLite has no limit.
-          return this.skip();
-        }
+      // MySQL allows 256 characters, SQLite has no limit.
+      it.skipIf(!session.isPostgres())(
+        'relation references longer that 63 chars should throw an exception on postgres',
+        () => {
+          return Model1.query()
+            .where('Model1.id', 1)
+            .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]')
+            .then(() => {
+              throw new Error('should not get here');
+            })
+            .catch((err) => {
+              expect(err).toBeInstanceOf(ValidationError);
+              expect(err.type).toBe('RelationExpression');
+              expect(err.modelClass).toBe(Model1);
+              expect(err.message).toBe(
+                'identifier model1Relation1:model1Relation1:model1Relation1:model1Relation1:id is over 63 characters long and would be truncated by the database engine. Use the `minimize` option of withGraphJoined() to shorten the aliases.',
+              );
+            });
+        },
+      );
 
-        Model1.query()
-          .where('Model1.id', 1)
-          .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]')
-          .then(() => {
-            done(new Error('should not get here'));
-          })
-          .catch((err) => {
-            expect(err).to.be.a(ValidationError);
-            expect(err.type).to.equal('RelationExpression');
-            expect(err.modelClass).to.equal(Model1);
-            expect(err.message).to.equal(
-              'identifier model1Relation1:model1Relation1:model1Relation1:model1Relation1:id is over 63 characters long and would be truncated by the database engine. Use the `minimize` option of withGraphJoined() to shorten the aliases.',
-            );
-            done();
-          })
-          .catch(done);
-      });
+      it.skipIf(session.isPostgres())(
+        'relation references longer that 63 chars should work on databases with a higher limit',
+        async () => {
+          const models = await Model1.query()
+            .where('Model1.id', 1)
+            .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]');
 
-      it('relation references longer that 63 chars should work on databases with a higher limit', async function () {
-        if (session.isPostgres()) {
-          return this.skip();
-        }
+          expect(models).toHaveLength(1);
+          expect(models[0].model1Relation1.model1Relation1.id).toBe(3);
+        },
+      );
 
-        const models = await Model1.query()
-          .where('Model1.id', 1)
-          .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]');
-
-        expect(models).to.have.length(1);
-        expect(models[0].model1Relation1.model1Relation1.id).to.equal(3);
-      });
-
-      it('relation references longer that 63 chars should NOT throw an exception if minimize: true option is given', (done) => {
-        Model1.query()
+      it('relation references longer that 63 chars should NOT throw an exception if minimize: true option is given', () => {
+        return Model1.query()
           .where('Model1.id', 1)
           .withGraphJoined('[model1Relation1.model1Relation1.model1Relation1.model1Relation1]', {
             minimize: true,
           })
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Id: 2,
@@ -2902,81 +2887,66 @@ module.exports = (session) => {
                 },
               },
             ]);
-
-            done();
-          })
-          .catch(done);
+          });
       });
 
-      it('infinitely recursive expressions should fail', (done) => {
-        Model1.query()
+      it('infinitely recursive expressions should fail', () => {
+        return Model1.query()
           .where('Model1.id', 1)
           .withGraphJoined('model1Relation1.^')
           .then(() => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err.type).to.equal('RelationExpression');
-            expect(err.message).to.equal(
+            expect(err.type).toBe('RelationExpression');
+            expect(err.message).toBe(
               'recursion depth of eager expression model1Relation1.^ too big for JoinEagerAlgorithm',
             );
-            done();
-          })
-          .catch(done);
+          });
       });
 
-      it('should fail if given missing filter', (done) => {
-        Model1.query()
+      it('should fail if given missing filter', () => {
+        return Model1.query()
           .where('id', 1)
           .withGraphFetched('model1Relation2(missingFilter)')
           .then(() => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(ValidationError);
-            expect(err.type).to.equal('RelationExpression');
-            expect(err.message).to.equal(
+            expect(err).toBeInstanceOf(ValidationError);
+            expect(err.type).toBe('RelationExpression');
+            expect(err.message).toBe(
               'could not find modifier "missingFilter" for relation "model1Relation2"',
             );
-            done();
-          })
-          .catch(done);
+          });
       });
 
-      it('should fail if given missing relation', (done) => {
-        Model1.query()
+      it('should fail if given missing relation', () => {
+        return Model1.query()
           .where('id', 1)
           .withGraphFetched('invalidRelation')
           .then(() => {
             throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(ValidationError);
-            expect(err.type).to.equal('RelationExpression');
-            expect(err.message).to.equal(
-              'unknown relation "invalidRelation" in an eager expression',
-            );
-            done();
-          })
-          .catch(done);
+            expect(err).toBeInstanceOf(ValidationError);
+            expect(err.type).toBe('RelationExpression');
+            expect(err.message).toBe('unknown relation "invalidRelation" in an eager expression');
+          });
       });
 
-      it('should fail if given invalid relation expression', (done) => {
-        Model1.query()
+      it('should fail if given invalid relation expression', () => {
+        return Model1.query()
           .where('id', 1)
           .withGraphFetched('invalidRelation')
           .then(() => {
             throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(ValidationError);
-            expect(err.type).to.equal('RelationExpression');
-            expect(err.message).to.equal(
-              'unknown relation "invalidRelation" in an eager expression',
-            );
-            done();
-          })
-          .catch(done);
+            expect(err).toBeInstanceOf(ValidationError);
+            expect(err.type).toBe('RelationExpression');
+            expect(err.message).toBe('unknown relation "invalidRelation" in an eager expression');
+          });
       });
     });
 
@@ -2994,11 +2964,11 @@ module.exports = (session) => {
                 builder.where('model2_prop1', 'hejsan 2');
               })
               .then((models) => {
-                expect(models[0].model1Relation2).to.have.length(1);
-                expect(models[0].model1Relation2[0].model2Prop1).to.equal('hejsan 2');
+                expect(models[0].model1Relation2).toHaveLength(1);
+                expect(models[0].model1Relation2[0].model2Prop1).toBe('hejsan 2');
 
-                expect(models[0].model1Relation2[0].model2Relation1).to.have.length(1);
-                expect(models[0].model1Relation2[0].model2Relation1[0].id).to.equal(6);
+                expect(models[0].model1Relation2[0].model2Relation1).toHaveLength(1);
+                expect(models[0].model1Relation2[0].model2Relation1[0].id).toBe(6);
               });
           }),
         );
@@ -3013,7 +2983,7 @@ module.exports = (session) => {
               .modifyGraph('model1Relation2.model2Relation1', 'select:model1Prop1')
               .then((models) => {
                 const model2 = models[0].model1Relation2.find((it) => it.idCol === 2);
-                expect(Object.keys(model2.model2Relation1[0])).to.eql([
+                expect(Object.keys(model2.model2Relation1[0])).toEqual([
                   'model1Prop1',
                   '$afterFindCalled',
                 ]);
@@ -3030,7 +3000,7 @@ module.exports = (session) => {
               [method]('model1Relation1')
               .modifyGraph('model1Relation1', ['select:id', 'select:model1Prop1'])
               .then((models) => {
-                expect(Object.keys(models[0].model1Relation1)).to.eql([
+                expect(Object.keys(models[0].model1Relation1)).toEqual([
                   'id',
                   'model1Prop1',
                   '$afterFindCalled',
@@ -3066,7 +3036,7 @@ module.exports = (session) => {
                   'model1Prop1',
                 );
 
-                expect(models).to.eql([
+                expect(models).toEqual([
                   {
                     model1Prop1: 'hello 1',
                     $afterFindCalled: 1,
@@ -3140,7 +3110,7 @@ module.exports = (session) => {
               'model1Prop1',
             );
 
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 model1Prop1: 'hello 1',
                 $afterFindCalled: 1,
@@ -3214,7 +3184,7 @@ module.exports = (session) => {
             builder.select('model1Prop1');
           })
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 id: 1,
                 model1Id: 2,
@@ -3276,7 +3246,7 @@ module.exports = (session) => {
           builder.orderBy('id');
         })
         .then((model) => {
-          chai.expect(model.toJSON()).to.containSubset({
+          expect(model.toJSON()).toContainSubset({
             id: 1,
             model1Relation2: [
               {
@@ -3329,7 +3299,7 @@ module.exports = (session) => {
         })
         .first()
         .then((model) => {
-          chai.expect(model.toJSON()).to.containSubset({
+          expect(model.toJSON()).toContainSubset({
             id: 1,
             model1Relation2: [
               {
@@ -3398,9 +3368,9 @@ module.exports = (session) => {
               builder.orderBy('Model1.id');
             })
             .then((models) => {
-              expect(models).to.have.length(1);
+              expect(models).toHaveLength(1);
 
-              chai.expect(models[0].toJSON()).to.containSubset({
+              expect(models[0].toJSON()).toContainSubset({
                 id: 1,
                 model1Prop1: 'hello 1',
 
@@ -3431,11 +3401,11 @@ module.exports = (session) => {
                 ],
               });
 
-              expect(models[0]).to.be.a(Model1);
-              expect(models[0].model1Relation1).to.be.a(Model1);
-              expect(models[0].model1Relation2[0]).to.be.a(Model2);
-              expect(models[0].model1Relation2).to.have.length(2);
-              expect(models[0].model1Relation1.model1Relation1.model1Relation1).to.equal(undefined);
+              expect(models[0]).toBeInstanceOf(Model1);
+              expect(models[0].model1Relation1).toBeInstanceOf(Model1);
+              expect(models[0].model1Relation2[0]).toBeInstanceOf(Model2);
+              expect(models[0].model1Relation2).toHaveLength(2);
+              expect(models[0].model1Relation1.model1Relation1.model1Relation1).toBeUndefined();
             });
         });
       });
@@ -3450,10 +3420,10 @@ module.exports = (session) => {
               builder.orderBy('id_col');
             })
             .then((models) => {
-              expect(models).to.have.length(1);
-              expect(models[0].id).to.equal(1);
-              expect(models[0].model1Relation1.id).to.equal(2);
-              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+              expect(models).toHaveLength(1);
+              expect(models[0].id).toBe(1);
+              expect(models[0].model1Relation1.id).toBe(2);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).toEqual([1, 2]);
             });
         });
       });
@@ -3464,11 +3434,11 @@ module.exports = (session) => {
           query = callInOrder(query, order, 'model1Relation2', 'model1Relation1.model1Relation1');
 
           return query.then((models) => {
-            expect(models).to.have.length(1);
-            expect(models[0].id).to.equal(1);
-            expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([2]);
-            expect(models[0].model1Relation1.id).to.equal(2);
-            expect(models[0].model1Relation1.model1Relation1.id).to.equal(3);
+            expect(models).toHaveLength(1);
+            expect(models[0].id).toBe(1);
+            expect(models[0].model1Relation2.map((it) => it.idCol)).toEqual([2]);
+            expect(models[0].model1Relation1.id).toBe(2);
+            expect(models[0].model1Relation1.model1Relation1.id).toBe(3);
           });
         });
       });
@@ -3483,11 +3453,11 @@ module.exports = (session) => {
               builder.orderBy('id_col');
             })
             .then((models) => {
-              expect(models).to.have.length(1);
-              expect(models[0].id).to.equal(undefined);
-              expect(models[0].model1Prop1).to.equal('hello 1');
-              expect(models[0].model1Relation1.id).to.equal(2);
-              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+              expect(models).toHaveLength(1);
+              expect(models[0].id).toBeUndefined();
+              expect(models[0].model1Prop1).toBe('hello 1');
+              expect(models[0].model1Relation1.id).toBe(2);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).toEqual([1, 2]);
             });
         });
       });
@@ -3517,18 +3487,18 @@ module.exports = (session) => {
             .where('Model1.id', 1)
             .runAfter((models) => {
               runAfterModels = models;
-              expect(models[0]).to.not.have.property('id');
+              expect(models[0]).not.toHaveProperty('id');
               return models;
             })
             .then((models) => {
-              expect(runAfterModels).to.equal(models);
-              expect(models).to.have.length(1);
-              expect(models[0]).to.not.have.property('id');
-              expect(models[0].model1Prop1).to.equal('hello 1');
+              expect(runAfterModels).toBe(models);
+              expect(models).toHaveLength(1);
+              expect(models[0]).not.toHaveProperty('id');
+              expect(models[0].model1Prop1).toBe('hello 1');
 
               const { model1Relation1, model1Relation2 } = models[0];
-              expect(model1Relation1 && model1Relation1.id).to.equal(joined ? 2 : undefined);
-              expect(model1Relation2 && model1Relation2.length).to.equal(fetched ? 2 : undefined);
+              expect(model1Relation1 && model1Relation1.id).toBe(joined ? 2 : undefined);
+              expect(model1Relation2 && model1Relation2.length).toBe(fetched ? 2 : undefined);
             });
         });
       });
@@ -3555,7 +3525,7 @@ module.exports = (session) => {
             },
           })
           .then(() => {
-            expect(keys.sort()).to.eql([
+            expect(keys.sort()).toEqual([
               'Model1: model1Prop1',
               'Model1: model1Prop1',
               'Model1: model1Prop1, model1Relation2',
@@ -3576,11 +3546,11 @@ module.exports = (session) => {
             })
             .page(0, 2)
             .then((res) => {
-              expect(res.total).to.equal(5);
-              expect(res.results.map((it) => it.id)).to.eql([1, 2]);
-              expect(res.results.map((it) => it.model1Relation1.id)).to.eql([2, 3]);
-              expect(res.results[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
-              expect(res.results[1].model1Relation2).to.eql([]);
+              expect(res.total).toBe(5);
+              expect(res.results.map((it) => it.id)).toEqual([1, 2]);
+              expect(res.results.map((it) => it.model1Relation1.id)).toEqual([2, 3]);
+              expect(res.results[0].model1Relation2.map((it) => it.idCol)).toEqual([1, 2]);
+              expect(res.results[1].model1Relation2).toEqual([]);
             });
         });
       });
@@ -3590,11 +3560,12 @@ module.exports = (session) => {
           Model1.query()
             .withGraphJoined('model1Relation1')
             .withGraphFetched('model1Relation1.model1Relation1');
-        }).to.throwException((err) => {
-          expect(err.message).to.equal(
-            'relation "model1Relation1" cannot be loaded with both withGraphJoined and withGraphFetched',
-          );
-        });
+        }).toThrow(
+          expect.objectContaining({
+            message:
+              'relation "model1Relation1" cannot be loaded with both withGraphJoined and withGraphFetched',
+          }),
+        );
       });
 
       it('withGraph() should merge nested relations into both operations', () => {
@@ -3611,13 +3582,13 @@ module.exports = (session) => {
               builder.orderBy('Model1.id');
             })
             .then((models) => {
-              expect(models).to.have.length(1);
-              expect(models[0].model1Relation1.id).to.equal(2);
-              expect(models[0].model1Relation1.model1Relation1.id).to.equal(3);
-              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
+              expect(models).toHaveLength(1);
+              expect(models[0].model1Relation1.id).toBe(2);
+              expect(models[0].model1Relation1.model1Relation1.id).toBe(3);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).toEqual([1, 2]);
               expect(
                 models[0].model1Relation2.map((it) => it.model2Relation1.map((it) => it.id)),
-              ).to.eql([[], [5, 6]]);
+              ).toEqual([[], [5, 6]]);
             });
         });
       });
@@ -3634,10 +3605,10 @@ module.exports = (session) => {
               builder.orderBy('id_col');
             })
             .then((models) => {
-              expect(models).to.have.length(1);
-              expect(models[0].model1Relation1.id).to.equal(2);
-              expect(models[0].model1Relation2.map((it) => it.idCol)).to.eql([1, 2]);
-              expect(models[0].model1Relation3).to.be.an('array');
+              expect(models).toHaveLength(1);
+              expect(models[0].model1Relation1.id).toBe(2);
+              expect(models[0].model1Relation2.map((it) => it.idCol)).toEqual([1, 2]);
+              expect(models[0].model1Relation3).toBeInstanceOf(Array);
             });
         });
       });
@@ -3656,7 +3627,7 @@ module.exports = (session) => {
           query = callInOrder(query, order, 'model1Relation1(capture)', 'model1Relation2(capture)');
 
           return query.then(() => {
-            expect(sortBy(childQueries, ([name]) => name)).to.eql([
+            expect(sortBy(childQueries, ([name]) => name)).toEqual([
               ['Model1', true],
               ['Model2', false],
             ]);
@@ -3677,7 +3648,7 @@ module.exports = (session) => {
             .orderBy('Model1.model1Prop1', 'DESC')
             .whereNotNull('Model1.model1Id')
             .then((models) => {
-              expect(models).to.eql([
+              expect(models).toEqual([
                 {
                   model1Prop1: 'hello 8',
                   model1Relation1: { model1Prop1: 'hello 9', $afterFindCalled: 1 },
@@ -3754,7 +3725,7 @@ module.exports = (session) => {
             select: (b) => b.select('model1Prop1'),
           })
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 idCol: 100,
                 model1Id: null,
@@ -3802,7 +3773,7 @@ module.exports = (session) => {
           })
           .withGraphJoined('model2Relation1(select)')
           .then((models) => {
-            expect(models).to.eql([
+            expect(models).toEqual([
               {
                 idCol: 100,
                 model1Id: null,
@@ -3889,7 +3860,7 @@ module.exports = (session) => {
           .orderBy('id_col')
           .withGraphFetched('model2Relation1(orderById)')
           .then((result) => {
-            chai.expect(result).to.containSubset([
+            expect(result).toContainSubset([
               {
                 idCol: 100,
 
@@ -3950,7 +3921,7 @@ module.exports = (session) => {
                 model.b[1].c = sortBy(model.b[1].c, 'id');
                 model.b[1].d = sortBy(model.b[1].d, 'id');
 
-                expect(model).to.eql({
+                expect(model).toEqual({
                   id: 1,
                   $afterFindCalled: 1,
 
@@ -4024,7 +3995,7 @@ module.exports = (session) => {
             model.b[0].c = sortBy(model.b[0].c, 'id');
             model.b[0].d = sortBy(model.b[0].d, 'id');
 
-            expect(model).to.eql({
+            expect(model).toEqual({
               id: 1,
               $afterFindCalled: 1,
 
@@ -4074,7 +4045,7 @@ module.exports = (session) => {
               })
               .findOne({ 'm1.id': 1 })
               .then((model) => {
-                expect(model).to.eql({
+                expect(model).toEqual({
                   id: 1,
                   $afterFindCalled: 1,
 
@@ -4095,7 +4066,7 @@ module.exports = (session) => {
         let sql = [];
         let mockKnex = null;
 
-        before(() => {
+        beforeAll(() => {
           mockKnex = mockKnexFactory(session.knex, function (mock, then, args) {
             sql.push(this.toString());
             return then.apply(this, args);
@@ -4122,7 +4093,7 @@ module.exports = (session) => {
               },
             })
             .then(() => {
-              expect(sql).to.eql([
+              expect(sql).toEqual([
                 'select "Model1".* from "Model1" order by "id" asc',
                 'select "Model1".* from "Model1" where "Model1"."id" in (2, 3, 4, 7, 9) order by "id" asc',
                 'select "Model1".* from "Model1" where "Model1"."model1Id" in (1, 2, 3, 4, 5, 6, 7, 8, 9) order by "id" asc',
@@ -4140,8 +4111,8 @@ module.exports = (session) => {
             .findById(4)
             .withGraphFetched('model1Relation1')
             .then((res) => {
-              expect(sql).to.have.length(1);
-              expect(res.id).to.equal(4);
+              expect(sql).toHaveLength(1);
+              expect(res.id).toBe(4);
             });
         });
 
@@ -4152,7 +4123,7 @@ module.exports = (session) => {
               '[model1Relation1, model1Relation1Inverse, model1Relation2.[model2Relation1, model2Relation2], model1Relation3]',
             )
             .then(() => {
-              expect(sql[sql.length - 1].replace(/\s/g, '')).to.equal(
+              expect(sql[sql.length - 1].replace(/\s/g, '')).toBe(
                 `
                 select
                   "Model1"."id" as "id",
@@ -4217,8 +4188,7 @@ module.exports = (session) => {
       describe.skip('big data', () => {
         let graph = null;
 
-        before(function () {
-          this.timeout(30000);
+        beforeAll(() => {
           let n = 0;
 
           graph = range(100).map(() => {
@@ -4269,11 +4239,9 @@ module.exports = (session) => {
             .then((inserted) => {
               graph = inserted;
             });
-        });
+        }, 30000);
 
-        it('should work with a lot of data', function () {
-          this.timeout(30000);
-
+        it('should work with a lot of data', () => {
           return promiseMap(
             ['withGraphFecthed', 'withGraphJoined'],
             (method) => {
@@ -4295,12 +4263,12 @@ module.exports = (session) => {
                   let expected = graph.map((it) => it.toJSON());
                   let got = res.map((it) => it.toJSON());
 
-                  expect(got).to.eql(expected);
+                  expect(got).toEqual(expected);
                 });
             },
             { concurrency: 1 },
           );
-        });
+        }, 30000);
 
         function traverser(model) {
           ['extra1', 'extra2', 'aliasedExtra', 'model1Id', 'model1Prop2', 'model2Prop2'].forEach(
@@ -4342,7 +4310,7 @@ module.exports = (session) => {
     };
 
     let idCol = opt.Model.query().fullIdColumnFor(opt.Model);
-    let testFn = opt.only ? it.only.bind(it) : it;
+    let testFn = opt.only ? it.only : it;
 
     if (!opt.disableWhereIn) {
       testFn(testName + ' (QueryBuilder.withGraphFetched)', () => {

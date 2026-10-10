@@ -1,7 +1,7 @@
-const { Model, raw } = require('../../../');
-const { expect } = require('chai');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model, raw } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('query properties set on json attributes in $beforeInsert() and $beforeUpdate()', () => {
     const { knex } = session;
 
@@ -29,7 +29,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('queryPropsInJsonAttributes')
         .createTable('queryPropsInJsonAttributes', (table) => {
@@ -38,7 +38,7 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('queryPropsInJsonAttributes');
     });
 
@@ -49,21 +49,21 @@ module.exports = (session) => {
     it('insert() should write the query property', async () => {
       await Item.query(knex).insert({ id: 1 });
       const item = await Item.query(knex).findById(1);
-      expect(item.meta).to.eql({ hook: 'insert' });
+      expect(item.meta).toEqual({ hook: 'insert' });
     });
 
     it('patch() should write the query property', async () => {
       await Item.query(knex).insert({ id: 1 });
       await Item.query(knex).patch({}).where('id', 1);
       const item = await Item.query(knex).findById(1);
-      expect(item.meta).to.eql({ hook: 'update' });
+      expect(item.meta).toEqual({ hook: 'update' });
     });
 
     it('$query().patch() should write the query property', async () => {
       const item = await Item.query(knex).insert({ id: 1 });
       await item.$query(knex).patch();
       const { meta } = await Item.query(knex).findById(1);
-      expect(meta).to.eql({ hook: 'update' });
+      expect(meta).toEqual({ hook: 'update' });
     });
   });
 };

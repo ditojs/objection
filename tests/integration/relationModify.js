@@ -1,7 +1,7 @@
-const { Model } = require('../../');
-const expect = require('chai').expect;
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('relation modify hooks', () => {
     class Person extends Model {
       static get tableName() {
@@ -77,7 +77,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('personMovie')
         .dropTableIfExists('animal')
@@ -103,7 +103,7 @@ module.exports = (session) => {
         });
     });
 
-    before(() => {
+    beforeAll(() => {
       Person.knex(session.knex);
       Animal.knex(session.knex);
       Movie.knex(session.knex);
@@ -163,7 +163,7 @@ module.exports = (session) => {
                 .$relatedQuery('parent')
                 .context(modifyBelongsToOne((qb) => qb.select('name')));
             })
-            .then((gustav) => expect(gustav.name).to.eql('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
 
         it('update', () => {
@@ -174,7 +174,7 @@ module.exports = (session) => {
                 .context(modifyBelongsToOne((qb) => qb.where('name', 'Not Gustav')))
                 .update({ name: 'Updated' });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(0))
+            .then((numUpdated) => expect(numUpdated).toBe(0))
             .then(findArnold)
             .then((arnold) => {
               return arnold
@@ -182,7 +182,7 @@ module.exports = (session) => {
                 .context(modifyBelongsToOne((qb) => qb.where('name', 'Gustav')))
                 .update({ name: 'Updated' });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(1));
+            .then((numUpdated) => expect(numUpdated).toBe(1));
         });
 
         it('delete', () => {
@@ -193,7 +193,7 @@ module.exports = (session) => {
                 .context(modifyBelongsToOne((qb) => qb.where('name', 'Not Gustav')))
                 .delete();
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(0))
+            .then((numDeleted) => expect(numDeleted).toBe(0))
             .then(findArnold)
             .then((arnold) => {
               return arnold
@@ -201,7 +201,7 @@ module.exports = (session) => {
                 .context(modifyBelongsToOne((qb) => qb.where('name', 'Gustav')))
                 .delete();
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(1));
+            .then((numDeleted) => expect(numDeleted).toBe(1));
         });
 
         it('insert', () => {
@@ -215,7 +215,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((gustavNeue) => expect(gustavNeue.name).to.equal('Gustav-neue'));
+            .then((gustavNeue) => expect(gustavNeue.name).toBe('Gustav-neue'));
         });
 
         it('relate', () => {
@@ -230,7 +230,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((meinhard) => expect(meinhard.name).to.equal('Meinhard'));
+            .then((meinhard) => expect(meinhard.name).toBe('Meinhard'));
         });
 
         it('unrelate', () => {
@@ -245,7 +245,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((parent) => expect(parent).to.eql(undefined));
+            .then((parent) => expect(parent).toBeUndefined());
         });
       });
 
@@ -257,7 +257,7 @@ module.exports = (session) => {
                 .$relatedQuery('pets')
                 .context(modifyHasMany((qb) => qb.select('name').orderBy('name')));
             })
-            .then((pets) => expect(pets.map((it) => it.name)).to.eql(['Freud', 'Stalin']));
+            .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Freud', 'Stalin']));
         });
 
         it('update', () => {
@@ -268,7 +268,7 @@ module.exports = (session) => {
                 .context(modifyHasMany((qb) => qb.where('name', 'None of the pets')))
                 .update({ name: 'Updated' });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(0))
+            .then((numUpdated) => expect(numUpdated).toBe(0))
             .then(findArnold)
             .then((arnold) => {
               return arnold
@@ -276,7 +276,7 @@ module.exports = (session) => {
                 .context(modifyHasMany((qb) => qb.where('name', 'Freud')))
                 .update({ name: 'Updated' });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(1));
+            .then((numUpdated) => expect(numUpdated).toBe(1));
         });
 
         it('delete', () => {
@@ -287,7 +287,7 @@ module.exports = (session) => {
                 .context(modifyHasMany((qb) => qb.where('name', 'None of the pets')))
                 .delete();
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(0))
+            .then((numDeleted) => expect(numDeleted).toBe(0))
             .then(findArnold)
             .then((arnold) => {
               return arnold
@@ -295,7 +295,7 @@ module.exports = (session) => {
                 .context(modifyHasMany((qb) => qb.where('name', 'Stalin')))
                 .delete();
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(1));
+            .then((numDeleted) => expect(numDeleted).toBe(1));
         });
 
         it('insert', () => {
@@ -309,7 +309,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets').orderBy('name').select('name'))
-            .then((pets) => expect(pets.map((it) => it.name)).to.eql(['Cat', 'Freud', 'Stalin']));
+            .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Cat', 'Freud', 'Stalin']));
         });
 
         it('relate', () => {
@@ -322,7 +322,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets').orderBy('name').select('name'))
-            .then((pets) => expect(pets.map((it) => it.name)).to.eql(['Freud', 'Stalin']))
+            .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Freud', 'Stalin']))
             .then(() => Promise.all([findArnold(), findRuffus()]))
             .then(([arnold, ruffus]) => {
               return arnold
@@ -333,7 +333,7 @@ module.exports = (session) => {
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets').orderBy('name').select('name'))
             .then((pets) =>
-              expect(pets.map((it) => it.name)).to.eql(['Freud', 'Ruffus', 'Stalin']),
+              expect(pets.map((it) => it.name)).toEqual(['Freud', 'Ruffus', 'Stalin']),
             );
         });
 
@@ -347,7 +347,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets').orderBy('name').select('name'))
-            .then((pets) => expect(pets.map((it) => it.name)).to.eql(['Freud', 'Stalin']))
+            .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Freud', 'Stalin']))
             .then(findArnold)
             .then((arnold) => {
               return arnold
@@ -357,7 +357,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets').orderBy('name').select('name'))
-            .then((pets) => expect(pets.map((it) => it.name)).to.eql(['Freud']));
+            .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Freud']));
         });
       });
 
@@ -370,7 +370,7 @@ module.exports = (session) => {
                 .context(modifyManyToMany((qb) => qb.select('name').orderBy('name')));
             })
             .then((movies) =>
-              expect(movies.map((it) => it.name)).to.eql(['Terminator', 'Terminator 2']),
+              expect(movies.map((it) => it.name)).toEqual(['Terminator', 'Terminator 2']),
             );
         });
 
@@ -383,7 +383,7 @@ module.exports = (session) => {
                   .context(modifyManyToMany((qb) => qb.where('name', 'None of the movies')))
                   .update({ name: 'Updated' });
               })
-              .then((numUpdated) => expect(numUpdated).to.equal(0))
+              .then((numUpdated) => expect(numUpdated).toBe(0))
               .then(findArnold)
               .then((arnold) => {
                 return arnold
@@ -391,7 +391,7 @@ module.exports = (session) => {
                   .context(modifyManyToMany((qb) => qb.where('name', 'Terminator')))
                   .update({ name: 'Updated' });
               })
-              .then((numUpdated) => expect(numUpdated).to.equal(1));
+              .then((numUpdated) => expect(numUpdated).toBe(1));
           });
 
           it('modifier with selects', () => {
@@ -402,7 +402,7 @@ module.exports = (session) => {
                   .context(modifyManyToMany((qb) => qb.where('name', 'None of the movies')))
                   .update({ name: 'Updated' });
               })
-              .then((numUpdated) => expect(numUpdated).to.equal(0))
+              .then((numUpdated) => expect(numUpdated).toBe(0))
               .then(findArnold)
               .then((arnold) => {
                 return arnold
@@ -410,7 +410,7 @@ module.exports = (session) => {
                   .context(modifyManyToMany((qb) => qb.where('name', 'Terminator').select('name')))
                   .update({ name: 'Updated' });
               })
-              .then((numUpdated) => expect(numUpdated).to.equal(1));
+              .then((numUpdated) => expect(numUpdated).toBe(1));
           });
         });
       });
@@ -442,7 +442,7 @@ module.exports = (session) => {
             .context(modifyHasOne((qb) => qb.orderBy('name', 'desc').first()))
             .orderBy('person.name');
 
-          expect(people.map((person) => [person.name, person.pet?.name ?? null])).to.eql([
+          expect(people.map((person) => [person.name, person.pet?.name ?? null])).toEqual([
             ['Arnold', 'Stalin'],
             ['Gustav', null],
             ['Meinhard', null],
@@ -452,11 +452,7 @@ module.exports = (session) => {
         }
       });
 
-      it('has many relation with distinctOn', async function () {
-        if (!session.isPostgres()) {
-          return this.skip();
-        }
-
+      it.skipIf(!session.isPostgres())('has many relation with distinctOn', async () => {
         // The order decides which of the pets named 'Freud' is selected.
         const meinhard = await findMeinhard();
         await meinhard.$relatedQuery('pets').insert({ name: 'Freud' });
@@ -469,7 +465,7 @@ module.exports = (session) => {
 
         expect(
           people.map((person) => [person.name, person.pets.map((pet) => pet.name).sort()]),
-        ).to.eql([
+        ).toEqual([
           ['Arnold', ['Stalin']],
           ['Gustav', []],
           ['Meinhard', ['Freud', 'Ruffus']],
@@ -485,7 +481,7 @@ module.exports = (session) => {
       it('many to many relation', () => {});
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('personMovie')
         .dropTableIfExists('animal')

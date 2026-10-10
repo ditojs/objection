@@ -1,11 +1,21 @@
-const fs = require('fs');
-const path = require('path');
+import { describe } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-module.exports = (session) => {
+const tests = await Promise.all(
+  fs
+    .readdirSync(import.meta.dirname)
+    .filter((file) => file.endsWith('.js'))
+    .filter((file) => file !== 'index.js')
+    .sort()
+    .map(
+      async (file) => (await import(pathToFileURL(path.join(import.meta.dirname, file)))).default,
+    ),
+);
+
+export default (session) => {
   describe('misc', () => {
-    fs.readdirSync(__dirname)
-      .filter((file) => file.endsWith('.js'))
-      .filter((file) => file !== 'index.js')
-      .forEach((file) => require(path.join(__dirname, file))(session));
+    tests.forEach((test) => test(session));
   });
 };

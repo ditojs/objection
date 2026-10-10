@@ -1,12 +1,14 @@
-const Knex = require('knex'),
-  expect = require('expect.js'),
-  chai = require('chai'),
-  objection = require('../../../'),
-  knexUtils = require('../../../lib/utils/knexUtils'),
-  knexMocker = require('../../../testUtils/mockKnex'),
-  { delay } = require('../../../testUtils/testUtils'),
-  { resetWarnings } = require('../../../lib/utils/warnings'),
-  ref = objection.ref,
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import Knex from 'knex';
+import * as objection from 'objection';
+import * as knexUtils from '../../../lib/utils/knexUtils.js';
+import knexMocker from '../../../testUtils/mockKnex.js';
+import { delay, expectThrows } from '../../../testUtils/testUtils.js';
+import { resetWarnings } from '../../../lib/utils/warnings.js';
+import { JoinEagerOperation } from '../../../lib/queryBuilder/operations/eager/JoinEagerOperation.js';
+import { WhereInEagerOperation } from '../../../lib/queryBuilder/operations/eager/WhereInEagerOperation.js';
+
+const ref = objection.ref,
   raw = objection.raw,
   val = objection.val,
   Model = objection.Model,
@@ -20,7 +22,7 @@ describe('QueryBuilder', () => {
   let mockKnex = null;
   let TestModel = null;
 
-  before(() => {
+  beforeAll(() => {
     let knex = Knex({ client: 'pg' });
 
     mockKnex = knexMocker(knex, function (mock, oldImpl, args) {
@@ -47,18 +49,18 @@ describe('QueryBuilder', () => {
     TestModel.knex(mockKnex);
   });
 
-  it("should throw if model doesn't have a `tableName`", (done) => {
+  it("should throw if model doesn't have a `tableName`", () => {
     class TestModel extends Model {
       // no tableName
     }
 
-    TestModel.query(mockKnex)
-      .then(() => done(new Error('should not get here')))
-      .catch((err) => {
-        expect(err.message).to.equal('Model TestModel must have a static property tableName');
-        done();
+    return TestModel.query(mockKnex)
+      .then(() => {
+        throw new Error('should not get here');
       })
-      .catch(done);
+      .catch((err) => {
+        expect(err.message).toBe('Model TestModel must have a static property tableName');
+      });
   });
 
   it('should have knex methods', () => {
@@ -86,15 +88,15 @@ describe('QueryBuilder', () => {
     for (let name in mockKnex) {
       let func = mockKnex[name];
       if (typeof func === 'function' && name.charAt(0) !== '_' && ignore.indexOf(name) === -1) {
-        if (typeof builder[name] !== 'function') {
-          expect().to.fail("knex method '" + name + "' is missing from QueryBuilder");
-        }
+        expect(builder[name], `knex method '${name}' is missing from QueryBuilder`).toBeTypeOf(
+          'function',
+        );
       }
     }
   });
 
   it('modelClass() should return the model class', () => {
-    expect(QueryBuilder.forClass(TestModel).modelClass() === TestModel).to.equal(true);
+    expect(QueryBuilder.forClass(TestModel).modelClass() === TestModel).toBe(true);
   });
 
   it('modify() should execute the given function and pass the builder to it', () => {
@@ -103,11 +105,11 @@ describe('QueryBuilder', () => {
 
     builder.modify(function (b) {
       called = true;
-      expect(b === builder).to.equal(true);
-      expect(this === builder).to.equal(true);
+      expect(b === builder).toBe(true);
+      expect(this === builder).toBe(true);
     });
 
-    expect(called).to.equal(true);
+    expect(called).toBe(true);
   });
 
   it('should be able to pass arguments to modify', () => {
@@ -119,15 +121,15 @@ describe('QueryBuilder', () => {
     builder.modify(
       (query, arg1, arg2) => {
         called1 = true;
-        expect(query === builder).to.equal(true);
-        expect(arg1).to.equal('foo');
-        expect(arg2).to.equal(1);
+        expect(query === builder).toBe(true);
+        expect(arg1).toBe('foo');
+        expect(arg2).toBe(1);
       },
       'foo',
       1,
     );
 
-    expect(called1).to.equal(true);
+    expect(called1).toBe(true);
     called1 = false;
     called2 = false;
 
@@ -136,24 +138,24 @@ describe('QueryBuilder', () => {
       [
         (query, arg1, arg2) => {
           called1 = true;
-          expect(query === builder).to.equal(true);
-          expect(arg1).to.equal('foo');
-          expect(arg2).to.equal(1);
+          expect(query === builder).toBe(true);
+          expect(arg1).toBe('foo');
+          expect(arg2).toBe(1);
         },
 
         (query, arg1, arg2) => {
           called2 = true;
-          expect(query === builder).to.equal(true);
-          expect(arg1).to.equal('foo');
-          expect(arg2).to.equal(1);
+          expect(query === builder).toBe(true);
+          expect(arg1).toBe('foo');
+          expect(arg2).toBe(1);
         },
       ],
       'foo',
       1,
     );
 
-    expect(called1).to.equal(true);
-    expect(called2).to.equal(true);
+    expect(called1).toBe(true);
+    expect(called2).toBe(true);
   });
 
   it('should be able to pass arguments to modify when using named modifiers', () => {
@@ -165,22 +167,22 @@ describe('QueryBuilder', () => {
     TestModel.modifiers = {
       modifier1: (query, arg1, arg2) => {
         called1 = true;
-        expect(query === builder).to.equal(true);
-        expect(arg1).to.equal('foo');
-        expect(arg2).to.equal(1);
+        expect(query === builder).toBe(true);
+        expect(arg1).toBe('foo');
+        expect(arg2).toBe(1);
       },
 
       modifier2: (query, arg1, arg2) => {
         called2 = true;
-        expect(query === builder).to.equal(true);
-        expect(arg1).to.equal('foo');
-        expect(arg2).to.equal(1);
+        expect(query === builder).toBe(true);
+        expect(arg1).toBe('foo');
+        expect(arg2).toBe(1);
       },
     };
 
     // Should accept a single modifier.
     builder.modify('modifier1', 'foo', 1);
-    expect(called1).to.equal(true);
+    expect(called1).toBe(true);
 
     called1 = false;
     called2 = false;
@@ -188,8 +190,8 @@ describe('QueryBuilder', () => {
     // Should accept an array of modifiers.
     builder.modify(['modifier1', 'modifier2'], 'foo', 1);
 
-    expect(called1).to.equal(true);
-    expect(called2).to.equal(true);
+    expect(called1).toBe(true);
+    expect(called2).toBe(true);
   });
 
   it('should throw if an unknown modifier is specified', () => {
@@ -199,11 +201,11 @@ describe('QueryBuilder', () => {
 
     expect(() => {
       builder.modify('unknown');
-    }).to.throwException((err) => {
-      expect(err.message).to.equal(
-        'Unable to determine modify function from provided value: "unknown".',
-      );
-    });
+    }).toThrow(
+      expect.objectContaining({
+        message: 'Unable to determine modify function from provided value: "unknown".',
+      }),
+    );
   });
 
   it('modify() should do nothing when receiving `undefined`', () => {
@@ -211,8 +213,8 @@ describe('QueryBuilder', () => {
     let res;
     expect(() => {
       res = builder.modify(undefined);
-    }).to.not.throwException();
-    expect(res === builder).to.equal(true);
+    }).not.toThrow();
+    expect(res === builder).toBe(true);
   });
 
   it('modify accept a list of strings and call the corresponding modifiers', () => {
@@ -238,32 +240,32 @@ describe('QueryBuilder', () => {
     aCalled = false;
     bCalled = false;
     builder.modify('a');
-    expect(aCalled).to.equal(true);
-    expect(bCalled).to.equal(false);
+    expect(aCalled).toBe(true);
+    expect(bCalled).toBe(false);
 
     aCalled = false;
     bCalled = false;
     builder.modify('b');
-    expect(aCalled).to.equal(false);
-    expect(bCalled).to.equal(true);
+    expect(aCalled).toBe(false);
+    expect(bCalled).toBe(true);
 
     aCalled = false;
     bCalled = false;
     builder.modify(['a', 'b']);
-    expect(aCalled).to.equal(true);
-    expect(bCalled).to.equal(true);
+    expect(aCalled).toBe(true);
+    expect(bCalled).toBe(true);
 
     aCalled = false;
     bCalled = false;
     builder.modify([['a', [[['b']]]]]);
-    expect(aCalled).to.equal(true);
-    expect(bCalled).to.equal(true);
+    expect(aCalled).toBe(true);
+    expect(bCalled).toBe(true);
 
     aCalled = false;
     bCalled = false;
     builder.modify('d');
-    expect(aCalled).to.equal(true);
-    expect(bCalled).to.equal(true);
+    expect(aCalled).toBe(true);
+    expect(bCalled).toBe(true);
   });
 
   it('modify calls the modifierNotFound() hook for unknown modifiers', () => {
@@ -285,19 +287,19 @@ describe('QueryBuilder', () => {
 
     caughtModifiers = [];
     builder.modify('a');
-    expect(caughtModifiers).to.eql(['a']);
+    expect(caughtModifiers).toEqual(['a']);
 
     caughtModifiers = [];
     builder.modify('b');
-    expect(caughtModifiers).to.eql(['b']);
+    expect(caughtModifiers).toEqual(['b']);
 
     caughtModifiers = [];
     builder.modify('c');
-    expect(caughtModifiers).to.eql(['a']);
+    expect(caughtModifiers).toEqual(['a']);
 
     caughtModifiers = [];
     builder.modify('d');
-    expect(caughtModifiers).to.eql(['a', 'b']);
+    expect(caughtModifiers).toEqual(['a', 'b']);
   });
 
   it('should still throw if modifierNotFound() delegate to the definition in the super class', () => {
@@ -309,11 +311,11 @@ describe('QueryBuilder', () => {
 
     expect(() => {
       builder.modify('unknown');
-    }).to.throwException((err) => {
-      expect(err.message).to.equal(
-        'Unable to determine modify function from provided value: "unknown".',
-      );
-    });
+    }).toThrow(
+      expect.objectContaining({
+        message: 'Unable to determine modify function from provided value: "unknown".',
+      }),
+    );
   });
 
   it('should not throw if modifierNotFound() handles an unknown modifier', () => {
@@ -326,45 +328,39 @@ describe('QueryBuilder', () => {
 
     expect(() => {
       builder.modify('unknown');
-    }).to.not.throwException();
-    expect(caughtModifier).to.equal('unknown');
+    }).not.toThrow();
+    expect(caughtModifier).toBe('unknown');
   });
 
-  it('should call the callback passed to .then after execution', (done) => {
+  it('should call the callback passed to .then after execution', () => {
     mockKnexQueryResults = [[{ a: 1 }, { a: 2 }]];
-    // Make sure the callback is called by not returning a promise from the test.
-    // Instead call the `done` function so that the test times out if the callback
-    // is not called.
-    QueryBuilder.forClass(TestModel)
-      .then((result) => {
-        expect(result).to.eql(mockKnexQueryResults[0]);
-        done();
-      })
-      .catch(done);
+    return QueryBuilder.forClass(TestModel).then((result) => {
+      expect(result).toEqual(mockKnexQueryResults[0]);
+    });
   });
 
   it('should return a promise from .then method', () => {
     let promise = QueryBuilder.forClass(TestModel).then((it) => it);
-    expect(promise).to.be.a(Promise);
+    expect(promise).toBeInstanceOf(Promise);
     return promise;
   });
 
   it('should return a promise from .execute method', () => {
     let promise = QueryBuilder.forClass(TestModel).execute();
-    expect(promise).to.be.a(Promise);
+    expect(promise).toBeInstanceOf(Promise);
     return promise;
   });
 
   it('should return a promise from .catch method', () => {
     let promise = QueryBuilder.forClass(TestModel).catch(() => {});
-    expect(promise).to.be.a(Promise);
+    expect(promise).toBeInstanceOf(Promise);
     return promise;
   });
 
   it('should select all from the model table if no query methods are called', () => {
     let queryBuilder = QueryBuilder.forClass(TestModel);
     return queryBuilder.then(() => {
-      expect(executedQueries).to.eql(['select "Model".* from "Model"']);
+      expect(executedQueries).toEqual(['select "Model".* from "Model"']);
     });
   });
 
@@ -380,12 +376,12 @@ describe('QueryBuilder', () => {
       .orWhere(function (builder) {
         // The builder passed to these functions should be a QueryBuilderBase instead of
         // knex query builder.
-        expect(this).to.equal(builder);
-        expect(this).to.be.a(QueryBuilderBase);
+        expect(this).toBe(builder);
+        expect(this).toBeInstanceOf(QueryBuilderBase);
         this.where('age', '<', 10).andWhere('eyeColor', 'blue');
       })
       .then(() => {
-        expect(executedQueries).to.eql([
+        expect(executedQueries).toEqual([
           [
             'select "name", "id", "age" from "Model"',
             'inner join "AnotherTable" on "AnotherTable"."modelId" = "Model"."id"',
@@ -401,7 +397,7 @@ describe('QueryBuilder', () => {
   it('should return a QueryBuilder from .timeout method', () => {
     const builder = QueryBuilder.forClass(TestModel).timeout(3000);
 
-    expect(builder).to.be.a(QueryBuilder);
+    expect(builder).toBeInstanceOf(QueryBuilder);
     return builder;
   });
 
@@ -410,7 +406,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .where('SomeTable.someColumn', ref('SomeOtherTable.someOtherColumn'))
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where "SomeTable"."someColumn" = "SomeOtherTable"."someOtherColumn"',
           ]);
         });
@@ -420,7 +416,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .where('SomeTable.someColumn', '>', ref('SomeOtherTable.someOtherColumn'))
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where "SomeTable"."someColumn" > "SomeOtherTable"."someOtherColumn"',
           ]);
         });
@@ -432,9 +428,7 @@ describe('QueryBuilder', () => {
           .where('SomeTable.someColumn', 'lol', ref('SomeOtherTable.someOtherColumn'))
           .toKnexQuery()
           .toString();
-      }).to.throwException((err) => {
-        expect(err.message).to.equal('The operator "lol" is not permitted');
-      });
+      }).toThrow(expect.objectContaining({ message: 'The operator "lol" is not permitted' }));
     });
 
     it('orWhere(..., ref(...)) should create a where clause using column references instead of values', () => {
@@ -442,7 +436,7 @@ describe('QueryBuilder', () => {
         .where('id', 10)
         .orWhere('SomeTable.someColumn', ref('SomeOtherTable.someOtherColumn'))
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where "id" = 10 or "SomeTable"."someColumn" = "SomeOtherTable"."someOtherColumn"',
           ]);
         });
@@ -456,7 +450,7 @@ describe('QueryBuilder', () => {
           .orderBy([ref('a'), ref('Model.b')])
           .toKnexQuery()
           .toString(),
-      ).to.equal('select "Model".* from "Model" order by "a" asc, "Model"."b" asc');
+      ).toBe('select "Model".* from "Model" order by "a" asc, "Model"."b" asc');
     });
 
     it('should support mixed strings, refs, raws and objects as array items', () => {
@@ -471,7 +465,7 @@ describe('QueryBuilder', () => {
           ])
           .toKnexQuery()
           .toString(),
-      ).to.equal(
+      ).toBe(
         'select "Model".* from "Model" order by "a" asc, "b" asc, lower("c") asc, "d" desc, "e" desc nulls last',
       );
     });
@@ -482,7 +476,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereComposite(['A.a', 'B.b'], '>', [1, 2])
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where ("A"."a" > 1 and "B"."b" > 2)',
           ]);
         });
@@ -494,16 +488,14 @@ describe('QueryBuilder', () => {
           .whereComposite('SomeTable.someColumn', 'lol', 'SomeOtherTable.someOtherColumn')
           .toKnexQuery()
           .toString();
-      }).to.throwException((err) => {
-        expect(err.message).to.equal('The operator "lol" is not permitted');
-      });
+      }).toThrow(expect.objectContaining({ message: 'The operator "lol" is not permitted' }));
     });
 
     it('operator should default to `=`', () => {
       return QueryBuilder.forClass(TestModel)
         .whereComposite(['A.a', 'B.b'], [1, 2])
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where ("A"."a" = 1 and "B"."b" = 2)',
           ]);
         });
@@ -513,7 +505,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereComposite(['A.a'], 1)
         .then(() => {
-          expect(executedQueries).to.eql(['select "Model".* from "Model" where "A"."a" = 1']);
+          expect(executedQueries).toEqual(['select "Model".* from "Model" where "A"."a" = 1']);
         });
     });
 
@@ -521,7 +513,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereComposite('A.a', 1)
         .then(() => {
-          expect(executedQueries).to.eql(['select "Model".* from "Model" where "A"."a" = 1']);
+          expect(executedQueries).toEqual(['select "Model".* from "Model" where "A"."a" = 1']);
         });
     });
   });
@@ -531,7 +523,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite(['A.a', 'B.b'], [1, 2])
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where ("A"."a", "B"."b") in ((1, 2))',
           ]);
         });
@@ -547,7 +539,7 @@ describe('QueryBuilder', () => {
           ],
         )
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where ("A"."a", "B"."b") in ((1, 2), (3, 4))',
           ]);
         });
@@ -557,7 +549,9 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite(['A.a'], [[1], [3]])
         .then(() => {
-          expect(executedQueries).to.eql(['select "Model".* from "Model" where "A"."a" in (1, 3)']);
+          expect(executedQueries).toEqual([
+            'select "Model".* from "Model" where "A"."a" in (1, 3)',
+          ]);
         });
     });
 
@@ -565,7 +559,9 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite('A.a', [[1], [3]])
         .then(() => {
-          expect(executedQueries).to.eql(['select "Model".* from "Model" where "A"."a" in (1, 3)']);
+          expect(executedQueries).toEqual([
+            'select "Model".* from "Model" where "A"."a" in (1, 3)',
+          ]);
         });
     });
 
@@ -573,7 +569,9 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite('A.a', [1, 3])
         .then(() => {
-          expect(executedQueries).to.eql(['select "Model".* from "Model" where "A"."a" in (1, 3)']);
+          expect(executedQueries).toEqual([
+            'select "Model".* from "Model" where "A"."a" in (1, 3)',
+          ]);
         });
     });
 
@@ -581,7 +579,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite('A.a', TestModel.query().select('a'))
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where "A"."a" in (select "a" from "Model")',
           ]);
         });
@@ -591,7 +589,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite('A.a', 1)
         .then(() => {
-          expect(executedQueries).to.eql(['select "Model".* from "Model" where "A"."a" in (1)']);
+          expect(executedQueries).toEqual(['select "Model".* from "Model" where "A"."a" in (1)']);
         });
     });
 
@@ -599,7 +597,7 @@ describe('QueryBuilder', () => {
       return QueryBuilder.forClass(TestModel)
         .whereInComposite(['A.a', 'B.b'], TestModel.query().select('a', 'b'))
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where ("A"."a","B"."b") in (select "a", "b" from "Model")',
           ]);
         });
@@ -612,7 +610,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select [Model].* from [Model] where exists (select * from (select [a], [b] from [Model]) AS V([objectiontmpjoin0],[objectiontmpjoin1]) where [objectiontmpjoin0] = [A].[a] and [objectiontmpjoin1] = [B].[b])',
       );
     });
@@ -621,15 +619,13 @@ describe('QueryBuilder', () => {
       const knex = Knex({ client: 'mssql' });
       const sql = (builder) => builder.alias('m').where('m.a', 1).toKnexQuery().toString();
 
-      expect(sql(TestModel.query(knex).delete())).to.equal(
+      expect(sql(TestModel.query(knex).delete())).toBe(
         'with [m] as (select * from [Model]) delete from [m] where [m].[a] = 1;select @@rowcount',
       );
-      expect(sql(TestModel.query(knex).patch({ b: 2 }))).to.equal(
+      expect(sql(TestModel.query(knex).patch({ b: 2 }))).toBe(
         'with [m] as (select * from [Model]) update [m] set [b] = 2 where [m].[a] = 1;select @@rowcount',
       );
-      expect(sql(TestModel.query(knex))).to.equal(
-        'select [m].* from [Model] as [m] where [m].[a] = 1',
-      );
+      expect(sql(TestModel.query(knex))).toBe('select [m].* from [Model] as [m] where [m].[a] = 1');
     });
 
     it('should create a where-in query for composite id and a subquery in sqlite', () => {
@@ -640,10 +636,10 @@ describe('QueryBuilder', () => {
           .toKnexQuery()
           .toString();
 
-      expect(sql('whereInComposite')).to.equal(
+      expect(sql('whereInComposite')).toBe(
         'select `Model`.* from `Model` where (`A`.`a`, `B`.`b`) in (select `a`, `b` from `Model`)',
       );
-      expect(sql('whereNotInComposite')).to.equal(
+      expect(sql('whereNotInComposite')).toBe(
         'select `Model`.* from `Model` where (`A`.`a`, `B`.`b`) not in (select `a`, `b` from `Model`)',
       );
     });
@@ -673,7 +669,7 @@ describe('QueryBuilder', () => {
             .toKnexQuery()
             .toString();
 
-          expect(sql).to.equal(whereInSql);
+          expect(sql).toBe(whereInSql);
         });
 
         it(`whereNotInComposite should match everything (${client})`, () => {
@@ -682,7 +678,7 @@ describe('QueryBuilder', () => {
             .toKnexQuery()
             .toString();
 
-          expect(sql).to.equal(whereNotInSql);
+          expect(sql).toBe(whereNotInSql);
         });
       }
 
@@ -692,7 +688,7 @@ describe('QueryBuilder', () => {
         return TestModel.query()
           .findByIds([])
           .then(() => {
-            expect(executedQueries).to.eql(['select "Model".* from "Model" where 1 = 0']);
+            expect(executedQueries).toEqual(['select "Model".* from "Model" where 1 = 0']);
           });
       });
     });
@@ -704,7 +700,7 @@ describe('QueryBuilder', () => {
       const options = { includeTriggerModifications: true };
       const expected = knex('Model').insert({ a: 1 }).returning(['id', 'a'], options).toString();
 
-      expect(expected).to.contain('#out');
+      expect(expected).toContain('#out');
 
       for (const args of [
         ['id', 'a', options],
@@ -716,7 +712,7 @@ describe('QueryBuilder', () => {
           .toKnexQuery()
           .toString();
 
-        expect(sql).to.equal(expected);
+        expect(sql).toBe(expected);
       }
     });
 
@@ -727,7 +723,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal('update "Model" set "a" = 1 returning "id", "a"');
+      expect(sql).toBe('update "Model" set "a" = 1 returning "id", "a"');
     });
 
     it('should keep the options when cloned', () => {
@@ -738,7 +734,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.contain('#out');
+      expect(sql).toContain('#out');
     });
   });
 
@@ -749,36 +745,34 @@ describe('QueryBuilder', () => {
       const patchSql = (client) =>
         query(client).patch({ a: 1 }).where('b', 2).orderBy('c').toKnexQuery().toString();
 
-      expect(patchSql('pg')).to.equal('update "Model" set "a" = 1 where "b" = 2');
-      expect(patchSql('mysql')).to.equal(
-        'update `Model` set `a` = 1 where `b` = 2 order by `c` asc',
-      );
-      expect(patchSql('sqlite3')).to.equal('update `Model` set `a` = 1 where `b` = 2');
+      expect(patchSql('pg')).toBe('update "Model" set "a" = 1 where "b" = 2');
+      expect(patchSql('mysql')).toBe('update `Model` set `a` = 1 where `b` = 2 order by `c` asc');
+      expect(patchSql('sqlite3')).toBe('update `Model` set `a` = 1 where `b` = 2');
     });
 
     it('should leave out the order on mssql', () => {
       expect(
         query('mssql').patch({ a: 1 }).where('b', 2).orderBy('c').toKnexQuery().toString(),
-      ).to.equal('update [Model] set [a] = 1 where [b] = 2;select @@rowcount');
+      ).toBe('update [Model] set [a] = 1 where [b] = 2;select @@rowcount');
       expect(
         query('mssql').patchAndFetchById(1, { a: 1 }).orderBy('c').toKnexQuery().toString(),
-      ).to.equal('update [Model] set [a] = 1 where [Model].[id] = 1;select @@rowcount');
+      ).toBe('update [Model] set [a] = 1 where [Model].[id] = 1;select @@rowcount');
       expect(
         query('mssql')
           .update({ a: 1 })
           .onBuild((builder) => builder.orderBy('c'))
           .toKnexQuery()
           .toString(),
-      ).to.equal('update [Model] set [a] = 1;select @@rowcount');
-      expect(query('mssql').delete().where('b', 2).orderBy('c').toKnexQuery().toString()).to.equal(
+      ).toBe('update [Model] set [a] = 1;select @@rowcount');
+      expect(query('mssql').delete().where('b', 2).orderBy('c').toKnexQuery().toString()).toBe(
         'delete from [Model] where [b] = 2;select @@rowcount',
       );
     });
 
     it('should keep the order with a limit on mssql', () => {
-      expect(
-        query('mssql').patch({ a: 1 }).orderBy('c').limit(1).toKnexQuery().toString(),
-      ).to.equal('update top (1) [Model] set [a] = 1 order by [c] asc;select @@rowcount');
+      expect(query('mssql').patch({ a: 1 }).orderBy('c').limit(1).toKnexQuery().toString()).toBe(
+        'update top (1) [Model] set [a] = 1 order by [c] asc;select @@rowcount',
+      );
     });
   });
 
@@ -811,12 +805,8 @@ describe('QueryBuilder', () => {
       pg: 'delete from "personTag" using (select "person".* from "person" where "favorite" = ?) as "person" where "person"."category" = ? and "person"."id" = "personTag"."personId"',
     };
 
-    // The bindings are only kept in order since knex 3.3.
-    const [major, minor] = require('knex/package.json').version.split('.').map(Number);
-    const itKnex33 = major > 3 || (major === 3 && minor >= 3) ? it : it.skip;
-
     for (const [client, sql] of Object.entries(expected)) {
-      itKnex33(`should keep the bindings in the order of the sql (${client})`, () => {
+      it(`should keep the bindings in the order of the sql (${client})`, () => {
         const query = PersonTag.query(Knex({ client }))
           .joinRelated('person(favoriteFilter)')
           .modifiers({ favoriteFilter: (builder) => builder.where('favorite', true) })
@@ -825,8 +815,8 @@ describe('QueryBuilder', () => {
           .toKnexQuery()
           .toSQL();
 
-        expect(query.sql).to.equal(sql);
-        expect(query.bindings).to.eql([true, 'Follower']);
+        expect(query.sql).toBe(sql);
+        expect(query.bindings).toEqual([true, 'Follower']);
       });
     }
   });
@@ -835,10 +825,10 @@ describe('QueryBuilder', () => {
     mockKnexQueryResults = [[{ a: 1 }, { a: 2 }]];
 
     return QueryBuilder.forClass(TestModel).then((result) => {
-      expect(result).to.have.length(2);
-      expect(result[0]).to.be.a(TestModel);
-      expect(result[1]).to.be.a(TestModel);
-      expect(result).to.eql(mockKnexQueryResults[0]);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(TestModel);
+      expect(result[1]).toBeInstanceOf(TestModel);
+      expect(result).toEqual(mockKnexQueryResults[0]);
     });
   });
 
@@ -846,62 +836,58 @@ describe('QueryBuilder', () => {
     mockKnexQueryResults = [{ a: 1 }];
 
     return QueryBuilder.forClass(TestModel).then((result) => {
-      expect(result).to.be.a(TestModel);
-      expect(result.a).to.equal(1);
+      expect(result).toBeInstanceOf(TestModel);
+      expect(result.a).toBe(1);
     });
   });
 
-  it('should pass the query builder as `this` and parameter for the hooks', (done) => {
+  it('should pass the query builder as `this` and parameter for the hooks', () => {
     let text = '';
 
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .runBefore(function (result, builder) {
-        expect(builder.constructor.name).to.equal('QueryBuilder');
-        expect(this).to.equal(builder);
+        expect(builder.constructor.name).toBe('QueryBuilder');
+        expect(this).toBe(builder);
         text += 'a';
       })
       .onBuild(function (builder) {
-        expect(builder.constructor.name).to.equal('QueryBuilder');
-        expect(this).to.equal(builder);
+        expect(builder.constructor.name).toBe('QueryBuilder');
+        expect(this).toBe(builder);
         text += 'b';
       })
       .onBuildKnex(function (knexBuilder, builder) {
-        expect(builder.constructor.name).to.equal('QueryBuilder');
-        expect(knexUtils.isKnexQueryBuilder(knexBuilder)).to.equal(true);
-        expect(this).to.equal(knexBuilder);
+        expect(builder.constructor.name).toBe('QueryBuilder');
+        expect(knexUtils.isKnexQueryBuilder(knexBuilder)).toBe(true);
+        expect(this).toBe(knexBuilder);
         text += 'c';
       })
       .runAfter(function (data, builder) {
-        expect(builder.constructor.name).to.equal('QueryBuilder');
-        expect(this).to.equal(builder);
+        expect(builder.constructor.name).toBe('QueryBuilder');
+        expect(this).toBe(builder);
         text += 'd';
       })
       .runAfter(function (data, builder) {
-        expect(builder.constructor.name).to.equal('QueryBuilder');
-        expect(this).to.equal(builder);
+        expect(builder.constructor.name).toBe('QueryBuilder');
+        expect(this).toBe(builder);
         text += 'e';
       })
       .runAfter(() => {
         throw new Error('abort');
       })
       .onError(function (err, builder) {
-        expect(builder.constructor.name).to.equal('QueryBuilder');
-        expect(this).to.equal(builder);
-        expect(err.message).to.equal('abort');
+        expect(builder.constructor.name).toBe('QueryBuilder');
+        expect(this).toBe(builder);
+        expect(err.message).toBe('abort');
         text += 'f';
       })
       .then(() => {
-        expect(text).to.equal('abcdef');
-        done();
-      })
-      .catch((err) => {
-        done(err);
+        expect(text).toBe('abcdef');
       });
   });
 
-  it('throwing at any phase should call the onError hook', (done) => {
+  it('throwing at any phase should call the onError hook', () => {
     let called = false;
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .runBefore(function (result, builder) {
         throw new Error();
       })
@@ -909,16 +895,12 @@ describe('QueryBuilder', () => {
         called = true;
       })
       .then(() => {
-        expect(called).to.equal(true);
-        done();
-      })
-      .catch((err) => {
-        done(err);
+        expect(called).toBe(true);
       });
   });
 
-  it('any return value from onError should be the result of the query', (done) => {
-    QueryBuilder.forClass(TestModel)
+  it('any return value from onError should be the result of the query', () => {
+    return QueryBuilder.forClass(TestModel)
       .runBefore(function (result, builder) {
         throw new Error();
       })
@@ -926,93 +908,83 @@ describe('QueryBuilder', () => {
         return 'my custom error';
       })
       .then((result) => {
-        expect(result).to.equal('my custom error');
-        done();
-      })
-      .catch((err) => {
-        done(err);
+        expect(result).toBe('my custom error');
       });
   });
 
-  it('should call run* methods in the correct order', (done) => {
+  it('should call run* methods in the correct order', () => {
     mockKnexQueryResults = [0];
 
-    // Again call `done` instead of returning a promise just to make sure the final
-    // `.then` callback is called. (I'm paranoid).
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .runBefore(() => {
-        expect(mockKnexQueryResults[0]).to.equal(0);
+        expect(mockKnexQueryResults[0]).toBe(0);
         return ++mockKnexQueryResults[0];
       })
       .runBefore(() => {
-        expect(mockKnexQueryResults[0]).to.equal(1);
+        expect(mockKnexQueryResults[0]).toBe(1);
         return delay(1).then(() => ++mockKnexQueryResults[0]);
       })
       .runBefore(() => {
-        expect(mockKnexQueryResults[0]).to.equal(2);
+        expect(mockKnexQueryResults[0]).toBe(2);
         ++mockKnexQueryResults[0];
       })
       .runAfter((res) => {
-        expect(res).to.equal(3);
+        expect(res).toBe(3);
         return delay(1).then(() => {
           return ++res;
         });
       })
       .runAfter((res) => {
-        expect(res).to.equal(4);
+        expect(res).toBe(4);
         return ++res;
       })
       .then((res) => {
-        expect(res).to.equal(5);
-        done();
-      })
-      .catch(done);
+        expect(res).toBe(5);
+      });
   });
 
-  it('should not execute query if an error is thrown from runBefore', (done) => {
-    QueryBuilder.forClass(TestModel)
+  it('should not execute query if an error is thrown from runBefore', () => {
+    return QueryBuilder.forClass(TestModel)
       .runBefore(() => {
         throw new Error('some error');
       })
       .onBuild(() => {
-        done(new Error('should not get here'));
+        throw new Error('should not get here');
       })
       .runAfter(() => {
-        done(new Error('should not get here'));
+        throw new Error('should not get here');
       })
       .then(() => {
-        done(new Error('should not get here'));
+        throw new Error('should not get here');
       })
       .catch((err) => {
-        expect(err.message).to.equal('some error');
-        expect(executedQueries).to.have.length(0);
-        done();
+        expect(err.message).toBe('some error');
+        expect(executedQueries).toHaveLength(0);
       });
   });
 
-  it('should reject promise if an error is throw from from runAfter', (done) => {
-    QueryBuilder.forClass(TestModel)
+  it('should reject promise if an error is throw from from runAfter', () => {
+    return QueryBuilder.forClass(TestModel)
       .runAfter(() => {
         throw new Error('some error');
       })
       .then(() => {
-        done(new Error('should not get here'));
+        throw new Error('should not get here');
       })
       .catch((err) => {
-        expect(err.message).to.equal('some error');
-        done();
+        expect(err.message).toBe('some error');
       });
   });
 
   it('should call custom find implementation defined by findOperationFactory', () => {
     return QueryBuilder.forClass(TestModel)
       .findOperationFactory(function (builder) {
-        expect(builder).to.equal(this);
+        expect(builder).toBe(this);
         return createFindOperation(builder, { a: 1 });
       })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('select "Model".* from "Model" where "a" = 1');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('select "Model".* from "Model" where "a" = 1');
       });
   });
 
@@ -1023,8 +995,8 @@ describe('QueryBuilder', () => {
       })
       .insert({ a: 1 })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('insert into "Model" ("a") values (1) returning "id"');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('insert into "Model" ("a") values (1) returning "id"');
       });
   });
 
@@ -1035,8 +1007,8 @@ describe('QueryBuilder', () => {
       })
       .update({ a: 1 })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('update "Model" set "a" = 1');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('update "Model" set "a" = 1');
       });
   });
 
@@ -1047,8 +1019,8 @@ describe('QueryBuilder', () => {
       })
       .delete()
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('delete from "Model"');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('delete from "Model"');
       });
   });
 
@@ -1059,8 +1031,8 @@ describe('QueryBuilder', () => {
       })
       .insert({ a: 1 })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('insert into "Model" ("a", "b") values (1, 2)');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('insert into "Model" ("a", "b") values (1, 2)');
       });
   });
 
@@ -1071,8 +1043,8 @@ describe('QueryBuilder', () => {
       })
       .update({ a: 1 })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('update "Model" set "a" = 1, "b" = 2');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('update "Model" set "a" = 1, "b" = 2');
       });
   });
 
@@ -1083,8 +1055,8 @@ describe('QueryBuilder', () => {
       })
       .patch({ a: 1 })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('update "Model" set "a" = 1, "b" = 2');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('update "Model" set "a" = 1, "b" = 2');
       });
   });
 
@@ -1095,8 +1067,8 @@ describe('QueryBuilder', () => {
       })
       .delete()
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('delete from "Model" where "id" = 100');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('delete from "Model" where "id" = 100');
       });
   });
 
@@ -1107,8 +1079,8 @@ describe('QueryBuilder', () => {
       })
       .relate({ a: 1 })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('insert into "Model" ("a", "b") values (1, 2)');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('insert into "Model" ("a", "b") values (1, 2)');
       });
   });
 
@@ -1119,8 +1091,8 @@ describe('QueryBuilder', () => {
       })
       .unrelate()
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(executedQueries[0]).to.equal('delete from "Model" where "id" = 100');
+        expect(executedQueries).toHaveLength(1);
+        expect(executedQueries[0]).toBe('delete from "Model" where "id" = 100');
       });
   });
 
@@ -1130,12 +1102,12 @@ describe('QueryBuilder', () => {
 
       const result = await TestModel.query().patchAndFetchById(1, { a: 1 }).select('id', 'a');
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'update "Model" set "a" = 1 where "Model"."id" = 1',
         'select "id", "a" from "Model" where "Model"."id" = 1',
       ]);
-      expect(result).to.be.a(TestModel);
-      expect(result.toJSON()).to.eql({ id: 1, a: 1 });
+      expect(result).toBeInstanceOf(TestModel);
+      expect(result.toJSON()).toEqual({ id: 1, a: 1 });
     });
 
     it('updateAndFetchById should apply selects to the fetch query', async () => {
@@ -1143,7 +1115,7 @@ describe('QueryBuilder', () => {
 
       await TestModel.query().updateAndFetchById(1, { a: 1 }).select('a');
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'update "Model" set "a" = 1 where "Model"."id" = 1',
         'select "a" from "Model" where "Model"."id" = 1',
       ]);
@@ -1154,7 +1126,7 @@ describe('QueryBuilder', () => {
 
       await TestModel.fromJson({ id: 1 }).$query().patchAndFetch({ a: 1 }).select('a');
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'update "Model" set "a" = 1 where "Model"."id" = 1',
         'select "a" from "Model" where "Model"."id" = 1',
       ]);
@@ -1165,7 +1137,7 @@ describe('QueryBuilder', () => {
 
       await TestModel.fromJson({ id: 1 }).$query().updateAndFetch({ a: 1 }).select('a');
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'update "Model" set "a" = 1 where "Model"."id" = 1',
         'select "a" from "Model" where "Model"."id" = 1',
       ]);
@@ -1176,7 +1148,7 @@ describe('QueryBuilder', () => {
 
       await TestModel.query().patchAndFetchById(1, { a: 1 });
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'update "Model" set "a" = 1 where "Model"."id" = 1',
         'select "Model".* from "Model" where "Model"."id" = 1',
       ]);
@@ -1225,8 +1197,8 @@ describe('QueryBuilder', () => {
             throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err.message).to.equal(message);
-            expect(executedQueries).to.have.length(0);
+            expect(err.message).toBe(message);
+            expect(executedQueries).toHaveLength(0);
           });
       });
 
@@ -1237,8 +1209,8 @@ describe('QueryBuilder', () => {
             throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err.message).to.equal(message);
-            expect(executedQueries).to.have.length(0);
+            expect(err.message).toBe(message);
+            expect(executedQueries).toHaveLength(0);
           });
       });
     }
@@ -1246,9 +1218,7 @@ describe('QueryBuilder', () => {
     it("toKnexQuery() should throw for a query that wasn't created using relatedQuery", () => {
       expect(() => {
         TestModel.query().for(1).delete().toKnexQuery();
-      }).to.throwException((err) => {
-        expect(err.message).to.equal(message);
-      });
+      }).toThrow(expect.objectContaining({ message }));
     });
 
     it('should work with queries created using relatedQuery', () => {
@@ -1256,7 +1226,7 @@ describe('QueryBuilder', () => {
         .for(1)
         .delete()
         .then(() => {
-          expect(executedQueries).to.eql(['delete from "Model" where "Model"."ownerId" in (1)']);
+          expect(executedQueries).toEqual(['delete from "Model" where "Model"."ownerId" in (1)']);
         });
     });
 
@@ -1265,7 +1235,7 @@ describe('QueryBuilder', () => {
         .where('a', 1)
         .for(1)
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where "Model"."ownerId" in (1) and "a" = 1',
           ]);
         });
@@ -1285,11 +1255,12 @@ describe('QueryBuilder', () => {
       it(`should throw when called after ${name}() on a relatedQuery`, () => {
         expect(() => {
           create(Person.relatedQuery('pets')).for(1);
-        }).to.throwException((err) => {
-          expect(err.message).to.equal(
-            'for() must be called before insert, update, patch, delete, relate or unrelate on queries created using the static relatedQuery method',
-          );
-        });
+        }).toThrow(
+          expect.objectContaining({
+            message:
+              'for() must be called before insert, update, patch, delete, relate or unrelate on queries created using the static relatedQuery method',
+          }),
+        );
       });
     }
   });
@@ -1305,8 +1276,8 @@ describe('QueryBuilder', () => {
         .where('a', 1)
         .none()
         .then((result) => {
-          expect(result).to.eql([]);
-          expect(executedQueries).to.have.length(0);
+          expect(result).toEqual([]);
+          expect(executedQueries).toHaveLength(0);
         });
     });
 
@@ -1316,8 +1287,8 @@ describe('QueryBuilder', () => {
         TestModel.query().none().findById(1),
         TestModel.query().findOne({ a: 1 }).none(),
       ]).then((results) => {
-        expect(results).to.eql([undefined, undefined, undefined]);
-        expect(executedQueries).to.have.length(0);
+        expect(results).toEqual([undefined, undefined, undefined]);
+        expect(executedQueries).toHaveLength(0);
       });
     });
 
@@ -1341,8 +1312,8 @@ describe('QueryBuilder', () => {
         .withGraphFetched('pets')
         .none()
         .then((result) => {
-          expect(result).to.eql([]);
-          expect(executedQueries).to.have.length(0);
+          expect(result).toEqual([]);
+          expect(executedQueries).toHaveLength(0);
         });
     });
 
@@ -1353,8 +1324,8 @@ describe('QueryBuilder', () => {
         TestModel.query().none().delete(),
         TestModel.query().none().deleteById(1),
       ]).then((results) => {
-        expect(results).to.eql([0, 0, 0, 0]);
-        expect(executedQueries).to.have.length(0);
+        expect(results).toEqual([0, 0, 0, 0]);
+        expect(executedQueries).toHaveLength(0);
       });
     });
 
@@ -1363,8 +1334,8 @@ describe('QueryBuilder', () => {
         .none()
         .patchAndFetchById(1, { a: 1 })
         .then((result) => {
-          expect(result).to.equal(undefined);
-          expect(executedQueries).to.have.length(0);
+          expect(result).toBeUndefined();
+          expect(executedQueries).toHaveLength(0);
         });
     });
 
@@ -1372,9 +1343,9 @@ describe('QueryBuilder', () => {
       const model = TestModel.fromJson({ id: 1, a: 1 });
       const result = await model.$query().patch({ a: 2 }).none();
 
-      expect(result).to.equal(0);
-      expect(model.a).to.equal(1);
-      expect(executedQueries).to.have.length(0);
+      expect(result).toBe(0);
+      expect(model.a).toBe(1);
+      expect(executedQueries).toHaveLength(0);
     });
 
     it('should not modify the owners of a belongs to one relation delete', async () => {
@@ -1396,9 +1367,9 @@ describe('QueryBuilder', () => {
       const pet = Pet.fromJson({ id: 1, ownerId: 2 });
       const result = await pet.$relatedQuery('owner').delete().none();
 
-      expect(result).to.equal(0);
-      expect(pet.ownerId).to.equal(2);
-      expect(executedQueries).to.have.length(0);
+      expect(result).toBe(0);
+      expect(pet.ownerId).toBe(2);
+      expect(executedQueries).toHaveLength(0);
 
       const resolved = await pet
         .$relatedQuery('owner')
@@ -1407,9 +1378,9 @@ describe('QueryBuilder', () => {
           builder.resolve(0);
         });
 
-      expect(resolved).to.equal(0);
-      expect(pet.ownerId).to.equal(2);
-      expect(executedQueries).to.have.length(0);
+      expect(resolved).toBe(0);
+      expect(pet.ownerId).toBe(2);
+      expect(executedQueries).toHaveLength(0);
     });
 
     it('should not modify the instance of an instance patch resolved in a hook', async () => {
@@ -1421,21 +1392,21 @@ describe('QueryBuilder', () => {
           builder.resolve(0);
         });
 
-      expect(result).to.equal(0);
-      expect(model.a).to.equal(1);
-      expect(executedQueries).to.have.length(0);
+      expect(result).toBe(0);
+      expect(model.a).toBe(1);
+      expect(executedQueries).toHaveLength(0);
     });
 
     it('should count falsy values passed to resolve() as resolved', () => {
       for (const value of [0, false, '', undefined]) {
         const builder = TestModel.query().resolve(value);
 
-        expect(builder.isExplicitlyResolvedOrRejected()).to.equal(true);
-        expect(builder.isExecutable()).to.equal(false);
+        expect(builder.isExplicitlyResolvedOrRejected()).toBe(true);
+        expect(builder.isExecutable()).toBe(false);
       }
 
-      expect(TestModel.query().isExplicitlyResolvedOrRejected()).to.equal(false);
-      expect(TestModel.query().reject(0).isExplicitlyResolvedOrRejected()).to.equal(true);
+      expect(TestModel.query().isExplicitlyResolvedOrRejected()).toBe(false);
+      expect(TestModel.query().reject(0).isExplicitlyResolvedOrRejected()).toBe(true);
     });
 
     it('should return an empty array for update and delete queries with returning', () => {
@@ -1443,8 +1414,8 @@ describe('QueryBuilder', () => {
         TestModel.query().none().patch({ a: 1 }).returning('*'),
         TestModel.query().none().delete().returning('*'),
       ]).then((results) => {
-        expect(results).to.eql([[], []]);
-        expect(executedQueries).to.have.length(0);
+        expect(results).toEqual([[], []]);
+        expect(executedQueries).toHaveLength(0);
       });
     });
 
@@ -1456,10 +1427,8 @@ describe('QueryBuilder', () => {
           throw new Error('should not get here');
         })
         .catch((err) => {
-          expect(err.message).to.equal(
-            'none() can only be used with find, update and delete queries',
-          );
-          expect(executedQueries).to.have.length(0);
+          expect(err.message).toBe('none() can only be used with find, update and delete queries');
+          expect(executedQueries).toHaveLength(0);
         });
     });
 
@@ -1472,14 +1441,14 @@ describe('QueryBuilder', () => {
           .orWhere('c', 3)
           .toKnexQuery()
           .toString(),
-      ).to.equal('select "Model".* from "Model" where 1 = 0');
+      ).toBe('select "Model".* from "Model" where 1 = 0');
     });
 
     it('should replace all where clauses with an always false condition in subqueries', () => {
       return TestModel.query()
         .whereIn('id', TestModel.query().select('x').where('a', 1).orWhere('b', 2).none())
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Model".* from "Model" where "id" in (select "x" from "Model" where 1 = 0)',
           ]);
         });
@@ -1493,8 +1462,8 @@ describe('QueryBuilder', () => {
         TestModel.query().sum('a as total').none(),
         TestModel.query().select('a').groupBy('a').none(),
       ]).then((results) => {
-        expect(results).to.eql([{ count: 0 }, [{ total: null }], []]);
-        expect(executedQueries).to.eql([
+        expect(results).toEqual([{ count: 0 }, [{ total: null }], []]);
+        expect(executedQueries).toEqual([
           'select count(*) as "count" from "Model" where 1 = 0',
           'select sum("a") as "total" from "Model" where 1 = 0',
           'select "a" from "Model" where 1 = 0 group by "a"',
@@ -1509,8 +1478,8 @@ describe('QueryBuilder', () => {
         .none()
         .resultSize()
         .then((result) => {
-          expect(result).to.equal(0);
-          expect(executedQueries).to.eql([
+          expect(result).toBe(0);
+          expect(executedQueries).toEqual([
             'select count(*) as "count" from (select "Model".* from "Model" where 1 = 0) as "temp"',
           ]);
         });
@@ -1532,16 +1501,16 @@ describe('QueryBuilder', () => {
       return HookModel.query()
         .none()
         .then((result) => {
-          expect(result).to.eql([]);
-          expect(calls).to.eql(['beforeFind', ['afterFind', []]]);
-          expect(executedQueries).to.have.length(0);
+          expect(result).toEqual([]);
+          expect(calls).toEqual(['beforeFind', ['afterFind', []]]);
+          expect(executedQueries).toHaveLength(0);
         });
     });
 
     it('should be matched by has() and removed by clear()', () => {
       const query = TestModel.query().none();
-      expect(query.has('none')).to.equal(true);
-      expect(query.clear('none').has('none')).to.equal(false);
+      expect(query.has('none')).toBe(true);
+      expect(query.clear('none').has('none')).toBe(false);
     });
   });
 
@@ -1555,52 +1524,44 @@ describe('QueryBuilder', () => {
 
     return query
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(query.toKnexQuery().toString()).to.equal(executedQueries[0]);
-        expect(executedQueries[0]).to.equal(
-          'update "Model" set "a" = 1, "b" = 2 where "test" < 100',
-        );
+        expect(executedQueries).toHaveLength(1);
+        expect(query.toKnexQuery().toString()).toBe(executedQueries[0]);
+        expect(executedQueries[0]).toBe('update "Model" set "a" = 1, "b" = 2 where "test" < 100');
         executedQueries = [];
         return query;
       })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(query.toKnexQuery().toString()).to.equal(executedQueries[0]);
-        expect(executedQueries[0]).to.equal(
-          'update "Model" set "a" = 1, "b" = 2 where "test" < 100',
-        );
+        expect(executedQueries).toHaveLength(1);
+        expect(query.toKnexQuery().toString()).toBe(executedQueries[0]);
+        expect(executedQueries[0]).toBe('update "Model" set "a" = 1, "b" = 2 where "test" < 100');
         executedQueries = [];
         return query;
       })
       .then(() => {
-        expect(executedQueries).to.have.length(1);
-        expect(query.toKnexQuery().toString()).to.equal(executedQueries[0]);
-        expect(executedQueries[0]).to.equal(
-          'update "Model" set "a" = 1, "b" = 2 where "test" < 100',
-        );
+        expect(executedQueries).toHaveLength(1);
+        expect(query.toKnexQuery().toString()).toBe(executedQueries[0]);
+        expect(executedQueries[0]).toBe('update "Model" set "a" = 1, "b" = 2 where "test" < 100');
       });
   });
 
-  it('resultSize should create and execute a query that returns the size of the query', (done) => {
+  it('resultSize should create and execute a query that returns the size of the query', () => {
     mockKnexQueryResults = [[{ count: '123' }]];
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .where('test', 100)
       .orderBy('order')
       .limit(10)
       .offset(100)
       .resultSize()
       .then((res) => {
-        expect(executedQueries).to.have.length(1);
-        expect(res).to.equal(123);
-        expect(executedQueries[0]).to.equal(
+        expect(executedQueries).toHaveLength(1);
+        expect(res).toBe(123);
+        expect(executedQueries[0]).toBe(
           'select count(*) as "count" from (select "Model".* from "Model" where "test" = 100) as "temp"',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('should consider withSchema when looking for column info', (done) => {
+  it('should consider withSchema when looking for column info', () => {
     class TestModelRelated extends Model {
       static get tableName() {
         return 'Related';
@@ -1629,56 +1590,50 @@ describe('QueryBuilder', () => {
     TestModelRelated.knex(mockKnex);
 
     mockKnexQueryResults = [[{ count: '123' }]];
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .withSchema('someSchema')
       .withGraphJoined('relatedModel')
       .then(() => {
-        expect(executedQueries).to.eql([
+        expect(executedQueries).toEqual([
           "select * from information_schema.columns where table_name = 'Model' and table_catalog = current_database() and table_schema = 'someSchema'",
           "select * from information_schema.columns where table_name = 'Related' and table_catalog = current_database() and table_schema = 'someSchema'",
           'select "Model"."0" as "0" from "someSchema"."Model" left join "someSchema"."Related" as "relatedModel" on "relatedModel"."id" = "Model"."id"',
         ]);
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('range should return a range and the total count', (done) => {
+  it('range should return a range and the total count', () => {
     mockKnexQueryResults = [[{ a: '1' }], [{ count: '123' }]];
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .where('test', 100)
       .orderBy('order')
       .range(100, 200)
       .then((res) => {
-        expect(executedQueries).to.have.length(2);
-        expect(executedQueries).to.eql([
+        expect(executedQueries).toHaveLength(2);
+        expect(executedQueries).toEqual([
           'select "Model".* from "Model" where "test" = 100 order by "order" asc limit 101 offset 100',
           'select count(*) as "count" from (select "Model".* from "Model" where "test" = 100) as "temp"',
         ]);
-        expect(res.total).to.equal(123);
-        expect(res.results).to.eql([{ a: 1 }]);
-        done();
-      })
-      .catch(done);
+        expect(res.total).toBe(123);
+        expect(res.results).toEqual([{ a: '1' }]);
+      });
   });
 
-  it('page should return a page and the total count', (done) => {
+  it('page should return a page and the total count', () => {
     mockKnexQueryResults = [[{ a: '1' }], [{ count: '123' }]];
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .where('test', 100)
       .orderBy('order')
       .page(10, 100)
       .then((res) => {
-        expect(executedQueries).to.have.length(2);
-        expect(executedQueries).to.eql([
+        expect(executedQueries).toHaveLength(2);
+        expect(executedQueries).toEqual([
           'select "Model".* from "Model" where "test" = 100 order by "order" asc limit 100 offset 1000',
           'select count(*) as "count" from (select "Model".* from "Model" where "test" = 100) as "temp"',
         ]);
-        expect(res.total).to.equal(123);
-        expect(res.results).to.eql([{ a: 1 }]);
-        done();
-      })
-      .catch(done);
+        expect(res.total).toBe(123);
+        expect(res.results).toEqual([{ a: '1' }]);
+      });
   });
 
   describe('resultSize with withGraphJoined', () => {
@@ -1724,8 +1679,8 @@ describe('QueryBuilder', () => {
         .limit(1)
         .resultSize()
         .then((res) => {
-          expect(res).to.equal(2);
-          expect(executedQueries).to.eql([
+          expect(res).toBe(2);
+          expect(executedQueries).toEqual([
             metadataQuery('Person'),
             metadataQuery('Animal'),
             'select count(*) as "count" from (select distinct "Person"."id" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" where "pets"."name" like \'A%\') as "temp"',
@@ -1769,8 +1724,8 @@ describe('QueryBuilder', () => {
         .withGraphJoined('pets')
         .resultSize()
         .then((res) => {
-          expect(res).to.equal(3);
-          expect(executedQueries).to.eql([
+          expect(res).toBe(3);
+          expect(executedQueries).toEqual([
             'select count(*) as "count" from (select distinct "Person"."id", "Person"."tenantId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" and "pets"."tenantId" = "Person"."tenantId") as "temp"',
           ]);
         });
@@ -1788,8 +1743,8 @@ describe('QueryBuilder', () => {
         .having('personName', '=', 'A')
         .resultSize()
         .then((res) => {
-          expect(res).to.equal(1);
-          expect(executedQueries).to.eql([
+          expect(res).toBe(1);
+          expect(executedQueries).toEqual([
             'select count(*) as "count" from (select distinct "id" from (select "Person"."id", "Person"."name" as "personName", "pets"."id" as "pets:id", "pets"."ownerId" as "pets:ownerId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" group by "Person"."id", "pets"."id" having "personName" = \'A\') as "inner") as "temp"',
           ]);
         });
@@ -1812,9 +1767,9 @@ describe('QueryBuilder', () => {
         .orderBy('Person.id')
         .page(0, 10)
         .then((res) => {
-          expect(res.total).to.equal(2);
-          expect(res.results).to.have.length(2);
-          expect(executedQueries).to.eql([
+          expect(res.total).toBe(2);
+          expect(res.results).toHaveLength(2);
+          expect(executedQueries).toEqual([
             'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id" order by "Person"."id" asc limit 10',
             'select count(*) as "count" from (select distinct "Person"."id" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id") as "temp"',
           ]);
@@ -1860,8 +1815,8 @@ describe('QueryBuilder', () => {
         .for(1)
         .resultSize()
         .then((res) => {
-          expect(res).to.equal(123);
-          expect(executedQueries).to.eql([
+          expect(res).toBe(123);
+          expect(executedQueries).toEqual([
             'select count(*) as "count" from (select "Related".* from "Related" where "Related"."modelId" in (1)) as "temp"',
           ]);
         });
@@ -1873,8 +1828,8 @@ describe('QueryBuilder', () => {
         .for(1)
         .page(0, 10)
         .then((res) => {
-          expect(res.total).to.equal(123);
-          expect(executedQueries).to.eql([
+          expect(res.total).toBe(123);
+          expect(executedQueries).toEqual([
             'select "Related".* from "Related" where "Related"."modelId" in (1) order by "order" asc limit 10',
             'select count(*) as "count" from (select "Related".* from "Related" where "Related"."modelId" in (1)) as "temp"',
           ]);
@@ -1913,13 +1868,9 @@ describe('QueryBuilder', () => {
       const query = queries[name];
       for (const other in queries) {
         const method = getMethodName(other);
-        chai
-          .expect(query[method](), `queries.${name}.${method}()`)
-          .to.equal(method === getMethodName(name));
-        chai
-          .expect(query.hasWheres(), `queries.${name}.hasWheres()`)
-          .to.equal(name.includes('relate'));
-        chai.expect(query.hasSelects(), `queries.${name}.hasSelects()`).to.equal(false);
+        expect(query[method](), `queries.${name}.${method}()`).toBe(method === getMethodName(name));
+        expect(query.hasWheres(), `queries.${name}.hasWheres()`).toBe(name.includes('relate'));
+        expect(query.hasSelects(), `queries.${name}.hasSelects()`).toBe(false);
       }
     }
   });
@@ -1956,11 +1907,11 @@ describe('QueryBuilder', () => {
       },
     };
 
-    expect(TestModel.query().hasWheres()).to.equal(false);
-    expect(TestModel.query().insert({}).hasWheres()).to.equal(false);
-    expect(TestModel.query().update({}).hasWheres()).to.equal(false);
-    expect(TestModel.query().patch({}).hasWheres()).to.equal(false);
-    expect(TestModel.query().delete().hasWheres()).to.equal(false);
+    expect(TestModel.query().hasWheres()).toBe(false);
+    expect(TestModel.query().insert({}).hasWheres()).toBe(false);
+    expect(TestModel.query().update({}).hasWheres()).toBe(false);
+    expect(TestModel.query().patch({}).hasWheres()).toBe(false);
+    expect(TestModel.query().delete().hasWheres()).toBe(false);
 
     const wheres = [
       'findOne',
@@ -2003,24 +1954,24 @@ describe('QueryBuilder', () => {
     for (let i = 0; i < wheres.length; i++) {
       const name = wheres[i];
       const query = TestModel.query()[name](1, '=', 1);
-      chai.expect(query.hasWheres(), `TestModel.query().${name}().hasWheres()`).to.equal(true);
+      expect(query.hasWheres(), `TestModel.query().${name}().hasWheres()`).toBe(true);
     }
 
     const model = TestModel.fromJson({ id: 1, someId: 1 });
     let query = model.$query();
-    chai.expect(query.hasWheres()).to.equal(true);
+    expect(query.hasWheres()).toBe(true);
 
     query = model.$query().withGraphJoined('manyToManyRelation');
-    chai.expect(query.hasWheres()).to.equal(true);
+    expect(query.hasWheres()).toBe(true);
 
     query = model.$relatedQuery('belongsToOneRelation');
-    chai.expect(query.hasWheres()).to.equal(true);
+    expect(query.hasWheres()).toBe(true);
 
     query = model.$relatedQuery('hasManyRelation');
-    chai.expect(query.hasWheres()).to.equal(true);
+    expect(query.hasWheres()).toBe(true);
 
     query = model.$relatedQuery('manyToManyRelation');
-    chai.expect(query.hasWheres()).to.equal(true);
+    expect(query.hasWheres()).toBe(true);
   });
 
   it('hasSelects() should return true for all variants of select queries', () => {
@@ -2042,9 +1993,7 @@ describe('QueryBuilder', () => {
     for (let i = 0; i < selects.length; i++) {
       const name = selects[i];
       const query = TestModel.query()[name]('arg');
-      chai
-        .expect(query.hasSelects(), `TestModel.query().${name}('arg').hasSelects()`)
-        .to.equal(true);
+      expect(query.hasSelects(), `TestModel.query().${name}('arg').hasSelects()`).toBe(true);
     }
   });
 
@@ -2061,11 +2010,11 @@ describe('QueryBuilder', () => {
     };
 
     const query = TestModel.query();
-    expect(query.hasWithGraph()).to.equal(false);
+    expect(query.hasWithGraph()).toBe(false);
     query.withGraphFetched('someRel');
-    expect(query.hasWithGraph()).to.equal(true);
+    expect(query.hasWithGraph()).toBe(true);
     query.clearWithGraph();
-    expect(query.hasWithGraph()).to.equal(false);
+    expect(query.hasWithGraph()).toBe(false);
   });
 
   it('has() should match defined query operations', () => {
@@ -2088,12 +2037,8 @@ describe('QueryBuilder', () => {
     ];
     const test = (query, name, expected) => {
       const regexp = new RegExp(`^${name}$`);
-      chai
-        .expect(query.has(name), `TestModel.query().${name}('arg').has('${name}')`)
-        .to.equal(expected);
-      chai
-        .expect(query.has(regexp), `TestModel.query().${name}('arg').has(${regexp})`)
-        .to.equal(expected);
+      expect(query.has(name), `TestModel.query().${name}('arg').has('${name}')`).toBe(expected);
+      expect(query.has(regexp), `TestModel.query().${name}('arg').has(${regexp})`).toBe(expected);
     };
 
     operations.forEach((operation) => {
@@ -2111,22 +2056,20 @@ describe('QueryBuilder', () => {
     operations.forEach((operation) => {
       const query = TestModel.query();
       operations.forEach((operation) => query[operation]('arg'));
-      chai.expect(query.has(operation), `query().has('${operation}')`).to.equal(true);
-      chai
-        .expect(
-          query.clear(operation).has(operation),
-          `query().clear('${operation}').has('${operation}')`,
-        )
-        .to.equal(false);
+      expect(query.has(operation), `query().has('${operation}')`).toBe(true);
+      expect(
+        query.clear(operation).has(operation),
+        `query().clear('${operation}').has('${operation}')`,
+      ).toBe(false);
       operations.forEach((testOperation) => {
-        chai
-          .expect(query.has(testOperation), `query().has('${testOperation}')`)
-          .to.equal(testOperation !== operation);
+        expect(query.has(testOperation), `query().has('${testOperation}')`).toBe(
+          testOperation !== operation,
+        );
       });
     });
   });
 
-  it('update() should call $beforeUpdate on the model', (done) => {
+  it('update() should call $beforeUpdate on the model', () => {
     TestModel.prototype.$beforeUpdate = function () {
       this.c = 'beforeUpdate';
     };
@@ -2136,19 +2079,17 @@ describe('QueryBuilder', () => {
     };
 
     let model = TestModel.fromJson({ a: 10, b: 'test' });
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .update(model)
       .then(() => {
-        expect(model.c).to.equal('beforeUpdate');
-        expect(executedQueries[0]).to.equal(
+        expect(model.c).toBe('beforeUpdate');
+        expect(executedQueries[0]).toBe(
           'update "Model" set "a" = 10, "b" = \'test\', "c" = \'beforeUpdate\'',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('update() should call $beforeUpdate on the model (async)', (done) => {
+  it('update() should call $beforeUpdate on the model (async)', () => {
     TestModel.prototype.$beforeUpdate = function () {
       let self = this;
       return delay(5).then(() => {
@@ -2161,19 +2102,17 @@ describe('QueryBuilder', () => {
     };
 
     let model = TestModel.fromJson({ a: 10, b: 'test' });
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .update(model)
       .then(() => {
-        expect(model.c).to.equal('beforeUpdate');
-        expect(executedQueries[0]).to.equal(
+        expect(model.c).toBe('beforeUpdate');
+        expect(executedQueries[0]).toBe(
           'update "Model" set "a" = 10, "b" = \'test\', "c" = \'beforeUpdate\'',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('patch() should call $beforeUpdate on the model', (done) => {
+  it('patch() should call $beforeUpdate on the model', () => {
     TestModel.prototype.$beforeUpdate = function () {
       this.c = 'beforeUpdate';
     };
@@ -2183,19 +2122,17 @@ describe('QueryBuilder', () => {
     };
 
     let model = TestModel.fromJson({ a: 10, b: 'test' });
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .patch(model)
       .then(() => {
-        expect(model.c).to.equal('beforeUpdate');
-        expect(executedQueries[0]).to.equal(
+        expect(model.c).toBe('beforeUpdate');
+        expect(executedQueries[0]).toBe(
           'update "Model" set "a" = 10, "b" = \'test\', "c" = \'beforeUpdate\'',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('patch() should call $beforeUpdate on the model (async)', (done) => {
+  it('patch() should call $beforeUpdate on the model (async)', () => {
     TestModel.prototype.$beforeUpdate = function () {
       let self = this;
       return delay(5).then(() => {
@@ -2208,19 +2145,17 @@ describe('QueryBuilder', () => {
     };
 
     let model = TestModel.fromJson({ a: 10, b: 'test' });
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .patch(model)
       .then(() => {
-        expect(model.c).to.equal('beforeUpdate');
-        expect(executedQueries[0]).to.equal(
+        expect(model.c).toBe('beforeUpdate');
+        expect(executedQueries[0]).toBe(
           'update "Model" set "a" = 10, "b" = \'test\', "c" = \'beforeUpdate\'',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('insert() should call $beforeInsert on the model', (done) => {
+  it('insert() should call $beforeInsert on the model', () => {
     TestModel.prototype.$beforeInsert = function () {
       this.c = 'beforeInsert';
     };
@@ -2229,19 +2164,17 @@ describe('QueryBuilder', () => {
       throw new Error('$afterFind should not be called');
     };
 
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .insert(TestModel.fromJson({ a: 10, b: 'test' }))
       .then((model) => {
-        expect(model.c).to.equal('beforeInsert');
-        expect(executedQueries[0]).to.equal(
+        expect(model.c).toBe('beforeInsert');
+        expect(executedQueries[0]).toBe(
           'insert into "Model" ("a", "b", "c") values (10, \'test\', \'beforeInsert\') returning "id"',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('insert() should call $beforeInsert on the model (async)', (done) => {
+  it('insert() should call $beforeInsert on the model (async)', () => {
     TestModel.prototype.$beforeInsert = function () {
       let self = this;
       return delay(5).then(() => {
@@ -2253,19 +2186,17 @@ describe('QueryBuilder', () => {
       throw new Error('$afterFind should not be called');
     };
 
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .insert({ a: 10, b: 'test' })
       .then((model) => {
-        expect(model.c).to.equal('beforeInsert');
-        expect(executedQueries[0]).to.equal(
+        expect(model.c).toBe('beforeInsert');
+        expect(executedQueries[0]).toBe(
           'insert into "Model" ("a", "b", "c") values (10, \'test\', \'beforeInsert\') returning "id"',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('should call $afterFind on the model if no write operation is specified', (done) => {
+  it('should call $afterFind on the model if no write operation is specified', () => {
     mockKnexQueryResults = [
       [
         {
@@ -2281,12 +2212,12 @@ describe('QueryBuilder', () => {
       this.b = this.a * 2 + context.x;
     };
 
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .context({ x: 10 })
       .then((models) => {
-        expect(models[0]).to.be.a(TestModel);
-        expect(models[1]).to.be.a(TestModel);
-        expect(models).to.eql([
+        expect(models[0]).toBeInstanceOf(TestModel);
+        expect(models[1]).toBeInstanceOf(TestModel);
+        expect(models).toEqual([
           {
             a: 1,
             b: 12,
@@ -2296,12 +2227,10 @@ describe('QueryBuilder', () => {
             b: 14,
           },
         ]);
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('should call $afterFind on the model if no write operation is specified (async)', (done) => {
+  it('should call $afterFind on the model if no write operation is specified (async)', () => {
     mockKnexQueryResults = [
       [
         {
@@ -2320,12 +2249,12 @@ describe('QueryBuilder', () => {
       });
     };
 
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .context({ x: 10 })
       .then((models) => {
-        expect(models[0]).to.be.a(TestModel);
-        expect(models[1]).to.be.a(TestModel);
-        expect(models).to.eql([
+        expect(models[0]).toBeInstanceOf(TestModel);
+        expect(models[1]).toBeInstanceOf(TestModel);
+        expect(models).toEqual([
           {
             a: 1,
             b: 12,
@@ -2335,12 +2264,10 @@ describe('QueryBuilder', () => {
             b: 14,
           },
         ]);
-        done();
-      })
-      .catch(done);
+      });
   });
 
-  it('should call $afterFind before any `runAfter` hooks', (done) => {
+  it('should call $afterFind before any `runAfter` hooks', () => {
     mockKnexQueryResults = [
       [
         {
@@ -2359,16 +2286,16 @@ describe('QueryBuilder', () => {
       });
     };
 
-    QueryBuilder.forClass(TestModel)
+    return QueryBuilder.forClass(TestModel)
       .context({ x: 10 })
       .runAfter((result, builder) => {
         builder.context().x = 666;
         return result;
       })
       .then((models) => {
-        expect(models[0]).to.be.a(TestModel);
-        expect(models[1]).to.be.a(TestModel);
-        expect(models).to.eql([
+        expect(models[0]).toBeInstanceOf(TestModel);
+        expect(models[1]).toBeInstanceOf(TestModel);
+        expect(models).toEqual([
           {
             a: 1,
             b: 12,
@@ -2378,9 +2305,7 @@ describe('QueryBuilder', () => {
             b: 14,
           },
         ]);
-        done();
-      })
-      .catch(done);
+      });
   });
 
   it('should not be able to call setQueryExecutor twice', () => {
@@ -2388,7 +2313,7 @@ describe('QueryBuilder', () => {
       QueryBuilder.forClass(TestModel)
         .setQueryExecutor(function () {})
         .setQueryExecutor(function () {});
-    }).to.throwException();
+    }).toThrow();
   });
 
   it('clearWithGraph() should clear everything related to eager', () => {
@@ -2398,20 +2323,20 @@ describe('QueryBuilder', () => {
       })
       .modifyGraph('a', () => {});
 
-    expect(builder.findOperation('eager')).to.not.equal(null);
+    expect(builder.findOperation('eager')).not.toBeNull();
     builder.clearWithGraph();
 
-    expect(builder.findOperation('eager')).to.equal(null);
+    expect(builder.findOperation('eager')).toBeNull();
   });
 
   it('clearReject() should clear remove explicit rejection', () => {
     let builder = QueryBuilder.forClass(TestModel).reject('error');
 
-    expect(builder._explicitRejectValue).to.equal('error');
+    expect(builder._explicitRejectValue).toBe('error');
 
     builder.clearReject();
 
-    expect(builder._explicitRejectValue).to.equal(null);
+    expect(builder._explicitRejectValue).toBeNull();
   });
 
   it('subqueries in join builders should work with mysql', () => {
@@ -2424,7 +2349,7 @@ describe('QueryBuilder', () => {
         .innerJoin('Other', (join) => join.onIn('Other.modelId', subquery()))
         .toKnexQuery()
         .toString(),
-    ).to.equal(
+    ).toBe(
       'select `Model`.* from `Model` inner join `Other` on `Other`.`modelId` in (select `id` from `Model` where `a` > 1)',
     );
 
@@ -2434,12 +2359,12 @@ describe('QueryBuilder', () => {
         .innerJoin('Other', (join) => join.onIn('Other.modelId', subquery().from('Third')))
         .toKnexQuery()
         .toString(),
-    ).to.equal(
+    ).toBe(
       'update `Model` inner join `Other` on `Other`.`modelId` in (select `id` from `Third` where `a` > 1) set `a` = 1',
     );
   });
 
-  it('joinRelated should add join clause to correct place', (done) => {
+  it('joinRelated should add join clause to correct place', () => {
     class M1 extends Model {
       static get tableName() {
         return 'M1';
@@ -2468,68 +2393,69 @@ describe('QueryBuilder', () => {
     M1.knex(mockKnex);
     M2.knex(mockKnex);
 
-    M2.query()
+    return M2.query()
       .joinRelated('m1', { alias: 'm' })
       .join('M1', 'M1.id', 'M2.m1Id')
       .then(() => {
-        expect(executedQueries[0]).to.equal(
+        expect(executedQueries[0]).toBe(
           'select "M2".* from "M2" inner join "M1" as "m" on "m"."m2Id" = "M2"."id" inner join "M1" on "M1"."id" = "M2"."m1Id"',
         );
-        done();
-      })
-      .catch(done);
+      });
   });
 
   it('undefined values as query builder method arguments should raise an exception', () => {
     expect(() => {
       QueryBuilder.forClass(TestModel).where('id', undefined).toKnexQuery();
-    }).to.throwException((err) => {
-      expect(err.message).to.equal(
-        "undefined passed as argument #1 for 'where' operation. Call skipUndefined() method to ignore the undefined values.",
-      );
-    });
+    }).toThrow(
+      expect.objectContaining({
+        message:
+          "undefined passed as argument #1 for 'where' operation. Call skipUndefined() method to ignore the undefined values.",
+      }),
+    );
 
     expect(() => {
       QueryBuilder.forClass(TestModel).orWhere('id', '<', undefined).toKnexQuery();
-    }).to.throwException((err) => {
-      expect(err.message).to.equal(
-        "undefined passed as argument #2 for 'orWhere' operation. Call skipUndefined() method to ignore the undefined values.",
-      );
-    });
+    }).toThrow(
+      expect.objectContaining({
+        message:
+          "undefined passed as argument #2 for 'orWhere' operation. Call skipUndefined() method to ignore the undefined values.",
+      }),
+    );
 
     expect(() => {
       QueryBuilder.forClass(TestModel).orWhere('id', undefined, 10).toKnexQuery();
-    }).to.throwException();
+    }).toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel).delete().whereIn('id', undefined).toKnexQuery();
-    }).to.throwException();
+    }).toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel).delete().whereIn('id', [1, undefined, 3]).toKnexQuery();
-    }).to.throwException((err) => {
-      expect(err.message).to.equal(
-        "undefined passed as an item in argument #1 for 'whereIn' operation. Call skipUndefined() method to ignore the undefined values.",
-      );
-    });
+    }).toThrow(
+      expect.objectContaining({
+        message:
+          "undefined passed as an item in argument #1 for 'whereIn' operation. Call skipUndefined() method to ignore the undefined values.",
+      }),
+    );
   });
 
   it('undefined values as query builder method arguments should be ignored if `skipUndefined` is called', () => {
     expect(() => {
       QueryBuilder.forClass(TestModel).skipUndefined().where('id', undefined).toKnexQuery();
-    }).to.not.throwException();
+    }).not.toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel).skipUndefined().orWhere('id', '<', undefined).toKnexQuery();
-    }).to.not.throwException();
+    }).not.toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel).skipUndefined().orWhere('id', undefined, 10).toKnexQuery();
-    }).to.not.throwException();
+    }).not.toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel).skipUndefined().deleteById(undefined).toKnexQuery();
-    }).to.not.throwException();
+    }).not.toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel)
@@ -2537,7 +2463,7 @@ describe('QueryBuilder', () => {
         .delete()
         .whereIn('id', undefined)
         .toKnexQuery();
-    }).to.not.throwException();
+    }).not.toThrow();
 
     expect(() => {
       QueryBuilder.forClass(TestModel)
@@ -2545,7 +2471,7 @@ describe('QueryBuilder', () => {
         .delete()
         .whereIn('id', [1, undefined, 3])
         .toKnexQuery();
-    }).to.not.throwException();
+    }).not.toThrow();
   });
 
   it('skipUndefined() should log a deprecation warning once', () => {
@@ -2558,7 +2484,7 @@ describe('QueryBuilder', () => {
       QueryBuilder.forClass(TestModel).skipUndefined();
       QueryBuilder.forClass(TestModel).skipUndefined();
 
-      expect(warnings).to.eql([
+      expect(warnings).toEqual([
         '[objection] skipUndefined() is deprecated and will be removed in objection 4.0',
       ]);
     } finally {
@@ -2574,10 +2500,10 @@ describe('QueryBuilder', () => {
       }
     }
 
-    expect(UnboundModel.query(mockKnex).increment('foo', 10).toKnexQuery().toString()).to.equal(
+    expect(UnboundModel.query(mockKnex).increment('foo', 10).toKnexQuery().toString()).toBe(
       'update "Bar" set "foo" = "foo" + 10',
     );
-    expect(UnboundModel.query(mockKnex).decrement('foo', 5).toKnexQuery().toString()).to.equal(
+    expect(UnboundModel.query(mockKnex).decrement('foo', 5).toKnexQuery().toString()).toBe(
       'update "Bar" set "foo" = "foo" - 5',
     );
   });
@@ -2585,31 +2511,31 @@ describe('QueryBuilder', () => {
   it('json where methods should reference the bare column if no json path is given', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
 
-    expect(toSql(TestModel.query().whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content', { a: 1 }))).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb @> '{"a":1}'::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonSubsetOf('Model.content', { a: 1 }))).to.equal(
+    expect(toSql(TestModel.query().whereJsonSubsetOf('Model.content', { a: 1 }))).toBe(
       `select "Model".* from "Model" where ( "Model"."content" )::jsonb <@ '{"a":1}'::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonNotSupersetOf('content', 'other'))).to.equal(
+    expect(toSql(TestModel.query().whereJsonNotSupersetOf('content', 'other'))).toBe(
       `select "Model".* from "Model" where not ( "content" )::jsonb @> ( "other" )::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonIsArray('content'))).to.equal(
+    expect(toSql(TestModel.query().whereJsonIsArray('content'))).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb @> '[]'::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonHasAny('content', ['a', 'b']))).to.equal(
+    expect(toSql(TestModel.query().whereJsonHasAny('content', ['a', 'b']))).toBe(
       `select "Model".* from "Model" where "content" ?| array['a','b']`,
     );
     // `#>>'{}'` extracts json scalars as text and maps json null to NULL,
     // so it must be kept when extracting as text.
-    expect(toSql(TestModel.query().whereJsonNotObject('content'))).to.equal(
+    expect(toSql(TestModel.query().whereJsonNotObject('content'))).toBe(
       `select "Model".* from "Model" where (not ( "content" )::jsonb @> '{}'::jsonb or ("content"#>>'{}')::TEXT is NULL)`,
     );
     // Json paths are still extracted as before.
-    expect(toSql(TestModel.query().whereJsonSupersetOf('content:a.b', { a: 1 }))).to.equal(
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content:a.b', { a: 1 }))).toBe(
       `select "Model".* from "Model" where ( "content"#>'{a,b}' )::jsonb @> '{"a":1}'::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonHasAll('content:a', ['b']))).to.equal(
+    expect(toSql(TestModel.query().whereJsonHasAll('content:a', ['b']))).toBe(
       `select "Model".* from "Model" where "content"#>'{a}' ?& array['b']`,
     );
   });
@@ -2617,10 +2543,10 @@ describe('QueryBuilder', () => {
   it('json where methods should support ref(), val() and raw() on the right side', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
 
-    expect(toSql(TestModel.query().whereJsonSupersetOf('content:a', ref('other:b')))).to.equal(
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content:a', ref('other:b')))).toBe(
       `select "Model".* from "Model" where ( "content"#>'{a}' )::jsonb @> ( "other"#>'{b}' )::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonSubsetOf('content', ref('Model.other')))).to.equal(
+    expect(toSql(TestModel.query().whereJsonSubsetOf('content', ref('Model.other')))).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb <@ ( "Model"."other" )::jsonb`,
     );
     expect(
@@ -2629,17 +2555,15 @@ describe('QueryBuilder', () => {
           .whereJsonSupersetOf('a', 'b')
           .orWhereJsonNotSubsetOf('content', ref("other:x'?")),
       ),
-    ).to.equal(
+    ).toBe(
       `select "Model".* from "Model" where ( "a" )::jsonb @> ( "b" )::jsonb or not ( "content" )::jsonb <@ ( "other"#>'{x''?}' )::jsonb`,
     );
     expect(
       toSql(TestModel.query().whereJsonSupersetOf('content', val({ a: '?' }).castJson())),
-    ).to.equal(
+    ).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb @> ( CAST('{"a":"?"}' AS jsonb) )::jsonb`,
     );
-    expect(
-      toSql(TestModel.query().whereJsonSupersetOf('content', raw('?::jsonb', '[1]'))),
-    ).to.equal(
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content', raw('?::jsonb', '[1]')))).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb @> ( '[1]'::jsonb )::jsonb`,
     );
     expect(
@@ -2649,7 +2573,7 @@ describe('QueryBuilder', () => {
           TestModel.query().select('other').limit(1),
         ),
       ),
-    ).to.equal(
+    ).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb @> ( (select "other" from "Model" limit 1) )::jsonb`,
     );
   });
@@ -2657,19 +2581,19 @@ describe('QueryBuilder', () => {
   it('json methods should support empty keys in field expressions', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
 
-    expect(toSql(TestModel.query().whereJsonSupersetOf('content:[""]', { a: 1 }))).to.equal(
+    expect(toSql(TestModel.query().whereJsonSupersetOf('content:[""]', { a: 1 }))).toBe(
       `select "Model".* from "Model" where ( "content"#>'{""}' )::jsonb @> '{"a":1}'::jsonb`,
     );
-    expect(toSql(TestModel.query().whereJsonHasAny("content:a['']", ['b']))).to.equal(
+    expect(toSql(TestModel.query().whereJsonHasAny("content:a['']", ['b']))).toBe(
       `select "Model".* from "Model" where "content"#>'{a,""}' ?| array['b']`,
     );
-    expect(toSql(TestModel.query().whereJsonIsObject('content:[""]'))).to.equal(
+    expect(toSql(TestModel.query().whereJsonIsObject('content:[""]'))).toBe(
       `select "Model".* from "Model" where ( "content"#>'{""}' )::jsonb @> '{}'::jsonb`,
     );
-    expect(toSql(TestModel.query().where(ref('content:[""]').castText(), 'x'))).to.equal(
+    expect(toSql(TestModel.query().where(ref('content:[""]').castText(), 'x'))).toBe(
       `select "Model".* from "Model" where CAST("content"#>>'{""}' AS text) = 'x'`,
     );
-    expect(toSql(TestModel.query().patch({ 'content:[""]': 1 }))).to.equal(
+    expect(toSql(TestModel.query().patch({ 'content:[""]': 1 }))).toBe(
       `update "Model" set "content" = jsonb_set("Model"."content", '{""}', '1', true)`,
     );
   });
@@ -2683,14 +2607,17 @@ describe('QueryBuilder', () => {
 
     const toSql = (builder) => builder.toKnexQuery().toString();
     const expectError = (modelClass, json, key, property) => {
-      expect(() => toSql(modelClass.query().patch(json))).to.throwException((err) => {
-        expect(err).to.be.a(objection.ValidationError);
-        expect(err.type).to.equal('ModelValidation');
-        expect(Object.keys(err.data)).to.eql([key]);
-        expect(err.message).to.equal(
-          `${key}: can't be combined with a value for the json column '${property}'`,
-        );
-      });
+      expectThrows(
+        () => toSql(modelClass.query().patch(json)),
+        (err) => {
+          expect(err).toBeInstanceOf(objection.ValidationError);
+          expect(err.type).toBe('ModelValidation');
+          expect(Object.keys(err.data)).toEqual([key]);
+          expect(err.message).toBe(
+            `${key}: can't be combined with a value for the json column '${property}'`,
+          );
+        },
+      );
     };
 
     expectError(TestModel, { 'content:a': 1, content: { a: 2 } }, 'content:a', 'content');
@@ -2707,7 +2634,7 @@ describe('QueryBuilder', () => {
       'jsonCol:innerKey',
       'jsonCol',
     );
-    expect(toSql(TestModel.query().patch({ 'content:a': 1, 'content:b': 2 }))).to.equal(
+    expect(toSql(TestModel.query().patch({ 'content:a': 1, 'content:b': 2 }))).toBe(
       `update "Model" set "content" = jsonb_set(jsonb_set("Model"."content", '{a}', '1', true), '{b}', '2', true)`,
     );
   });
@@ -2741,22 +2668,22 @@ describe('QueryBuilder', () => {
     });
 
     it('should not change the json where methods on postgres', () => {
-      expect(toSql(query('pg').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+      expect(toSql(query('pg').whereJsonSupersetOf('content', { a: 1 }))).toBe(
         `select "Model".* from "Model" where ( "content" )::jsonb @> '{"a":1}'::jsonb`,
       );
-      expect(toSql(query('pg').orWhereJsonNotSubsetOf('content', [1]))).to.equal(
+      expect(toSql(query('pg').orWhereJsonNotSubsetOf('content', [1]))).toBe(
         `select "Model".* from "Model" where not ( "content" )::jsonb <@ '[1]'::jsonb`,
       );
     });
 
     it('should pass the simple json superset and subset methods on to knex on mysql', () => {
-      expect(toSql(query('mysql').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+      expect(toSql(query('mysql').whereJsonSupersetOf('content', { a: 1 }))).toBe(
         'select `Model`.* from `Model` where json_contains(`content`,\'{\\"a\\":1}\')',
       );
-      expect(toSql(query('mysql').andWhereJsonSupersetOf('Model.content', [1]))).to.equal(
+      expect(toSql(query('mysql').andWhereJsonSupersetOf('Model.content', [1]))).toBe(
         "select `Model`.* from `Model` where json_contains(`Model`.`content`,'[1]')",
       );
-      expect(toSql(query('mysql').whereJsonSubsetOf('content', [1]))).to.equal(
+      expect(toSql(query('mysql').whereJsonSubsetOf('content', [1]))).toBe(
         "select `Model`.* from `Model` where json_contains('[1]',`content`)",
       );
       expect(
@@ -2770,7 +2697,7 @@ describe('QueryBuilder', () => {
             .whereJsonNotSubsetOf('content', [5])
             .orWhereJsonNotSubsetOf('content', [6]),
         ),
-      ).to.equal(
+      ).toBe(
         'select `Model`.* from `Model` where `id` = 1' +
           " or (json_contains(`content`,'[1]'))" +
           " and not json_contains(`content`,'[2]')" +
@@ -2779,55 +2706,55 @@ describe('QueryBuilder', () => {
           " and not json_contains('[5]',`content`)" +
           " or (not json_contains('[6]',`content`))",
       );
-      expect(warnings).to.eql([]);
+      expect(warnings).toEqual([]);
     });
 
     it('andWhereJsonNotSupersetOf() should be an alias of whereJsonNotSupersetOf()', () => {
-      expect(toSql(query('pg').andWhereJsonNotSupersetOf('content', { a: 1 }))).to.equal(
+      expect(toSql(query('pg').andWhereJsonNotSupersetOf('content', { a: 1 }))).toBe(
         toSql(query('pg').whereJsonNotSupersetOf('content', { a: 1 })),
       );
     });
 
     it('should only pass the json superset and subset methods on to knex on mysql', () => {
-      expect(toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).to.equal(
+      expect(toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).toBe(
         'select `Model`.* from `Model` where ( `content` )::jsonb @> \'{"a":1}\'::jsonb',
       );
-      expect(warnings).to.eql([message]);
+      expect(warnings).toEqual([message]);
     });
 
     it('should not pass other forms of the json where methods on to knex', () => {
-      expect(toSql(query('mysql').whereJsonSupersetOf('content:a', { a: 1 }))).to.equal(
+      expect(toSql(query('mysql').whereJsonSupersetOf('content:a', { a: 1 }))).toBe(
         "select `Model`.* from `Model` where ( `content`#>'{a}' )::jsonb @> '{\\\"a\\\":1}'::jsonb",
       );
-      expect(toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).to.equal(
+      expect(toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).toBe(
         'select `Model`.* from `Model` where ( `content` )::jsonb @> ( `other` )::jsonb',
       );
-      expect(toSql(query('mysql').whereJsonSubsetOf('content', ref('other')))).to.equal(
+      expect(toSql(query('mysql').whereJsonSubsetOf('content', ref('other')))).toBe(
         'select `Model`.* from `Model` where ( `content` )::jsonb <@ ( `other` )::jsonb',
       );
-      expect(toSql(query('mysql').whereJsonSupersetOf('content', raw('?', '[1]')))).to.equal(
+      expect(toSql(query('mysql').whereJsonSupersetOf('content', raw('?', '[1]')))).toBe(
         "select `Model`.* from `Model` where ( `content` )::jsonb @> ( '[1]' )::jsonb",
       );
       // knex's version doesn't have the same semantics for empty objects and arrays.
-      expect(toSql(query('mysql').whereJsonIsObject('content'))).to.equal(
+      expect(toSql(query('mysql').whereJsonIsObject('content'))).toBe(
         "select `Model`.* from `Model` where ( `content` )::jsonb @> '{}'::jsonb",
       );
-      expect(toSql(query('mysql').orWhereJsonIsArray('content'))).to.equal(
+      expect(toSql(query('mysql').orWhereJsonIsArray('content'))).toBe(
         "select `Model`.* from `Model` where ( `content` )::jsonb @> '[]'::jsonb",
       );
-      expect(warnings).to.eql([message]);
+      expect(warnings).toEqual([message]);
     });
 
     for (const client of ['mysql', 'sqlite3']) {
       it(`should warn once about json field expressions on ${client}`, () => {
         toSql(query(client).orderBy(ref('content:a.b'), 'desc'));
-        expect(warnings).to.eql([message]);
+        expect(warnings).toEqual([message]);
 
         toSql(query(client).select(ref('content:a').castInt().as('a')));
         toSql(query(client).patch({ 'content:a': 1 }));
         toSql(query(client).whereJsonHasAny('content', ['a']));
         toSql(query(client).whereJsonNotObject('content'));
-        expect(warnings).to.eql([message]);
+        expect(warnings).toEqual([message]);
       });
 
       for (const [title, createQuery] of Object.entries({
@@ -2839,7 +2766,7 @@ describe('QueryBuilder', () => {
       })) {
         it(`should warn about ${title} on ${client}`, () => {
           toSql(createQuery(client));
-          expect(warnings).to.eql([message]);
+          expect(warnings).toEqual([message]);
         });
       }
 
@@ -2851,7 +2778,7 @@ describe('QueryBuilder', () => {
             .orderBy(ref('Model.id')),
         );
         toSql(query(client).patch({ content: ref('other') }));
-        expect(warnings).to.eql([]);
+        expect(warnings).toEqual([]);
       });
     }
 
@@ -2861,7 +2788,7 @@ describe('QueryBuilder', () => {
       toSql(query('pg').whereJsonSupersetOf('content:a', { a: 1 }));
       toSql(query('pg').whereJsonHasAny('content', ['a']));
       toSql(query('pg').whereJsonNotObject('content'));
-      expect(warnings).to.eql([]);
+      expect(warnings).toEqual([]);
     });
   });
 
@@ -2916,41 +2843,41 @@ describe('QueryBuilder', () => {
           const { sql, bindings } = toSQL(query);
           // The key only appears inside the escaped json path literal, and its
           // `?` characters aren't turned into binding placeholders.
-          expect(sql).to.contain(literal);
-          expect(sql.split(literal).join('')).not.to.contain(key);
-          expect(bindings.some((it) => typeof it === 'string' && it.includes(key))).to.be(false);
+          expect(sql).toContain(literal);
+          expect(sql.split(literal).join('')).not.toContain(key);
+          expect(bindings.some((it) => typeof it === 'string' && it.includes(key))).toBe(false);
         }
         // Interpolating the bindings doesn't throw (e.g. "Expected N bindings").
         for (const string of strings) {
-          expect(string).to.contain(literal);
+          expect(string).toContain(literal);
         }
       });
     }
 
     it('escapes keys correctly in the json path literal', () => {
-      expect(toSql(TestModel.query().where(ref("content:x') or 1=1 --"), 1))).to.equal(
+      expect(toSql(TestModel.query().where(ref("content:x') or 1=1 --"), 1))).toBe(
         `select "Model".* from "Model" where "content"#>'{"x'') or 1=1 --"}' = 1`,
       );
-      expect(toSql(TestModel.query().whereJsonSupersetOf('content:a?b', { a: 1 }))).to.equal(
+      expect(toSql(TestModel.query().whereJsonSupersetOf('content:a?b', { a: 1 }))).toBe(
         `select "Model".* from "Model" where ( "content"#>'{a?b}' )::jsonb @> '{"a":1}'::jsonb`,
       );
-      expect(toSql(TestModel.query().whereJsonHasAny('content:a?b', ['c?']))).to.equal(
+      expect(toSql(TestModel.query().whereJsonHasAny('content:a?b', ['c?']))).toBe(
         `select "Model".* from "Model" where "content"#>'{a?b}' ?| array['c?']`,
       );
-      expect(toSql(TestModel.query().patch({ "content:x') or 1=1 --": 1 }))).to.equal(
+      expect(toSql(TestModel.query().patch({ "content:x') or 1=1 --": 1 }))).toBe(
         `update "Model" set "content" = jsonb_set("Model"."content", '{"x'') or 1=1 --"}', '1', true)`,
       );
     });
 
     it('binds string values containing `?` in json methods', () => {
-      expect(toSql(TestModel.query().whereJsonHasAny('content:a', ['?', 'b?']))).to.equal(
+      expect(toSql(TestModel.query().whereJsonHasAny('content:a', ['?', 'b?']))).toBe(
         `select "Model".* from "Model" where "content"#>'{a}' ?| array['?','b?']`,
       );
       const { sql, bindings } = toSQL(
         TestModel.query().whereJsonHasAll('content', "x') or 1=1 --"),
       );
-      expect(sql).to.equal('select "Model".* from "Model" where "content" ?& array[$1]');
-      expect(bindings).to.eql(["x') or 1=1 --"]);
+      expect(sql).toBe('select "Model".* from "Model" where "content" ?& array[$1]');
+      expect(bindings).toEqual(["x') or 1=1 --"]);
     });
   });
 
@@ -2974,36 +2901,34 @@ describe('QueryBuilder', () => {
     }
 
     function testQueries(Model, knex, { col, patchPath }) {
-      expect(toSql(Model.query(knex).where(ref('jsonCol:someKey.otherKey'), 1))).to.equal(
+      expect(toSql(Model.query(knex).where(ref('jsonCol:someKey.otherKey'), 1))).toBe(
         `select "model".* from "model" where "${col}"#>'{someKey,otherKey}' = 1`,
       );
-      expect(toSql(Model.query(knex).where(ref('jsonCol:[0][innerKey]').castText(), 'x'))).to.equal(
+      expect(toSql(Model.query(knex).where(ref('jsonCol:[0][innerKey]').castText(), 'x'))).toBe(
         `select "model".* from "model" where CAST("${col}"#>>'{0,innerKey}' AS text) = 'x'`,
       );
-      expect(
-        toSql(Model.query(knex).whereJsonSupersetOf('jsonCol:someKey', { innerKey: 1 })),
-      ).to.equal(
+      expect(toSql(Model.query(knex).whereJsonSupersetOf('jsonCol:someKey', { innerKey: 1 }))).toBe(
         `select "model".* from "model" where ( "${col}"#>'{someKey}' )::jsonb @> '{"innerKey":1}'::jsonb`,
       );
-      expect(toSql(Model.query(knex).whereJsonHasAny('jsonCol:someKey', 'fooBar'))).to.equal(
+      expect(toSql(Model.query(knex).whereJsonHasAny('jsonCol:someKey', 'fooBar'))).toBe(
         `select "model".* from "model" where "${col}"#>'{someKey}' ?| array['fooBar']`,
       );
-      expect(toSql(Model.query(knex).whereJsonIsObject('jsonCol:someKey'))).to.equal(
+      expect(toSql(Model.query(knex).whereJsonIsObject('jsonCol:someKey'))).toBe(
         `select "model".* from "model" where ( "${col}"#>'{someKey}' )::jsonb @> '{}'::jsonb`,
       );
-      expect(toSql(Model.query(knex).whereJsonNotObject('model.jsonCol:someKey'))).to.equal(
+      expect(toSql(Model.query(knex).whereJsonNotObject('model.jsonCol:someKey'))).toBe(
         `select "model".* from "model" where (not ( "model"."${col}"#>'{someKey}' )::jsonb @> '{}'::jsonb or ("model"."${col}"#>>'{someKey}')::TEXT is NULL)`,
       );
-      expect(toSql(Model.query(knex).whereJsonSubsetOf('jsonCol', 'model.jsonCol:a'))).to.equal(
+      expect(toSql(Model.query(knex).whereJsonSubsetOf('jsonCol', 'model.jsonCol:a'))).toBe(
         `select "model".* from "model" where ( "${col}" )::jsonb <@ ( "model"."${col}"#>'{a}' )::jsonb`,
       );
-      expect(toSql(Model.query(knex).whereJsonHasAll('jsonCol', ['a', 'b']))).to.equal(
+      expect(toSql(Model.query(knex).whereJsonHasAll('jsonCol', ['a', 'b']))).toBe(
         `select "model".* from "model" where "${col}" ?& array['a','b']`,
       );
-      expect(toSql(Model.query(knex).patch({ 'jsonCol:[0][innerKey]': 1, otherCol: 2 }))).to.equal(
+      expect(toSql(Model.query(knex).patch({ 'jsonCol:[0][innerKey]': 1, otherCol: 2 }))).toBe(
         `update "model" set "json_col" = jsonb_set("model"."json_col", '${patchPath}', '1', true), "other_col" = 2`,
       );
-      expect(toSql(Model.query(knex).patch({ jsonCol: { innerKey: 1 } }))).to.equal(
+      expect(toSql(Model.query(knex).patch({ jsonCol: { innerKey: 1 } }))).toBe(
         `update "model" set "json_col" = '{"innerKey":1}'`,
       );
     }
@@ -3036,7 +2961,7 @@ describe('QueryBuilder', () => {
     return TestModel.query()
       .first()
       .then((model) => {
-        expect(executedQueries[0]).to.equal('select "Model".* from "Model"');
+        expect(executedQueries[0]).toBe('select "Model".* from "Model"');
       });
   });
 
@@ -3046,28 +2971,28 @@ describe('QueryBuilder', () => {
     return TestModel.query()
       .first()
       .then((model) => {
-        expect(executedQueries[0]).to.equal('select "Model".* from "Model" limit 1');
+        expect(executedQueries[0]).toBe('select "Model".* from "Model" limit 1');
       });
   });
 
   it('tableNameFor should return the table name', () => {
     const query = TestModel.query();
-    expect(query.tableNameFor(TestModel)).to.equal('Model');
+    expect(query.tableNameFor(TestModel)).toBe('Model');
   });
 
   it('tableNameFor should return the table name given in from', () => {
     const query = TestModel.query().from('Lol');
-    expect(query.tableNameFor(TestModel)).to.equal('Lol');
+    expect(query.tableNameFor(TestModel)).toBe('Lol');
   });
 
   it('tableRefFor should return the table name by default', () => {
     const query = TestModel.query();
-    expect(query.tableRefFor(TestModel)).to.equal('Model');
+    expect(query.tableRefFor(TestModel)).toBe('Model');
   });
 
   it('tableRefFor should return the alias', () => {
     const query = TestModel.query().alias('Lyl');
-    expect(query.tableRefFor(TestModel)).to.equal('Lyl');
+    expect(query.tableRefFor(TestModel)).toBe('Lyl');
   });
 
   it('should use Model.QueryBuilder in builder methods', () => {
@@ -3091,124 +3016,118 @@ describe('QueryBuilder', () => {
         checks.push(builder instanceof CustomQueryBuilder);
       })
       .then(() => {
-        expect(checks).to.have.length(4);
-        expect(checks.every((it) => it)).to.equal(true);
+        expect(checks).toHaveLength(4);
+        expect(checks.every((it) => it)).toBe(true);
       });
   });
 
   it('hasSelectionAs', () => {
-    expect(TestModel.query().hasSelectionAs('foo', 'foo')).to.equal(true);
-    expect(TestModel.query().hasSelectionAs('foo', 'bar')).to.equal(false);
+    expect(TestModel.query().hasSelectionAs('foo', 'foo')).toBe(true);
+    expect(TestModel.query().hasSelectionAs('foo', 'bar')).toBe(false);
 
-    expect(TestModel.query().select('foo as bar').hasSelectionAs('foo', 'bar')).to.equal(true);
+    expect(TestModel.query().select('foo as bar').hasSelectionAs('foo', 'bar')).toBe(true);
 
-    expect(TestModel.query().select('foo').hasSelectionAs('foo', 'bar')).to.equal(false);
+    expect(TestModel.query().select('foo').hasSelectionAs('foo', 'bar')).toBe(false);
 
-    expect(TestModel.query().select('*').hasSelectionAs('foo', 'foo')).to.equal(true);
+    expect(TestModel.query().select('*').hasSelectionAs('foo', 'foo')).toBe(true);
 
-    expect(TestModel.query().select('*').hasSelectionAs('foo', 'bar')).to.equal(false);
+    expect(TestModel.query().select('*').hasSelectionAs('foo', 'bar')).toBe(false);
 
-    expect(TestModel.query().select('foo.*').hasSelectionAs('foo.anything', 'anything')).to.equal(
-      true,
+    expect(TestModel.query().select('foo.*').hasSelectionAs('foo.anything', 'anything')).toBe(true);
+
+    expect(TestModel.query().select('foo.*').hasSelectionAs('foo.anything', 'somethingElse')).toBe(
+      false,
     );
 
-    expect(
-      TestModel.query().select('foo.*').hasSelectionAs('foo.anything', 'somethingElse'),
-    ).to.equal(false);
-
-    expect(TestModel.query().select('foo.*').hasSelectionAs('bar.anything', 'anything')).to.equal(
+    expect(TestModel.query().select('foo.*').hasSelectionAs('bar.anything', 'anything')).toBe(
       false,
     );
   });
 
   it('hasSelection', () => {
-    expect(TestModel.query().hasSelection('foo')).to.equal(true);
-    expect(TestModel.query().hasSelection(ref('foo'))).to.equal(true);
-    expect(TestModel.query().hasSelection('Model.foo')).to.equal(true);
-    expect(TestModel.query().hasSelection(ref('Model.foo'))).to.equal(true);
-    expect(TestModel.query().hasSelection('DifferentTable.foo')).to.equal(false);
-    expect(TestModel.query().hasSelection(ref('DifferentTable.foo'))).to.equal(false);
+    expect(TestModel.query().hasSelection('foo')).toBe(true);
+    expect(TestModel.query().hasSelection(ref('foo'))).toBe(true);
+    expect(TestModel.query().hasSelection('Model.foo')).toBe(true);
+    expect(TestModel.query().hasSelection(ref('Model.foo'))).toBe(true);
+    expect(TestModel.query().hasSelection('DifferentTable.foo')).toBe(false);
+    expect(TestModel.query().hasSelection(ref('DifferentTable.foo'))).toBe(false);
 
-    expect(TestModel.query().select('*').hasSelection('DifferentTable.anything')).to.equal(true);
+    expect(TestModel.query().select('*').hasSelection('DifferentTable.anything')).toBe(true);
 
-    expect(TestModel.query().select('foo.*').hasSelection('bar.anything')).to.equal(false);
+    expect(TestModel.query().select('foo.*').hasSelection('bar.anything')).toBe(false);
 
-    expect(TestModel.query().select('foo.*').hasSelection('foo.anything')).to.equal(true);
+    expect(TestModel.query().select('foo.*').hasSelection('foo.anything')).toBe(true);
 
-    expect(
-      TestModel.query().select(ref('*')).hasSelection(ref('DifferentTable.anything')),
-    ).to.equal(true);
-
-    expect(TestModel.query().select('foo').hasSelection('foo')).to.equal(true);
-
-    expect(TestModel.query().select(ref('foo')).hasSelection(ref('foo'))).to.equal(true);
-
-    expect(TestModel.query().select('foo').hasSelection('Model.foo')).to.equal(true);
-
-    expect(TestModel.query().select(ref('foo')).hasSelection(ref('Model.foo'))).to.equal(true);
-
-    expect(TestModel.query().select('foo').hasSelection('DifferentTable.foo')).to.equal(false);
-
-    expect(TestModel.query().select(ref('foo')).hasSelection(ref('DifferentTable.foo'))).to.equal(
-      false,
-    );
-
-    expect(TestModel.query().select('foo').hasSelection('bar')).to.equal(false);
-
-    expect(TestModel.query().select(ref('foo')).hasSelection(ref('bar'))).to.equal(false);
-
-    expect(TestModel.query().select('Model.foo').hasSelection('foo')).to.equal(true);
-
-    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('foo'))).to.equal(true);
-
-    expect(TestModel.query().select('Model.foo').hasSelection('Model.foo')).to.equal(true);
-
-    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('Model.foo'))).to.equal(
+    expect(TestModel.query().select(ref('*')).hasSelection(ref('DifferentTable.anything'))).toBe(
       true,
     );
 
-    expect(TestModel.query().select('Model.foo').hasSelection('NotTestModel.foo')).to.equal(false);
+    expect(TestModel.query().select('foo').hasSelection('foo')).toBe(true);
 
-    expect(
-      TestModel.query().select(ref('Model.foo')).hasSelection(ref('NotTestModel.foo')),
-    ).to.equal(false);
+    expect(TestModel.query().select(ref('foo')).hasSelection(ref('foo'))).toBe(true);
 
-    expect(TestModel.query().select('Model.foo').hasSelection('bar')).to.equal(false);
+    expect(TestModel.query().select('foo').hasSelection('Model.foo')).toBe(true);
 
-    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('bar'))).to.equal(false);
+    expect(TestModel.query().select(ref('foo')).hasSelection(ref('Model.foo'))).toBe(true);
 
-    expect(TestModel.query().alias('t').select('foo').hasSelection('t.foo')).to.equal(true);
+    expect(TestModel.query().select('foo').hasSelection('DifferentTable.foo')).toBe(false);
 
-    expect(TestModel.query().alias('t').select('t.foo').hasSelection('foo')).to.equal(true);
+    expect(TestModel.query().select(ref('foo')).hasSelection(ref('DifferentTable.foo'))).toBe(
+      false,
+    );
 
-    expect(TestModel.query().alias('t').select('t.foo').hasSelection('t.foo')).to.equal(true);
+    expect(TestModel.query().select('foo').hasSelection('bar')).toBe(false);
 
-    expect(TestModel.query().alias('t').select('foo').hasSelection('Model.foo')).to.equal(false);
+    expect(TestModel.query().select(ref('foo')).hasSelection(ref('bar'))).toBe(false);
+
+    expect(TestModel.query().select('Model.foo').hasSelection('foo')).toBe(true);
+
+    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('foo'))).toBe(true);
+
+    expect(TestModel.query().select('Model.foo').hasSelection('Model.foo')).toBe(true);
+
+    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('Model.foo'))).toBe(true);
+
+    expect(TestModel.query().select('Model.foo').hasSelection('NotTestModel.foo')).toBe(false);
+
+    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('NotTestModel.foo'))).toBe(
+      false,
+    );
+
+    expect(TestModel.query().select('Model.foo').hasSelection('bar')).toBe(false);
+
+    expect(TestModel.query().select(ref('Model.foo')).hasSelection(ref('bar'))).toBe(false);
+
+    expect(TestModel.query().alias('t').select('foo').hasSelection('t.foo')).toBe(true);
+
+    expect(TestModel.query().alias('t').select('t.foo').hasSelection('foo')).toBe(true);
+
+    expect(TestModel.query().alias('t').select('t.foo').hasSelection('t.foo')).toBe(true);
+
+    expect(TestModel.query().alias('t').select('foo').hasSelection('Model.foo')).toBe(false);
   });
 
   it('aggregate selections (#2219)', () => {
     const aliases = (query) =>
       query.findOperation(/count|sum/).aggregateSelections.map((selection) => selection.name);
 
-    expect(aliases(TestModel.query().count())).to.eql([]);
-    expect(aliases(TestModel.query().count('id'))).to.eql([]);
-    expect(aliases(TestModel.query().count('* as n'))).to.eql(['n']);
-    expect(aliases(TestModel.query().count('Model.id AS n'))).to.eql(['n']);
-    expect(aliases(TestModel.query().count('id', { as: 'n' }))).to.eql(['n']);
-    expect(aliases(TestModel.query().count({ n: 'id', m: ['a', 'b'] }))).to.eql(['n', 'm']);
-    expect(aliases(TestModel.query().sum('x as total'))).to.eql(['total']);
-    expect(TestModel.query().select('id').findOperation('select').aggregateSelections).to.equal(
-      null,
-    );
+    expect(aliases(TestModel.query().count())).toEqual([]);
+    expect(aliases(TestModel.query().count('id'))).toEqual([]);
+    expect(aliases(TestModel.query().count('* as n'))).toEqual(['n']);
+    expect(aliases(TestModel.query().count('Model.id AS n'))).toEqual(['n']);
+    expect(aliases(TestModel.query().count('id', { as: 'n' }))).toEqual(['n']);
+    expect(aliases(TestModel.query().count({ n: 'id', m: ['a', 'b'] }))).toEqual(['n', 'm']);
+    expect(aliases(TestModel.query().sum('x as total'))).toEqual(['total']);
+    expect(TestModel.query().select('id').findOperation('select').aggregateSelections).toBeNull();
 
     // The columns passed to aggregates still count as selected outside of
     // `withGraphJoined()`.
-    expect(TestModel.query().count('id').hasSelection('id')).to.equal(true);
-    expect(TestModel.query().count('* as n').hasSelection('foo')).to.equal(true);
+    expect(TestModel.query().count('id').hasSelection('id')).toBe(true);
+    expect(TestModel.query().count('* as n').hasSelection('foo')).toBe(true);
   });
 
   it('parseRelationExpression', () => {
-    expect(QueryBuilder.parseRelationExpression('[foo, bar.baz]')).to.eql({
+    expect(QueryBuilder.parseRelationExpression('[foo, bar.baz]')).toEqual({
       $name: null,
       $relation: null,
       $modify: [],
@@ -3262,245 +3181,203 @@ describe('QueryBuilder', () => {
       };
     });
 
-    it("allowGraph('a').withGraphFetched('a(f1)') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('a').withGraphFetched('a(f1)') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('a')
         .withGraphFetched('a(f1)', { f1: () => {} })
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch((err) => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("withGraphFetched('a(f1)').allowGraph('a') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("withGraphFetched('a(f1)').allowGraph('a') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .withGraphFetched('a(f1)', { f1: () => {} })
         .allowGraph('a')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch((err) => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('a') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
-        .allowGraph('[a, b.c.[d, e]]')
-        .withGraphFetched('a')
-        .then(() => {
-          done();
-        });
+    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('a') should be ok", () => {
+      return QueryBuilder.forClass(TestModel).allowGraph('[a, b.c.[d, e]]').withGraphFetched('a');
     });
 
-    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('b.c') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('b.c') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a, b.c.[d, e]]')
         .withGraphFetched('b.c')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('b.c.e') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('b.c.e') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a, b.c.[d, e]]')
         .withGraphFetched('b.c.e')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('a').withGraphFetched('a(f1)') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('a').withGraphFetched('a(f1)') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('a')
         .withGraphFetched('a(f1)', { f1: () => {} })
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch((err) => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a, b.c.[a, e]]').allowGraph('b.c.[b, d]').withGraphFetched('a') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a, b.c.[a, e]]').allowGraph('b.c.[b, d]').withGraphFetched('a') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a, b.c.[a, e]]')
         .allowGraph('b.c.[b, d]')
-        .withGraphFetched('a')
-        .then(() => {
-          done();
-        });
+        .withGraphFetched('a');
     });
 
-    it("allowGraph('[a.[a, b], b.c.[a, e]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('a.b') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a.[a, b], b.c.[a, e]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('a.b') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a.[a, b], b.c.[a, e]]')
         .allowGraph('[a.[c, d], b.c.[b, d]]')
         .withGraphFetched('a.b')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('a.c') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('a.c') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a.[a, b], b.[a, c]]')
         .allowGraph('[a.[c, d], b.c.[b, d]]')
         .withGraphFetched('a.c')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('b.a') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('b.a') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a.[a, b], b.[a, c]]')
         .allowGraph('[a.[c, d], b.c.[b, d]]')
         .withGraphFetched('b.a')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('b.c') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('b.c') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a.[a, b], b.[a, c]]')
         .allowGraph('[a.[c, d], b.c.[b, d]]')
         .withGraphFetched('b.c')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('b.c.b') should be ok", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a.[a, b], b.[a, c]]').allowGraph('[a.[c, d], b.c.[b, d]]').withGraphFetched('b.c.b') should be ok", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a.[a, b], b.[a, c]]')
         .allowGraph('[a.[c, d], b.c.[b, d]]')
         .withGraphFetched('b.c.b')
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          done();
-        })
-        .catch(() => {
-          done(new Error('should not get here'));
+          expect(executedQueries).toHaveLength(1);
         });
     });
 
-    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('a.b') should fail", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a, b.c.[d, e]]').withGraphFetched('a.b') should fail", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a, b.c.[d, e]]')
         .withGraphFetched('a.b')
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          expect(executedQueries).to.have.length(0);
-          done();
-        });
+        .then(
+          () => {
+            throw new Error('should not get here');
+          },
+          () => {
+            expect(executedQueries).toHaveLength(0);
+          },
+        );
     });
 
-    it("allowGraph('[a, b.c.[d, e]]').allowGraph('a.[c, d]').withGraphFetched('a.b') should fail", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("allowGraph('[a, b.c.[d, e]]').allowGraph('a.[c, d]').withGraphFetched('a.b') should fail", () => {
+      return QueryBuilder.forClass(TestModel)
         .allowGraph('[a, b.c.[d, e]]')
         .allowGraph('a.[c, d]')
         .withGraphFetched('a.b')
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          expect(executedQueries).to.have.length(0);
-          done();
-        });
+        .then(
+          () => {
+            throw new Error('should not get here');
+          },
+          () => {
+            expect(executedQueries).toHaveLength(0);
+          },
+        );
     });
 
-    it("eager('a.b').allowGraph('[a, b.c.[d, e]]') should fail", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("eager('a.b').allowGraph('[a, b.c.[d, e]]') should fail", () => {
+      return QueryBuilder.forClass(TestModel)
         .withGraphFetched('a.b')
         .allowGraph('[a, b.c.[d, e]]')
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          expect(executedQueries).to.have.length(0);
-          done();
-        });
+        .then(
+          () => {
+            throw new Error('should not get here');
+          },
+          () => {
+            expect(executedQueries).toHaveLength(0);
+          },
+        );
     });
 
-    it("eager('a.b').allowGraph('[a, b.c.[d, e]]').allowGraph('a.[c, d]') should fail", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("eager('a.b').allowGraph('[a, b.c.[d, e]]').allowGraph('a.[c, d]') should fail", () => {
+      return QueryBuilder.forClass(TestModel)
         .withGraphFetched('a.b')
         .allowGraph('[a, b.c.[d, e]]')
         .allowGraph('a.[c, d]')
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          expect(executedQueries).to.have.length(0);
-          done();
-        });
+        .then(
+          () => {
+            throw new Error('should not get here');
+          },
+          () => {
+            expect(executedQueries).toHaveLength(0);
+          },
+        );
     });
 
-    it("eager('b.c.d.e').allowGraph('[a, b.c.[d, e]]') should fail", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("eager('b.c.d.e').allowGraph('[a, b.c.[d, e]]') should fail", () => {
+      return QueryBuilder.forClass(TestModel)
         .withGraphFetched('b.c.d.e')
         .allowGraph('[a, b.c.[d, e]]')
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          expect(executedQueries).to.have.length(0);
-          done();
-        });
+        .then(
+          () => {
+            throw new Error('should not get here');
+          },
+          () => {
+            expect(executedQueries).toHaveLength(0);
+          },
+        );
     });
 
-    it("eager('b.c.d.e').allowGraph('[a, b.c.[d, e]]').allowGraph('b.c.a') should fail", (done) => {
-      QueryBuilder.forClass(TestModel)
+    it("eager('b.c.d.e').allowGraph('[a, b.c.[d, e]]').allowGraph('b.c.a') should fail", () => {
+      return QueryBuilder.forClass(TestModel)
         .withGraphFetched('b.c.d.e')
         .allowGraph('[a, b.c.[d, e]]')
         .allowGraph('b.c.a')
-        .then(() => {
-          done(new Error('should not get here'));
-        })
-        .catch(() => {
-          expect(executedQueries).to.have.length(0);
-          done();
-        });
+        .then(
+          () => {
+            throw new Error('should not get here');
+          },
+          () => {
+            expect(executedQueries).toHaveLength(0);
+          },
+        );
     });
 
     it('graphExpressionObject() should return the eager expression as an object', () => {
       const builder = QueryBuilder.forClass(TestModel).withGraphFetched('[a, b.c(foo)]');
 
-      expect(builder.graphExpressionObject()).to.eql({
+      expect(builder.graphExpressionObject()).toEqual({
         $name: null,
         $relation: null,
         $modify: [],
@@ -3548,10 +3425,10 @@ describe('QueryBuilder', () => {
 
       const expr = QueryBuilder.forClass(TestModel).withGraphFetched(graph).graphExpressionObject();
 
-      expect(objection.RelationExpression.create(expr).toString()).to.equal('[a.d, e.f]');
-      expect(expr.$childNames).to.eql(['a', 'e']);
-      expect(expr.a.$childNames).to.eql(['d']);
-      expect(expr.b).to.equal(undefined);
+      expect(objection.RelationExpression.create(expr).toString()).toBe('[a.d, e.f]');
+      expect(expr.$childNames).toEqual(['a', 'e']);
+      expect(expr.a.$childNames).toEqual(['d']);
+      expect(expr.b).toBeUndefined();
     });
 
     it("modifiers() should return the eager expression's modifiers as an object", () => {
@@ -3560,12 +3437,12 @@ describe('QueryBuilder', () => {
         foo,
       });
 
-      expect(builder.modifiers()).to.eql({
+      expect(builder.modifiers()).toEqual({
         foo,
       });
     });
 
-    it('should use correct query builders', (done) => {
+    it('should use correct query builders', () => {
       class M1QueryBuilder extends QueryBuilder {}
       class M2QueryBuilder extends QueryBuilder {}
       class M3QueryBuilder extends QueryBuilder {}
@@ -3639,7 +3516,7 @@ describe('QueryBuilder', () => {
       let filter1Check = false;
       let filter2Check = false;
 
-      QueryBuilder.forClass(M1)
+      return QueryBuilder.forClass(M1)
         .withGraphFetched('m2.m3')
         .modifyGraph('m2', (builder) => {
           filter1Check = builder instanceof M2QueryBuilder;
@@ -3648,21 +3525,18 @@ describe('QueryBuilder', () => {
           filter2Check = builder instanceof M3QueryBuilder;
         })
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "M1".* from "M1"',
             'select "M2".* from "M2" where "M2"."m1Id" in (1)',
             'select "M3".* from "M3" where "M3"."id" in (3)',
           ]);
 
-          expect(filter1Check).to.equal(true);
-          expect(filter2Check).to.equal(true);
-
-          done();
-        })
-        .catch(done);
+          expect(filter1Check).toBe(true);
+          expect(filter2Check).toBe(true);
+        });
     });
 
-    it('$afterFind should be called after relations have been fetched', (done) => {
+    it('$afterFind should be called after relations have been fetched', () => {
       class M1 extends Model {
         static get tableName() {
           return 'M1';
@@ -3708,16 +3582,16 @@ describe('QueryBuilder', () => {
         ],
       ];
 
-      QueryBuilder.forClass(M1)
+      return QueryBuilder.forClass(M1)
         .withGraphFetched('someRel.someRel')
         .then((x) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "M1".* from "M1"',
             'select "M1".* from "M1" where "M1"."m1Id" in (1, 2)',
             'select "M1".* from "M1" where "M1"."m1Id" in (3, 4, 5, 6)',
           ]);
 
-          expect(x).to.eql([
+          expect(x).toEqual([
             {
               id: 1,
               ids: [3, 4],
@@ -3767,21 +3641,11 @@ describe('QueryBuilder', () => {
               ],
             },
           ]);
-
-          done();
-        })
-        .catch(done);
+        });
     });
   });
 
   describe('mixing withGraphJoined and withGraphFetched', () => {
-    const {
-      JoinEagerOperation,
-    } = require('../../../lib/queryBuilder/operations/eager/JoinEagerOperation');
-    const {
-      WhereInEagerOperation,
-    } = require('../../../lib/queryBuilder/operations/eager/WhereInEagerOperation');
-
     let Person;
     let Animal;
     let Movie;
@@ -3897,15 +3761,15 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies')
         .where('pets.name', 'like', 'A%')
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             `${joinQuery} where "pets"."name" like 'A%'`,
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
           ]);
 
-          expect(models[0]).to.be.a(Person);
-          expect(models[0].pets[0]).to.be.a(Animal);
-          expect(models[0].movies[0]).to.be.a(Movie);
-          expect(toJson(models)).to.eql(expectedGraph);
+          expect(models[0]).toBeInstanceOf(Person);
+          expect(models[0].pets[0]).toBeInstanceOf(Animal);
+          expect(models[0].movies[0]).toBeInstanceOf(Movie);
+          expect(toJson(models)).toEqual(expectedGraph);
         });
     });
 
@@ -3916,12 +3780,12 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies')
         .withGraphJoined('pets')
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             joinQuery,
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
           ]);
 
-          expect(toJson(models)).to.eql(expectedGraph);
+          expect(toJson(models)).toEqual(expectedGraph);
         });
     });
 
@@ -3931,9 +3795,9 @@ describe('QueryBuilder', () => {
         (op) => op instanceof JoinEagerOperation || op instanceof WhereInEagerOperation,
       );
 
-      expect(eagerOps).to.have.length(2);
-      expect(eagerOps[0]).to.be.a(JoinEagerOperation);
-      expect(eagerOps[1]).to.be.a(WhereInEagerOperation);
+      expect(eagerOps).toHaveLength(2);
+      expect(eagerOps[0]).toBeInstanceOf(JoinEagerOperation);
+      expect(eagerOps[1]).toBeInstanceOf(WhereInEagerOperation);
     });
 
     it('should work when withGraphJoined is called in a runBefore hook', () => {
@@ -3945,12 +3809,12 @@ describe('QueryBuilder', () => {
           builder.withGraphJoined('pets');
         })
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             joinQuery,
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
           ]);
 
-          expect(toJson(models)).to.eql(expectedGraph);
+          expect(toJson(models)).toEqual(expectedGraph);
         });
     });
 
@@ -3970,7 +3834,7 @@ describe('QueryBuilder', () => {
       });
 
       return builder.then(() => {
-        expect(executedQueries[0]).to.equal(joinQuery.replace('select ', 'select 1 as one, '));
+        expect(executedQueries[0]).toBe(joinQuery.replace('select ', 'select 1 as one, '));
       });
     });
 
@@ -3981,15 +3845,15 @@ describe('QueryBuilder', () => {
         .withGraphJoined('pets')
         .withGraphFetched('[parent, movies]')
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             joinQuery,
             'select "Person".* from "Person" where "Person"."id" in (1)',
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
           ]);
 
-          expect(models[0].parent).to.equal(null);
-          expect(models[1].parent.toJSON()).to.eql({ id: 1, name: 'P1', parentId: null });
-          expect(models[1].movies).to.have.length(1);
+          expect(models[0].parent).toBeNull();
+          expect(models[1].parent.toJSON()).toEqual({ id: 1, name: 'P1', parentId: null });
+          expect(models[1].movies).toHaveLength(1);
         });
     });
 
@@ -4007,14 +3871,14 @@ describe('QueryBuilder', () => {
         .withGraphJoined('pets')
         .withGraphFetched('movies')
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Person"."name", "Person"."id" as "id", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
           ]);
 
           // `id` is selected internally by the join and needed by the fetch,
           // so it must survive the join but be omitted in the end.
-          expect(toJson(models)).to.eql([
+          expect(toJson(models)).toEqual([
             {
               name: 'P1',
               pets: [{ id: 10, name: 'A10', ownerId: 1 }],
@@ -4040,10 +3904,10 @@ describe('QueryBuilder', () => {
         .withGraphJoined('pets')
         .withGraphFetched('movies')
         .then((models) => {
-          expect(executedQueries[1]).to.equal(
+          expect(executedQueries[1]).toBe(
             'select "Movie".* from "Movie" where "Movie"."personId" in (1)',
           );
-          expect(toJson(models)).to.eql([{ id: 1, name: 'P1', pets: [], movies: [] }]);
+          expect(toJson(models)).toEqual([{ id: 1, name: 'P1', pets: [], movies: [] }]);
         });
     });
 
@@ -4053,27 +3917,29 @@ describe('QueryBuilder', () => {
       it(`should throw if the same relation is passed to ${first} and ${second}`, () => {
         const builder = Person.query()[first]('[pets, movies]');
 
-        expect(() => builder[second]('pets')).to.throwException((err) => {
-          expect(err.message).to.equal(
-            'relation "pets" cannot be loaded with both withGraphJoined and withGraphFetched',
-          );
-        });
+        expect(() => builder[second]('pets')).toThrow(
+          expect.objectContaining({
+            message:
+              'relation "pets" cannot be loaded with both withGraphJoined and withGraphFetched',
+          }),
+        );
       });
 
       it(`should throw if a sub relation of a ${first} relation is passed to ${second}`, () => {
         const builder = Person.query()[first]('pets');
 
-        expect(() => builder[second]('pets.owner')).to.throwException((err) => {
-          expect(err.message).to.equal(
-            'relation "pets" cannot be loaded with both withGraphJoined and withGraphFetched',
-          );
-        });
+        expect(() => builder[second]('pets.owner')).toThrow(
+          expect.objectContaining({
+            message:
+              'relation "pets" cannot be loaded with both withGraphJoined and withGraphFetched',
+          }),
+        );
       });
 
       it(`should throw if \`*\` is used when mixing ${first} and ${second}`, () => {
         const builder = Person.query()[first]('*');
 
-        expect(() => builder[second]('pets')).to.throwException(/relation expression "\*"/);
+        expect(() => builder[second]('pets')).toThrow(/relation expression "\*"/);
       });
     });
 
@@ -4082,7 +3948,7 @@ describe('QueryBuilder', () => {
         Person.query()
           .withGraphJoined('pets as joinedPets')
           .withGraphFetched('pets as fetchedPets'),
-      ).to.not.throwException();
+      ).not.toThrow();
     });
 
     it('should merge multiple calls of the same method into one operation', () => {
@@ -4095,42 +3961,38 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies.foo', { maxBatchSize: 1 })
         .withGraphFetched('movies', { maxBatchSize: 5 });
 
-      expect(countOps(builder, JoinEagerOperation)).to.equal(1);
-      expect(countOps(builder, WhereInEagerOperation)).to.equal(1);
-      expect(builder.findOperation(JoinEagerOperation).expression.toString()).to.equal(
+      expect(countOps(builder, JoinEagerOperation)).toBe(1);
+      expect(countOps(builder, WhereInEagerOperation)).toBe(1);
+      expect(builder.findOperation(JoinEagerOperation).expression.toString()).toBe(
         '[pets, parent]',
       );
-      expect(builder.findOperation(WhereInEagerOperation).expression.toString()).to.equal(
-        'movies.foo',
-      );
-      expect(builder.findOperation(WhereInEagerOperation).graphOptions.maxBatchSize).to.equal(5);
-      expect(builder.findOperation(JoinEagerOperation).graphOptions.maxBatchSize).to.equal(
-        undefined,
-      );
+      expect(builder.findOperation(WhereInEagerOperation).expression.toString()).toBe('movies.foo');
+      expect(builder.findOperation(WhereInEagerOperation).graphOptions.maxBatchSize).toBe(5);
+      expect(builder.findOperation(JoinEagerOperation).graphOptions.maxBatchSize).toBeUndefined();
     });
 
     it('graphExpressionObject() should merge both expressions', () => {
       const builder = Person.query().withGraphJoined('pets').withGraphFetched('movies');
 
-      expect(builder.graphExpressionObject()).to.eql(
+      expect(builder.graphExpressionObject()).toEqual(
         objection.RelationExpression.create('[pets, movies]').toPojo(),
       );
     });
 
     it('hasWithGraph() should consider both operations', () => {
-      expect(Person.query().withGraphJoined('pets').hasWithGraph()).to.equal(true);
-      expect(Person.query().withGraphFetched('pets').hasWithGraph()).to.equal(true);
+      expect(Person.query().withGraphJoined('pets').hasWithGraph()).toBe(true);
+      expect(Person.query().withGraphFetched('pets').hasWithGraph()).toBe(true);
       expect(
         Person.query()
           .modifyGraph('pets', () => {})
           .hasWithGraph(),
-      ).to.equal(false);
+      ).toBe(false);
       expect(
         Person.query()
           .modifyGraph('pets', () => {})
           .withGraphJoined('pets')
           .hasWithGraph(),
-      ).to.equal(true);
+      ).toBe(true);
     });
 
     ['before', 'after'].forEach((when) => {
@@ -4153,14 +4015,14 @@ describe('QueryBuilder', () => {
         }
 
         return builder.then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "Person"."id" as "id", "Person"."name" as "name", "Person"."parentId" as "parentId", ' +
               '"pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
               'from "Person" left join (select "Animal".* from "Animal" where "name" = \'A10\') as "pets" on "pets"."ownerId" = "Person"."id"',
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2) and "name" = \'M100\'',
           ]);
 
-          expect(models).to.have.length(2);
+          expect(models).toHaveLength(2);
         });
       });
     });
@@ -4174,10 +4036,10 @@ describe('QueryBuilder', () => {
         .modifyGraph('movies', (qb) => qb.where('name', 'M100'))
         .withGraphFetched('movies')
         .then(() => {
-          expect(executedQueries[0]).to.contain(
+          expect(executedQueries[0]).toContain(
             'left join (select "Animal".* from "Animal" where "name" = \'A10\') as "pets"',
           );
-          expect(executedQueries[1]).to.equal(
+          expect(executedQueries[1]).toBe(
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2) and "name" = \'M100\'',
           );
         });
@@ -4194,25 +4056,25 @@ describe('QueryBuilder', () => {
       it('should keep the order on postgres, mysql and sqlite', () => {
         const modifier = (qb) => qb.where('name', 'A10').orderBy('name');
 
-        expect(joinSql('pg', modifier)).to.contain(
+        expect(joinSql('pg', modifier)).toContain(
           'left join (select "Animal".* from "Animal" where "name" = \'A10\' order by "name" asc) as "pets"',
         );
-        expect(joinSql('mysql', modifier)).to.contain(
+        expect(joinSql('mysql', modifier)).toContain(
           "left join (select `Animal`.* from `Animal` where `name` = 'A10' order by `name` asc) as `pets`",
         );
-        expect(joinSql('sqlite3', modifier)).to.contain(
+        expect(joinSql('sqlite3', modifier)).toContain(
           "left join (select `Animal`.* from `Animal` where `name` = 'A10' order by `name` asc) as `pets`",
         );
       });
 
       it('should leave out the order on mssql', () => {
-        expect(joinSql('mssql', (qb) => qb.where('name', 'A10').orderBy('name'))).to.contain(
+        expect(joinSql('mssql', (qb) => qb.where('name', 'A10').orderBy('name'))).toContain(
           "left join (select [Animal].* from [Animal] where [name] = 'A10') as [pets]",
         );
       });
 
       it('should keep the order with a limit on mssql', () => {
-        expect(joinSql('mssql', (qb) => qb.orderBy('name').limit(5))).to.contain(
+        expect(joinSql('mssql', (qb) => qb.orderBy('name').limit(5))).toContain(
           'left join (select top (5) [Animal].* from [Animal] order by [name] asc) as [pets]',
         );
       });
@@ -4220,7 +4082,7 @@ describe('QueryBuilder', () => {
       it('should keep the order with first() and useLimitInFirst on mssql', () => {
         Animal.useLimitInFirst = true;
 
-        expect(joinSql('mssql', (qb) => qb.orderBy('name').first())).to.contain(
+        expect(joinSql('mssql', (qb) => qb.orderBy('name').first())).toContain(
           'left join (select top (1) [Animal].* from [Animal] order by [name] asc) as [pets]',
         );
       });
@@ -4233,7 +4095,7 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies')
         .modifyGraph('movies', () => {});
 
-      expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets', 'movies']);
+      expect(builder.graphModifiersAtPath().map((it) => it.path)).toEqual(['pets', 'movies']);
     });
 
     it('clone() should not share the graph modifiers', () => {
@@ -4244,7 +4106,7 @@ describe('QueryBuilder', () => {
 
       builder.clone().modifyGraph('movies', () => {});
 
-      expect(builder.graphModifiersAtPath().map((it) => it.path)).to.eql(['pets']);
+      expect(builder.graphModifiersAtPath().map((it) => it.path)).toEqual(['pets']);
     });
 
     it('clearWithGraph() should drop the graph modifiers', () => {
@@ -4254,7 +4116,7 @@ describe('QueryBuilder', () => {
         .clearWithGraph()
         .withGraphFetched('movies');
 
-      expect(builder.graphModifiersAtPath()).to.eql([]);
+      expect(builder.graphModifiersAtPath()).toEqual([]);
     });
 
     it('clearWithGraph() should clear both operations', () => {
@@ -4265,13 +4127,13 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies')
         .clearWithGraph();
 
-      expect(builder.findOperation(JoinEagerOperation)).to.equal(null);
-      expect(builder.findOperation(WhereInEagerOperation)).to.equal(null);
-      expect(builder.hasWithGraph()).to.equal(false);
-      expect(builder.graphExpressionObject()).to.equal(null);
+      expect(builder.findOperation(JoinEagerOperation)).toBeNull();
+      expect(builder.findOperation(WhereInEagerOperation)).toBeNull();
+      expect(builder.hasWithGraph()).toBe(false);
+      expect(builder.graphExpressionObject()).toBeNull();
 
       return builder.then(() => {
-        expect(executedQueries).to.eql(['select "Person".* from "Person"']);
+        expect(executedQueries).toEqual(['select "Person".* from "Person"']);
       });
     });
 
@@ -4283,16 +4145,16 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies')
         .clearWithGraphFetched();
 
-      expect(builder.findOperation(JoinEagerOperation)).to.not.equal(null);
-      expect(builder.findOperation(WhereInEagerOperation)).to.equal(null);
-      expect(builder.graphExpressionObject()).to.eql(
+      expect(builder.findOperation(JoinEagerOperation)).not.toBeNull();
+      expect(builder.findOperation(WhereInEagerOperation)).toBeNull();
+      expect(builder.graphExpressionObject()).toEqual(
         objection.RelationExpression.create('pets').toPojo(),
       );
 
       return builder.then((models) => {
-        expect(executedQueries).to.eql([joinQuery]);
-        expect(models[0].pets).to.have.length(2);
-        expect(models[0].movies).to.equal(undefined);
+        expect(executedQueries).toEqual([joinQuery]);
+        expect(models[0].pets).toHaveLength(2);
+        expect(models[0].movies).toBeUndefined();
       });
     });
 
@@ -4302,16 +4164,16 @@ describe('QueryBuilder', () => {
       const builder = Person.query().withGraphJoined('pets').withGraphFetched('movies');
       const clone = builder.clone();
 
-      expect(countOps(clone, JoinEagerOperation)).to.equal(1);
-      expect(countOps(clone, WhereInEagerOperation)).to.equal(1);
-      expect(clone.graphExpressionObject()).to.eql(builder.graphExpressionObject());
+      expect(countOps(clone, JoinEagerOperation)).toBe(1);
+      expect(countOps(clone, WhereInEagerOperation)).toBe(1);
+      expect(clone.graphExpressionObject()).toEqual(builder.graphExpressionObject());
 
       // Modifying the clone should not affect the original.
       clone.withGraphFetched('parent');
-      expect(builder.findOperation(WhereInEagerOperation).expression.toString()).to.equal('movies');
+      expect(builder.findOperation(WhereInEagerOperation).expression.toString()).toBe('movies');
 
       return builder.then((models) => {
-        expect(toJson(models)).to.eql(expectedGraph);
+        expect(toJson(models)).toEqual(expectedGraph);
       });
     });
 
@@ -4337,11 +4199,11 @@ describe('QueryBuilder', () => {
           .then(() => 'ok')
           .catch((err) => err),
       ]).then(([ok, err1, err2]) => {
-        expect(ok).to.equal('ok');
-        expect(err1).to.be.a(objection.ValidationError);
-        expect(err1.type).to.equal('UnallowedRelation');
-        expect(err2).to.be.a(objection.ValidationError);
-        expect(err2.type).to.equal('UnallowedRelation');
+        expect(ok).toBe('ok');
+        expect(err1).toBeInstanceOf(objection.ValidationError);
+        expect(err1.type).toBe('UnallowedRelation');
+        expect(err2).toBeInstanceOf(objection.ValidationError);
+        expect(err2.type).toBe('UnallowedRelation');
       });
     });
 
@@ -4354,14 +4216,14 @@ describe('QueryBuilder', () => {
         .where('pets.name', 'A10')
         .page(0, 10)
         .then((res) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             `${joinQuery} where "pets"."name" = 'A10' limit 10`,
             'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
             `select count(*) as "count" from (${countJoinQuery} where "pets"."name" = 'A10') as "temp"`,
           ]);
 
-          expect(res.total).to.equal(2);
-          expect(toJson(res.results)).to.eql(expectedGraph);
+          expect(res.total).toBe(2);
+          expect(toJson(res.results)).toEqual(expectedGraph);
         });
     });
 
@@ -4373,10 +4235,10 @@ describe('QueryBuilder', () => {
         .withGraphFetched('movies')
         .resultSize()
         .then((count) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             `select count(*) as "count" from (${countJoinQuery}) as "temp"`,
           ]);
-          expect(count).to.equal(2);
+          expect(count).toBe(2);
         });
     });
 
@@ -4393,7 +4255,7 @@ describe('QueryBuilder', () => {
       };
 
       it('should fetch relations if no algorithm was used before', () => {
-        expect(relationsOf(Person.query().withGraph('[pets, movies]'))).to.eql({
+        expect(relationsOf(Person.query().withGraph('[pets, movies]'))).toEqual({
           join: [],
           fetch: ['pets', 'movies'],
         });
@@ -4404,21 +4266,21 @@ describe('QueryBuilder', () => {
           .withGraph('pets', { algorithm: 'join' })
           .withGraph('movies', { algorithm: 'fetch' });
 
-        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies'] });
+        expect(relationsOf(builder)).toEqual({ join: ['pets'], fetch: ['movies'] });
       });
 
       it('should throw for unknown algorithms', () => {
         expect(() => {
           Person.query().withGraph('pets', { algorithm: 'naive' });
-        }).to.throwException((err) => {
-          expect(err.message).to.equal(
-            'unknown graph algorithm "naive", expected "fetch" or "join"',
-          );
-        });
+        }).toThrow(
+          expect.objectContaining({
+            message: 'unknown graph algorithm "naive", expected "fetch" or "join"',
+          }),
+        );
       });
 
       it('should use the most recently used algorithm for new relations', () => {
-        expect(relationsOf(Person.query().withGraphJoined('pets').withGraph('movies'))).to.eql({
+        expect(relationsOf(Person.query().withGraphJoined('pets').withGraph('movies'))).toEqual({
           join: ['pets', 'movies'],
           fetch: [],
         });
@@ -4428,7 +4290,7 @@ describe('QueryBuilder', () => {
           .withGraphJoined('pets')
           .withGraph('parent');
 
-        expect(relationsOf(builder)).to.eql({ join: ['pets', 'parent'], fetch: ['movies'] });
+        expect(relationsOf(builder)).toEqual({ join: ['pets', 'parent'], fetch: ['movies'] });
       });
 
       it('should merge existing relations into their operations without throwing', () => {
@@ -4437,7 +4299,7 @@ describe('QueryBuilder', () => {
           .withGraphFetched('movies')
           .withGraph('[pets, movies, parent]');
 
-        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies', 'parent'] });
+        expect(relationsOf(builder)).toEqual({ join: ['pets'], fetch: ['movies', 'parent'] });
       });
 
       it('should not change the most recently used algorithm when merging', () => {
@@ -4447,7 +4309,7 @@ describe('QueryBuilder', () => {
           .withGraph('pets')
           .withGraph('parent');
 
-        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies', 'parent'] });
+        expect(relationsOf(builder)).toEqual({ join: ['pets'], fetch: ['movies', 'parent'] });
       });
 
       it('should add nested relations to the operation of their top-level relation', () => {
@@ -4456,10 +4318,8 @@ describe('QueryBuilder', () => {
           .withGraphFetched('movies')
           .withGraph('[parent.pets, movies]');
 
-        expect(relationsOf(builder)).to.eql({ join: ['parent'], fetch: ['movies'] });
-        expect(builder.findOperation(JoinEagerOperation).expression.toString()).to.equal(
-          'parent.pets',
-        );
+        expect(relationsOf(builder)).toEqual({ join: ['parent'], fetch: ['movies'] });
+        expect(builder.findOperation(JoinEagerOperation).expression.toString()).toBe('parent.pets');
       });
 
       it('should not mistake inherited object properties for loaded relations', () => {
@@ -4468,33 +4328,34 @@ describe('QueryBuilder', () => {
           .withGraphFetched('movies')
           .withGraph('constructor');
 
-        expect(relationsOf(builder)).to.eql({ join: ['pets'], fetch: ['movies', 'constructor'] });
+        expect(relationsOf(builder)).toEqual({ join: ['pets'], fetch: ['movies', 'constructor'] });
       });
 
       it('should still throw for contradicting explicit algorithms', () => {
         expect(() => {
           Person.query().withGraphJoined('pets').withGraph('pets', { algorithm: 'fetch' });
-        }).to.throwException((err) => {
-          expect(err.message).to.equal(
-            'relation "pets" cannot be loaded with both withGraphJoined and withGraphFetched',
-          );
-        });
+        }).toThrow(
+          expect.objectContaining({
+            message:
+              'relation "pets" cannot be loaded with both withGraphJoined and withGraphFetched',
+          }),
+        );
       });
 
       it('should keep the most recently used algorithm in clones', () => {
         const builder = Person.query().withGraphJoined('pets').clone().withGraph('movies');
-        expect(relationsOf(builder)).to.eql({ join: ['pets', 'movies'], fetch: [] });
+        expect(relationsOf(builder)).toEqual({ join: ['pets', 'movies'], fetch: [] });
       });
 
       it('should forget the most recently used algorithm in clearWithGraph()', () => {
         const builder = Person.query().withGraphJoined('pets').clearWithGraph().withGraph('movies');
-        expect(relationsOf(builder)).to.eql({ join: [], fetch: ['movies'] });
+        expect(relationsOf(builder)).toEqual({ join: [], fetch: ['movies'] });
       });
 
       it('should inherit the most recently used algorithm in child queries', () => {
         const parent = Person.query().withGraphJoined('pets');
         const child = Person.query().childQueryOf(parent).withGraph('movies');
-        expect(relationsOf(child)).to.eql({ join: ['movies'], fetch: [] });
+        expect(relationsOf(child)).toEqual({ join: ['movies'], fetch: [] });
       });
 
       it('should pass the other options to the operations', () => {
@@ -4504,10 +4365,10 @@ describe('QueryBuilder', () => {
           .withGraph('pets', { joinOperation: 'innerJoin' })
           .withGraph('parent', { maxBatchSize: 1 });
 
-        expect(builder.toKnexQuery().toString()).to.contain(
+        expect(builder.toKnexQuery().toString()).toContain(
           'inner join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
         );
-        expect(builder.findOperation(WhereInEagerOperation).graphOptions.maxBatchSize).to.equal(1);
+        expect(builder.findOperation(WhereInEagerOperation).graphOptions.maxBatchSize).toBe(1);
       });
 
       it('should warn and ignore joinOperation for fetched relations', () => {
@@ -4522,9 +4383,9 @@ describe('QueryBuilder', () => {
             .withGraphFetched('movies', { joinOperation: 'innerJoin' })
             .withGraph('[pets, parent]', { joinOperation: 'rightJoin' });
 
-          expect(builder.findOperation(WhereInEagerOperation).joinOperations).to.eql([]);
-          expect(builder.findOperation(JoinEagerOperation).joinOperations).to.have.length(1);
-          expect(warnings).to.eql([
+          expect(builder.findOperation(WhereInEagerOperation).joinOperations).toEqual([]);
+          expect(builder.findOperation(JoinEagerOperation).joinOperations).toHaveLength(1);
+          expect(warnings).toEqual([
             '[objection] The joinOperation option only applies to withGraphJoined() and is ' +
               'ignored for the fetched relations "movies".',
             '[objection] The joinOperation option only applies to withGraphJoined() and is ' +
@@ -4548,7 +4409,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('pets', { limitPerParent: true })
             .withGraphJoined('pets', { limitPerParent: true });
 
-          expect(warnings).to.eql([
+          expect(warnings).toEqual([
             '[objection] The limitPerParent option only applies to withGraphFetched() and is ' +
               'ignored for the joined relations "pets".',
           ]);
@@ -4566,12 +4427,12 @@ describe('QueryBuilder', () => {
           .withGraphFetched('movies')
           .withGraph('[pets, movies]')
           .then((models) => {
-            expect(executedQueries).to.eql([
+            expect(executedQueries).toEqual([
               joinQuery,
               'select "Movie".* from "Movie" where "Movie"."personId" in (1, 2)',
             ]);
 
-            expect(toJson(models)).to.eql(expectedGraph);
+            expect(toJson(models)).toEqual(expectedGraph);
           });
       });
 
@@ -4587,11 +4448,11 @@ describe('QueryBuilder', () => {
             m100: (builder) => builder.where('name', 'M100'),
           })
           .then(() => {
-            expect(executedQueries).to.have.length(2);
-            expect(executedQueries[0]).to.contain(
+            expect(executedQueries).toHaveLength(2);
+            expect(executedQueries[0]).toContain(
               `left join (select "Animal".* from "Animal" where "name" = 'A10') as "pets"`,
             );
-            expect(executedQueries[1]).to.equal(
+            expect(executedQueries[1]).toBe(
               `select "Movie".* from "Movie" where "Movie"."personId" in (1, 2) and "name" = 'M100'`,
             );
           });
@@ -4623,10 +4484,10 @@ describe('QueryBuilder', () => {
             );
           }
 
-          expect(builder.isJoinChildQuery()).to.equal(false);
+          expect(builder.isJoinChildQuery()).toBe(false);
 
           return builder.then(() => {
-            expect(childQueries).to.eql({ Animal: true, Movie: false });
+            expect(childQueries).toEqual({ Animal: true, Movie: false });
           });
         });
       }
@@ -4635,9 +4496,9 @@ describe('QueryBuilder', () => {
         const parent = Person.query();
         const child = Person.query().childQueryOf(parent, { isJoinChildQuery: true });
 
-        expect(child.isJoinChildQuery()).to.equal(true);
-        expect(child.clone().isJoinChildQuery()).to.equal(true);
-        expect(parent.isJoinChildQuery()).to.equal(false);
+        expect(child.isJoinChildQuery()).toBe(true);
+        expect(child.clone().isJoinChildQuery()).toBe(true);
+        expect(parent.isJoinChildQuery()).toBe(false);
       });
     });
   });
@@ -4727,7 +4588,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent', { joinOperation: 'innerJoin' })
             .withGraphJoined('pets', { joinOperation: 'leftJoin' }),
         ),
-      ).to.eql({ parent: 'inner', pets: 'left' });
+      ).toEqual({ parent: 'inner', pets: 'left' });
 
       expect(
         getJoinTypes(
@@ -4735,7 +4596,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('pets', { joinOperation: 'leftJoin' })
             .withGraphJoined('parent', { joinOperation: 'innerJoin' }),
         ),
-      ).to.eql({ parent: 'inner', pets: 'left' });
+      ).toEqual({ parent: 'inner', pets: 'left' });
     });
 
     it('should use the joinOperation for both joins of many-to-many relations', () => {
@@ -4745,7 +4606,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('movies', { joinOperation: 'innerJoin' })
             .withGraphJoined('pets'),
         ),
-      ).to.eql({ movies_join: 'inner', movies: 'inner', pets: 'left' });
+      ).toEqual({ movies_join: 'inner', movies: 'inner', pets: 'left' });
     });
 
     it('should use the default join operation for calls without a joinOperation', () => {
@@ -4755,7 +4616,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent', { joinOperation: 'innerJoin' })
             .withGraphJoined('pets'),
         ),
-      ).to.eql({ parent: 'inner', pets: 'left' });
+      ).toEqual({ parent: 'inner', pets: 'left' });
     });
 
     it('should use the joinOperation of defaultGraphOptions as the default', () => {
@@ -4767,7 +4628,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent')
             .withGraphJoined('pets', { joinOperation: 'leftJoin' }),
         ),
-      ).to.eql({ parent: 'inner', pets: 'left' });
+      ).toEqual({ parent: 'inner', pets: 'left' });
     });
 
     it('nested relations should inherit the joinOperation of the call that added them', () => {
@@ -4777,7 +4638,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent.[pets, parent]', { joinOperation: 'innerJoin' })
             .withGraphJoined('pets'),
         ),
-      ).to.eql({
+      ).toEqual({
         parent: 'inner',
         'parent:pets': 'inner',
         'parent:parent': 'inner',
@@ -4792,7 +4653,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent.^3', { joinOperation: 'innerJoin' })
             .withGraphJoined('pets'),
         ),
-      ).to.eql({
+      ).toEqual({
         parent: 'inner',
         'parent:parent': 'inner',
         'parent:parent:parent': 'inner',
@@ -4807,7 +4668,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent', { joinOperation: 'innerJoin' })
             .withGraphJoined('parent', { joinOperation: 'leftJoin' }),
         ),
-      ).to.eql({ parent: 'left' });
+      ).toEqual({ parent: 'left' });
 
       expect(
         getJoinTypes(
@@ -4815,7 +4676,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent.pets', { joinOperation: 'leftJoin' })
             .withGraphJoined('parent', { joinOperation: 'innerJoin' }),
         ),
-      ).to.eql({ parent: 'inner', 'parent:pets': 'left' });
+      ).toEqual({ parent: 'inner', 'parent:pets': 'left' });
 
       // A call without a joinOperation doesn't override the joinOperation of
       // the relations, but its new nested relations use the default.
@@ -4825,7 +4686,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('parent', { joinOperation: 'innerJoin' })
             .withGraphJoined('parent.pets'),
         ),
-      ).to.eql({ parent: 'inner', 'parent:pets': 'left' });
+      ).toEqual({ parent: 'inner', 'parent:pets': 'left' });
     });
 
     it('should support aliased relations', () => {
@@ -4835,7 +4696,7 @@ describe('QueryBuilder', () => {
             .withGraphJoined('pets as dogs', { joinOperation: 'innerJoin' })
             .withGraphJoined('pets as cats'),
         ),
-      ).to.eql({ dogs: 'inner', cats: 'left' });
+      ).toEqual({ dogs: 'inner', cats: 'left' });
     });
 
     it('should keep the joinOperations when cloning', () => {
@@ -4843,7 +4704,7 @@ describe('QueryBuilder', () => {
         .withGraphJoined('parent', { joinOperation: 'innerJoin' })
         .withGraphJoined('pets', { joinOperation: 'leftJoin' });
 
-      expect(getJoinTypes(builder.clone().withGraphJoined('movies'))).to.eql({
+      expect(getJoinTypes(builder.clone().withGraphJoined('movies'))).toEqual({
         parent: 'inner',
         pets: 'left',
         movies_join: 'left',
@@ -4859,7 +4720,7 @@ describe('QueryBuilder', () => {
             .withGraphFetched('movies')
             .withGraphJoined('pets'),
         ),
-      ).to.eql({ parent: 'inner', pets: 'left' });
+      ).toEqual({ parent: 'inner', pets: 'left' });
     });
 
     it('should run the query with the joinOperation of each call', () => {
@@ -4869,8 +4730,8 @@ describe('QueryBuilder', () => {
         .withGraphJoined('parent', { joinOperation: 'innerJoin' })
         .withGraphJoined('pets', { joinOperation: 'leftJoin' })
         .then(() => {
-          expect(executedQueries).to.have.length(1);
-          expect(joinTypes(executedQueries[0])).to.eql({ parent: 'inner', pets: 'left' });
+          expect(executedQueries).toHaveLength(1);
+          expect(joinTypes(executedQueries[0])).toEqual({ parent: 'inner', pets: 'left' });
         });
     });
   });
@@ -4930,9 +4791,9 @@ describe('QueryBuilder', () => {
           throw new Error('should not get here');
         },
         (err) => {
-          expect(err.message).to.contain('withGraphJoined');
-          expect(err.message).to.contain(`model ${modelName}`);
-          expect(err.message).to.contain('withGraphFetched');
+          expect(err.message).toContain('withGraphJoined');
+          expect(err.message).toContain(`model ${modelName}`);
+          expect(err.message).toContain('withGraphFetched');
         },
       );
 
@@ -4979,7 +4840,7 @@ describe('QueryBuilder', () => {
       return Person.query()
         .withGraphJoined('pets')
         .then((models) => {
-          expect(models).to.eql([]);
+          expect(models).toEqual([]);
         });
     });
 
@@ -4994,7 +4855,7 @@ describe('QueryBuilder', () => {
       return Person.query()
         .withGraphJoined('pets')
         .then((models) => {
-          expect(models.map((it) => it.toJSON())).to.eql([
+          expect(models.map((it) => it.toJSON())).toEqual([
             { id: 1, name: 'P1', pets: [] },
             { id: 2, name: 'P2', pets: [{ id: 2, name: 'A2', ownerId: 'P2' }] },
           ]);
@@ -5014,13 +4875,13 @@ describe('QueryBuilder', () => {
         .withGraphJoined('pets(selectName)')
         .modifiers({ selectName: (query) => query.select('name') })
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select "name", "Person"."id" as "id", ' +
               '"pets"."name" as "pets:name", "pets"."id" as "pets:id" ' +
               'from "Person" left join (select "name", "Animal"."id", "Animal"."ownerId" from "Animal") as "pets" ' +
               'on "pets"."ownerId" = "Person"."name"',
           ]);
-          expect(models.map((it) => it.toJSON())).to.eql([
+          expect(models.map((it) => it.toJSON())).toEqual([
             { name: 'P1', pets: [{ name: 'A1' }, { name: 'A2' }] },
           ]);
         });
@@ -5075,7 +4936,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select distinct on ("Person"."name") "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
           'from "Person" left join (select distinct on ("name") "Animal".* from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5090,7 +4951,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select "Person".* from "Person" inner join (select distinct on ("ownerId") "Animal".* from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
       );
     });
@@ -5105,7 +4966,7 @@ describe('QueryBuilder', () => {
           oneOfEach: (query) => query.distinctOn('name'),
         })
         .then(() => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select distinct on ("name") "Person".* from "Person"',
             'select distinct on ("name") "Animal".* from "Animal" where "Animal"."ownerId" in (1)',
           ]);
@@ -5173,8 +5034,8 @@ describe('QueryBuilder', () => {
         Animal.query().count().where('Animal.ownerId', ref('Person.id')).as('siblingCount'),
       );
 
-      expect(sql).to.contain(petSelections('siblingCount'));
-      expect(sql).to.contain(
+      expect(sql).toContain(petSelections('siblingCount'));
+      expect(sql).toContain(
         'select "name", (select count(*) from "Animal" where "Animal"."ownerId" = "Person"."id") as "siblingCount"',
       );
     });
@@ -5182,7 +5043,7 @@ describe('QueryBuilder', () => {
     it('should select a knex subquery aliased with as()', () => {
       const sql = buildSql(mockKnex.count().from('Animal').as('animalCount'));
 
-      expect(sql).to.contain(petSelections('animalCount'));
+      expect(sql).toContain(petSelections('animalCount'));
     });
 
     it('should select a raw with a quoted alias in the sql', () => {
@@ -5192,13 +5053,13 @@ describe('QueryBuilder', () => {
         raw('1 as [one]'),
       );
 
-      expect(sql).to.contain(petSelections('upperName', 'lowerName', 'one'));
+      expect(sql).toContain(petSelections('upperName', 'lowerName', 'one'));
     });
 
     it('should select a knex raw with a quoted alias in the sql', () => {
       const sql = buildSql(mockKnex.raw('upper("name") as "upperName"'));
 
-      expect(sql).to.contain(petSelections('upperName'));
+      expect(sql).toContain(petSelections('upperName'));
     });
 
     it('should select a raw with an identifier binding as the alias', () => {
@@ -5207,20 +5068,20 @@ describe('QueryBuilder', () => {
         raw('lower(:col:) as :alias:', { col: 'name', alias: 'lowerName' }),
       );
 
-      expect(sql).to.contain(petSelections('upperName', 'lowerName'));
+      expect(sql).toContain(petSelections('upperName', 'lowerName'));
     });
 
     it('should select a raw with an unquoted lower case alias in the sql', () => {
       const sql = buildSql(raw('upper("name") as upper_name'));
 
-      expect(sql).to.contain(petSelections('upper_name'));
+      expect(sql).toContain(petSelections('upper_name'));
     });
 
     it('should not select raws without a recognizable alias', () => {
       // Unquoted mixed case aliases are folded to lower case by some databases.
       const sql = buildSql(raw('upper("name") as upperName'), raw('cast("id" as text)'), raw('1'));
 
-      expect(sql).to.contain(petSelections());
+      expect(sql).toContain(petSelections());
     });
 
     it('should still select all columns of a relation if a modifier only selects raws with an alias in the sql', () => {
@@ -5232,7 +5093,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId", "pets"."upperName" as "pets:upperName" ' +
           'from "Person" left join (select upper("name") as "upperName", "Animal".* from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5247,11 +5108,11 @@ describe('QueryBuilder', () => {
         .select(raw('1 as one'))
         .withGraphJoined('pets')
         .then((models) => {
-          expect(executedQueries).to.eql([
+          expect(executedQueries).toEqual([
             'select 1 as one, "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
               'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
           ]);
-          expect(models.map((it) => it.toJSON())).to.eql([
+          expect(models.map((it) => it.toJSON())).toEqual([
             { one: 1, id: 1, name: 'P1', pets: [{ id: 10, name: 'A1', ownerId: 1 }] },
           ]);
         });
@@ -5268,10 +5129,10 @@ describe('QueryBuilder', () => {
         `select ${raws}"Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ` +
         'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"';
 
-      expect(sql('*')).to.equal(expected(''));
-      expect(sql('Person.*', raw('1 as one'))).to.equal(expected('1 as one, '));
-      expect(sql(raw('1 as one'), '*')).to.equal(expected('1 as one, '));
-      expect(sql('Person.*', 'Person.id')).to.equal(
+      expect(sql('*')).toBe(expected(''));
+      expect(sql('Person.*', raw('1 as one'))).toBe(expected('1 as one, '));
+      expect(sql(raw('1 as one'), '*')).toBe(expected('1 as one, '));
+      expect(sql('Person.*', 'Person.id')).toBe(
         'select "Person"."id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
           'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5283,10 +5144,10 @@ describe('QueryBuilder', () => {
         `${select} "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ` +
         'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"';
 
-      expect(sql(Person.query().distinct('*'))).to.equal(expected('select distinct'));
-      expect(sql(Person.query().distinct('Person.*'))).to.equal(expected('select distinct'));
-      expect(sql(Person.query().columns('*'))).to.equal(expected('select'));
-      expect(sql(Person.query().distinctOn('Person.name').select('*'))).to.equal(
+      expect(sql(Person.query().distinct('*'))).toBe(expected('select distinct'));
+      expect(sql(Person.query().distinct('Person.*'))).toBe(expected('select distinct'));
+      expect(sql(Person.query().columns('*'))).toBe(expected('select'));
+      expect(sql(Person.query().distinctOn('Person.name').select('*'))).toBe(
         expected('select distinct on ("Person"."name")'),
       );
     });
@@ -5300,7 +5161,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId", "pets"."animalCount" as "pets:animalCount" ' +
           'from "Person" left join (select (select count(*) from "Animal") as "animalCount", "Animal".* from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5316,7 +5177,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId", "pets"."animalCount" as "pets:animalCount" ' +
           'from "Person" left join (select *, (select count(*) from "Animal") as "animalCount" from "Animal") as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5329,7 +5190,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select (select count(*) from "Animal") as "animalCount", "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
           'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5360,8 +5221,8 @@ describe('QueryBuilder', () => {
             ),
         })
         .then((models) => {
-          expect(executedQueries[0]).to.contain(petSelections('upperName', 'siblingCount'));
-          expect(models.map((it) => it.toJSON())).to.eql([
+          expect(executedQueries[0]).toContain(petSelections('upperName', 'siblingCount'));
+          expect(models.map((it) => it.toJSON())).toEqual([
             {
               id: 1,
               name: 'P1',
@@ -5411,13 +5272,14 @@ describe('QueryBuilder', () => {
     });
 
     const expectError = (query, selection, alias, column) =>
-      expect(() => query.withGraphJoined('pets').toKnexQuery()).to.throwException((err) => {
-        expect(err.message).to.equal(
-          `withGraphJoined: the selection '${selection}' selects '${alias}', ` +
+      expect(() => query.withGraphJoined('pets').toKnexQuery()).toThrow(
+        expect.objectContaining({
+          message:
+            `withGraphJoined: the selection '${selection}' selects '${alias}', ` +
             `the name under which the column '${column}' is selected. ` +
             'Select it under a different name.',
-        );
-      });
+        }),
+      );
 
     it('should throw if the user selects other columns under the names of its columns', () => {
       expectError(
@@ -5455,13 +5317,14 @@ describe('QueryBuilder', () => {
 
     it('should throw if the user selects raws, subqueries or aggregates under the names of the ids', () => {
       const expectIdError = (query, name, column) =>
-        expect(() => query.withGraphJoined('pets').toKnexQuery()).to.throwException((err) => {
-          expect(err.message).to.equal(
-            `withGraphJoined: a raw, subquery or aggregate selection selects '${name}', ` +
+        expect(() => query.withGraphJoined('pets').toKnexQuery()).toThrow(
+          expect.objectContaining({
+            message:
+              `withGraphJoined: a raw, subquery or aggregate selection selects '${name}', ` +
               `the name under which the id column '${column}' is selected. ` +
               'Select it under a different name, or select the id column itself.',
-          );
-        });
+          }),
+        );
 
       expectIdError(
         Person.query().select('*', raw('?? as ??', ['Person.id', 'id'])),
@@ -5483,16 +5346,16 @@ describe('QueryBuilder', () => {
         `select ${selection}, "Person"."id" as "id", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ` +
         'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"';
 
-      expect(
-        sql(Person.query().select('*', raw('upper(??) as ??', ['Person.name', 'name']))),
-      ).to.equal(expected('upper("Person"."name") as "name"'));
-      expect(sql(Person.query().select('*', raw('upper(??)', 'Person.name').as('name')))).to.equal(
+      expect(sql(Person.query().select('*', raw('upper(??) as ??', ['Person.name', 'name'])))).toBe(
         expected('upper("Person"."name") as "name"'),
       );
-      expect(sql(Person.query().select('*', Animal.query().max('name').as('name')))).to.equal(
+      expect(sql(Person.query().select('*', raw('upper(??)', 'Person.name').as('name')))).toBe(
+        expected('upper("Person"."name") as "name"'),
+      );
+      expect(sql(Person.query().select('*', Animal.query().max('name').as('name')))).toBe(
         expected('(select max("name") from "Animal") as "name"'),
       );
-      expect(sql(Person.query().select('*').max('pets.name as name'))).to.equal(
+      expect(sql(Person.query().select('*').max('pets.name as name'))).toBe(
         expected('max("pets"."name") as "name"'),
       );
     });
@@ -5524,7 +5387,7 @@ describe('QueryBuilder', () => {
           .withGraphJoined('pets')
           .toKnexQuery()
           .toString(),
-      ).to.equal(
+      ).toBe(
         'select "person"."first_name", "person"."id" as "id", "person"."owner_id" as "owner_id", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."owner_id" as "pets:owner_id" ' +
           'from "person" left join "animal" as "pets" on "pets"."owner_id" = "person"."id"',
       );
@@ -5538,7 +5401,7 @@ describe('QueryBuilder', () => {
         .toKnexQuery()
         .toString();
 
-      expect(sql).to.equal(
+      expect(sql).toBe(
         'select "id", "Person"."name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
           'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
       );
@@ -5635,12 +5498,12 @@ describe('QueryBuilder', () => {
     for (const [title, [method, withOnConflict, withoutOnConflict]] of Object.entries(cases)) {
       it(`${title} should warn once and ignore the clause`, async () => {
         const expectedQueries = await run(withoutOnConflict);
-        expect(warnings).to.eql([]);
+        expect(warnings).toEqual([]);
 
-        expect(await run(withOnConflict)).to.eql(expectedQueries);
-        expect(await run(withOnConflict)).to.eql(expectedQueries);
+        expect(await run(withOnConflict)).toEqual(expectedQueries);
+        expect(await run(withOnConflict)).toEqual(expectedQueries);
 
-        expect(warnings).to.eql([
+        expect(warnings).toEqual([
           `[objection] onConflict(), ignore() and merge() are not supported by ${method}(). ` +
             'Insert the conflicting rows with a separate insert() query instead. ' +
             'This will throw in objection 4.0.',
@@ -5651,7 +5514,7 @@ describe('QueryBuilder', () => {
     it('insertGraph().onConflict().ignore() should insert the graph without on conflict', async () => {
       expect(
         await run(() => Person.query().insertGraph(graph()).onConflict('name').ignore()),
-      ).to.eql([
+      ).toEqual([
         'insert into "Person" ("name") values (\'Jennifer\') returning "id"',
         'insert into "Person" ("name", "ownerId") values (\'Doggo\', 1) returning "id"',
       ]);
@@ -5662,9 +5525,9 @@ describe('QueryBuilder', () => {
       await run(() => Person.query().upsertGraph(graph()).onConflict('name').merge());
       await run(() => Person.query().insertGraph(graph()).onConflict('name').merge());
 
-      expect(warnings).to.have.length(2);
-      expect(warnings[0]).to.contain('insertGraph()');
-      expect(warnings[1]).to.contain('upsertGraph()');
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toContain('insertGraph()');
+      expect(warnings[1]).toContain('upsertGraph()');
     });
   });
 
@@ -5698,15 +5561,15 @@ describe('QueryBuilder', () => {
       await Person.query().insertGraph({ name: 'Jennifer' }, { relat: true });
       await Person.query().insertGraph({ name: 'Jennifer' }, { relat: true });
 
-      expect(warnings).to.have.length(1);
-      expect(warnings[0]).to.contain('Unknown graph option "relat" is ignored.');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('Unknown graph option "relat" is ignored.');
     });
 
     it('upsertGraph() should warn about an unknown option', async () => {
       await Person.query().upsertGraph({ name: 'Jennifer' }, { noInset: true });
 
-      expect(warnings).to.have.length(1);
-      expect(warnings[0]).to.contain('Unknown graph option "noInset" is ignored.');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('Unknown graph option "noInset" is ignored.');
     });
 
     it('should not warn about known options', async () => {
@@ -5716,7 +5579,7 @@ describe('QueryBuilder', () => {
         { insertMissing: true, noDelete: true, fetchStrategy: 'OnlyNeeded' },
       );
 
-      expect(warnings).to.eql([]);
+      expect(warnings).toEqual([]);
     });
   });
 
@@ -5726,18 +5589,18 @@ describe('QueryBuilder', () => {
 
       builder.context({ a: 1 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
       });
 
       builder.context({ b: 2 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(builder.context().transaction === mockKnex).to.equal(true);
+      expect(builder.context().transaction === mockKnex).toBe(true);
     });
 
     it('clearContext() should clear the context', () => {
@@ -5745,14 +5608,14 @@ describe('QueryBuilder', () => {
 
       builder.context({ a: 1 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
       });
 
       const builder2 = builder.clearContext();
 
-      expect(builder === builder2).to.equal(true);
-      expect(builder.context()).to.eql({});
+      expect(builder === builder2).toBe(true);
+      expect(builder.context()).toEqual({});
     });
 
     it('`context` should merge context', () => {
@@ -5762,16 +5625,16 @@ describe('QueryBuilder', () => {
       builder.context(origContext);
       builder.context({ b: 2 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(origContext).to.eql({
+      expect(origContext).toEqual({
         a: 1,
       });
 
-      expect(builder.context().transaction === mockKnex).to.equal(true);
+      expect(builder.context().transaction === mockKnex).toBe(true);
     });
 
     it('`context` can be called without `context` having been called', () => {
@@ -5781,16 +5644,16 @@ describe('QueryBuilder', () => {
       builder.context(origContext);
       builder.context({ b: 2 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(origContext).to.eql({
+      expect(origContext).toEqual({
         a: 1,
       });
 
-      expect(builder.context().transaction === mockKnex).to.equal(true);
+      expect(builder.context().transaction === mockKnex).toBe(true);
     });
 
     it('cloning a query builder should clone the context also', () => {
@@ -5802,21 +5665,21 @@ describe('QueryBuilder', () => {
       const builder2 = builder.clone();
       builder2.context({ b: 2 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
       });
 
-      expect(builder2.context()).to.eql({
+      expect(builder2.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(origContext).to.eql({
+      expect(origContext).toEqual({
         a: 1,
       });
 
-      expect(builder.context().transaction === mockKnex).to.equal(true);
-      expect(builder2.context().transaction === mockKnex).to.equal(true);
+      expect(builder.context().transaction === mockKnex).toBe(true);
+      expect(builder2.context().transaction === mockKnex).toBe(true);
     });
 
     it('calling `childQueryOf` should copy a reference of the context', () => {
@@ -5828,22 +5691,22 @@ describe('QueryBuilder', () => {
       const builder2 = TestModel.query().childQueryOf(builder);
       builder2.context({ b: 2 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(builder2.context()).to.eql({
+      expect(builder2.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(origContext).to.eql({
+      expect(origContext).toEqual({
         a: 1,
       });
 
-      expect(builder.context().transaction === mockKnex).to.equal(true);
-      expect(builder2.context().transaction === mockKnex).to.equal(true);
+      expect(builder.context().transaction === mockKnex).toBe(true);
+      expect(builder2.context().transaction === mockKnex).toBe(true);
     });
 
     it('calling `childQueryOf(builder, { fork: true })` should copy the context', () => {
@@ -5855,21 +5718,21 @@ describe('QueryBuilder', () => {
       const builder2 = TestModel.query().childQueryOf(builder, { fork: true });
       builder2.context({ b: 2 });
 
-      expect(builder.context()).to.eql({
+      expect(builder.context()).toEqual({
         a: 1,
       });
 
-      expect(builder2.context()).to.eql({
+      expect(builder2.context()).toEqual({
         a: 1,
         b: 2,
       });
 
-      expect(origContext).to.eql({
+      expect(origContext).toEqual({
         a: 1,
       });
 
-      expect(builder.context().transaction === mockKnex).to.equal(true);
-      expect(builder2.context().transaction === mockKnex).to.equal(true);
+      expect(builder.context().transaction === mockKnex).toBe(true);
+      expect(builder2.context().transaction === mockKnex).toBe(true);
     });
 
     it('values saved to context in hooks should be available later', () => {
@@ -5888,7 +5751,7 @@ describe('QueryBuilder', () => {
       return TestModel.query()
         .patch({ a: 1 })
         .then(() => {
-          expect(foo).to.equal(100);
+          expect(foo).toBe(100);
         });
     });
   });
@@ -5905,11 +5768,11 @@ describe('QueryBuilder', () => {
       const models = [{ a: 1 }, { a: 2 }, { a: 3 }].map((it) => TestModel.fromJson(it));
       const result = await TestModel.query().insert(models).onConflict('a').ignore();
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'insert into "Model" ("a") values (1), (2), (3) on conflict ("a") do nothing returning "id", "a"',
       ]);
-      expect(result).to.eql(models);
-      expect(models.map((it) => it.id)).to.eql([11, undefined, 13]);
+      expect(result).toEqual(models);
+      expect(models.map((it) => it.id)).toEqual([11, undefined, 13]);
     });
 
     it('should match the returned rows by the conflict columns regardless of their order', async () => {
@@ -5923,7 +5786,7 @@ describe('QueryBuilder', () => {
       const models = [{ a: 1 }, { a: 2 }, { a: 3 }].map((it) => TestModel.fromJson(it));
       await TestModel.query().insert(models).onConflict(['a']).ignore();
 
-      expect(models.map((it) => it.id)).to.eql([11, undefined, 13]);
+      expect(models.map((it) => it.id)).toEqual([11, undefined, 13]);
     });
 
     it('should match the returned rows by the id if no conflict columns are given', async () => {
@@ -5932,8 +5795,8 @@ describe('QueryBuilder', () => {
       const models = [{ id: 1 }, { id: 2 }].map((it) => TestModel.fromJson(it));
       await TestModel.query().insert(models).onConflict().ignore().returning('*');
 
-      expect(models[0].b).to.equal(undefined);
-      expect(models[1].b).to.equal('db2');
+      expect(models[0].b).toBeUndefined();
+      expect(models[1].b).toBe('db2');
     });
 
     it('should match duplicate keys in insertion order', async () => {
@@ -5945,8 +5808,8 @@ describe('QueryBuilder', () => {
       ].map((it) => TestModel.fromJson(it));
       await TestModel.query().insert(models).onConflict('a').ignore().returning('*');
 
-      expect(models.map((it) => it.id)).to.eql([11, undefined]);
-      expect(models.map((it) => it.b)).to.eql(['first', 'second']);
+      expect(models.map((it) => it.id)).toEqual([11, undefined]);
+      expect(models.map((it) => it.b)).toEqual(['first', 'second']);
     });
 
     it('should leave the model untouched if the only row is ignored', async () => {
@@ -5955,8 +5818,8 @@ describe('QueryBuilder', () => {
       const model = TestModel.fromJson({ a: 1 });
       const result = await TestModel.query().insert(model).onConflict('a').ignore();
 
-      expect(result).to.be(model);
-      expect(model.id).to.equal(undefined);
+      expect(result).toBe(model);
+      expect(model.id).toBeUndefined();
     });
 
     it('should not crash with object properties in the jsonSchema', async () => {
@@ -5980,8 +5843,8 @@ describe('QueryBuilder', () => {
         .ignore()
         .returning('*');
 
-      expect(result.map((it) => it.id)).to.eql([undefined, 12]);
-      expect(result.map((it) => it.obj)).to.eql([{ x: 1 }, { x: 2 }]);
+      expect(result.map((it) => it.id)).toEqual([undefined, 12]);
+      expect(result.map((it) => it.obj)).toEqual([{ x: 1 }, { x: 2 }]);
     });
 
     it('should throw if the returned rows cannot be matched to the models', async () => {
@@ -5993,8 +5856,8 @@ describe('QueryBuilder', () => {
         .ignore()
         .catch((err) => err);
 
-      expect(err).to.be.an(Error);
-      expect(err.message).to.match(/^Could not match the rows returned by an insert/);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toMatch(/^Could not match the rows returned by an insert/);
     });
 
     it('should merge the returned rows by position if all rows are returned', async () => {
@@ -6010,7 +5873,7 @@ describe('QueryBuilder', () => {
         .onConflict('a')
         .merge();
 
-      expect(result.map((it) => it.id)).to.eql([11, 12]);
+      expect(result.map((it) => it.id)).toEqual([11, 12]);
     });
 
     it('should not change the returning clause of inserts without onConflict()', async () => {
@@ -6018,8 +5881,8 @@ describe('QueryBuilder', () => {
 
       const result = await TestModel.query().insert([{ a: 1 }, { a: 2 }]);
 
-      expect(executedQueries).to.eql(['insert into "Model" ("a") values (1), (2) returning "id"']);
-      expect(result.map((it) => it.id)).to.eql([11, 12]);
+      expect(executedQueries).toEqual(['insert into "Model" ("a") values (1), (2) returning "id"']);
+      expect(result.map((it) => it.id)).toEqual([11, 12]);
     });
 
     it('insertAndFetch() should only fetch the models that have an id', async () => {
@@ -6030,12 +5893,12 @@ describe('QueryBuilder', () => {
         .onConflict('a')
         .ignore();
 
-      expect(executedQueries).to.eql([
+      expect(executedQueries).toEqual([
         'insert into "Model" ("a") values (1), (3) on conflict ("a") do nothing returning "id", "a"',
         'select "Model".* from "Model" where "Model"."id" in (13)',
       ]);
-      expect(result.map((it) => it.id)).to.eql([undefined, 13]);
-      expect(result.map((it) => it.b)).to.eql([undefined, 'fetched']);
+      expect(result.map((it) => it.id)).toEqual([undefined, 13]);
+      expect(result.map((it) => it.b)).toEqual([undefined, 'fetched']);
     });
 
     it('insertAndFetch() should not fetch anything if no model has an id', async () => {
@@ -6043,9 +5906,9 @@ describe('QueryBuilder', () => {
 
       const result = await TestModel.query().insertAndFetch({ a: 1 }).onConflict('a').ignore();
 
-      expect(executedQueries).to.have.length(1);
-      expect(result.a).to.equal(1);
-      expect(result.id).to.equal(undefined);
+      expect(executedQueries).toHaveLength(1);
+      expect(result.a).toBe(1);
+      expect(result.id).toBeUndefined();
     });
   });
 
@@ -6134,7 +5997,7 @@ describe('QueryBuilder', () => {
     });
 
     function testToFindQuery(query, sql) {
-      expect(query.toFindQuery().toKnexQuery().toSQL().sql).to.equal(sql);
+      expect(query.toFindQuery().toKnexQuery().toSQL().sql).toBe(sql);
     }
   });
 
@@ -6181,16 +6044,16 @@ describe('QueryBuilder', () => {
         .toString();
 
     it('should throw for aliases over the postgres limit, suggesting `minimize`', () => {
-      expect(() => build('pg')).to.throwException((err) => {
-        expect(err.message).to.equal(
-          `identifier pets:${longColumn} is over 63 characters long and would be truncated by the database engine. Use the \`minimize\` option of withGraphJoined() to shorten the aliases.`,
-        );
-      });
+      expect(() => build('pg')).toThrow(
+        expect.objectContaining({
+          message: `identifier pets:${longColumn} is over 63 characters long and would be truncated by the database engine. Use the \`minimize\` option of withGraphJoined() to shorten the aliases.`,
+        }),
+      );
     });
 
     it('should use the limit of the database', () => {
-      expect(build('mysql')).to.contain(`pets:${longColumn}`);
-      expect(build('mssql')).to.contain(`pets:${longColumn}`);
+      expect(build('mysql')).toContain(`pets:${longColumn}`);
+      expect(build('mssql')).toContain(`pets:${longColumn}`);
     });
 
     it('should still throw over the mssql limit', () => {
@@ -6198,7 +6061,7 @@ describe('QueryBuilder', () => {
         columns: ['id', 'ownerId', 'c'.repeat(130)],
       });
 
-      expect(() => build('mssql')).to.throwException(/is over 128 characters long/);
+      expect(() => build('mssql')).toThrow(/is over 128 characters long/);
     });
   });
 
@@ -6225,7 +6088,7 @@ describe('QueryBuilder', () => {
         thrown = err;
       }
 
-      expect(thrown).to.be.a(ErrorClass);
+      expect(thrown).toBeInstanceOf(ErrorClass);
       return thrown;
     };
 
@@ -6238,10 +6101,10 @@ describe('QueryBuilder', () => {
         objection.UniqueViolationError,
       );
 
-      expect(err.client).to.equal('mssql');
-      expect(err.table).to.equal('user');
-      expect(err.schema).to.equal('dbo');
-      expect(err.constraint).to.equal('user_pkey');
+      expect(err.client).toBe('mssql');
+      expect(err.table).toBe('user');
+      expect(err.schema).toBe('dbo');
+      expect(err.constraint).toBe('user_pkey');
     });
 
     it('should still throw a UniqueViolationError for unique key violations', async () => {
@@ -6253,7 +6116,7 @@ describe('QueryBuilder', () => {
         objection.UniqueViolationError,
       );
 
-      expect(err.constraint).to.equal('user_email_unique');
+      expect(err.constraint).toBe('user_email_unique');
     });
 
     it('should throw a ForeignKeyViolationError for foreign key violations', async () => {
@@ -6266,8 +6129,8 @@ describe('QueryBuilder', () => {
         objection.ForeignKeyViolationError,
       );
 
-      expect(err.table).to.equal('pet');
-      expect(err.constraint).to.equal('pet_ownerid_foreign');
+      expect(err.table).toBe('pet');
+      expect(err.constraint).toBe('pet_ownerid_foreign');
     });
 
     it('should throw a NotNullViolationError for not null violations', async () => {
@@ -6280,7 +6143,7 @@ describe('QueryBuilder', () => {
         objection.NotNullViolationError,
       );
 
-      expect(err.column).to.equal('name');
+      expect(err.column).toBe('name');
     });
 
     it('should keep the error of tedious as the native error', async () => {
@@ -6290,8 +6153,8 @@ describe('QueryBuilder', () => {
       );
       const err = await expectError(error, objection.UniqueViolationError);
 
-      expect(err.nativeError).to.equal(error);
-      expect(err.message).to.equal(error.message);
+      expect(err.nativeError).toBe(error);
+      expect(err.message).toBe(error.message);
     });
 
     it('should throw a DBError for other errors', async () => {
@@ -6300,7 +6163,7 @@ describe('QueryBuilder', () => {
         objection.DBError,
       );
 
-      expect(err).to.not.be.a(objection.UniqueViolationError);
+      expect(err).not.toBeInstanceOf(objection.UniqueViolationError);
     });
 
     it('should throw a DBError with the messages of several errors', async () => {
@@ -6312,8 +6175,8 @@ describe('QueryBuilder', () => {
       error.message = 'select * - ';
       const err = await expectError(error, objection.DBError);
 
-      expect(err.nativeError).to.equal(error);
-      expect(err.message).to.equal(
+      expect(err.nativeError).toBe(error);
+      expect(err.message).toBe(
         "select * - Incorrect syntax near '@p0'. Invalid usage of the option next in the FETCH statement.",
       );
     });
@@ -6328,7 +6191,7 @@ describe('QueryBuilder', () => {
         thrown = err;
       }
 
-      expect(thrown).to.equal(error);
+      expect(thrown).toBe(error);
     });
   });
 });

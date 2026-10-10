@@ -1,8 +1,8 @@
-const { Model, raw } = require('../../');
-const { expect } = require('chai');
-const { sortBy } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model, raw } from 'objection';
+import { sortBy } from '../../testUtils/testUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   describe("relations that don't use the primary keys", () => {
     class Person extends Model {
       static get tableName() {
@@ -72,7 +72,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('personMovie')
         .dropTableIfExists('animal')
@@ -101,7 +101,7 @@ module.exports = (session) => {
         });
     });
 
-    before(() => {
+    beforeAll(() => {
       Person.knex(session.knex);
       PersonMovie.knex(session.knex);
       Animal.knex(session.knex);
@@ -159,7 +159,7 @@ module.exports = (session) => {
         it('find', () => {
           return findArnold()
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((gustav) => expect(gustav.name).to.eql('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
 
         it('update', () => {
@@ -167,9 +167,9 @@ module.exports = (session) => {
             .then((arnold) => {
               return arnold.$relatedQuery('parent').update({ nickname: 'Gus' });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(1))
+            .then((numUpdated) => expect(numUpdated).toBe(1))
             .then(findGustav)
-            .then((gustav) => expect(gustav.nickname).to.equal('Gus'));
+            .then((gustav) => expect(gustav.nickname).toBe('Gus'));
         });
 
         it('delete', () => {
@@ -177,9 +177,9 @@ module.exports = (session) => {
             .then((arnold) => {
               return arnold.$relatedQuery('parent').delete();
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(1))
+            .then((numDeleted) => expect(numDeleted).toBe(1))
             .then(findGustav)
-            .then((gustav) => expect(gustav).to.equal(undefined));
+            .then((gustav) => expect(gustav).toBeUndefined());
         });
 
         it('insert', () => {
@@ -189,9 +189,9 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((gustavNeue) => expect(gustavNeue.name).to.equal('Gustav-neue'))
+            .then((gustavNeue) => expect(gustavNeue.name).toBe('Gustav-neue'))
             .then(findGustav)
-            .then((gustav) => expect(gustav.name).to.equal('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
 
         it('relate', () => {
@@ -201,9 +201,9 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((meinhard) => expect(meinhard.name).to.equal('Meinhard'))
+            .then((meinhard) => expect(meinhard.name).toBe('Meinhard'))
             .then(findGustav)
-            .then((gustav) => expect(gustav.name).to.equal('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
 
         it('unrelate', () => {
@@ -213,9 +213,9 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((parent) => expect(parent).to.eql(undefined))
+            .then((parent) => expect(parent).toBeUndefined())
             .then(findGustav)
-            .then((gustav) => expect(gustav.name).to.equal('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
       });
 
@@ -223,7 +223,7 @@ module.exports = (session) => {
         it('find', () => {
           return findArnold()
             .then((arnold) => arnold.$relatedQuery('pets'))
-            .then((pets) => expect(pets.map((it) => it.name).sort()).to.eql(['Freud', 'Stalin']));
+            .then((pets) => expect(pets.map((it) => it.name).sort()).toEqual(['Freud', 'Stalin']));
         });
 
         it('update', () => {
@@ -231,11 +231,11 @@ module.exports = (session) => {
             .then((arnold) => {
               return arnold.$relatedQuery('pets').update({ nickname: concat('name', "'zilla'") });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(2))
+            .then((numUpdated) => expect(numUpdated).toBe(2))
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets'))
             .then((pets) => {
-              expect(sortBy(pets, 'nickname').map((pet) => pet.nickname)).to.eql([
+              expect(sortBy(pets, 'nickname').map((pet) => pet.nickname)).toEqual([
                 'Freudzilla',
                 'Stalinzilla',
               ]);
@@ -247,10 +247,10 @@ module.exports = (session) => {
             .then((arnold) => {
               return arnold.$relatedQuery('pets').delete();
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(2))
+            .then((numDeleted) => expect(numDeleted).toBe(2))
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets'))
-            .then((pets) => expect(pets).to.have.length(0));
+            .then((pets) => expect(pets).toHaveLength(0));
         });
 
         it('insert', () => {
@@ -260,7 +260,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('pets').orderBy('name').select('name'))
-            .then((pets) => expect(pets.map((it) => it.name)).to.eql(['Cat', 'Freud', 'Stalin']));
+            .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Cat', 'Freud', 'Stalin']));
         });
 
         it('relate', () => {
@@ -271,7 +271,7 @@ module.exports = (session) => {
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('movies').orderBy('name').select('name'))
             .then((movies) =>
-              expect(movies.map((it) => it.name)).to.eql([
+              expect(movies.map((it) => it.name)).toEqual([
                 'Terminator',
                 'Terminator 2',
                 'Terminator 3',
@@ -286,7 +286,7 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('movies'))
-            .then((movies) => expect(movies).to.eql([]));
+            .then((movies) => expect(movies).toEqual([]));
         });
       });
 
@@ -295,7 +295,7 @@ module.exports = (session) => {
           return findArnold()
             .then((arnold) => arnold.$relatedQuery('movies').orderBy('name'))
             .then((movies) =>
-              expect(movies.map((it) => it.name)).to.eql(['Terminator', 'Terminator 2']),
+              expect(movies.map((it) => it.name)).toEqual(['Terminator', 'Terminator 2']),
             );
         });
 
@@ -307,12 +307,12 @@ module.exports = (session) => {
                 .where('name', 'Terminator')
                 .patch({ altName: concat('name', "': This Time its Personal'") });
             })
-            .then((numUpdated) => expect(numUpdated).to.equal(1))
+            .then((numUpdated) => expect(numUpdated).toBe(1))
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('movies'))
             .then((movies) => {
-              expect(movies.length).to.equal(2);
-              expect(movies.filter((it) => it.altName).map((it) => it.altName)).to.eql([
+              expect(movies.length).toBe(2);
+              expect(movies.filter((it) => it.altName).map((it) => it.altName)).toEqual([
                 'Terminator: This Time its Personal',
               ]);
             });
@@ -323,11 +323,11 @@ module.exports = (session) => {
             .then((arnold) => {
               return arnold.$relatedQuery('movies').delete().where('name', 'Terminator 2');
             })
-            .then((numDeleted) => expect(numDeleted).to.equal(1))
+            .then((numDeleted) => expect(numDeleted).toBe(1))
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('movies'))
             .then((movies) => {
-              expect(movies.map((it) => it.name)).to.eql(['Terminator']);
+              expect(movies.map((it) => it.name)).toEqual(['Terminator']);
             });
         });
 
@@ -338,9 +338,9 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((meinhard) => expect(meinhard.name).to.equal('Meinhard'))
+            .then((meinhard) => expect(meinhard.name).toBe('Meinhard'))
             .then(findGustav)
-            .then((gustav) => expect(gustav.name).to.equal('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
 
         it('unrelate', () => {
@@ -350,9 +350,9 @@ module.exports = (session) => {
             })
             .then(findArnold)
             .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((parent) => expect(parent).to.eql(undefined))
+            .then((parent) => expect(parent).toBeUndefined())
             .then(findGustav)
-            .then((gustav) => expect(gustav.name).to.equal('Gustav'));
+            .then((gustav) => expect(gustav.name).toBe('Gustav'));
         });
       });
     });
@@ -367,8 +367,8 @@ module.exports = (session) => {
         .whereExists(Person.relatedQuery('pets'))
         .orderBy('name')
         .then((result) => {
-          expect(result.length).to.equal(2);
-          expect(result).to.containSubset([
+          expect(result.length).toBe(2);
+          expect(result).toContainSubset([
             {
               name: 'Arnold',
 
@@ -417,8 +417,8 @@ module.exports = (session) => {
         .whereExists(Person.relatedQuery('pets'))
         .orderBy('person.name')
         .then((result) => {
-          expect(result.length).to.equal(2);
-          expect(result).to.containSubset([
+          expect(result.length).toBe(2);
+          expect(result).toContainSubset([
             {
               name: 'Arnold',
 
@@ -467,7 +467,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -495,7 +495,7 @@ module.exports = (session) => {
             })
             .then(findGustav)
             .then((gustav) => {
-              expect(gustav).to.equal(undefined);
+              expect(gustav).toBeUndefined();
             });
         });
 
@@ -507,7 +507,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
                 parent: null,
 
@@ -532,7 +532,7 @@ module.exports = (session) => {
             })
             .then(findGustav)
             .then((gustav) => {
-              expect(gustav).to.equal(undefined);
+              expect(gustav).toBeUndefined();
             });
         });
 
@@ -549,7 +549,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -577,7 +577,7 @@ module.exports = (session) => {
             })
             .then(findGustav)
             .then((gustav) => {
-              expect(gustav.name).to.equal('Gustav');
+              expect(gustav.name).toBe('Gustav');
             });
         });
 
@@ -593,7 +593,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
                 parent: null,
 
@@ -618,7 +618,7 @@ module.exports = (session) => {
             })
             .then(findGustav)
             .then((gustav) => {
-              expect(gustav.name).to.equal('Gustav');
+              expect(gustav.name).toBe('Gustav');
             });
         });
       });
@@ -635,7 +635,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -674,7 +674,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -699,7 +699,7 @@ module.exports = (session) => {
             })
             .then(findStalin)
             .then((stalin) => {
-              expect(stalin).to.equal(undefined);
+              expect(stalin).toBeUndefined();
             });
         });
 
@@ -715,7 +715,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -746,7 +746,7 @@ module.exports = (session) => {
             })
             .then(() => Animal.query().where('name', 'Tahvo'))
             .then((tahvos) => {
-              expect(tahvos.length).to.equal(1);
+              expect(tahvos.length).toBe(1);
             });
         });
 
@@ -762,7 +762,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -787,8 +787,8 @@ module.exports = (session) => {
             })
             .then(findStalin)
             .then((stalin) => {
-              expect(stalin.name).to.equal('Stalin');
-              expect(stalin.ownerName).to.equal(null);
+              expect(stalin.name).toBe('Stalin');
+              expect(stalin.ownerName).toBeNull();
             });
         });
       });
@@ -802,7 +802,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -841,7 +841,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -866,7 +866,7 @@ module.exports = (session) => {
             })
             .then(findTerminator)
             .then((terminator) => {
-              expect(terminator).to.equal(undefined);
+              expect(terminator).toBeUndefined();
             });
         });
 
@@ -882,7 +882,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -913,7 +913,7 @@ module.exports = (session) => {
             })
             .then(() => Movie.query().where('name', 'Terminator 3'))
             .then((terminator3s) => {
-              expect(terminator3s.length).to.equal(1);
+              expect(terminator3s.length).toBe(1);
             });
         });
 
@@ -929,7 +929,7 @@ module.exports = (session) => {
             })
             .then(findArnoldEagerly)
             .then((arnold) => {
-              expect(arnold).to.containSubset({
+              expect(arnold).toContainSubset({
                 name: 'Arnold',
 
                 parent: {
@@ -954,13 +954,13 @@ module.exports = (session) => {
             })
             .then(findTerminator)
             .then((terminator) => {
-              expect(terminator.name).to.equal('Terminator');
+              expect(terminator.name).toBe('Terminator');
             });
         });
       });
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('personMovie')
         .dropTableIfExists('animal')

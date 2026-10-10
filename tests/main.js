@@ -1,64 +1,102 @@
-const expect = require('expect.js');
+import { describe, it, expect } from 'vitest';
+import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import * as dbErrors from '../lib/dbErrors/index.js';
+import * as objectionNamespace from 'objection';
+import { QueryBuilderBase } from '../lib/queryBuilder/QueryBuilderBase.js';
+import { QueryBuilderOperation } from '../lib/queryBuilder/operations/QueryBuilderOperation.js';
+import { RelationExpression } from '../lib/queryBuilder/RelationExpression.js';
+import { ValidationError } from '../lib/model/ValidationError.js';
+import { NotFoundError } from '../lib/model/NotFoundError.js';
+import { Relation } from '../lib/relations/Relation.js';
+import { HasManyRelation } from '../lib/relations/hasMany/HasManyRelation.js';
+import { HasOneRelation } from '../lib/relations/hasOne/HasOneRelation.js';
+import { BelongsToOneRelation } from '../lib/relations/belongsToOne/BelongsToOneRelation.js';
+import { HasOneThroughRelation } from '../lib/relations/hasOneThrough/HasOneThroughRelation.js';
+import { ManyToManyRelation } from '../lib/relations/manyToMany/ManyToManyRelation.js';
+import { transaction } from '../lib/transaction.js';
+import { ref } from '../lib/queryBuilder/ReferenceBuilder.js';
+import { raw } from '../lib/queryBuilder/RawBuilder.js';
+import { val } from '../lib/queryBuilder/ValueBuilder.js';
+import { mixin, compose } from '../lib/utils/mixin.js';
+import { Validator } from '../lib/model/Validator.js';
+import { AjvValidator } from '../lib/model/AjvValidator.js';
+import { Model } from '../lib/model/Model.js';
+import { QueryBuilder } from '../lib/queryBuilder/QueryBuilder.js';
+
+const require = createRequire(import.meta.url);
 
 describe('main module', () => {
-  it('should be able to load using require', () => {
-    let objection = require('../');
+  const expectExports = (objection) => {
+    expect(objection.QueryBuilderBase).toBe(QueryBuilderBase);
+    expect(objection.QueryBuilderOperation).toBe(QueryBuilderOperation);
+    expect(objection.RelationExpression).toBe(RelationExpression);
+    expect(objection.ValidationError).toBe(ValidationError);
+    expect(objection.NotFoundError).toBe(NotFoundError);
+    expect(objection.Relation).toBe(Relation);
+    expect(objection.HasManyRelation).toBe(HasManyRelation);
+    expect(objection.HasOneRelation).toBe(HasOneRelation);
+    expect(objection.BelongsToOneRelation).toBe(BelongsToOneRelation);
+    expect(objection.HasOneThroughRelation).toBe(HasOneThroughRelation);
+    expect(objection.ManyToManyRelation).toBe(ManyToManyRelation);
+    expect(objection.transaction).toBe(transaction);
+    expect(objection.transaction.start).toBe(transaction.start);
+    expect(objection.ref).toBe(ref);
+    expect(objection.raw).toBe(raw);
+    expect(objection.val).toBe(val);
+    expect(objection.mixin).toBe(mixin);
+    expect(objection.compose).toBe(compose);
+    expect(Object.getPrototypeOf(objection.Validator)).toBe(Validator);
+    expect(Object.getPrototypeOf(objection.AjvValidator)).toBe(AjvValidator);
+    expect(Object.getPrototypeOf(objection.Model)).toBe(Model);
+    expect(Object.getPrototypeOf(objection.QueryBuilder)).toBe(QueryBuilder);
+    expect(objection.DBError).toBe(dbErrors.DBError);
+    expect(objection.UniqueViolationError).toBe(dbErrors.UniqueViolationError);
+    expect(objection.ConstraintViolationError).toBe(dbErrors.ConstraintViolationError);
+    expect(objection.ForeignKeyViolationError).toBe(dbErrors.ForeignKeyViolationError);
+    expect(objection.NotNullViolationError).toBe(dbErrors.NotNullViolationError);
+    expect(objection.CheckViolationError).toBe(dbErrors.CheckViolationError);
+    expect(objection.DataError).toBe(dbErrors.DataError);
+  };
 
-    expect(objection.QueryBuilderBase).to.equal(
-      require('../lib/queryBuilder/QueryBuilderBase').QueryBuilderBase,
-    );
-    expect(objection.QueryBuilderOperation).to.equal(
-      require('../lib/queryBuilder/operations/QueryBuilderOperation').QueryBuilderOperation,
-    );
-    expect(objection.RelationExpression).to.equal(
-      require('../lib/queryBuilder/RelationExpression').RelationExpression,
-    );
-    expect(objection.ValidationError).to.equal(
-      require('../lib/model/ValidationError').ValidationError,
-    );
-    expect(objection.NotFoundError).to.equal(require('../lib/model/NotFoundError').NotFoundError);
-    expect(objection.Relation).to.equal(require('../lib/relations/Relation').Relation);
-    expect(objection.HasManyRelation).to.equal(
-      require('../lib/relations/hasMany/HasManyRelation').HasManyRelation,
-    );
-    expect(objection.HasOneRelation).to.equal(
-      require('../lib/relations/hasOne/HasOneRelation').HasOneRelation,
-    );
-    expect(objection.BelongsToOneRelation).to.equal(
-      require('../lib/relations/belongsToOne/BelongsToOneRelation').BelongsToOneRelation,
-    );
-    expect(objection.HasOneThroughRelation).to.equal(
-      require('../lib/relations/hasOneThrough/HasOneThroughRelation').HasOneThroughRelation,
-    );
-    expect(objection.ManyToManyRelation).to.equal(
-      require('../lib/relations/manyToMany/ManyToManyRelation').ManyToManyRelation,
-    );
-    expect(objection.transaction).to.equal(require('../lib/transaction').transaction);
-    expect(objection.transaction.start).to.equal(require('../lib/transaction').transaction.start);
-    expect(objection.ref).to.equal(require('../lib/queryBuilder/ReferenceBuilder').ref);
-    expect(objection.raw).to.equal(require('../lib/queryBuilder/RawBuilder').raw);
-    expect(objection.val).to.equal(require('../lib/queryBuilder/ValueBuilder').val);
-    expect(objection.mixin).to.equal(require('../lib/utils/mixin').mixin);
-    expect(objection.compose).to.equal(require('../lib/utils/mixin').compose);
-    expect(Object.getPrototypeOf(objection.Validator)).to.equal(
-      require('../lib/model/Validator').Validator,
-    );
-    expect(Object.getPrototypeOf(objection.AjvValidator)).to.equal(
-      require('../lib/model/AjvValidator').AjvValidator,
-    );
-    expect(Object.getPrototypeOf(objection.Model)).to.equal(require('../lib/model/Model').Model);
-    expect(Object.getPrototypeOf(objection.QueryBuilder)).to.equal(
-      require('../lib/queryBuilder/QueryBuilder').QueryBuilder,
-    );
-    expect(objection.DBError).to.equal(require('db-errors').DBError);
-    expect(objection.UniqueViolationError).to.equal(require('db-errors').UniqueViolationError);
-    expect(objection.ConstraintViolationError).to.equal(
-      require('db-errors').ConstraintViolationError,
-    );
-    expect(objection.ForeignKeyViolationError).to.equal(
-      require('db-errors').ForeignKeyViolationError,
-    );
-    expect(objection.NotNullViolationError).to.equal(require('db-errors').NotNullViolationError);
-    expect(objection.DataError).to.equal(require('db-errors').DataError);
+  it('should be able to load using named imports', () => {
+    expectExports(objectionNamespace);
   });
+
+  it('should not have a default export', () => {
+    expect(objectionNamespace).not.toHaveProperty('default');
+  });
+
+  it('should be able to load using require', () => {
+    const objection = require('objection');
+    expectExports(objection);
+    expect(objection.Model).toBe(objectionNamespace.Model);
+  });
+
+  // Runs in a fresh process, so that only the modules that the main module
+  // imports itself are loaded, not the ones that other tests import.
+  for (const type of ['module', 'commonjs']) {
+    it(`should load everything it needs on its own (${type})`, () => {
+      const load =
+        type === 'module'
+          ? `import { Model } from 'objection';\nimport Knex from 'knex';`
+          : `const { Model } = require('objection');\nconst Knex = require('knex');`;
+      const code = `${load}
+        class Person extends Model {
+          static tableName = 'persons';
+        }
+        const query = Person.query(Knex({ client: 'pg' })).join('pets', function () {
+          this.on('pets.ownerId', 'persons.id');
+        });
+        console.log(query.toKnexQuery().toString());`;
+      const output = execFileSync(process.execPath, ['--input-type', type, '-e', code], {
+        cwd: path.join(import.meta.dirname, '..'),
+        encoding: 'utf8',
+      });
+      expect(output.trim()).toBe(
+        'select "persons".* from "persons" inner join "pets" on "pets"."ownerId" = "persons"."id"',
+      );
+    });
+  }
 });

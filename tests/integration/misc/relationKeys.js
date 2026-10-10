@@ -1,7 +1,7 @@
-const { Model } = require('../../../');
-const { expect } = require('chai');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('withGraphJoined() and withGraphFetched() should tell all keys apart (#222, #223)', () => {
     const { knex } = session;
     const timestampType = session.isMySql()
@@ -19,7 +19,7 @@ module.exports = (session) => {
     let Item;
     let Folder;
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('relation_keys_pets')
         .dropTableIfExists('relation_keys_persons')
@@ -84,7 +84,7 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema
         .dropTableIfExists('relation_keys_pets')
         .dropTableIfExists('relation_keys_persons')
@@ -98,7 +98,7 @@ module.exports = (session) => {
         .dropTableIfExists('relation_keys_folders');
     });
 
-    before(() => {
+    beforeAll(() => {
       class Pet extends Model {
         static get tableName() {
           return 'relation_keys_pets';
@@ -231,7 +231,7 @@ module.exports = (session) => {
       Folder.knex(knex);
     });
 
-    before(async () => {
+    beforeAll(async () => {
       await knex('relation_keys_persons').insert([
         { id: binaryId(0x80), name: 'p1' },
         { id: binaryId(0x81), name: 'p2' },
@@ -281,7 +281,7 @@ module.exports = (session) => {
             [method]('pets')
             .orderBy('relation_keys_persons.name');
 
-          expect(persons.map(({ name, pets }) => [name, pets.map(({ name }) => name)])).to.eql([
+          expect(persons.map(({ name, pets }) => [name, pets.map(({ name }) => name)])).toEqual([
             ['p1', ['pet1']],
             ['p2', ['pet2']],
           ]);
@@ -293,7 +293,7 @@ module.exports = (session) => {
             .orderBy('relation_keys_readings.value');
           const texts = readings.map(({ value, notes }) => [value, notes.map(({ text }) => text)]);
 
-          expect(texts).to.eql([
+          expect(texts).toEqual([
             [1, ['n1']],
             [2, []],
             [3, ['n3']],
@@ -310,7 +310,7 @@ module.exports = (session) => {
             labels.map(({ name }) => name),
           ]);
 
-          expect(names).to.eql([
+          expect(names).toEqual([
             [1, ['part1'], ['label1']],
             [2, ['part2'], ['label2']],
           ]);
@@ -320,7 +320,7 @@ module.exports = (session) => {
           const folders = await Folder.query()[method]('files');
           const ids = folders.map(({ id, files }) => [id, files.map(({ id }) => id)]);
 
-          expect(ids.sort()).to.eql([
+          expect(ids.sort()).toEqual([
             ['a', [1]],
             ['a.files.k_1', []],
             ['a/files/k_1', []],
@@ -335,10 +335,10 @@ module.exports = (session) => {
         { id: 'a.files.k_1', name: 'changed' },
       ]);
 
-      expect(await knex('relation_keys_folders').where('id', 'a.files.k_1')).to.eql([
+      expect(await knex('relation_keys_folders').where('id', 'a.files.k_1')).toEqual([
         { id: 'a.files.k_1', name: 'changed' },
       ]);
-      expect(await knex('relation_keys_files')).to.eql([{ id: 1, folderId: 'a', name: 'file1' }]);
+      expect(await knex('relation_keys_files')).toEqual([{ id: 1, folderId: 'a', name: 'file1' }]);
     });
 
     it('fetchGraph() with dates in composite ids', async () => {
@@ -349,7 +349,7 @@ module.exports = (session) => {
       );
       const texts = readings.map(({ value, notes }) => [value, notes.map(({ text }) => text)]);
 
-      expect(texts).to.eql([
+      expect(texts).toEqual([
         [1, ['n1']],
         [2, []],
         [3, ['n3']],

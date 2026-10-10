@@ -1,7 +1,7 @@
-const expect = require('expect.js');
-const { Model } = require('../../');
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('JSON queries on MySQL (ditojs#113)', () => {
     class ModelJson extends Model {
       static get tableName() {
@@ -11,7 +11,7 @@ module.exports = (session) => {
 
     let BoundModel;
 
-    before(async () => {
+    beforeAll(async () => {
       BoundModel = ModelJson.bindKnex(session.knex);
 
       await session.knex.schema.dropTableIfExists('ModelJson');
@@ -27,35 +27,35 @@ module.exports = (session) => {
       ]);
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema.dropTableIfExists('ModelJson');
     });
 
     const ids = (query) => query.orderBy('id').then((rows) => rows.map((it) => it.id));
 
     it('whereJsonSupersetOf() should use knex', async () => {
-      expect(await ids(BoundModel.query().whereJsonSupersetOf('data', { a: 1 }))).to.eql([1, 3]);
-      expect(await ids(BoundModel.query().whereJsonNotSupersetOf('data', { a: 1 }))).to.eql([2]);
+      expect(await ids(BoundModel.query().whereJsonSupersetOf('data', { a: 1 }))).toEqual([1, 3]);
+      expect(await ids(BoundModel.query().whereJsonNotSupersetOf('data', { a: 1 }))).toEqual([2]);
       expect(
         await ids(
           BoundModel.query()
             .whereJsonSupersetOf('data', { a: 2 })
             .orWhereJsonSupersetOf('ModelJson.data', { b: [1] }),
         ),
-      ).to.eql([1, 2]);
+      ).toEqual([1, 2]);
     });
 
     it('whereJsonSubsetOf() should use knex', async () => {
       expect(
         await ids(BoundModel.query().whereJsonSubsetOf('data', { a: 1, b: [1, 2], c: 3 })),
-      ).to.eql([1, 3]);
+      ).toEqual([1, 3]);
       expect(
         await ids(
           BoundModel.query()
             .where('id', 3)
             .orWhereJsonNotSubsetOf('data', { a: 1, b: [1, 2] }),
         ),
-      ).to.eql([2, 3]);
+      ).toEqual([2, 3]);
     });
   });
 };

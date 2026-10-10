@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model, snakeCaseMappers } = require('../../../');
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { Model, snakeCaseMappers } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('relation hooks', () => {
     describe('beforeInsert', () => {
       class Model1 extends Model {
@@ -136,7 +136,7 @@ module.exports = (session) => {
         }
       }
 
-      before(() => {
+      beforeAll(() => {
         Model1.knex(session.knex);
         Model2.knex(session.knex);
       });
@@ -169,7 +169,7 @@ module.exports = (session) => {
               return session.knex(Model1.getTableName()).where({ model1Prop1: 'new' }).first();
             })
             .then((row) => {
-              expect(row.model1Prop2).to.equal(42);
+              expect(row.model1Prop2).toBe(42);
             });
         });
 
@@ -182,7 +182,7 @@ module.exports = (session) => {
               return session.knex(Model2.getTableName()).where({ model2_prop1: 'new' }).first();
             })
             .then((row) => {
-              expect(row.model2_prop2).to.equal(100);
+              expect(row.model2_prop2).toBe(100);
             });
         });
 
@@ -198,12 +198,12 @@ module.exports = (session) => {
               return session.knex(Model2.getTableName()).where({ model2_prop1: 'new' }).first();
             })
             .then((row) => {
-              expect(row.model2_prop2).to.equal(7);
+              expect(row.model2_prop2).toBe(7);
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows.length).to.equal(1);
-              expect(rows[0].extra2).to.equal('Hello');
+              expect(rows.length).toBe(1);
+              expect(rows[0].extra2).toBe('Hello');
             });
         });
 
@@ -219,8 +219,8 @@ module.exports = (session) => {
               return session.knex('Model1Model2');
             })
             .then((rows) => {
-              expect(rows.length).to.equal(1);
-              expect(rows[0].extra2).to.equal('Extra');
+              expect(rows.length).toBe(1);
+              expect(rows[0].extra2).toBe('Extra');
             });
         });
 
@@ -262,7 +262,7 @@ module.exports = (session) => {
                 .findOne({ model1Prop1: 'parent' })
                 .withGraphFetched('[model1Relation1, model1Relation2, model1Relation3]')
                 .then((model) => {
-                  expect(model).to.containSubset({
+                  expect(model).toContainSubset({
                     model1Prop1: 'parent',
 
                     model1Relation1: {
@@ -359,7 +359,7 @@ module.exports = (session) => {
                 .findOne({ model1Prop1: 'parent' })
                 .withGraphFetched('[model1Relation1, model1Relation2, model1Relation3]')
                 .then((model) => {
-                  expect(model).to.containSubset({
+                  expect(model).toContainSubset({
                     model1Prop1: 'parent',
 
                     model1Relation1: {
@@ -415,8 +415,8 @@ module.exports = (session) => {
             .insert({ model1Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(root);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBe(root);
         });
 
         it('$relatedQuery().insert() has many relation', async () => {
@@ -425,8 +425,8 @@ module.exports = (session) => {
             .insert({ model2Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(root);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBe(root);
         });
 
         it('$relatedQuery().insert() many to many relation', async () => {
@@ -435,8 +435,8 @@ module.exports = (session) => {
             .insert({ model2Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(root);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBe(root);
         });
 
         it('relatedQuery().for(model).insert()', async () => {
@@ -445,8 +445,8 @@ module.exports = (session) => {
             .insert({ model2Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(root);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBe(root);
         });
 
         it('relatedQuery().for(id).insert() passes undefined', async () => {
@@ -455,8 +455,8 @@ module.exports = (session) => {
             .insert({ model2Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(undefined);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBeUndefined();
         });
 
         it('relatedQuery().for([model1, model2]).insert() passes undefined', async () => {
@@ -467,8 +467,8 @@ module.exports = (session) => {
             .insert({ model1Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(undefined);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBeUndefined();
         });
 
         it('$relatedQuery().insertGraph()', async () => {
@@ -477,8 +477,8 @@ module.exports = (session) => {
             .insertGraph({ model2Prop1: 'new' })
             .context({ owners });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner).to.equal(root);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner).toBe(root);
         });
 
         it('insertGraph()', async () => {
@@ -493,14 +493,14 @@ module.exports = (session) => {
 
           const ownerOf = (relation) => owners.find((it) => it.relation === relation);
 
-          expect(owners).to.have.length(3);
-          expect(ownerOf('model1Relation1').owner).to.equal(parent);
-          expect(ownerOf('model1Relation2').owner).to.equal(parent);
-          expect(ownerOf('model1Relation3').owner).to.equal(parent);
+          expect(owners).toHaveLength(3);
+          expect(ownerOf('model1Relation1').owner).toBe(parent);
+          expect(ownerOf('model1Relation2').owner).toBe(parent);
+          expect(ownerOf('model1Relation3').owner).toBe(parent);
           // The owner of a belongs to one relation is inserted after the related model.
-          expect(ownerOf('model1Relation1').ownerId).to.equal(undefined);
+          expect(ownerOf('model1Relation1').ownerId).toBeUndefined();
           // The owner of a has many relation is inserted before the related models.
-          expect(ownerOf('model1Relation2').ownerId).to.equal(parent.id);
+          expect(ownerOf('model1Relation2').ownerId).toBe(parent.id);
         });
 
         it('upsertGraph()', async () => {
@@ -511,9 +511,9 @@ module.exports = (session) => {
               model1Relation2: [{ model2Prop1: 'child' }],
             });
 
-          expect(owners).to.have.length(1);
-          expect(owners[0].owner.id).to.equal(root.id);
-          expect(owners[0].ownerId).to.equal(root.id);
+          expect(owners).toHaveLength(1);
+          expect(owners[0].owner.id).toBe(root.id);
+          expect(owners[0].ownerId).toBe(root.id);
         });
       });
     });

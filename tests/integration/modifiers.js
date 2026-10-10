@@ -1,7 +1,7 @@
-const { Model } = require('../../');
-const expect = require('chai').expect;
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('modifiers', () => {
     class Person extends Model {
       static get tableName() {
@@ -72,7 +72,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       return session.knex.schema
         .dropTableIfExists('personMovie')
         .dropTableIfExists('animal')
@@ -99,7 +99,7 @@ module.exports = (session) => {
         });
     });
 
-    before(() => {
+    beforeAll(() => {
       Person.knex(session.knex);
       Animal.knex(session.knex);
       Movie.knex(session.knex);
@@ -170,11 +170,11 @@ module.exports = (session) => {
         });
 
       for (const movie of arnold.movies) {
-        expect(movie.stars).to.be.greaterThan(2);
+        expect(movie.stars).toBeGreaterThan(2);
       }
 
-      expect(arnold.pets.length).to.equal(1);
-      expect(arnold.pets[0].name).to.equal('Stalin');
+      expect(arnold.pets.length).toBe(1);
+      expect(arnold.pets[0].name).toBe('Stalin');
     });
 
     it('joinEager', async () => {
@@ -191,11 +191,11 @@ module.exports = (session) => {
         });
 
       for (const movie of arnold.movies) {
-        expect(movie.stars).to.be.greaterThan(2);
+        expect(movie.stars).toBeGreaterThan(2);
       }
 
-      expect(arnold.pets.length).to.equal(1);
-      expect(arnold.pets[0].name).to.equal('Stalin');
+      expect(arnold.pets.length).toBe(1);
+      expect(arnold.pets[0].name).toBe('Stalin');
     });
 
     it('joinRelated', async () => {
@@ -213,13 +213,13 @@ module.exports = (session) => {
         })
         .orderBy(['person.name', 'movies.name', 'pets.name']);
 
-      expect(result).to.eql([
+      expect(result).toEqual([
         { name: 'Arnold', movieName: 'Terminator', petName: 'Stalin' },
         { name: 'Arnold', movieName: 'Terminator 2', petName: 'Stalin' },
       ]);
     });
 
-    after(() => {
+    afterAll(() => {
       return session.knex.schema
         .dropTableIfExists('personMovie')
         .dropTableIfExists('animal')

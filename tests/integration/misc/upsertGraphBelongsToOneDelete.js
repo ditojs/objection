@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model, ForeignKeyViolationError } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { Model, ForeignKeyViolationError } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('upsertGraph() deleting the row of a BelongsToOneRelation', () => {
     const { knex } = session;
 
@@ -63,23 +63,23 @@ module.exports = (session) => {
       it('should point the owner to an inserted row and delete the old one', async () => {
         await Owner.query().upsertGraph({ id: 1, pet: { id: 2 } }, { insertMissing: true });
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 2 }]);
-        expect(await knex('bt1_delete_pet')).to.eql([{ id: 2 }]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 2 }]);
+        expect(await knex('bt1_delete_pet')).toEqual([{ id: 2 }]);
       });
 
       it('should point the owner to a related row and delete the old one', async () => {
         await knex('bt1_delete_pet').insert({ id: 2 });
         await Owner.query().upsertGraph({ id: 1, pet: { id: 2 } }, { relate: true });
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 2 }]);
-        expect(await knex('bt1_delete_pet')).to.eql([{ id: 2 }]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 2 }]);
+        expect(await knex('bt1_delete_pet')).toEqual([{ id: 2 }]);
       });
 
       it('should keep the row when noInsert skips the replacement', async () => {
         await Owner.query().upsertGraph({ id: 1, pet: {} }, { noInsert: ['pet'] });
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 1 }]);
-        expect(await knex('bt1_delete_pet')).to.eql([{ id: 1 }]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 1 }]);
+        expect(await knex('bt1_delete_pet')).toEqual([{ id: 1 }]);
       });
     }
 
@@ -87,8 +87,8 @@ module.exports = (session) => {
       it('should set a nullable reference to null before deleting the row', async () => {
         await NullableOwner.query().upsertGraph({ id: 1, pet: null });
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
       it('should set a nullable reference to null before deleting a #delete row', async () => {
@@ -97,8 +97,8 @@ module.exports = (session) => {
           { allowMarkers: true },
         );
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
       for (const petIdSchema of [
@@ -109,13 +109,13 @@ module.exports = (session) => {
         it(`should set a reference to null with schema ${JSON.stringify(petIdSchema)}`, async () => {
           await createNullableOwner(petIdSchema).query().upsertGraph({ id: 1, pet: null });
 
-          expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
-          expect(await knex('bt1_delete_pet')).to.eql([]);
+          expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
+          expect(await knex('bt1_delete_pet')).toEqual([]);
         });
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       Owner.knex(knex);
     });
 
@@ -129,12 +129,12 @@ module.exports = (session) => {
       await knex('bt1_delete_pet').delete();
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('bt1_delete_owner').dropTableIfExists('bt1_delete_pet');
     });
 
     describe('with ON DELETE SET NULL', () => {
-      before(() => {
+      beforeAll(() => {
         return createTables((table) => {
           table.integer('petId').references('bt1_delete_pet.id').onDelete('SET NULL');
         });
@@ -155,8 +155,8 @@ module.exports = (session) => {
 
         await ValidatedOwner.query().upsertGraph({ id: 1, pet: null });
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
       itShouldReplaceTheRow();
@@ -164,7 +164,7 @@ module.exports = (session) => {
     });
 
     describe('with ON DELETE CASCADE', () => {
-      before(() => {
+      beforeAll(() => {
         return createTables((table) => {
           table.integer('petId').references('bt1_delete_pet.id').onDelete('CASCADE');
         });
@@ -173,8 +173,8 @@ module.exports = (session) => {
       it('should leave the owner to the database without a nullable schema', async () => {
         await Owner.query().upsertGraph({ id: 1, pet: null });
 
-        expect(await knex('bt1_delete_owner')).to.eql([]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
       itShouldReplaceTheRow();
@@ -182,7 +182,7 @@ module.exports = (session) => {
     });
 
     describe('with a NOT NULL reference and ON DELETE CASCADE', () => {
-      before(() => {
+      beforeAll(() => {
         return createTables((table) => {
           table.integer('petId').notNullable().references('bt1_delete_pet.id').onDelete('CASCADE');
         });
@@ -191,15 +191,15 @@ module.exports = (session) => {
       it('should leave the owner to the database', async () => {
         await Owner.query().upsertGraph({ id: 1, pet: null });
 
-        expect(await knex('bt1_delete_owner')).to.eql([]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
       itShouldReplaceTheRow();
     });
 
     describe('with a reference without ON DELETE action', () => {
-      before(() => {
+      beforeAll(() => {
         return createTables((table) => {
           table.integer('petId').references('bt1_delete_pet.id');
         });
@@ -210,9 +210,9 @@ module.exports = (session) => {
           .upsertGraph({ id: 1, pet: null })
           .catch((err) => err);
 
-        expect(error).to.be.an.instanceof(ForeignKeyViolationError);
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 1 }]);
-        expect(await knex('bt1_delete_pet')).to.eql([{ id: 1 }]);
+        expect(error).toBeInstanceOf(ForeignKeyViolationError);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 1 }]);
+        expect(await knex('bt1_delete_pet')).toEqual([{ id: 1 }]);
       });
 
       itShouldReplaceTheRow();

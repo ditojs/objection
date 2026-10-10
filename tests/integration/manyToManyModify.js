@@ -1,8 +1,8 @@
-const expect = require('expect.js');
-const { Model } = require('../../');
-const { resetWarnings } = require('../../lib/utils/warnings');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { Model } from 'objection';
+import { resetWarnings } from '../../lib/utils/warnings.js';
 
-module.exports = (session) => {
+export default (session) => {
   const { Model1, Model2 } = session.models;
 
   describe('many to many relation modify queries', () => {
@@ -76,9 +76,9 @@ module.exports = (session) => {
         const model = await owner(1);
         const numDeleted = await model.$relatedQuery('model1Relation3').unrelate();
 
-        expect(numDeleted).to.equal(4);
-        expect(await joinRows()).to.eql(withoutRows(0, 1, 2, 3));
-        expect(await model2Rows()).to.have.length(3);
+        expect(numDeleted).toBe(4);
+        expect(await joinRows()).toEqual(withoutRows(0, 1, 2, 3));
+        expect(await model2Rows()).toHaveLength(3);
       });
 
       it('should unrelate rows matching a filter on the related table', async () => {
@@ -88,8 +88,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.model2_prop1', 'b');
 
-        expect(numDeleted).to.equal(1);
-        expect(await joinRows()).to.eql(withoutRows(2));
+        expect(numDeleted).toBe(1);
+        expect(await joinRows()).toEqual(withoutRows(2));
       });
 
       it('should unrelate all join rows of a related row matching a filter', async () => {
@@ -99,8 +99,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.id_col', 1);
 
-        expect(numDeleted).to.equal(2);
-        expect(await joinRows()).to.eql(withoutRows(0, 1));
+        expect(numDeleted).toBe(2);
+        expect(await joinRows()).toEqual(withoutRows(0, 1));
       });
 
       it('should unrelate rows using findByIds', async () => {
@@ -110,8 +110,8 @@ module.exports = (session) => {
           .unrelate()
           .findByIds([1, 3]);
 
-        expect(numDeleted).to.equal(3);
-        expect(await joinRows()).to.eql(withoutRows(0, 1, 3));
+        expect(numDeleted).toBe(3);
+        expect(await joinRows()).toEqual(withoutRows(0, 1, 3));
       });
 
       it('should return 0 if no rows match', async () => {
@@ -121,8 +121,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.model2_prop1', 'does not exist');
 
-        expect(numDeleted).to.equal(0);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(numDeleted).toBe(0);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should unrelate for multiple owners', async () => {
@@ -131,8 +131,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.id_col', 2);
 
-        expect(numDeleted).to.equal(2);
-        expect(await joinRows()).to.eql(withoutRows(2, 4));
+        expect(numDeleted).toBe(2);
+        expect(await joinRows()).toEqual(withoutRows(2, 4));
       });
 
       describe('filters on the join table (#1853)', () => {
@@ -144,11 +144,11 @@ module.exports = (session) => {
             .where('Model1Model2.extra1', 'x1');
 
           if (byKeys) {
-            expect(numDeleted).to.equal(2);
-            expect(await joinRows()).to.eql(withoutRows(0, 1));
+            expect(numDeleted).toBe(2);
+            expect(await joinRows()).toEqual(withoutRows(0, 1));
           } else {
-            expect(numDeleted).to.equal(1);
-            expect(await joinRows()).to.eql(withoutRows(0));
+            expect(numDeleted).toBe(1);
+            expect(await joinRows()).toEqual(withoutRows(0));
           }
         });
 
@@ -159,11 +159,11 @@ module.exports = (session) => {
             .where('Model1Model2.extra1', 'x1');
 
           if (byKeys) {
-            expect(numDeleted).to.equal(3);
-            expect(await joinRows()).to.eql(withoutRows(0, 1, 5));
+            expect(numDeleted).toBe(3);
+            expect(await joinRows()).toEqual(withoutRows(0, 1, 5));
           } else {
-            expect(numDeleted).to.equal(2);
-            expect(await joinRows()).to.eql(withoutRows(0, 5));
+            expect(numDeleted).toBe(2);
+            expect(await joinRows()).toEqual(withoutRows(0, 5));
           }
         });
 
@@ -176,11 +176,11 @@ module.exports = (session) => {
             .where('Model1Model2.extra1', 'dup');
 
           if (byKeys) {
-            expect(numDeleted).to.equal(2);
-            expect(await joinRows()).to.eql(withoutRows(0, 1));
+            expect(numDeleted).toBe(2);
+            expect(await joinRows()).toEqual(withoutRows(0, 1));
           } else {
-            expect(numDeleted).to.equal(1);
-            expect(await joinRows()).to.eql(withoutRows(1));
+            expect(numDeleted).toBe(1);
+            expect(await joinRows()).toEqual(withoutRows(1));
           }
         });
 
@@ -193,11 +193,11 @@ module.exports = (session) => {
             .orWhere('model2.model2_prop1', 'c');
 
           if (byKeys) {
-            expect(numDeleted).to.equal(3);
-            expect(await joinRows()).to.eql(withoutRows(0, 1, 3));
+            expect(numDeleted).toBe(3);
+            expect(await joinRows()).toEqual(withoutRows(0, 1, 3));
           } else {
-            expect(numDeleted).to.equal(2);
-            expect(await joinRows()).to.eql(withoutRows(1, 3));
+            expect(numDeleted).toBe(2);
+            expect(await joinRows()).toEqual(withoutRows(1, 3));
           }
         });
 
@@ -208,16 +208,16 @@ module.exports = (session) => {
             .where('Model1Model2.extra1', 'x2')
             .where('model2.id_col', 2);
 
-          expect(numDeleted).to.equal(2);
-          expect(await joinRows()).to.eql(withoutRows(2, 4));
+          expect(numDeleted).toBe(2);
+          expect(await joinRows()).toEqual(withoutRows(2, 4));
         });
 
-        it('should apply a filter on an aliased join table', async function () {
+        it('should apply a filter on an aliased join table', async ({ skip }) => {
           // MySQL supports aliases in deletes since 8.0.16.
           if (session.isMySql()) {
             const [[{ version }]] = await session.knex.raw('select version() as version');
             if (version.startsWith('5.')) {
-              this.skip();
+              skip();
             }
           }
 
@@ -231,11 +231,11 @@ module.exports = (session) => {
             .where('m2.id_col', 1);
 
           if (byKeys) {
-            expect(numDeleted).to.equal(2);
-            expect(await joinRows()).to.eql(withoutRows(0, 1));
+            expect(numDeleted).toBe(2);
+            expect(await joinRows()).toEqual(withoutRows(0, 1));
           } else {
-            expect(numDeleted).to.equal(1);
-            expect(await joinRows()).to.eql(withoutRows(1));
+            expect(numDeleted).toBe(1);
+            expect(await joinRows()).toEqual(withoutRows(1));
           }
         });
       });
@@ -264,8 +264,8 @@ module.exports = (session) => {
           const model = await owner(1);
           const numDeleted = await model.$relatedQuery('model1Relation3').modify(filter).unrelate();
 
-          expect(numDeleted).to.equal(2);
-          expect(await joinRows()).to.eql(withoutRows(2, 3));
+          expect(numDeleted).toBe(2);
+          expect(await joinRows()).toEqual(withoutRows(2, 3));
         });
 
         it(`should patch the join table extras with ${name}`, async () => {
@@ -275,7 +275,7 @@ module.exports = (session) => {
             .modify(filter)
             .patch({ model2Prop2: 10, extra2: 'z' });
 
-          expect(await model2Rows()).to.eql([
+          expect(await model2Rows()).toEqual([
             [1, 1],
             [2, 10],
             [3, 10],
@@ -284,7 +284,7 @@ module.exports = (session) => {
           const expected = allJoinRows.slice();
           expected[2] = [1, 2, 'x2', 'z'];
           expected[3] = [1, 3, 'x3', 'z'];
-          expect(await joinRows()).to.eql(expected);
+          expect(await joinRows()).toEqual(expected);
         });
       }
     });
@@ -297,13 +297,13 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10 })
           .where('model2.id_col', 1);
 
-        expect(numUpdated).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 10],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should patch related rows and join table extras matching a filter', async () => {
@@ -313,8 +313,8 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('model2.model2_prop1', 'b');
 
-        expect(numUpdated).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 10],
           [3, 3],
@@ -322,7 +322,7 @@ module.exports = (session) => {
 
         const expected = allJoinRows.slice();
         expected[2] = [1, 2, 'x2', 'z'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should patch nothing if no rows match', async () => {
@@ -332,13 +332,13 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('model2.model2_prop1', 'does not exist');
 
-        expect(numUpdated).to.equal(0);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(0);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should patch nothing if the related rows to patch are fetched first and none match (#161)', async () => {
@@ -348,13 +348,13 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('model2.model2_prop2', 999);
 
-        expect(numUpdated).to.equal(0);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(0);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should patch nothing with none()', async () => {
@@ -364,13 +364,13 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .none();
 
-        expect(numUpdated).to.equal(0);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(0);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should patch nothing if resolved in a hook', async () => {
@@ -382,13 +382,13 @@ module.exports = (session) => {
             builder.resolve(0);
           });
 
-        expect(numUpdated).to.equal(0);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(0);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should patch nothing if resolved in a hook with only join table extras', async () => {
@@ -400,8 +400,8 @@ module.exports = (session) => {
             builder.resolve(0);
           });
 
-        expect(numUpdated).to.equal(0);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(numUpdated).toBe(0);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
 
       it('should count the related rows of the join rows that a patch with only join table extras changes', async () => {
@@ -412,13 +412,13 @@ module.exports = (session) => {
           .patch({ extra2: 'z' })
           .where('model2.id_col', '<', 3);
 
-        expect(numUpdated).to.equal(2);
+        expect(numUpdated).toBe(2);
 
         const expected = allJoinRows.slice();
         expected[0] = [1, 1, 'x1', 'z'];
         expected[1] = [1, 1, 'dup', 'z'];
         expected[2] = [1, 2, 'x2', 'z'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should return the related row that patchAndFetchById() patches with only join table extras', async () => {
@@ -427,13 +427,13 @@ module.exports = (session) => {
           .$relatedQuery('model1Relation3')
           .patchAndFetchById(1, { extra2: 'z' });
 
-        expect(patched.idCol).to.equal(1);
-        expect(patched.extra2).to.equal('z');
+        expect(patched.idCol).toBe(1);
+        expect(patched.extra2).toBe('z');
 
         const expected = allJoinRows.slice();
         expected[0] = [1, 1, 'x1', 'z'];
         expected[1] = [1, 1, 'dup', 'z'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should only patch the join table extras of join rows matching a filter on the join table (#1853)', async () => {
@@ -443,7 +443,7 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('Model1Model2.extra1', 'x1');
 
-        expect(await model2Rows()).to.eql([
+        expect(await model2Rows()).toEqual([
           [1, 10],
           [2, 2],
           [3, 3],
@@ -454,7 +454,7 @@ module.exports = (session) => {
         if (byKeys) {
           expected[1] = [1, 1, 'dup', 'z'];
         }
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should patch the join table extras of rows matching a filter on a related column that the patch changes (#161)', async () => {
@@ -464,8 +464,8 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra2: 'z' })
           .where('model2.model2_prop2', 2);
 
-        expect(numUpdated).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 10],
           [3, 3],
@@ -473,7 +473,7 @@ module.exports = (session) => {
 
         const expected = allJoinRows.slice();
         expected[2] = [1, 2, 'x2', 'z'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should patch the related rows matching a filter on an extra that the patch changes (#161)', async () => {
@@ -483,8 +483,8 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra1: 'changed' })
           .where('Model1Model2.extra1', 'x2');
 
-        expect(numUpdated).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numUpdated).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 10],
           [3, 3],
@@ -492,7 +492,7 @@ module.exports = (session) => {
 
         const expected = allJoinRows.slice();
         expected[2] = [1, 2, 'changed', 'y'];
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
       it('should patch the join table extras of join rows matching an orWhere on the join table and the related table (#2191)', async () => {
@@ -509,64 +509,62 @@ module.exports = (session) => {
         if (byKeys) {
           expected[0] = [1, 1, 'x1', 'z'];
         }
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
-      it('should only patch the join rows of the related rows that limit() picks', async function () {
-        // Only MySQL and SQL Server support a limit in updates.
-        if (!session.isMySql() && !session.isMsSql()) {
-          this.skip();
-        }
+      it.skipIf(!session.isMySql() && !session.isMsSql())(
+        'should only patch the join rows of the related rows that limit() picks',
+        async () => {
+          // Only MySQL and SQL Server support a limit in updates.
+          const model = await owner(1);
+          const numUpdated = await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10, extra2: 'z' })
+            .whereIn('model2.model2_prop1', ['a', 'b', 'c'])
+            .orderBy('model2.model2_prop1', 'desc')
+            .limit(2);
 
-        const model = await owner(1);
-        const numUpdated = await model
-          .$relatedQuery('model1Relation3')
-          .patch({ model2Prop2: 10, extra2: 'z' })
-          .whereIn('model2.model2_prop1', ['a', 'b', 'c'])
-          .orderBy('model2.model2_prop1', 'desc')
-          .limit(2);
+          expect(numUpdated).toBe(2);
+          expect(await model2Rows()).toEqual([
+            [1, 1],
+            [2, 10],
+            [3, 10],
+          ]);
 
-        expect(numUpdated).to.equal(2);
-        expect(await model2Rows()).to.eql([
-          [1, 1],
-          [2, 10],
-          [3, 10],
-        ]);
+          const expected = allJoinRows.slice();
+          expected[2] = [1, 2, 'x2', 'z'];
+          expected[3] = [1, 3, 'x3', 'z'];
+          expect(await joinRows()).toEqual(expected);
+        },
+      );
 
-        const expected = allJoinRows.slice();
-        expected[2] = [1, 2, 'x2', 'z'];
-        expected[3] = [1, 3, 'x3', 'z'];
-        expect(await joinRows()).to.eql(expected);
-      });
+      it.skipIf(!session.isMySql() && !session.isMsSql())(
+        'should count the related rows and not their join rows with limit()',
+        async () => {
+          // Only MySQL and SQL Server support a limit in updates.
+          // Model2 1 has two join rows, so it's picked once.
+          const model = await owner(1);
+          const numUpdated = await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10, extra2: 'z' })
+            .orderBy('model2.id_col')
+            .limit(2)
+            .offset(0);
 
-      it('should count the related rows and not their join rows with limit()', async function () {
-        // Only MySQL and SQL Server support a limit in updates.
-        if (!session.isMySql() && !session.isMsSql()) {
-          this.skip();
-        }
+          expect(numUpdated).toBe(2);
+          expect(await model2Rows()).toEqual([
+            [1, 10],
+            [2, 10],
+            [3, 3],
+          ]);
 
-        // Model2 1 has two join rows, so it's picked once.
-        const model = await owner(1);
-        const numUpdated = await model
-          .$relatedQuery('model1Relation3')
-          .patch({ model2Prop2: 10, extra2: 'z' })
-          .orderBy('model2.id_col')
-          .limit(2)
-          .offset(0);
-
-        expect(numUpdated).to.equal(2);
-        expect(await model2Rows()).to.eql([
-          [1, 10],
-          [2, 10],
-          [3, 3],
-        ]);
-
-        const expected = allJoinRows.slice();
-        expected[0] = [1, 1, 'x1', 'z'];
-        expected[1] = [1, 1, 'dup', 'z'];
-        expected[2] = [1, 2, 'x2', 'z'];
-        expect(await joinRows()).to.eql(expected);
-      });
+          const expected = allJoinRows.slice();
+          expected[0] = [1, 1, 'x1', 'z'];
+          expected[1] = [1, 1, 'dup', 'z'];
+          expected[2] = [1, 2, 'x2', 'z'];
+          expect(await joinRows()).toEqual(expected);
+        },
+      );
 
       it('should patch the join table extras ordered by a join table column without limit()', async () => {
         const model = await owner(1);
@@ -576,62 +574,60 @@ module.exports = (session) => {
           .orderBy('Model1Model2.extra1');
 
         const expected = allJoinRows.map((row) => (row[0] === 1 ? [...row.slice(0, 3), 'z'] : row));
-        expect(await joinRows()).to.eql(expected);
+        expect(await joinRows()).toEqual(expected);
       });
 
-      it('should only patch the join table extras of the related rows that limit() and offset() pick', async function () {
-        // Only MySQL and SQL Server support a limit in updates.
-        if (!session.isMySql() && !session.isMsSql()) {
-          this.skip();
-        }
-
-        const model = await owner(1);
-        await model
-          .$relatedQuery('model1Relation3')
-          .patch({ extra2: 'z' })
-          .orderBy('model2.id_col')
-          .limit(1)
-          .offset(1);
-
-        const expected = allJoinRows.slice();
-        expected[2] = [1, 2, 'x2', 'z'];
-        expect(await joinRows()).to.eql(expected);
-      });
-
-      it("should not warn about the offset that it doesn't leave out", async function () {
-        // Only MySQL and SQL Server support a limit in updates.
-        if (!session.isMySql() && !session.isMsSql()) {
-          this.skip();
-        }
-
-        // The warning is only observable through `console.warn()`.
-        const warnings = [];
-        const originalWarn = console.warn;
-        console.warn = (message) => warnings.push(message);
-        resetWarnings();
-
-        try {
+      it.skipIf(!session.isMySql() && !session.isMsSql())(
+        'should only patch the join table extras of the related rows that limit() and offset() pick',
+        async () => {
+          // Only MySQL and SQL Server support a limit in updates.
           const model = await owner(1);
           await model
             .$relatedQuery('model1Relation3')
-            .patch({ model2Prop2: 10, extra2: 'z' })
+            .patch({ extra2: 'z' })
             .orderBy('model2.id_col')
             .limit(1)
             .offset(1);
-          expect(warnings).to.have.length(0);
 
-          // Without join table extras, the offset is left out.
-          await model
-            .$relatedQuery('model1Relation3')
-            .patch({ model2Prop2: 10 })
-            .limit(1)
-            .offset(1);
-          expect(warnings).to.have.length(1);
-        } finally {
-          console.warn = originalWarn;
+          const expected = allJoinRows.slice();
+          expected[2] = [1, 2, 'x2', 'z'];
+          expect(await joinRows()).toEqual(expected);
+        },
+      );
+
+      it.skipIf(!session.isMySql() && !session.isMsSql())(
+        "should not warn about the offset that it doesn't leave out",
+        async () => {
+          // Only MySQL and SQL Server support a limit in updates.
+          // The warning is only observable through `console.warn()`.
+          const warnings = [];
+          const originalWarn = console.warn;
+          console.warn = (message) => warnings.push(message);
           resetWarnings();
-        }
-      });
+
+          try {
+            const model = await owner(1);
+            await model
+              .$relatedQuery('model1Relation3')
+              .patch({ model2Prop2: 10, extra2: 'z' })
+              .orderBy('model2.id_col')
+              .limit(1)
+              .offset(1);
+            expect(warnings).toHaveLength(0);
+
+            // Without join table extras, the offset is left out.
+            await model
+              .$relatedQuery('model1Relation3')
+              .patch({ model2Prop2: 10 })
+              .limit(1)
+              .offset(1);
+            expect(warnings).toHaveLength(1);
+          } finally {
+            console.warn = originalWarn;
+            resetWarnings();
+          }
+        },
+      );
 
       describe('asFindQuery() in a static afterUpdate hook', () => {
         let foundIds = null;
@@ -655,7 +651,7 @@ module.exports = (session) => {
             .patch({ extra2: 'z' })
             .whereIn('model2.model2_prop1', ['b', 'c']);
 
-          expect(foundIds).to.eql([2, 3]);
+          expect(foundIds).toEqual([2, 3]);
         });
 
         it('should find the related rows of the join rows with only join table extras that the patch changes', async () => {
@@ -665,14 +661,14 @@ module.exports = (session) => {
             .patch({ extra1: 'changed' })
             .where('Model1Model2.extra1', 'x2');
 
-          expect(foundIds).to.eql([2]);
+          expect(foundIds).toEqual([2]);
         });
 
         it('should find nothing with none()', async () => {
           const model = await owner(1);
           await model.$relatedQuery('model1Relation3').patch({ extra2: 'z' }).none();
 
-          expect(foundIds).to.eql([]);
+          expect(foundIds).toEqual([]);
         });
 
         for (const [title, patch] of [
@@ -687,7 +683,7 @@ module.exports = (session) => {
               .patchAndFetchById(2, patch)
               .where('model2.model2_prop1', 'b');
 
-            expect(foundIds).to.eql([2]);
+            expect(foundIds).toEqual([2]);
           });
 
           it(`should keep the id condition of patchAndFetchById() apart from an orWhere${title}`, async () => {
@@ -698,8 +694,8 @@ module.exports = (session) => {
               .where('model2.model2_prop1', 'does not exist')
               .orWhere('model2.model2_prop1', 'b');
 
-            expect(foundIds).to.eql([]);
-            expect(await model2Rows()).to.eql([
+            expect(foundIds).toEqual([]);
+            expect(await model2Rows()).toEqual([
               [1, 1],
               [2, 2],
               [3, 3],
@@ -713,8 +709,8 @@ module.exports = (session) => {
               .patchAndFetchById(2, patch)
               .where('model2.model2_prop1', 'does not exist');
 
-            expect(foundIds).to.eql([]);
-            expect(await model2Rows()).to.eql([
+            expect(foundIds).toEqual([]);
+            expect(await model2Rows()).toEqual([
               [1, 1],
               [2, 2],
               [3, 3],
@@ -761,70 +757,67 @@ module.exports = (session) => {
             .patch({ model2Prop2: 10, extra2: 'z' })
             .where('Model1Model2.extra1', 'many');
 
-          expect(numUpdated).to.equal(ids.length);
-          expect(await patchedIds()).to.eql(ids);
-          expect(await patchedJoinRowIds()).to.eql(ids);
+          expect(numUpdated).toBe(ids.length);
+          expect(await patchedIds()).toEqual(ids);
+          expect(await patchedJoinRowIds()).toEqual(ids);
         });
 
-        it('should patch all of them with the statistics of a related table that held one row', async function () {
-          if (!session.isPostgres()) {
-            this.skip();
-          }
+        it.skipIf(!session.isPostgres())(
+          'should patch all of them with the statistics of a related table that held one row',
+          async () => {
+            // Vacuum the related table while it only holds its last row, as the
+            // autovacuum may do, so that Postgres plans for one related row.
+            const lastId = ids[ids.length - 1];
+            await session.knex('model2').whereNot('id_col', lastId).delete();
+            await session.knex.raw('vacuum analyze model2');
+            await insertRows(ids.slice(0, -1));
 
-          // Vacuum the related table while it only holds its last row, as the
-          // autovacuum may do, so that Postgres plans for one related row.
-          const lastId = ids[ids.length - 1];
-          await session.knex('model2').whereNot('id_col', lastId).delete();
-          await session.knex.raw('vacuum analyze model2');
-          await insertRows(ids.slice(0, -1));
+            const model = await owner(1);
+            const numUpdated = await model
+              .$relatedQuery('model1Relation3')
+              .patch({ model2Prop2: 10, extra2: 'z' })
+              .where('Model1Model2.extra1', 'many');
 
-          const model = await owner(1);
-          const numUpdated = await model
-            .$relatedQuery('model1Relation3')
-            .patch({ model2Prop2: 10, extra2: 'z' })
-            .where('Model1Model2.extra1', 'many');
+            expect(numUpdated).toBe(ids.length);
+            expect(await patchedIds()).toEqual(ids);
+            expect(await patchedJoinRowIds()).toEqual(ids);
+          },
+        );
 
-          expect(numUpdated).to.equal(ids.length);
-          expect(await patchedIds()).to.eql(ids);
-          expect(await patchedJoinRowIds()).to.eql(ids);
-        });
+        it.skipIf(!session.isMySql() && !session.isMsSql())(
+          'should patch the related rows that limit() picks and their join rows in batches',
+          async () => {
+            // Only MySQL and SQL Server support a limit in updates.
+            const someIds = ids.slice(0, 600);
+            const model = await owner(1);
+            const numUpdated = await model
+              .$relatedQuery('model1Relation3')
+              .patch({ model2Prop2: 10, extra2: 'z' })
+              .where('Model1Model2.extra1', 'many')
+              .orderBy('model2.id_col')
+              .limit(someIds.length);
 
-        it('should patch the related rows that limit() picks and their join rows in batches', async function () {
-          // Only MySQL and SQL Server support a limit in updates.
-          if (!session.isMySql() && !session.isMsSql()) {
-            this.skip();
-          }
+            expect(numUpdated).toBe(someIds.length);
+            expect(await patchedIds()).toEqual(someIds);
+            expect(await patchedJoinRowIds()).toEqual(someIds);
+          },
+        );
 
-          const someIds = ids.slice(0, 600);
-          const model = await owner(1);
-          const numUpdated = await model
-            .$relatedQuery('model1Relation3')
-            .patch({ model2Prop2: 10, extra2: 'z' })
-            .where('Model1Model2.extra1', 'many')
-            .orderBy('model2.id_col')
-            .limit(someIds.length);
+        it.skipIf(!session.isPostgres() && !session.isMsSql())(
+          'should return the patched rows of all batches with returning()',
+          async () => {
+            const model = await owner(1);
+            const models = await model
+              .$relatedQuery('model1Relation3')
+              .patch({ model2Prop2: 10, extra2: 'z' })
+              .where('Model1Model2.extra1', 'many')
+              .returning('*');
 
-          expect(numUpdated).to.equal(someIds.length);
-          expect(await patchedIds()).to.eql(someIds);
-          expect(await patchedJoinRowIds()).to.eql(someIds);
-        });
-
-        it('should return the patched rows of all batches with returning()', async function () {
-          if (!session.isPostgres() && !session.isMsSql()) {
-            this.skip();
-          }
-
-          const model = await owner(1);
-          const models = await model
-            .$relatedQuery('model1Relation3')
-            .patch({ model2Prop2: 10, extra2: 'z' })
-            .where('Model1Model2.extra1', 'many')
-            .returning('*');
-
-          expect(models.every((model) => model instanceof Model2)).to.equal(true);
-          expect(models.map((model) => model.idCol).sort((a, b) => a - b)).to.eql(ids);
-          expect(models.every((model) => model.model2Prop2 === 10)).to.equal(true);
-        });
+            expect(models.every((model) => model instanceof Model2)).toBe(true);
+            expect(models.map((model) => model.idCol).sort((a, b) => a - b)).toEqual(ids);
+            expect(models.every((model) => model.model2Prop2 === 10)).toBe(true);
+          },
+        );
 
         it('should find the patched rows with asFindQuery() in a static afterUpdate hook', async () => {
           // Two batches, but few enough ids for the single find statement.
@@ -843,9 +836,9 @@ module.exports = (session) => {
             .where('Model1Model2.extra1', 'many')
             .where('model2.id_col', '<=', someIds[someIds.length - 1]);
 
-          expect(numUpdated).to.equal(someIds.length);
-          expect(foundIds).to.eql(someIds);
-          expect(await patchedIds()).to.eql(someIds);
+          expect(numUpdated).toBe(someIds.length);
+          expect(foundIds).toEqual(someIds);
+          expect(await patchedIds()).toEqual(someIds);
         });
       });
     });
@@ -894,8 +887,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.id_col', 2);
 
-        expect(numDeleted).to.equal(1);
-        expect(await joinRows()).to.eql([...withoutRows(2), filteredJoinRow]);
+        expect(numDeleted).toBe(1);
+        expect(await joinRows()).toEqual([...withoutRows(2), filteredJoinRow]);
       });
 
       it('should apply the filter with a model class bound to a knex instance', async () => {
@@ -905,8 +898,8 @@ module.exports = (session) => {
           .unrelate()
           .where('model2.id_col', 2);
 
-        expect(numDeleted).to.equal(1);
-        expect(await joinRows()).to.eql([...withoutRows(2), filteredJoinRow]);
+        expect(numDeleted).toBe(1);
+        expect(await joinRows()).toEqual([...withoutRows(2), filteredJoinRow]);
       });
 
       it('should unrelate rows matching a filter on the join table', async () => {
@@ -915,8 +908,8 @@ module.exports = (session) => {
           .unrelate()
           .where('Model1Model2.extra1', 'x3');
 
-        expect(numDeleted).to.equal(1);
-        expect(await joinRows()).to.eql([...withoutRows(3), filteredJoinRow]);
+        expect(numDeleted).toBe(1);
+        expect(await joinRows()).toEqual([...withoutRows(3), filteredJoinRow]);
       });
 
       it('should not unrelate the join rows that the filter excludes', async () => {
@@ -925,8 +918,8 @@ module.exports = (session) => {
           .unrelate()
           .where('Model1Model2.extra1', 'filtered');
 
-        expect(numDeleted).to.equal(0);
-        expect(await joinRows()).to.eql([...allJoinRows, filteredJoinRow]);
+        expect(numDeleted).toBe(0);
+        expect(await joinRows()).toEqual([...allJoinRows, filteredJoinRow]);
       });
 
       it('should only unrelate the join rows matching a filter on the join table', async () => {
@@ -936,11 +929,11 @@ module.exports = (session) => {
           .where('Model1Model2.extra1', 'dup');
 
         if (byKeys) {
-          expect(numDeleted).to.equal(2);
-          expect(await joinRows()).to.eql([...withoutRows(0, 1), filteredJoinRow]);
+          expect(numDeleted).toBe(2);
+          expect(await joinRows()).toEqual([...withoutRows(0, 1), filteredJoinRow]);
         } else {
-          expect(numDeleted).to.equal(1);
-          expect(await joinRows()).to.eql([...withoutRows(1), filteredJoinRow]);
+          expect(numDeleted).toBe(1);
+          expect(await joinRows()).toEqual([...withoutRows(1), filteredJoinRow]);
         }
       });
 
@@ -950,7 +943,7 @@ module.exports = (session) => {
           .patch({ model2Prop2: 10, extra1: 'z' })
           .where('model2.id_col', 2);
 
-        expect(await model2Rows()).to.eql([
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 10],
           [3, 3],
@@ -958,12 +951,12 @@ module.exports = (session) => {
 
         const expected = allJoinRows.slice();
         expected[2] = [1, 2, 'z', 'y'];
-        expect(await joinRows()).to.eql([...expected, filteredJoinRow]);
+        expect(await joinRows()).toEqual([...expected, filteredJoinRow]);
       });
     });
 
     function describeItemTags(title, { joinTable, isSupported = () => true }) {
-      describe(title, () => {
+      describe.skipIf(!isSupported())(title, () => {
         const { knex } = session;
 
         class Tag extends Model {
@@ -990,11 +983,7 @@ module.exports = (session) => {
           };
         }
 
-        before(async function () {
-          if (!isSupported()) {
-            this.skip();
-          }
-
+        beforeAll(async () => {
           await knex.schema
             .raw('DROP VIEW IF EXISTS m2m_modify_item_tag_view')
             .dropTableIfExists('m2m_modify_item_tag')
@@ -1018,7 +1007,7 @@ module.exports = (session) => {
             .raw('CREATE VIEW m2m_modify_item_tag_view AS SELECT * FROM m2m_modify_item_tag');
         });
 
-        after(() => {
+        afterAll(() => {
           return knex.schema
             .raw('DROP VIEW IF EXISTS m2m_modify_item_tag_view')
             .dropTableIfExists('m2m_modify_item_tag')
@@ -1060,8 +1049,8 @@ module.exports = (session) => {
         it('should unrelate', async () => {
           const numDeleted = await tags().unrelate().where('m2m_modify_tag.id', 2);
 
-          expect(numDeleted).to.equal(2);
-          expect(await itemTags()).to.eql([[1, null]]);
+          expect(numDeleted).toBe(2);
+          expect(await itemTags()).toEqual([[1, null]]);
         });
 
         it('should only unrelate the join rows matching a filter on the join table', async () => {
@@ -1071,11 +1060,11 @@ module.exports = (session) => {
             .where(`${joinTable}.note`, 'a');
 
           if (byKeys) {
-            expect(numDeleted).to.equal(2);
-            expect(await itemTags()).to.eql([[1, null]]);
+            expect(numDeleted).toBe(2);
+            expect(await itemTags()).toEqual([[1, null]]);
           } else {
-            expect(numDeleted).to.equal(1);
-            expect(await itemTags()).to.eql([
+            expect(numDeleted).toBe(1);
+            expect(await itemTags()).toEqual([
               [1, null],
               [2, 'b'],
             ]);
@@ -1085,7 +1074,7 @@ module.exports = (session) => {
         it('should patch the join table extras', async () => {
           await tags().patch({ note: 'x' }).where('m2m_modify_tag.id', 1);
 
-          expect(await itemTags()).to.eql([
+          expect(await itemTags()).toEqual([
             [1, 'x'],
             [2, 'a'],
             [2, 'b'],
@@ -1095,7 +1084,7 @@ module.exports = (session) => {
         it('should only patch the join table extras of the join rows matching a filter on the join table', async () => {
           await tags().patch({ note: 'x' }).where(`${joinTable}.note`, 'b');
 
-          expect(await itemTags()).to.eql([
+          expect(await itemTags()).toEqual([
             [1, null],
             ...(byKeys
               ? [
@@ -1121,7 +1110,7 @@ module.exports = (session) => {
       isSupported: () => !session.isSqlite(),
     });
 
-    describe('with triggers on the join table (#2406)', () => {
+    describe.skipIf(!session.isMySql())('with triggers on the join table (#2406)', () => {
       const { knex } = session;
 
       class Tag extends Model {
@@ -1160,11 +1149,7 @@ module.exports = (session) => {
 
       // The tables are only used here, so that their triggers are fetched
       // after they are created.
-      before(async function () {
-        if (!session.isMySql()) {
-          this.skip();
-        }
-
+      beforeAll(async () => {
         await dropTables();
         await knex.schema
           .createTable('m2m_trigger_item', (table) => {
@@ -1198,7 +1183,7 @@ module.exports = (session) => {
         `);
       });
 
-      after(async () => {
+      afterAll(async () => {
         if (session.isMySql()) {
           await dropTables();
         }
@@ -1266,10 +1251,10 @@ module.exports = (session) => {
           model.$relatedQuery('model1Relation3').unrelate().where('model2.id_col', 2),
         );
 
-        expect(queries).to.have.length(2);
-        expect(queries[0]).to.match(/^select .* exists \(select 1 from `model2`/);
-        expect(queries[1]).to.match(/^delete /);
-        expect(queries[1]).not.to.contain('exists');
+        expect(queries).toHaveLength(2);
+        expect(queries[0]).toMatch(/^select .* exists \(select 1 from `model2`/);
+        expect(queries[1]).toMatch(/^delete /);
+        expect(queries[1]).not.toContain('exists');
       });
 
       it('should unrelate if a trigger is created after the first unrelate', async () => {
@@ -1287,9 +1272,9 @@ module.exports = (session) => {
             .unrelate()
             .where('m2m_trigger_tag.id', 1);
 
-          expect(numDeleted).to.equal(1);
-          expect(await joinRows(joinTable)).to.eql([]);
-          expect(await tagCounts()).to.eql([1, 0]);
+          expect(numDeleted).toBe(1);
+          expect(await joinRows(joinTable)).toEqual([]);
+          expect(await tagCounts()).toEqual([1, 0]);
         } finally {
           await knex.raw('DROP TRIGGER m2m_trigger_item_tag_insert_delete');
         }
@@ -1303,26 +1288,26 @@ module.exports = (session) => {
             .where('m2m_trigger_item_tag.note', 'a');
 
           // The keys can't tell apart the join rows of tag 2.
-          expect(numDeleted).to.equal(2);
+          expect(numDeleted).toBe(2);
         });
 
-        expect(queries).to.have.length(2);
-        expect(queries[0]).to.match(/^select /);
-        expect(queries[1]).to.match(/^delete /);
-        expect(queries[1]).not.to.contain('exists');
-        expect(await joinRows('m2m_trigger_item_tag')).to.eql([[1, null]]);
-        expect(await tagCounts()).to.eql([0, 2]);
+        expect(queries).toHaveLength(2);
+        expect(queries[0]).toMatch(/^select /);
+        expect(queries[1]).toMatch(/^delete /);
+        expect(queries[1]).not.toContain('exists');
+        expect(await joinRows('m2m_trigger_item_tag')).toEqual([[1, null]]);
+        expect(await tagCounts()).toEqual([0, 2]);
       });
 
       it('should patch the join table extras if the join table has an update trigger', async () => {
         await tags('tags').patch({ note: 'x' }).where('m2m_trigger_tag.id', 1);
 
-        expect(await joinRows('m2m_trigger_item_tag')).to.eql([
+        expect(await joinRows('m2m_trigger_item_tag')).toEqual([
           [1, 'x'],
           [2, 'a'],
           [2, 'b'],
         ]);
-        expect(await tagCounts()).to.eql([1, 0]);
+        expect(await tagCounts()).toEqual([1, 0]);
       });
     });
 
@@ -1331,9 +1316,9 @@ module.exports = (session) => {
         const model = await owner(1);
         const numDeleted = await model.$relatedQuery('model1Relation3').delete();
 
-        expect(numDeleted).to.equal(3);
-        expect(await model2Rows()).to.eql([]);
-        expect(await joinRows()).to.eql([]);
+        expect(numDeleted).toBe(3);
+        expect(await model2Rows()).toEqual([]);
+        expect(await joinRows()).toEqual([]);
       });
 
       it('should delete related rows matching a filter on the related table', async () => {
@@ -1343,12 +1328,12 @@ module.exports = (session) => {
           .delete()
           .where('model2.model2_prop1', 'a');
 
-        expect(numDeleted).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numDeleted).toBe(1);
+        expect(await model2Rows()).toEqual([
           [2, 2],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(withoutRows(0, 1));
+        expect(await joinRows()).toEqual(withoutRows(0, 1));
       });
 
       it('should delete related rows matching a filter on the join table', async () => {
@@ -1358,24 +1343,24 @@ module.exports = (session) => {
           .delete()
           .where('Model1Model2.extra1', 'x2');
 
-        expect(numDeleted).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numDeleted).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [3, 3],
         ]);
-        expect(await joinRows()).to.eql(withoutRows(2, 4));
+        expect(await joinRows()).toEqual(withoutRows(2, 4));
       });
 
       it('should delete related rows using findById', async () => {
         const model = await owner(1);
         const numDeleted = await model.$relatedQuery('model1Relation3').delete().findById(3);
 
-        expect(numDeleted).to.equal(1);
-        expect(await model2Rows()).to.eql([
+        expect(numDeleted).toBe(1);
+        expect(await model2Rows()).toEqual([
           [1, 1],
           [2, 2],
         ]);
-        expect(await joinRows()).to.eql(withoutRows(3, 5));
+        expect(await joinRows()).toEqual(withoutRows(3, 5));
       });
 
       it('should return 0 if no rows match', async () => {
@@ -1385,9 +1370,9 @@ module.exports = (session) => {
           .delete()
           .where('model2.model2_prop1', 'a');
 
-        expect(numDeleted).to.equal(0);
-        expect(await model2Rows()).to.have.length(3);
-        expect(await joinRows()).to.eql(allJoinRows);
+        expect(numDeleted).toBe(0);
+        expect(await model2Rows()).toHaveLength(3);
+        expect(await joinRows()).toEqual(allJoinRows);
       });
     });
   });

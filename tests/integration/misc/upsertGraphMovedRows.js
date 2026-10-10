@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('upsertGraph() moving rows to another owner with a NOT NULL foreign key (#214)', () => {
     const { knex } = session;
 
@@ -27,7 +27,7 @@ module.exports = (session) => {
       }
     }
 
-    before(async () => {
+    beforeAll(async () => {
       await knex.schema
         .dropTableIfExists('moved_rows_pet')
         .dropTableIfExists('moved_rows_owner')
@@ -52,7 +52,7 @@ module.exports = (session) => {
       await knex('moved_rows_owner').delete();
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('moved_rows_pet').dropTableIfExists('moved_rows_owner');
     });
 
@@ -65,7 +65,7 @@ module.exports = (session) => {
         { relate: true },
       );
 
-      expect(await knex('moved_rows_pet')).to.eql([{ id: 1, ownerId: 2 }]);
+      expect(await knex('moved_rows_pet')).toEqual([{ id: 1, ownerId: 2 }]);
     });
   });
 };
