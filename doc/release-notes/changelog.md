@@ -9,8 +9,8 @@
 
 ### Types
 
-- Add the opt-in `TypedRelationMappings<M>` helper: used with `satisfies` on `relationMappings`, it checks that the mappings use relation properties of the model, a relation type matching their cardinality, and the right `modelClass` [ditojs#16](https://github.com/ditojs/objection/issues/16)
-- Add `Generated<T>` to mark columns the database fills in, e.g. `id!: Generated<number>`, and the `Insertable<M>` / `InsertableGraph<M>` types for insert data, which leave them optional [ditojs#16](https://github.com/ditojs/objection/issues/16)
+- Add the opt-in `TypedRelationMappings<M>` helper: used with `satisfies` on `relationMappings`, it checks that the mappings use relation properties of the model, a relation type matching their cardinality, and the right `modelClass` [#16](https://github.com/ditojs/objection/issues/16)
+- Add `Generated<T>` to mark columns the database fills in, e.g. `id!: Generated<number>`, and the `Insertable<M>` / `InsertableGraph<M>` types for insert data, which leave them optional [#16](https://github.com/ditojs/objection/issues/16)
 - Add `isOneToOne()` to the `Relation` typings and docs. It's the safe way to check for relations to a single model, as `HasOneRelation` and `HasOneThroughRelation` extend the many-relations.
 
 ## 3.4.1
@@ -40,7 +40,7 @@
 - `$fetchGraph()` / `fetchGraph()` / `$relatedQuery()` warn once when owner models are missing a join property, e.g. a foreign key left out of a partial `select()`. The relation silently came back empty. [#1832](https://github.com/Vincit/objection.js/issues/1832)
 - `withGraphJoined()` checks column aliases against the identifier length limit of the database (MySQL 256, MSSQL 128, SQLite none) instead of always the 63 of Postgres [#2242](https://github.com/Vincit/objection.js/issues/2242)
 - `withGraphFetched()` / `$fetchGraph()` warn once when related models are missing a join property, e.g. snake_case relation mappings with `knexSnakeCaseMappers()`. They were silently dropped. [#2258](https://github.com/Vincit/objection.js/issues/2258)
-- `insertGraph()` / `upsertGraph()` warn once per unknown option, e.g. a misspelled `noInset`. The option is ignored, and will throw in 4.0. [ditojs#84](https://github.com/ditojs/objection/issues/84)
+- `insertGraph()` / `upsertGraph()` warn once per unknown option, e.g. a misspelled `noInset`. The option is ignored, and will throw in 4.0. [#84](https://github.com/ditojs/objection/issues/84)
 
 ### Types
 
@@ -56,7 +56,7 @@
 
 ### Other
 
-- **Breaking for old knex:** the knex peer dependency is `>=2.3.0` instead of `>=1.0.1`. Some fixes of 3.3.0 don't work with older knex versions. CI now also tests knex 2.3.0. [ditojs#95](https://github.com/ditojs/objection/issues/95)
+- **Breaking for old knex:** the knex peer dependency is `>=2.3.0` instead of `>=1.0.1`. Some fixes of 3.3.0 don't work with older knex versions. CI now also tests knex 2.3.0. [#95](https://github.com/ditojs/objection/issues/95)
 - Tests no longer use bluebird, lodash and uuid
 
 ## 3.3.0
@@ -67,8 +67,8 @@
 
 ### What's new
 
-- `withGraphFetched()` / `withGraphJoined()` narrow the result types: fetched relations become required on the result. Generic helpers with an explicit `QB` return type need `withGraphFetched<string>()`. [ditojs#25](https://github.com/ditojs/objection/pull/25)
-- Add `withGraph()` with algorithm-agnostic merging, and `isJoinChildQuery()` [ditojs#63](https://github.com/ditojs/objection/issues/63)
+- `withGraphFetched()` / `withGraphJoined()` narrow the result types: fetched relations become required on the result. Generic helpers with an explicit `QB` return type need `withGraphFetched<string>()`. [#25](https://github.com/ditojs/objection/pull/25)
+- Add `withGraph()` with algorithm-agnostic merging, and `isJoinChildQuery()` [#63](https://github.com/ditojs/objection/issues/63)
 - Add `patchById()` and `updateById()` [#1415](https://github.com/Vincit/objection.js/issues/1415)
 - `insertGraph()` / `upsertGraph()` resolve cyclic `#ref` dependencies by deferring `BelongsToOne` foreign keys [#1482](https://github.com/Vincit/objection.js/issues/1482)
 - Add a `preserveJsonKeys` option to `snakeCaseMappers()` to map only the column part of field expressions [#1089](https://github.com/Vincit/objection.js/issues/1089)
@@ -88,7 +88,7 @@
 - Map column names in `whereJson*` methods with `knexSnakeCaseMappers`
 - Match `table.*` selections through knex identifier mapping [#2288](https://github.com/Vincit/objection.js/issues/2288)
 - Use the keys of modified `graphExpressionObject()` results [#2793](https://github.com/Vincit/objection.js/issues/2793)
-- Track internally selected columns on the query builder, so `runAfter()` hooks never see them [ditojs#45](https://github.com/ditojs/objection/issues/45)
+- Track internally selected columns on the query builder, so `runAfter()` hooks never see them [#45](https://github.com/ditojs/objection/issues/45)
 - **Behaviour change:** many-to-many `unrelate()` / `patch()` only modify the join rows matching the filters, not all join rows of the matching related rows [#1853](https://github.com/Vincit/objection.js/issues/1853). The generated SQL of these operations changes. On MySQL, the join table filter avoids `ER_CANT_UPDATE_USED_TABLE_IN_SF_OR_TRG` [#2127](https://github.com/Vincit/objection.js/issues/2127), and `unrelate()` returns `0` instead of `[]` when nothing matches. Ported from [#2406](https://github.com/Vincit/objection.js/pull/2406).
 - **Behaviour change:** `asFindQuery()` in hooks no longer applies the `runAfter()` callbacks of the original query, including those of `throwIfNotFound()` and `traverse()`, and returns `[]` instead of `[undefined]` for a `findById()` that finds nothing [#2093](https://github.com/Vincit/objection.js/issues/2093)
 - **Behaviour change:** field expression keys in patch objects, e.g. `'meta:a.b'`, are validated against the nested schema, so patches that passed before can fail validation [#1666](https://github.com/Vincit/objection.js/issues/1666)
