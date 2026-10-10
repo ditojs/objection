@@ -1,4 +1,5 @@
 import { describe, beforeAll, afterAll } from 'vitest';
+import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import TestSession from '../../testUtils/TestSession.js';
@@ -38,6 +39,11 @@ import jsonQueriesMySql from './jsonQueriesMySql.js';
 // of databases to test.
 const DATABASES = (process.env.DATABASES && process.env.DATABASES.split(',')) || [];
 
+// A file per run by default, so that runs at the same time don't share it.
+const SQLITE_FILE =
+  process.env.OBJECTION_TEST_SQLITE_FILE ??
+  path.join(os.tmpdir(), `objection_test_${process.pid}.db`);
+
 // The defaults match the databases in docker-compose.yml. Each setting can be
 // overridden with an environment variable, e.g. OBJECTION_TEST_POSTGRES_PORT.
 function connection(client, defaults) {
@@ -56,7 +62,7 @@ describe('integration tests', () => {
       client: 'sqlite3',
       useNullAsDefault: true,
       connection: {
-        filename: path.join(os.tmpdir(), 'objection_test.db'),
+        filename: SQLITE_FILE,
       },
       pool: {
         afterCreate: (conn, cb) => {
@@ -147,11 +153,15 @@ describe('integration tests', () => {
     return session;
   });
 
-  afterAll(() => {
-    return Promise.all(
+  afterAll(async () => {
+    await Promise.all(
       sessions.map((session) => {
         return session.destroy();
       }),
     );
+
+    if (!process.env.OBJECTION_TEST_SQLITE_FILE) {
+      await fs.rm(SQLITE_FILE, { force: true });
+    }
   });
 });
