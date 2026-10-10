@@ -115,13 +115,8 @@ module.exports = (session) => {
     });
 
     it('upsertGraph', () => {
-      // On MySQL, the concurrent `update Person ... where id in (select ... join
-      // PersonPerson ...)` queries that patch the related rows scan Person with
-      // exclusive locks and deadlock each other. An index on the join table
-      // doesn't help. Patching the graph in a transaction runs them one after
-      // the other.
-      return Person.transaction((trx) =>
-        Person.query(trx).upsertGraph({
+      return Person.query()
+        .upsertGraph({
           id: 1,
           relatives: [
             {
@@ -135,8 +130,7 @@ module.exports = (session) => {
               awesomeness: 22,
             },
           ],
-        }),
-      )
+        })
         .then(() => {
           return Person.query().findById(1).withGraphFetched('relatives');
         })
@@ -180,6 +174,35 @@ module.exports = (session) => {
             ],
           });
         });
+    });
+
+    it('upsertGraph passes the relation and the owner to static update hooks', async () => {
+      const calls = [];
+
+      Person.beforeUpdate = ({ relation, items, inputItems }) => {
+        calls.push({
+          relation: relation && relation.name,
+          items: items.map((item) => item.id),
+          inputItems: inputItems.map((item) => item.id),
+        });
+      };
+
+      try {
+        await Person.query().upsertGraph({
+          id: 1,
+          relatives: [
+            { id: 2, name: 'relative 11' },
+            { id: 3, name: 'relative 22' },
+          ],
+        });
+      } finally {
+        delete Person.beforeUpdate;
+      }
+
+      expect(calls).to.have.deep.members([
+        { relation: 'relatives', items: [1], inputItems: [2] },
+        { relation: 'relatives', items: [1], inputItems: [3] },
+      ]);
     });
   });
 };
