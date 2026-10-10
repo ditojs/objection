@@ -90,7 +90,7 @@
 - Add `patchById()` and `updateById()` [#1415](https://github.com/Vincit/objection.js/issues/1415)
 - `insertGraph()` / `upsertGraph()` resolve cyclic `#ref` dependencies by deferring `BelongsToOne` foreign keys [#1482](https://github.com/Vincit/objection.js/issues/1482)
 - Add a `preserveJsonKeys` option to `snakeCaseMappers()` to map only the column part of field expressions [#1089](https://github.com/Vincit/objection.js/issues/1089)
-- Support empty keys in JSON field expressions, e.g. `col:[""]` [#2680](https://github.com/Vincit/objection.js/pull/2680)
+- Support empty keys in JSON field expressions, e.g. `col:[""]` [#2680](https://github.com/Vincit/objection.js/pull/2680). **Behaviour change:** `col:[""]` and `col:['']` used to refer to a key consisting of the two quote characters.
 - `whereJson*` methods accept `ref()`, `val()`, `raw()` and subqueries on the right side
 - Pass `returning()` options, e.g. `includeTriggerModifications`, on to knex [#2309](https://github.com/Vincit/objection.js/issues/2309)
 
