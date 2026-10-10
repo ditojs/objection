@@ -13,17 +13,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [16.x, 18.x, 20.x, 22.x, 24.x]
-        knex: [default]
+        # 20.19.0 is the oldest supported version, the first one that can
+        # require() ES modules without a flag.
+        node-version: [20.19.0, 20.x, 22.x, 24.x]
         mysql: ['8.4']
-        # Also test the oldest supported knex version and MySQL 5.7, each as a
-        # separate job.
+        # Also test MySQL 5.7, as a separate job.
         include:
-          - node-version: 16.x
-            knex: 2.3.0
-            mysql: '8.4'
           - node-version: 24.x
-            knex: default
             mysql: '5.7'
 
     steps:
@@ -37,13 +33,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install knex ${{ matrix.knex }}
-        if: matrix.knex != 'default'
-        run: npm install --no-save knex@${{ matrix.knex }}
-
       # The generated parsers have to match their grammars. One job is enough.
       - name: Check the generated parsers
-        if: matrix.node-version == '24.x' && matrix.knex == 'default' && matrix.mysql == '8.4'
+        if: matrix.node-version == '24.x' && matrix.mysql == '8.4'
         run: |
           npm run build:parsers
           git diff --exit-code lib/queryBuilder/parsers
@@ -62,14 +54,13 @@ jobs:
           npm run db:up -- $SERVICES
 
       - name: Run tests
-        if: matrix.knex == 'default' && matrix.mysql != '5.7'
+        if: matrix.mysql != '5.7'
         run: npm test
 
-      # The typings of older knex versions don't compile with current
-      # TypeScript, so only the test suite runs against them. The MySQL 5.7 job
-      # only runs the MySQL tests, the other jobs already lint and check typings.
-      - name: Run tests without linting and typings
-        if: matrix.knex != 'default' || matrix.mysql == '5.7'
+      # The MySQL 5.7 job only runs the MySQL tests, the other jobs already lint
+      # and check typings.
+      - name: Run the MySQL tests
+        if: matrix.mysql == '5.7'
         env:
-          DATABASES: ${{ matrix.mysql == '5.7' && 'mysql' || '' }}
-        run: npx mocha --slow 10 --timeout 15000 --reporter spec --recursive tests --exclude "tests/unit/relations/files/**"
+          DATABASES: mysql
+        run: npx vitest run
