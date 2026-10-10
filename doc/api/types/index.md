@@ -49,7 +49,7 @@ join: {
 }
 ```
 
-Such relations can be fetched, and the related rows can be updated, patched and deleted, but `unrelate` and updating `extra` properties are not supported.
+Such relations can be fetched, and the related rows can be updated, patched and deleted. Operations that write join rows aren't supported, as the join rows can't be told apart from the related rows: `relate`, `unrelate`, `insert` through the relation, updating `extra` properties, and `insertGraph` / `upsertGraph` inserting or relating models of the relation throw an error.
 
 ## `type` ModelOptions
 
