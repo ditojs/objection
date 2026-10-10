@@ -1,7 +1,8 @@
 {
   "name": "objection-example-koa-ts",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Objection.js koa typescript example",
+  "type": "module",
   "main": "dist/app.js",
   "scripts": {
     "migrate": "knex migrate:latest",
@@ -9,7 +10,7 @@
     "start": "npm run migrate && npm run build && node dist/app.js"
   },
   "engines": {
-    "node": ">=20.17.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "author": "Sami Koskimäki",
   "license": "MIT",
@@ -19,8 +20,8 @@
     "axios": "^1.20.0",
     "knex": "^3.3.0",
     "koa": "^3.2.1",
-    "objection": "^3.5.0",
-    "sqlite3": "^6.0.1"
+    "objection": "^4.0.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/koa": "^3.0.3",

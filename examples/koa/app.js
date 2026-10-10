@@ -1,10 +1,10 @@
-const Koa = require('koa')
-const Router = require('@koa/router')
-const { bodyParser } = require('@koa/bodyparser')
-const Knex = require('knex')
-const { Model, ForeignKeyViolationError, ValidationError } = require('objection')
-const knexConfig = require('./knexfile')
-const registerApi = require('./api')
+import Koa from 'koa'
+import Router from '@koa/router'
+import { bodyParser } from '@koa/bodyparser'
+import Knex from 'knex'
+import { Model, ForeignKeyViolationError, ValidationError } from 'objection'
+import knexConfig from './knexfile.js'
+import registerApi from './api.js'
 
 // Initialize knex.
 const knex = Knex(knexConfig.development)

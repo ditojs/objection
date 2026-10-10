@@ -1,10 +1,8 @@
-'use strict';
-
-const { after, before, beforeEach, describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const Knex = require('knex');
-const { Model } = require('objection');
-const sessionPlugin = require('./index');
+import { after, before, beforeEach, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import Knex from 'knex';
+import { Model } from 'objection';
+import sessionPlugin from './index.js';
 
 const ISO_DATE_REGEX = /\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/;
 

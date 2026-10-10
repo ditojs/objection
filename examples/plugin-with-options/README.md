@@ -13,21 +13,19 @@ and returns a mixin.
 Usage example:
 
 ```js
-const { Model } = require('objection');
-const sessionPlugin = require('path/to/this/example');
+import { Model } from 'objection';
+import sessionPlugin from 'path/to/this/example/index.js';
 
 const Session = sessionPlugin({
   setCreatedBy: false,
   setModifiedBy: false,
 });
 
-class Person extends Session(Model) {
+export default class Person extends Session(Model) {
   static get tableName() {
     return 'Person';
   }
 }
-
-module.exports = Person;
 ```
 
 ```js
