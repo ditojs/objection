@@ -9,18 +9,15 @@
 ### Fixes
 
 - `upsertGraph()` patches the related models of many-to-many relations by their id, and their extra properties in the join row by the ids of both ends. Until now these patches filtered by a subquery that joins the join table, and on MySQL, the patches of a graph upserted without a transaction deadlocked each other. The SQL of these patches changes. [#135](https://github.com/ditojs/objection/issues/135)
-
-### Other
-
-- Replace the custom build of lodash's `cloneDeep()` from 2018 with a small implementation, which `$clone()`, `toJSON()` and validation use to copy objects in model properties. It copies the same values, 2 to 4 times faster. Objects with a `null` prototype keep it instead of getting `Object.prototype`, and `BigInt64Array` / `BigUint64Array` are copied instead of shared.
-
-## 3.5.1
-
-### Fixes
-
 - The warning from 3.4.0 about owner models missing a join property skips the foreign key of a `BelongsToOneRelation`, unless it's part of the id. It's also missing when it was never set, e.g. on models returned by `insert()` or created with `fromJson()`, where no related model is the right result. A foreign key left out of a partial `select()` looks the same and no longer warns either. Join properties of all other relations still warn, including non-id columns. [#132](https://github.com/ditojs/objection/issues/132)
 - `relate()`, `$relatedQuery().insert()` and `insertGraph()` / `upsertGraph()` inserting or relating models of many-to-many and has-one-through relations whose join table is also the related table throw an error, like `unrelate()` since 3.4.0. They inserted the join rows as new related rows, or failed with unique violations after inserting the related rows. [#133](https://github.com/ditojs/objection/issues/133)
 - Recursive upserts of related models with children no longer warn about the unknown graph option `options` since 3.4.0
+
+### Other
+
+- Replace the custom build of lodash's `cloneDeep()` from 2018 with a small implementation, which `$clone()`, `toJSON()` and validation use to copy objects in model properties. It copies model data the same way, 2 to 4 times faster. Objects with a `null` prototype keep it instead of getting `Object.prototype`, and `BigInt64Array` / `BigUint64Array` are copied instead of shared.
+- The parsers of relation expressions and JSON field expressions are generated with [Peggy](https://peggyjs.org/) instead of PEG.js 0.10, with `npm run build:parsers`. Parse results and error messages are the same.
+- The example projects use current versions of their dependencies and need Node.js 20.17 or newer
 
 ## 3.5.0
 
