@@ -1,4 +1,3 @@
-const path = require('path');
 const knexUtils = require('../lib/utils/knexUtils');
 const { map: promiseMap } = require('../lib/utils/promiseUtils');
 const { delay, cloneDeep } = require('./testUtils');
@@ -309,13 +308,13 @@ class TestSession {
           });
       })
       .catch((cause) => {
+        const { client, connection } = opt.knexConfig;
+        const target =
+          connection.filename || `${connection.host}:${connection.port}/${connection.database}`;
         const err = new Error(
-          'Could not connect to ' +
-            opt.knexConfig.client +
-            '. Make sure the server is running and the database ' +
-            opt.knexConfig.connection.database +
-            ' is created. You can see the test database configurations from file ' +
-            path.join(__dirname, 'index.js'),
+          `Could not connect to ${client} at ${target}.` +
+            ' Run `npm run db:up` to start the test databases with docker, or see' +
+            ' "Running the tests" in doc/guide/contributing.md to use your own.',
         );
 
         const oldStack = err.stack;
