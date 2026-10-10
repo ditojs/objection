@@ -1,11 +1,10 @@
-const Koa = require('koa')
-const KoaRouter = require('koa-router')
-const bodyParser = require('koa-bodyparser')
-
-const Knex = require('knex')
-const knexConfig = require('./knexfile')
-const registerApi = require('./api')
-const { Model, ForeignKeyViolationError, ValidationError } = require('objection')
+import Koa from 'koa'
+import Router from '@koa/router'
+import { bodyParser } from '@koa/bodyparser'
+import Knex from 'knex'
+import { Model, ForeignKeyViolationError, ValidationError } from 'objection'
+import knexConfig from './knexfile.js'
+import registerApi from './api.js'
 
 // Initialize knex.
 const knex = Knex(knexConfig.development)
@@ -15,7 +14,7 @@ const knex = Knex(knexConfig.development)
 // the Model.bindKnex() method.
 Model.knex(knex)
 
-const router = new KoaRouter()
+const router = new Router()
 const app = new Koa()
 
 // Register our REST API.

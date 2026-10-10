@@ -1,20 +1,21 @@
 {
   "name": "objection-example-minimal",
-  "version": "2.0.0",
+  "version": "4.0.0",
   "description": "Objection.js minimal example project",
+  "type": "module",
   "main": "app.js",
   "scripts": {
     "migrate": "knex migrate:latest",
-    "start": "npm run migrate && node app"
+    "start": "npm run migrate && node app.js"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "author": "Sami Koskimäki",
   "license": "MIT",
   "dependencies": {
-    "knex": "^0.14.6",
-    "objection": "^1.6.6",
-    "sqlite3": "^4.0.4"
+    "knex": "^3.3.0",
+    "objection": "^4.0.0",
+    "sqlite3": "^5.1.7"
   }
 }
