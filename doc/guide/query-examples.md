@@ -1389,6 +1389,20 @@ await Person.query().upsertGraph(
 
 You can disable updates, inserts, deletes etc. for the whole [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) operation or for individual relations by using the `noUpdate`, `noInsert`, `noDelete` etc. options. See [UpsertGraphOptions](/api/types/#type-upsertgraphoptions) docs for more info.
 
+Instead of a list of relation paths, these options also accept a relation expression in the same syntax as [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched). Like the list, it only matches the relations at the end of the paths it names, not the relations along the way. `'*'` matches all relations at any depth, and recursive expressions like `'parent.^'` every level of the recursion. The root models are never matched:
+
+```js
+// Update existing people and insert new ones, but don't insert
+// any new related models.
+await Person.query().upsertGraph(people, { noInsert: '*' });
+
+// Don't delete pets or the reviews of movies. Missing movies are
+// still deleted.
+await Person.query().upsertGraph(person, {
+  noDelete: '[pets, movies.reviews]'
+});
+```
+
 If you need to unrelate or delete individual models without listing all the other models of a relation, you can mark them with the special properties `#unrelate` and `#delete`. This is especially useful together with the `noDelete` and `noUnrelate` options, which keep all models that are missing from the graph intact. The names of the special properties can be changed using the [graphUnrelateProp](/api/model/static-properties.html#static-graphunrelateprop) and [graphDeleteProp](/api/model/static-properties.html#static-graphdeleteprop) static properties.
 
 ```js

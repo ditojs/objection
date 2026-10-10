@@ -1058,7 +1058,7 @@ declare namespace Objection {
   }
 
   export interface InsertGraphOptions {
-    relate?: boolean | string[];
+    relate?: boolean | string | string[];
     allowRefs?: boolean;
   }
 
@@ -1077,15 +1077,15 @@ declare namespace Objection {
   }
 
   export interface UpsertGraphOptions {
-    relate?: boolean | string[];
-    unrelate?: boolean | string[];
-    insertMissing?: boolean | string[];
-    update?: boolean | string[];
-    noInsert?: boolean | string[];
-    noUpdate?: boolean | string[];
-    noDelete?: boolean | string[];
-    noRelate?: boolean | string[];
-    noUnrelate?: boolean | string[];
+    relate?: boolean | string | string[];
+    unrelate?: boolean | string | string[];
+    insertMissing?: boolean | string | string[];
+    update?: boolean | string | string[];
+    noInsert?: boolean | string | string[];
+    noUpdate?: boolean | string | string[];
+    noDelete?: boolean | string | string[];
+    noRelate?: boolean | string | string[];
+    noUnrelate?: boolean | string | string[];
     allowRefs?: boolean;
   }
 

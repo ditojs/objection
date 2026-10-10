@@ -187,6 +187,19 @@ import { Animal } from '../fixtures/animal';
     options,
   );
 
+  // Relation expressions match the relations at the end of their paths,
+  // `'*'` all relations at any depth.
+  options = {
+    // Don't insert related models at any depth, only new root models.
+    noInsert: '*',
+    noDelete: '[pets, movies.reviews]',
+  };
+
+  await Person.query().upsertGraph([{ id: 1, pets: [{ name: 'Not inserted' }] }], options);
+
+  // @ts-expect-error: graph options don't accept numbers.
+  await Person.query().upsertGraph({ id: 1 }, { noInsert: 1 });
+
   // save an animal with only first name of the owner
   // owner's type is defined as nullable with `Person | null` - and partial graph should still be accepted
   // https://github.com/Vincit/objection.js/pull/2404

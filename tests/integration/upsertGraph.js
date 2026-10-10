@@ -486,6 +486,291 @@ module.exports = (session) => {
         });
       });
 
+      it(`should insert new root models but no related models with noInsert: '*'`, () => {
+        const upsert = [
+          {
+            id: 2,
+
+            model1Relation2: [
+              {
+                idCol: 1,
+
+                model2Relation1: [
+                  { id: 4 },
+                  { id: 5 },
+                  {
+                    // Not inserted because of `noInsert`.
+                    model1Prop1: 'inserted manyToMany',
+                  },
+                ],
+              },
+              {
+                idCol: 2,
+                model2Relation1: [{ id: 6 }, { id: 7 }],
+              },
+              {
+                // Not inserted because of `noInsert`.
+                model2Prop1: 'inserted hasMany',
+              },
+            ],
+          },
+          {
+            // Inserted, the root never matches a relation expression.
+            model1Prop1: 'inserted root',
+
+            model1Relation2: [
+              {
+                // Not inserted because of `noInsert`.
+                model2Prop1: 'inserted hasMany of inserted root',
+              },
+            ],
+          },
+        ];
+
+        return transaction(session.knex, (trx) => {
+          return Model1.query(trx)
+            .upsertGraph(upsert, { fetchStrategy, noInsert: '*' })
+            .then(() => Promise.all([trx('Model1'), trx('model2')]))
+            .then(([model1Rows, model2Rows]) => {
+              expect(model1Rows.map((it) => it.model1Prop1).sort()).to.eql([
+                'belongsToOne',
+                'inserted root',
+                'manyToMany 1',
+                'manyToMany 2',
+                'manyToMany 3',
+                'manyToMany 4',
+                'root 1',
+                'root 2',
+              ]);
+
+              expect(model2Rows.map((it) => it.model2_prop1).sort()).to.eql([
+                'hasMany 1',
+                'hasMany 2',
+              ]);
+            });
+        });
+      });
+
+      for (const noInsert of [
+        ['model1Relation1', 'model1Relation2.model2Relation1'],
+        '[model1Relation1, model1Relation2.model2Relation1]',
+      ]) {
+        it(`should only match the given relation paths with noInsert: ${JSON.stringify(noInsert)}`, () => {
+          const upsert = {
+            id: 2,
+
+            model1Relation2: [
+              {
+                idCol: 1,
+
+                model2Relation1: [
+                  { id: 4 },
+                  { id: 5 },
+                  {
+                    // Not inserted because of `noInsert`.
+                    model1Prop1: 'inserted manyToMany',
+                  },
+                ],
+              },
+              {
+                idCol: 2,
+                model2Relation1: [{ id: 6 }, { id: 7 }],
+              },
+              {
+                // Inserted, only `model1Relation2.model2Relation1` matches.
+                model2Prop1: 'inserted hasMany',
+              },
+            ],
+
+            model1Relation3: [
+              {
+                // Inserted, `model1Relation3` is not in the expression.
+                model2Prop1: 'inserted manyToMany relation 3',
+              },
+            ],
+          };
+
+          return transaction(session.knex, (trx) => {
+            return Model1.query(trx)
+              .upsertGraph(upsert, {
+                fetchStrategy,
+                noInsert,
+              })
+              .then(() => {
+                return Model1.query(trx)
+                  .findById(2)
+                  .withGraphFetched(
+                    '[model1Relation2(orderById).model2Relation1(orderById), model1Relation3]',
+                  );
+              })
+              .then(omitIrrelevantProps)
+              .then((result) => {
+                expect(
+                  result.model1Relation2.map((it) => [
+                    it.model2Prop1,
+                    it.model2Relation1.map((it) => it.model1Prop1),
+                  ]),
+                ).to.eql([
+                  ['hasMany 1', ['manyToMany 1', 'manyToMany 2']],
+                  ['hasMany 2', ['manyToMany 3', 'manyToMany 4']],
+                  ['inserted hasMany', []],
+                ]);
+
+                expect(result.model1Relation3.map((it) => it.model2Prop1)).to.eql([
+                  'inserted manyToMany relation 3',
+                ]);
+              });
+          });
+        });
+      }
+
+      for (const [noDelete, expectedRelated] of [
+        // Only the exact relation matches, nested relations are deleted.
+        ['model1Relation2', ['manyToMany 1']],
+        // All relations at any depth match.
+        ['*', ['manyToMany 1', 'manyToMany 2']],
+      ]) {
+        it(`should respect noDelete: '${noDelete}'`, () => {
+          const upsert = {
+            id: 2,
+
+            model1Relation2: [
+              {
+                idCol: 1,
+                model2Relation1: [{ id: 4 }],
+              },
+            ],
+          };
+
+          return transaction(session.knex, (trx) => {
+            return Model1.query(trx)
+              .upsertGraph(upsert, { fetchStrategy, noDelete })
+              .then(() => {
+                return Model1.query(trx)
+                  .findById(2)
+                  .withGraphFetched('model1Relation2(orderById).model2Relation1(orderById)');
+              })
+              .then(omitIrrelevantProps)
+              .then((result) => {
+                expect(
+                  result.model1Relation2.map((it) => [
+                    it.model2Prop1,
+                    it.model2Relation1.map((it) => it.model1Prop1),
+                  ]),
+                ).to.eql([
+                  // Not deleted because of `noDelete`.
+                  ['hasMany 1', expectedRelated],
+                  ['hasMany 2', ['manyToMany 3', 'manyToMany 4']],
+                ]);
+              });
+          });
+        });
+      }
+
+      for (const path of [['model1Relation2.model2Relation1'], 'model1Relation2.model2Relation1']) {
+        const title = JSON.stringify(path);
+
+        it(`should only relate and unrelate the given relation paths with ${title}`, () => {
+          const upsert = {
+            id: 2,
+
+            model1Relation2: [
+              {
+                idCol: 1,
+                // id=5 is unrelated, id=1 related.
+                model2Relation1: [{ id: 4 }, { id: 1 }],
+              },
+              // idCol=2 is deleted, `model1Relation2` doesn't match.
+            ],
+          };
+
+          return transaction(session.knex, (trx) => {
+            return Model1.query(trx)
+              .upsertGraph(upsert, { fetchStrategy, relate: path, unrelate: path })
+              .then(() => {
+                return Promise.all([
+                  Model1.query(trx)
+                    .findById(2)
+                    .withGraphFetched('model1Relation2(orderById).model2Relation1(orderById)'),
+                  trx('Model1').where('id', 5),
+                  trx('model2'),
+                ]);
+              })
+              .then(([result, unrelatedRows, model2Rows]) => {
+                expect(
+                  result.model1Relation2.map((it) => [
+                    it.model2Prop1,
+                    it.model2Relation1.map((it) => it.model1Prop1),
+                  ]),
+                ).to.eql([['hasMany 1', ['root 1', 'manyToMany 1']]]);
+
+                expect(unrelatedRows.map((it) => it.model1Prop1)).to.eql(['manyToMany 2']);
+                expect(model2Rows.map((it) => it.model2_prop1)).to.eql(['hasMany 1']);
+              });
+          });
+        });
+
+        it(`should not relate the parent relation with ${title}`, (done) => {
+          const upsert = {
+            id: 1,
+
+            model1Relation2: [
+              {
+                // A child of id=2, related only if `model1Relation2` matches.
+                idCol: 1,
+                model2Relation1: [{ id: 4 }],
+              },
+            ],
+          };
+
+          transaction(session.knex, (trx) => {
+            return Model1.query(trx).upsertGraph(upsert, { fetchStrategy, relate: path });
+          })
+            .then(() => {
+              throw new Error('should not get here');
+            })
+            .catch((err) => {
+              expect(err instanceof Model1.NotFoundError).to.equal(true);
+              expect(err.message).to.match(/^model \(id=1\) is not a child of model \(id=1\)/);
+              done();
+            })
+            .catch(done);
+        });
+      }
+
+      for (const relate of ['model1Relation1.^', '*']) {
+        it(`should relate models at any depth with relate: '${relate}'`, () => {
+          const upsert = {
+            id: 1,
+
+            model1Relation1: {
+              id: 2,
+
+              model1Relation1: {
+                id: 3,
+                // Not a child of id=3 yet.
+                model1Relation1: { id: 4 },
+              },
+            },
+          };
+
+          return transaction(session.knex, (trx) => {
+            return Model1.query(trx)
+              .upsertGraph(upsert, { fetchStrategy, relate, noDelete: true })
+              .then(() => {
+                return Model1.query(trx)
+                  .findById(1)
+                  .withGraphFetched('model1Relation1.model1Relation1.model1Relation1');
+              })
+              .then((result) => {
+                expect(result.model1Relation1.id).to.equal(2);
+                expect(result.model1Relation1.model1Relation1.id).to.equal(3);
+                expect(result.model1Relation1.model1Relation1.model1Relation1.id).to.equal(4);
+              });
+          });
+        });
+      }
+
       it('should update model if belongsToOne relation changes', () => {
         const upsert = {
           id: 1,
@@ -1151,150 +1436,166 @@ module.exports = (session) => {
         });
       });
 
-      it('should respect noRelate and noUnrelate flags', () => {
-        const upsert = {
-          // the root gets updated because it has an id
-          id: 2,
-          model1Prop1: 'updated root 2',
+      for (const [title, options] of [
+        [
+          'flags',
+          {
+            noUnrelate: ['model1Relation2'],
+            noRelate: ['model1Relation2.model2Relation1'],
+          },
+        ],
+        [
+          'relation expressions',
+          {
+            noUnrelate: 'model1Relation2',
+            noRelate: '*',
+          },
+        ],
+      ]) {
+        it(`should respect noRelate and noUnrelate ${title}`, () => {
+          const upsert = {
+            // the root gets updated because it has an id
+            id: 2,
+            model1Prop1: 'updated root 2',
 
-          // unrelate
-          model1Relation1: null,
+            // unrelate
+            model1Relation1: null,
 
-          // update idCol=1
-          // don't unrelate idCol=2 because of `noUnrelate`
-          // and insert one new
-          model1Relation2: [
-            {
-              idCol: 1,
-              model2Prop1: 'updated hasMany 1',
+            // update idCol=1
+            // don't unrelate idCol=2 because of `noUnrelate`
+            // and insert one new
+            model1Relation2: [
+              {
+                idCol: 1,
+                model2Prop1: 'updated hasMany 1',
 
-              // update id=4
-              // unrelate id=5
-              // don't relate id=6 because of `noRelate`
-              // and insert one new
-              model2Relation1: [
-                {
-                  id: 4,
-                  model1Prop1: 'updated manyToMany 1',
-                },
-                {
-                  // This is the new row.
-                  model1Prop1: 'inserted manyToMany',
-                },
-                {
-                  id: 6,
-                },
-              ],
-            },
-            {
-              // This is the new row.
-              model2Prop1: 'inserted hasMany',
-            },
-          ],
-        };
-
-        return transaction(session.knex, (trx) => {
-          return Model1.query(trx)
-            .upsertGraph(upsert, {
-              fetchStrategy,
-              unrelate: true,
-              relate: true,
-              noUnrelate: ['model1Relation2'],
-              noRelate: ['model1Relation2.model2Relation1'],
-            })
-            .then((result) => {
-              // Fetch the graph from the database.
-              return Model1.query(trx)
-                .findById(2)
-                .withGraphFetched(
-                  '[model1Relation1, model1Relation2(orderById).model2Relation1(orderById)]',
-                );
-            })
-            .then(omitIrrelevantProps)
-            .then((result) => {
-              expect(result).to.eql({
-                id: 2,
-                model1Id: null,
-                model1Prop1: 'updated root 2',
-
-                model1Relation1: null,
-
-                model1Relation2: [
+                // update id=4
+                // unrelate id=5
+                // don't relate id=6 because of `noRelate`
+                // and insert one new
+                model2Relation1: [
                   {
-                    idCol: 1,
-                    model1Id: 2,
-                    model2Prop1: 'updated hasMany 1',
-
-                    model2Relation1: [
-                      {
-                        id: 4,
-                        model1Id: null,
-                        model1Prop1: 'updated manyToMany 1',
-                      },
-                      {
-                        id: 8,
-                        model1Id: null,
-                        model1Prop1: 'inserted manyToMany',
-                      },
-                    ],
+                    id: 4,
+                    model1Prop1: 'updated manyToMany 1',
                   },
                   {
-                    idCol: 2,
-                    model1Id: 2,
-                    model2Prop1: 'hasMany 2',
-
-                    model2Relation1: [
-                      {
-                        id: 6,
-                        model1Id: null,
-                        model1Prop1: 'manyToMany 3',
-                      },
-                      {
-                        id: 7,
-                        model1Id: null,
-                        model1Prop1: 'manyToMany 4',
-                      },
-                    ],
+                    // This is the new row.
+                    model1Prop1: 'inserted manyToMany',
                   },
                   {
-                    idCol: 3,
-                    model1Id: 2,
-                    model2Prop1: 'inserted hasMany',
-                    model2Relation1: [],
+                    id: 6,
                   },
                 ],
+              },
+              {
+                // This is the new row.
+                model2Prop1: 'inserted hasMany',
+              },
+            ],
+          };
+
+          return transaction(session.knex, (trx) => {
+            return Model1.query(trx)
+              .upsertGraph(upsert, {
+                fetchStrategy,
+                unrelate: true,
+                relate: true,
+                ...options,
+              })
+              .then((result) => {
+                // Fetch the graph from the database.
+                return Model1.query(trx)
+                  .findById(2)
+                  .withGraphFetched(
+                    '[model1Relation1, model1Relation2(orderById).model2Relation1(orderById)]',
+                  );
+              })
+              .then(omitIrrelevantProps)
+              .then((result) => {
+                expect(result).to.eql({
+                  id: 2,
+                  model1Id: null,
+                  model1Prop1: 'updated root 2',
+
+                  model1Relation1: null,
+
+                  model1Relation2: [
+                    {
+                      idCol: 1,
+                      model1Id: 2,
+                      model2Prop1: 'updated hasMany 1',
+
+                      model2Relation1: [
+                        {
+                          id: 4,
+                          model1Id: null,
+                          model1Prop1: 'updated manyToMany 1',
+                        },
+                        {
+                          id: 8,
+                          model1Id: null,
+                          model1Prop1: 'inserted manyToMany',
+                        },
+                      ],
+                    },
+                    {
+                      idCol: 2,
+                      model1Id: 2,
+                      model2Prop1: 'hasMany 2',
+
+                      model2Relation1: [
+                        {
+                          id: 6,
+                          model1Id: null,
+                          model1Prop1: 'manyToMany 3',
+                        },
+                        {
+                          id: 7,
+                          model1Id: null,
+                          model1Prop1: 'manyToMany 4',
+                        },
+                      ],
+                    },
+                    {
+                      idCol: 3,
+                      model1Id: 2,
+                      model2Prop1: 'inserted hasMany',
+                      model2Relation1: [],
+                    },
+                  ],
+                });
+
+                return Promise.all([trx('Model1'), trx('model2')]).then(
+                  ([model1Rows, model2Rows]) => {
+                    // Row 3 should NOT be deleted.
+                    expect(model1Rows.find((it) => it.id == 3)).to.eql({
+                      id: 3,
+                      model1Id: null,
+                      model1Prop1: 'belongsToOne',
+                      model1Prop2: null,
+                    });
+
+                    // Row 5 should NOT be deleted.
+                    expect(model1Rows.find((it) => it.id == 5)).to.eql({
+                      id: 5,
+                      model1Id: null,
+                      model1Prop1: 'manyToMany 2',
+                      model1Prop2: null,
+                    });
+
+                    // Row 2 should NOT be deleted.
+                    expect(model2Rows.find((it) => it.id_col == 2)).to.eql({
+                      id_col: 2,
+                      model1_id: 2,
+                      model2_prop1: 'hasMany 2',
+                      model2_prop2: null,
+                    });
+                  },
+                );
               });
-
-              return Promise.all([trx('Model1'), trx('model2')]).then(
-                ([model1Rows, model2Rows]) => {
-                  // Row 3 should NOT be deleted.
-                  expect(model1Rows.find((it) => it.id == 3)).to.eql({
-                    id: 3,
-                    model1Id: null,
-                    model1Prop1: 'belongsToOne',
-                    model1Prop2: null,
-                  });
-
-                  // Row 5 should NOT be deleted.
-                  expect(model1Rows.find((it) => it.id == 5)).to.eql({
-                    id: 5,
-                    model1Id: null,
-                    model1Prop1: 'manyToMany 2',
-                    model1Prop2: null,
-                  });
-
-                  // Row 2 should NOT be deleted.
-                  expect(model2Rows.find((it) => it.id_col == 2)).to.eql({
-                    id_col: 2,
-                    model1_id: 2,
-                    model2_prop1: 'hasMany 2',
-                    model2_prop2: null,
-                  });
-                },
-              );
-            });
+          });
         });
-      });
+      }
 
       it('should respect noDelete flag and special #unrelate and #delete model props', () => {
         const upsert = {
@@ -3166,7 +3467,7 @@ module.exports = (session) => {
                 id: 1,
               },
               {
-                noRelate: 'model1Relation2',
+                noRelate: 42,
               },
             )
             .then(() => {
@@ -3174,7 +3475,30 @@ module.exports = (session) => {
             })
             .catch((err) => {
               expect(err.message).to.equal(
-                'expected noRelate option value "model1Relation2" to be an instance of boolean or array of strings',
+                'expected noRelate option value "42" to be a boolean, an array of relation paths or a relation expression',
+              );
+              done();
+            })
+            .catch(done);
+        });
+
+        it('should throw a sensible error if an invalid relation expression is passed', (done) => {
+          Model1.bindKnex(session.knex)
+            .query()
+            .upsertGraph(
+              {
+                id: 1,
+              },
+              {
+                noInsert: '[model1Relation1',
+              },
+            )
+            .then(() => {
+              throw new Error('should not get here');
+            })
+            .catch((err) => {
+              expect(err.message).to.match(
+                /^invalid relation expression "\[model1Relation1" in noInsert option: /,
               );
               done();
             })
@@ -3454,77 +3778,140 @@ module.exports = (session) => {
           });
         });
 
-        it('should upsert recursively and respect options', () => {
-          const upsert = {
-            id: 2,
-            model1Prop1: 'updated root 2',
+        for (const [title, options] of [
+          [
+            'flags',
+            {
+              relate: ['model1Relation3', 'model1Relation3.model2Relation3'],
+              noUnrelate: ['model1Relation3.model2Relation3'],
+              noDelete: ['model1Relation3.model2Relation3'],
+            },
+          ],
+          [
+            'relation expressions',
+            {
+              relate: '*',
+              noUnrelate: 'model1Relation3.model2Relation3',
+              noDelete: 'model1Relation3.model2Relation3',
+            },
+          ],
+        ]) {
+          it(`should upsert recursively and respect options with ${title}`, () => {
+            const upsert = {
+              id: 2,
+              model1Prop1: 'updated root 2',
 
-            // Relate new and update ManyToMany relation
-            model1Relation3: [
-              {
-                idCol: 1,
-                model2Prop1: 'updated model2Prop1',
+              // Relate new and update ManyToMany relation
+              model1Relation3: [
+                {
+                  idCol: 1,
+                  model2Prop1: 'updated model2Prop1',
 
-                // Relate new and update ManyToMany relation
-                model2Relation3: [{ id: 2 }],
-              },
-            ],
-          };
+                  // Relate new and update ManyToMany relation
+                  model2Relation3: [{ id: 2 }],
+                },
+              ],
+            };
 
-          return transaction(session.knex, (trx) => {
-            return Model1.query(trx)
-              .upsertGraph(upsert, {
-                fetchStrategy,
-                relate: ['model1Relation3', 'model1Relation3.model2Relation3'],
-                noUnrelate: ['model1Relation3.model2Relation3'],
-                noDelete: ['model1Relation3.model2Relation3'],
-              })
-              .then(() => {
-                return Model1.query(trx)
-                  .findById(2)
-                  .withGraphFetched('model1Relation3(orderById).model2Relation3(orderById)');
-              })
-              .then(omitIrrelevantProps)
-              .then((result) => {
-                expect(result).to.eql({
-                  id: 2,
-                  model1Id: null,
-                  model1Prop1: 'updated root 2',
+            return transaction(session.knex, (trx) => {
+              return Model1.query(trx)
+                .upsertGraph(upsert, {
+                  fetchStrategy,
+                  ...options,
+                })
+                .then(() => {
+                  return Model1.query(trx)
+                    .findById(2)
+                    .withGraphFetched('model1Relation3(orderById).model2Relation3(orderById)');
+                })
+                .then(omitIrrelevantProps)
+                .then((result) => {
+                  expect(result).to.eql({
+                    id: 2,
+                    model1Id: null,
+                    model1Prop1: 'updated root 2',
 
-                  model1Relation3: [
-                    {
-                      extra1: null,
-                      extra2: null,
-                      idCol: 1,
-                      model1Id: null,
-                      model2Prop1: 'updated model2Prop1',
+                    model1Relation3: [
+                      {
+                        extra1: null,
+                        extra2: null,
+                        idCol: 1,
+                        model1Id: null,
+                        model2Prop1: 'updated model2Prop1',
 
-                      model2Relation3: [
-                        // Existing, but not removed
-                        {
-                          id: 1,
-                          model3Prop1: 'model3Prop1 1',
-                          model3JsonProp: null,
-                        },
-                        // Related
-                        {
-                          id: 2,
-                          model3Prop1: 'model3Prop1 2',
-                          model3JsonProp: null,
-                        },
-                        // Existing, but not removed
-                        {
-                          id: 3,
-                          model3Prop1: 'model3Prop1 3',
-                          model3JsonProp: null,
-                        },
-                      ],
-                    },
-                  ],
+                        model2Relation3: [
+                          // Existing, but not removed
+                          {
+                            id: 1,
+                            model3Prop1: 'model3Prop1 1',
+                            model3JsonProp: null,
+                          },
+                          // Related
+                          {
+                            id: 2,
+                            model3Prop1: 'model3Prop1 2',
+                            model3JsonProp: null,
+                          },
+                          // Existing, but not removed
+                          {
+                            id: 3,
+                            model3Prop1: 'model3Prop1 3',
+                            model3JsonProp: null,
+                          },
+                        ],
+                      },
+                    ],
+                  });
                 });
-              });
+            });
           });
-        });
+        }
+
+        // Arrays of relation paths don't match the root of the recursive upsert,
+        // so `noUpdate: ['model1Relation3']` still updates idCol=1.
+        for (const noUpdate of [true, 'model1Relation3']) {
+          it(`should respect noUpdate: ${JSON.stringify(noUpdate)} in recursive upserts`, () => {
+            const upsert = {
+              id: 2,
+
+              model1Relation3: [
+                {
+                  idCol: 1,
+                  // Not updated because of `noUpdate`.
+                  model2Prop1: 'updated model2Prop1',
+                  model2Relation3: [{ id: 2 }],
+                },
+              ],
+            };
+
+            return transaction(session.knex, (trx) => {
+              return Model1.query(trx)
+                .upsertGraph(upsert, {
+                  fetchStrategy,
+                  relate: true,
+                  noUpdate,
+                  noUnrelate: true,
+                  noDelete: true,
+                })
+                .then(() => {
+                  return Model1.query(trx)
+                    .findById(2)
+                    .withGraphFetched('model1Relation3(orderById).model2Relation3(orderById)');
+                })
+                .then((result) => {
+                  expect(
+                    result.model1Relation3.map((it) => [
+                      it.model2Prop1,
+                      it.model2Relation3.map((it) => it.id),
+                    ]),
+                  ).to.eql([
+                    ['manyToMany 1', [1, 2, 3]],
+                    ['manyToMany 2', [2, 4]],
+                  ]);
+                });
+            });
+          });
+        }
 
         it('references to parent graph should produce an error in recursive upsert by default', (done) => {
           const upsert = {
@@ -4341,6 +4728,44 @@ module.exports = (session) => {
               });
             });
         });
+
+        for (const [update, errorKey] of [
+          // The parent relation doesn't match, so it is patched.
+          ['model1Relation1.model1Relation1', null],
+          [['model1Relation1.model1Relation1'], null],
+          ['model1Relation1', 'model1Relation1.model1Prop2'],
+          ['*', 'model1Relation1.model1Prop2'],
+        ]) {
+          it(`should only update the given relation paths with update: ${JSON.stringify(update)}`, () => {
+            const upsert = {
+              id: 2,
+              model1Prop1: 'updated root 2',
+
+              model1Relation1: {
+                id: 3,
+                model1Prop1: 'updated belongsToOne',
+                // This fails with `update` because of missing property.
+                // model1Prop2: 100,
+              },
+            };
+
+            return transaction(session.knex, (trx) => {
+              return Model1.query(trx).upsertGraph(upsert, { fetchStrategy, update });
+            })
+              .then(
+                () => null,
+                (err) => err,
+              )
+              .then((err) => {
+                if (errorKey) {
+                  expect(err).to.be.a(ValidationError);
+                  expect(Object.keys(err.data)).to.eql([errorKey]);
+                } else {
+                  expect(err).to.equal(null);
+                }
+              });
+          });
+        }
       });
 
       describe('cyclic references', () => {
