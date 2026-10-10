@@ -57,7 +57,7 @@ class Person extends SomeMixin(SomeOtherMixin(Model)) {}
 There are a couple of helpers in objection main module for applying multiple mixins.
 
 ```js
-const { mixin, Model } = require('objection');
+import { mixin, Model } from 'objection';
 
 class Person extends mixin(Model, [
   SomeMixin,
@@ -69,7 +69,7 @@ class Person extends mixin(Model, [
 ```
 
 ```js
-const { compose, Model } = require('objection');
+import { compose, Model } from 'objection';
 
 const mixins = compose(
   SomeMixin,

@@ -44,7 +44,7 @@ Complete example how to try out different index choices.
 Migration:
 
 ```js
-exports.up = knex => {
+export function up(knex) {
   return knex.schema
     .createTable('Hero', table => {
       table.increments('id').primary();
@@ -67,7 +67,7 @@ exports.up = knex => {
       'Place',
       'details'
     ]);
-};
+}
 ```
 
 Results following schema:

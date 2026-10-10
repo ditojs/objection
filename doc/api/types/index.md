@@ -175,7 +175,7 @@ Caveats when using special characters in keys:
 There are some special methods that accept `FieldExpression` strings directly, like [whereJsonSupersetOf](/api/query-builder/find-methods.html#wherejsonsupersetof) but you can use `FieldExpressions` anywhere with [ref](/api/objection/#ref). Here's an example:
 
 ```js
-const { ref } = require('objection');
+import { ref } from 'objection';
 
 await Person.query()
   .select([
@@ -399,7 +399,7 @@ Call this method to rollback the transaction. This only needs to be called if yo
 ## `class` ValidationError
 
 ```js
-const { ValidationError } = require('objection');
+import { ValidationError } from 'objection';
 
 throw new ValidationError({ type, message, data });
 ```
@@ -452,7 +452,7 @@ If `type` is `"ModelValidation"` then `data` object should follow this pattern:
 ## `class` NotFoundError
 
 ```js
-const { NotFoundError } = require('objection');
+import { NotFoundError } from 'objection';
 
 throw new NotFoundError(data);
 ```
@@ -731,7 +731,7 @@ You should use this instead of inserting the alias to the SQL to give objection 
 ## `class` Validator
 
 ```js
-const { Validator } = require('objection');
+import { Validator } from 'objection';
 ```
 
 Abstract class from which model validators must be inherited. See the example for explanation. Also check out the [createValidator](/api/model/static-methods.html#static-createvalidator) method.
@@ -739,7 +739,7 @@ Abstract class from which model validators must be inherited. See the example fo
 #### Examples
 
 ```js
-const { Validator } = require('objection');
+import { Validator } from 'objection';
 
 class MyCustomValidator extends Validator {
   validate(args) {
@@ -781,7 +781,7 @@ class MyCustomValidator extends Validator {
   }
 }
 
-const { Model } = require('objection');
+import { Model } from 'objection';
 
 // Override the `createValidator` method of a `Model` to use the
 // custom validator.
@@ -795,7 +795,7 @@ class BaseModel extends Model {
 ## `class` AjvValidator
 
 ```js
-const { AjvValidator } = require('objection');
+import { AjvValidator } from 'objection';
 ```
 
 The default [Ajv](https://github.com/epoberezkin/ajv) based json schema
@@ -805,7 +805,7 @@ method of [Model](/api/model/) like in the example to modify the validator.
 #### Examples
 
 ```js
-const { Model, AjvValidator } = require('objection');
+import { Model, AjvValidator } from 'objection';
 
 class BaseModel extends Model {
   static createValidator() {
