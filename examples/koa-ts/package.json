@@ -21,7 +21,7 @@
     "knex": "^3.3.0",
     "koa": "^3.2.1",
     "objection": "^4.0.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "@types/koa": "^3.0.3",
