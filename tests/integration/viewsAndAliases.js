@@ -1,11 +1,11 @@
-const utils = require('../../lib/utils/knexUtils');
-const expect = require('expect.js');
-const mockKnexFactory = require('../../testUtils/mockKnex');
-const { sortBy } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import * as utils from '../../lib/utils/knexUtils.js';
+import mockKnexFactory from '../../testUtils/mockKnex.js';
+import { sortBy } from '../../testUtils/testUtils.js';
 
 // This is another one of those features that need a separate test suite
 // because they are so pervasive.
-module.exports = (session) => {
+export default (session) => {
   const queries = [];
 
   const knex = mockKnexFactory(session.knex, function (mock, oldImpl, args) {
@@ -184,7 +184,7 @@ module.exports = (session) => {
       ];
     });
 
-    before(() => {
+    beforeAll(() => {
       // This makes sure the columnInfo cache is populated.
       return Model1.query().findById(1).withGraphJoined('[model1Relation1, model1Relation2]');
     });
@@ -197,7 +197,7 @@ module.exports = (session) => {
           .joinRelated('[model1Relation1, model1Relation2, model1Relation3]')
           .then((models) => {
             if (utils.isPostgres(session.knex)) {
-              expect(queries[0].replace(/\s/g, '')).to.equal(
+              expect(queries[0].replace(/\s/g, '')).toBe(
                 `
                 select "someAlias".*
                 from "Model1" as "someAlias"
@@ -221,7 +221,7 @@ module.exports = (session) => {
           })
           .then((model) => {
             if (session.isPostgres()) {
-              expect(queries).to.eql([
+              expect(queries).toEqual([
                 'select "foo".* from "Model1" as "foo" inner join "Model1" as "model1Relation1" on "model1Relation1"."id" = "foo"."model1Id" inner join "Model1" as "model1Relation1:model1Relation1" on "model1Relation1:model1Relation1"."id" = "model1Relation1"."model1Id" where "foo"."id" = 1',
               ]);
             }
@@ -248,11 +248,11 @@ module.exports = (session) => {
               ];
 
               expectedQueries.forEach((expectedQuery, i) => {
-                expect(queries[i]).to.match(expectedQuery);
+                expect(queries[i]).toMatch(expectedQuery);
               });
             }
 
-            expect(model).to.eql(fullEagerResult[0]);
+            expect(model).toEqual(fullEagerResult[0]);
           });
       });
 
@@ -276,11 +276,11 @@ module.exports = (session) => {
               ];
 
               expectedQueries.forEach((expectedQuery, i) => {
-                expect(queries[i]).to.match(expectedQuery);
+                expect(queries[i]).toMatch(expectedQuery);
               });
             }
 
-            expect(model).to.eql(fullEagerResult[0]);
+            expect(model).toEqual(fullEagerResult[0]);
           });
       });
 
@@ -292,8 +292,8 @@ module.exports = (session) => {
           .then(sortEager)
           .then((model) => {
             if (utils.isPostgres(session.knex)) {
-              expect(queries.length).to.equal(1);
-              expect(queries[0].replace(/\s/g, '')).to.equal(
+              expect(queries.length).toBe(1);
+              expect(queries[0].replace(/\s/g, '')).toBe(
                 `
                 select
                   "someAlias"."id" as "id",
@@ -341,26 +341,26 @@ module.exports = (session) => {
               );
             }
 
-            expect(model).to.eql(fullEagerResult[0]);
+            expect(model).toEqual(fullEagerResult[0]);
           });
       });
     });
 
     if (utils.isPostgres(session.knex)) {
       describe('views', () => {
-        before(() => {
+        beforeAll(() => {
           return session.knex.schema.raw(`
             create view "someView" as (select "Model1".*, "Model1"."model1Prop1" as "viewProp" from "Model1")
           `);
         });
 
-        after(() => {
+        afterAll(() => {
           return session.knex.schema.raw(`
             drop view "someView"
           `);
         });
 
-        before(() => {
+        beforeAll(() => {
           // This makes sure the columnInfo cache is populated.
           return Model1.query()
             .findById(1)
@@ -375,7 +375,7 @@ module.exports = (session) => {
             .joinRelated('[model1Relation1, model1Relation2, model1Relation3]')
             .then((models) => {
               if (utils.isPostgres(session.knex)) {
-                expect(queries[0].replace(/\s/g, '')).to.equal(
+                expect(queries[0].replace(/\s/g, '')).toBe(
                   `
                   select "someView".*
                   from "someView"
@@ -409,10 +409,10 @@ module.exports = (session) => {
               ];
 
               expectedQueries.forEach((expectedQuery, i) => {
-                expect(queries[i]).to.match(expectedQuery);
+                expect(queries[i]).toMatch(expectedQuery);
               });
 
-              expect(model).to.eql([
+              expect(model).toEqual([
                 {
                   id: 1,
                   model1Id: 2,
@@ -501,8 +501,8 @@ module.exports = (session) => {
             .withGraphJoined(fullEager)
             .then(sortEager)
             .then((model) => {
-              expect(queries.length).to.equal(1);
-              expect(queries[0].replace(/\s/g, '')).to.equal(
+              expect(queries.length).toBe(1);
+              expect(queries[0].replace(/\s/g, '')).toBe(
                 `
                 select
                   "someView"."id" as "id",
@@ -554,11 +554,11 @@ module.exports = (session) => {
               );
 
               // This makes sure, `Model1` and `someView` have different metadata.
-              expect(Array.from(Model1.$$tableMetadata.keys()).sort()).to.eql([
+              expect(Array.from(Model1.$$tableMetadata.keys()).sort()).toEqual([
                 'Model1',
                 'someView',
               ]);
-              expect(model).to.eql([
+              expect(model).toEqual([
                 {
                   id: 1,
                   model1Id: 2,
@@ -651,8 +651,8 @@ module.exports = (session) => {
             )
             .then(sortEager)
             .then(() => {
-              expect(queries.length).to.equal(1);
-              expect(queries[0].replace(/\s/g, '')).to.equal(
+              expect(queries.length).toBe(1);
+              expect(queries[0].replace(/\s/g, '')).toBe(
                 `
                 select
                   "someView"."id" as "id",

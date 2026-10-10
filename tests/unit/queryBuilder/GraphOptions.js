@@ -1,5 +1,5 @@
-const expect = require('expect.js');
-const { GraphOptions } = require('../../../lib/queryBuilder/graph/GraphOptions');
+import { describe, it, expect } from 'vitest';
+import { GraphOptions } from '../../../lib/queryBuilder/graph/GraphOptions.js';
 
 describe('GraphOptions', () => {
   function createNode(relationPathKey) {
@@ -37,14 +37,14 @@ describe('GraphOptions', () => {
       ['a.^2', 'a.a.a', false],
     ]) {
       it(`'${expression}' should ${expected ? '' : 'not '}match '${relationPathKey}'`, () => {
-        expect(matches(expression, relationPathKey)).to.equal(expected);
+        expect(matches(expression, relationPathKey)).toBe(expected);
       });
     }
 
     it('should match the full relation path in recursive upserts', () => {
-      expect(matches('a.b', 'b', ['a'])).to.equal(true);
-      expect(matches('a.b', '', ['a'])).to.equal(false);
-      expect(matches('a', '', ['a'])).to.equal(true);
+      expect(matches('a.b', 'b', ['a'])).toBe(true);
+      expect(matches('a.b', '', ['a'])).toBe(false);
+      expect(matches('a', '', ['a'])).toBe(true);
     });
 
     for (const [expression, message] of [
@@ -55,11 +55,11 @@ describe('GraphOptions', () => {
       ['a.[b, c as d]', 'aliases like "c as d" are not supported'],
     ]) {
       it(`should throw for '${expression}'`, () => {
-        expect(() => new GraphOptions({ noInsert: expression })).to.throwException((err) => {
-          expect(err.message).to.equal(
-            `invalid relation expression "${expression}" in noInsert option: ${message}`,
-          );
-        });
+        expect(() => new GraphOptions({ noInsert: expression })).toThrow(
+          expect.objectContaining({
+            message: `invalid relation expression "${expression}" in noInsert option: ${message}`,
+          }),
+        );
       });
     }
   });
@@ -74,19 +74,19 @@ describe('GraphOptions', () => {
 
     for (const noInsert of [['a', 'a.b', 'ab.c', 'x.a'], '[a.b, ab.c, x.a]']) {
       it(`should match ${JSON.stringify(noInsert)} against the full relation path`, () => {
-        expect(rebasedMatches(noInsert, 'a', 'b')).to.equal(true);
-        expect(rebasedMatches(noInsert, 'a', 'c')).to.equal(false);
-        expect(rebasedMatches(noInsert, 'a', 'a')).to.equal(false);
-        expect(rebasedMatches(noInsert, 'x', 'a')).to.equal(true);
+        expect(rebasedMatches(noInsert, 'a', 'b')).toBe(true);
+        expect(rebasedMatches(noInsert, 'a', 'c')).toBe(false);
+        expect(rebasedMatches(noInsert, 'a', 'a')).toBe(false);
+        expect(rebasedMatches(noInsert, 'x', 'a')).toBe(true);
       });
     }
 
     it('should match the new root', () => {
-      expect(rebasedMatches(['a'], 'a', '')).to.equal(true);
-      expect(rebasedMatches('a', 'a', '')).to.equal(true);
-      expect(rebasedMatches(['a'], 'b', '')).to.equal(false);
-      expect(rebasedMatches(['a.b'], 'a.b', '')).to.equal(true);
-      expect(rebasedMatches(['b'], 'a.b', '')).to.equal(false);
+      expect(rebasedMatches(['a'], 'a', '')).toBe(true);
+      expect(rebasedMatches('a', 'a', '')).toBe(true);
+      expect(rebasedMatches(['a'], 'b', '')).toBe(false);
+      expect(rebasedMatches(['a.b'], 'a.b', '')).toBe(true);
+      expect(rebasedMatches(['b'], 'a.b', '')).toBe(false);
     });
   });
 });

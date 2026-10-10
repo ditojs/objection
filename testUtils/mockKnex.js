@@ -1,4 +1,6 @@
-const knexMethods = require('knex/lib/query/method-constants').concat('queryBuilder', 'raw');
+import methodConstants from 'knex/lib/query/method-constants.js';
+
+const knexMethods = methodConstants.concat('queryBuilder', 'raw');
 
 /**
  * @param {function} knex
@@ -10,7 +12,7 @@ const knexMethods = require('knex/lib/query/method-constants').concat('queryBuil
  * @returns {function}
  *    Mocked knex.
  */
-module.exports = function mockKnex(knex, mockExecutor) {
+export default function mockKnex(knex, mockExecutor) {
   const mock = (table) => {
     return mock.queryBuilder().table(table);
   };
@@ -62,4 +64,4 @@ module.exports = function mockKnex(knex, mockExecutor) {
   }
 
   return mock;
-};
+}

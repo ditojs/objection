@@ -1,8 +1,8 @@
-const expect = require('expect.js');
-const mockKnexFactory = require('../../../testUtils/mockKnex');
-const { Model, snakeCaseMappers } = require('../../../');
+import { describe, it, expect, beforeEach } from 'vitest';
+import mockKnexFactory from '../../../testUtils/mockKnex.js';
+import { Model, snakeCaseMappers } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   // TODO: Skipped for now for because a change in knex broke mockKnexFactory.
   describe.skip('Model.concurrency', () => {
     let knex;
@@ -90,7 +90,7 @@ module.exports = (session) => {
         };
 
         runningQueries.push(runningQuery);
-        expect(runningQueries).to.have.length(1);
+        expect(runningQueries).toHaveLength(1);
 
         return oldImpl.apply(this, args).then((res) => {
           runningQueries = runningQueries.filter((it) => it !== runningQuery);

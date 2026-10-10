@@ -1,23 +1,14 @@
-const expect = require('expect.js');
-const chai = require('chai');
-const { pick, sortBy } = require('../../testUtils/testUtils');
+import { describe, it, expect, beforeEach } from 'vitest';
+import { pick, sortBy } from '../../testUtils/testUtils.js';
 
-module.exports = (session) => {
+export default (session) => {
   let Model1 = session.models.Model1;
   let Model2 = session.models.Model2;
 
   describe('Model relate queries', () => {
     describe('.$query()', () => {
-      it('should reject the query because relate makes no sense in this context', (done) => {
-        Model1.fromJson({ id: 1 })
-          .$query()
-          .relate(1)
-          .then(() => {
-            done(new Error('should not get here'));
-          })
-          .catch(() => {
-            done();
-          });
+      it('should reject the query because relate makes no sense in this context', () => {
+        return expect(Model1.fromJson({ id: 1 }).$query().relate(1)).rejects.toThrow();
       });
     });
 
@@ -53,14 +44,14 @@ module.exports = (session) => {
             .$relatedQuery('model1Relation1')
             .relate(model2.id)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(model2.id);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(null);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(model2.id);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBeNull();
             });
         });
 
@@ -69,14 +60,14 @@ module.exports = (session) => {
             .$relatedQuery('model1Relation1')
             .relate([model2.id])
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(model2.id);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(null);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(model2.id);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBeNull();
             });
         });
 
@@ -85,14 +76,14 @@ module.exports = (session) => {
             .$relatedQuery('model1Relation1')
             .relate({ id: model2.id })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(model2.id);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(null);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(model2.id);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBeNull();
             });
         });
 
@@ -101,36 +92,37 @@ module.exports = (session) => {
             .$relatedQuery('model1Relation1')
             .relate(model2)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(model2.id);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(null);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(model2.id);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBeNull();
             });
         });
 
-        it('should fail with invalid object value)', (done) => {
-          model1
+        it('should fail with invalid object value)', () => {
+          return model1
             .$relatedQuery('model1Relation1')
             .relate({ wrongId: model2.id })
-            .then(() => {
-              done(new Error('should not get here'));
-            })
-            .catch(() => {
-              return session
-                .knex(Model1.getTableName())
-                .orderBy('id')
-                .then((rows) => {
-                  expect(rows).to.have.length(3);
-                  expect(rows[0].model1Id).to.equal(null);
-                  expect(rows[1].model1Id).to.equal(null);
-                  expect(rows[2].model1Id).to.equal(null);
-                  done();
-                });
-            });
+            .then(
+              () => {
+                throw new Error('should not get here');
+              },
+              () => {
+                return session
+                  .knex(Model1.getTableName())
+                  .orderBy('id')
+                  .then((rows) => {
+                    expect(rows).toHaveLength(3);
+                    expect(rows[0].model1Id).toBeNull();
+                    expect(rows[1].model1Id).toBeNull();
+                    expect(rows[2].model1Id).toBeNull();
+                  });
+              },
+            );
         });
 
         if (session.isPostgres()) {
@@ -140,11 +132,11 @@ module.exports = (session) => {
               .relate(model2.id)
               .returning('*');
 
-            expect(result).to.have.length(1);
-            expect(result[0]).to.be.a(Model1);
-            expect(result[0].id).to.equal(1);
-            expect(result[0].model1Id).to.equal(model2.id);
-            expect(result[0].model1Prop1).to.equal('hello 1');
+            expect(result).toHaveLength(1);
+            expect(result[0]).toBeInstanceOf(Model1);
+            expect(result[0].id).toBe(1);
+            expect(result[0].model1Id).toBe(model2.id);
+            expect(result[0].model1Prop1).toBe('hello 1');
           });
         }
       });
@@ -196,14 +188,14 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation2').relate(2);
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1_id).to.equal(1);
-              expect(rows[1].model1_id).to.equal(1);
-              expect(rows[2].model1_id).to.equal(3);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1_id).toBe(1);
+              expect(rows[1].model1_id).toBe(1);
+              expect(rows[2].model1_id).toBe(3);
             });
         });
 
@@ -215,14 +207,14 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation2').relate([2, 3]);
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1_id).to.equal(1);
-              expect(rows[1].model1_id).to.equal(1);
-              expect(rows[2].model1_id).to.equal(1);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1_id).toBe(1);
+              expect(rows[1].model1_id).toBe(1);
+              expect(rows[2].model1_id).toBe(1);
             });
         });
 
@@ -234,14 +226,14 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation2').relate({ idCol: 2 });
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1_id).to.equal(1);
-              expect(rows[1].model1_id).to.equal(1);
-              expect(rows[2].model1_id).to.equal(3);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1_id).toBe(1);
+              expect(rows[1].model1_id).toBe(1);
+              expect(rows[2].model1_id).toBe(3);
             });
         });
 
@@ -253,14 +245,14 @@ module.exports = (session) => {
               return model.$relatedQuery('model1Relation2').relate([{ idCol: 2 }, { idCol: 3 }]);
             })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1_id).to.equal(1);
-              expect(rows[1].model1_id).to.equal(1);
-              expect(rows[2].model1_id).to.equal(1);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1_id).toBe(1);
+              expect(rows[1].model1_id).toBe(1);
+              expect(rows[2].model1_id).toBe(1);
             });
         });
 
@@ -272,9 +264,9 @@ module.exports = (session) => {
               .relate([2, 3])
               .returning('*');
 
-            expect(result).to.have.length(2);
-            expect(result[0]).to.be.a(Model2);
-            expect(sortBy(result, 'idCol').map((it) => pick(it, 'idCol', 'model1Id'))).to.eql([
+            expect(result).toHaveLength(2);
+            expect(result[0]).toBeInstanceOf(Model2);
+            expect(sortBy(result, 'idCol').map((it) => pick(it, 'idCol', 'model1Id'))).toEqual([
               { idCol: 2, model1Id: 1 },
               { idCol: 3, model1Id: 1 },
             ]);
@@ -340,16 +332,16 @@ module.exports = (session) => {
               return model.$relatedQuery('model2Relation1').relate(5);
             })
             .then((res) => {
-              expect(res).to.equal(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
+              expect(rows).toHaveLength(5);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
             });
         });
 
@@ -362,29 +354,17 @@ module.exports = (session) => {
                 return model.$relatedQuery('model2Relation1').relate([5, 6]);
               })
               .then((res) => {
-                expect(res).to.equal(2);
+                expect(res).toBe(2);
                 return session.knex('Model1Model2').orderBy('id');
               })
               .then((rows) => {
-                expect(rows).to.have.length(6);
-                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 6)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(
-                  1,
-                );
-                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(
-                  1,
-                );
+                expect(rows).toHaveLength(6);
+                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
+                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 6)).toHaveLength(1);
+                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).toHaveLength(1);
+                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).toHaveLength(1);
+                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
               });
           });
 
@@ -397,7 +377,7 @@ module.exports = (session) => {
               .toKnexQuery()
               .toSQL().sql;
 
-            expect(sql).to.equal(
+            expect(sql).toBe(
               'insert into "Model1Model2" ("model1Id", "model2Id") values (?, ?) on conflict ("model1Id") do nothing returning "model1Id"',
             );
           });
@@ -409,17 +389,17 @@ module.exports = (session) => {
               .relate([5, 6])
               .returning('*');
 
-            expect(result).to.have.length(2);
-            expect(result.every((it) => typeof it.id === 'number')).to.equal(true);
-            expect(sortBy(result, 'model1Id').map((it) => pick(it, 'model1Id', 'model2Id'))).to.eql(
-              [
-                { model1Id: 5, model2Id: 1 },
-                { model1Id: 6, model2Id: 1 },
-              ],
-            );
+            expect(result).toHaveLength(2);
+            expect(result.every((it) => typeof it.id === 'number')).toBe(true);
+            expect(
+              sortBy(result, 'model1Id').map((it) => pick(it, 'model1Id', 'model2Id')),
+            ).toEqual([
+              { model1Id: 5, model2Id: 1 },
+              { model1Id: 6, model2Id: 1 },
+            ]);
 
             const rows = await session.knex('Model1Model2').orderBy('id');
-            expect(rows).to.have.length(6);
+            expect(rows).toHaveLength(6);
           });
         }
 
@@ -431,16 +411,16 @@ module.exports = (session) => {
               return model.$relatedQuery('model2Relation1').relate({ id: 5 });
             })
             .then((res) => {
-              expect(res).to.equal(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
+              expect(rows).toHaveLength(5);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
             });
         });
 
@@ -454,20 +434,20 @@ module.exports = (session) => {
                 .relate({ id: 5, aliasedExtra: 'foobar' });
             })
             .then((res) => {
-              expect(res).to.equal(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).to.have.length(1);
+              expect(rows).toHaveLength(5);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
               expect(
                 rows.filter(
                   (it) => it.model2Id === 1 && it.model1Id === 5 && it.extra3 === 'foobar',
                 ),
-              ).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).to.have.length(1);
+              ).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
             });
         });
       });
@@ -501,12 +481,12 @@ module.exports = (session) => {
               return model.$relatedQuery('model2Relation2').relate(2);
             })
             .then((res) => {
-              expect(res).to.equal(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2One');
             })
             .then((rows) => {
-              expect(rows).to.have.length(1);
-              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 2)).to.have.length(1);
+              expect(rows).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 2)).toHaveLength(1);
             });
         });
       });
@@ -536,14 +516,14 @@ module.exports = (session) => {
             .for(1)
             .relate(2)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(2);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(null);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(2);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBeNull();
             });
         });
 
@@ -552,14 +532,14 @@ module.exports = (session) => {
             .for(1)
             .relate({ id: 2 })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(2);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(null);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(2);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBeNull();
             });
         });
 
@@ -568,14 +548,14 @@ module.exports = (session) => {
             .for([1, 3])
             .relate(2)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(2);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(2);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(2);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBe(2);
             });
         });
 
@@ -584,36 +564,37 @@ module.exports = (session) => {
             .for(Model1.query().findByIds([1, 3]))
             .relate(2)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model1.getTableName()).orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(3);
-              expect(rows[0].model1Id).to.equal(2);
-              expect(rows[1].model1Id).to.equal(null);
-              expect(rows[2].model1Id).to.equal(2);
+              expect(rows).toHaveLength(3);
+              expect(rows[0].model1Id).toBe(2);
+              expect(rows[1].model1Id).toBeNull();
+              expect(rows[2].model1Id).toBe(2);
             });
         });
 
-        it('should fail with invalid object value)', (done) => {
-          Model1.relatedQuery('model1Relation1')
+        it('should fail with invalid object value)', () => {
+          return Model1.relatedQuery('model1Relation1')
             .for(1)
             .relate({ wrongId: 2 })
-            .then(() => {
-              done(new Error('should not get here'));
-            })
-            .catch(() => {
-              return session
-                .knex(Model1.getTableName())
-                .orderBy('id')
-                .then((rows) => {
-                  expect(rows).to.have.length(3);
-                  expect(rows[0].model1Id).to.equal(null);
-                  expect(rows[1].model1Id).to.equal(null);
-                  expect(rows[2].model1Id).to.equal(null);
-                  done();
-                });
-            });
+            .then(
+              () => {
+                throw new Error('should not get here');
+              },
+              () => {
+                return session
+                  .knex(Model1.getTableName())
+                  .orderBy('id')
+                  .then((rows) => {
+                    expect(rows).toHaveLength(3);
+                    expect(rows[0].model1Id).toBeNull();
+                    expect(rows[1].model1Id).toBeNull();
+                    expect(rows[2].model1Id).toBeNull();
+                  });
+              },
+            );
         });
       });
 
@@ -676,12 +657,12 @@ module.exports = (session) => {
             .for(1)
             .relate(3)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(6);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: 1 },
                 { id_col: 3, model1_id: 1 },
@@ -697,12 +678,12 @@ module.exports = (session) => {
             .for(Model1.query().findByIds(1))
             .relate(3)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(6);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: 1 },
                 { id_col: 3, model1_id: 1 },
@@ -713,20 +694,18 @@ module.exports = (session) => {
             });
         });
 
-        it('should fail with multiple values', (done) => {
-          Model1.relatedQuery('model1Relation2')
+        it('should fail with multiple values', () => {
+          return Model1.relatedQuery('model1Relation2')
             .for([1, 2])
             .relate(3)
             .then(() => {
               throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.message).to.equal(
+              expect(err.message).toBe(
                 "Can only relate items for one parent at a time in case of HasManyRelation. Otherwise multiple update queries would need to be created. If you need to relate items for multiple parents, simply loop through them. That's the most performant way.",
               );
-              done();
-            })
-            .catch(done);
+            });
         });
 
         it('should relate (multiple values)', () => {
@@ -734,12 +713,12 @@ module.exports = (session) => {
             .for(1)
             .relate([3, 5])
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(6);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: 1 },
                 { id_col: 3, model1_id: 1 },
@@ -755,12 +734,12 @@ module.exports = (session) => {
             .for(1)
             .relate({ idCol: 3 })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(6);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: 1 },
                 { id_col: 3, model1_id: 1 },
@@ -776,12 +755,12 @@ module.exports = (session) => {
             .for(1)
             .relate([{ idCol: 3 }, { idCol: 5 }])
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex(Model2.getTableName()).orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
-              chai.expect(rows).containSubset([
+              expect(rows).toHaveLength(6);
+              expect(rows).toContainSubset([
                 { id_col: 1, model1_id: 1 },
                 { id_col: 2, model1_id: 1 },
                 { id_col: 3, model1_id: 1 },
@@ -848,12 +827,12 @@ module.exports = (session) => {
             .for(1)
             .relate(5)
             .then((res) => {
-              expect(res).to.equal(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              chai.expect(rows).to.containSubset([
+              expect(rows).toHaveLength(5);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5 },
                 { model2Id: 2, model1Id: 4 },
@@ -868,12 +847,12 @@ module.exports = (session) => {
             .for(Model2.query().findById(1))
             .relate(5)
             .then((res) => {
-              expect(res).to.equal(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              chai.expect(rows).to.containSubset([
+              expect(rows).toHaveLength(5);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5 },
                 { model2Id: 2, model1Id: 4 },
@@ -889,12 +868,12 @@ module.exports = (session) => {
               .for(1)
               .relate([5, 6])
               .then((res) => {
-                expect(res).to.equal(2);
+                expect(res).toBe(2);
                 return session.knex('Model1Model2').orderBy('id');
               })
               .then((rows) => {
-                expect(rows).to.have.length(6);
-                chai.expect(rows).to.containSubset([
+                expect(rows).toHaveLength(6);
+                expect(rows).toContainSubset([
                   { model2Id: 1, model1Id: 3 },
                   { model2Id: 1, model1Id: 5 },
                   { model2Id: 1, model1Id: 6 },
@@ -913,8 +892,8 @@ module.exports = (session) => {
                 return session.knex('Model1Model2').orderBy('id');
               })
               .then((rows) => {
-                expect(rows).to.have.length(6);
-                chai.expect(rows).to.containSubset([
+                expect(rows).toHaveLength(6);
+                expect(rows).toContainSubset([
                   { model2Id: 1, model1Id: 3 },
                   { model2Id: 1, model1Id: 5 },
                   { model2Id: 1, model1Id: 6 },
@@ -933,8 +912,8 @@ module.exports = (session) => {
                 return session.knex('Model1Model2').orderBy('id');
               })
               .then((rows) => {
-                expect(rows).to.have.length(8);
-                chai.expect(rows).to.containSubset([
+                expect(rows).toHaveLength(8);
+                expect(rows).toContainSubset([
                   { model2Id: 1, model1Id: 1 },
                   { model2Id: 1, model1Id: 2 },
                   { model2Id: 1, model1Id: 3 },
@@ -953,12 +932,12 @@ module.exports = (session) => {
             .for(1)
             .relate({ id: 5 })
             .then((res) => {
-              expect(res).to.eql(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              chai.expect(rows).to.containSubset([
+              expect(rows).toHaveLength(5);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5 },
                 { model2Id: 2, model1Id: 4 },
@@ -973,12 +952,12 @@ module.exports = (session) => {
             .for(1)
             .relate({ id: 5, aliasedExtra: 'foobar' })
             .then((res) => {
-              expect(res).to.eql(1);
+              expect(res).toBe(1);
               return session.knex('Model1Model2').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(5);
-              chai.expect(rows).to.containSubset([
+              expect(rows).toHaveLength(5);
+              expect(rows).toContainSubset([
                 { model2Id: 1, model1Id: 3 },
                 { model2Id: 1, model1Id: 5, extra3: 'foobar' },
                 { model2Id: 2, model1Id: 4 },

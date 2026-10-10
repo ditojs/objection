@@ -1,7 +1,7 @@
-const { expect } = require('chai');
-const { Model } = require('../../../');
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { Model } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('upsertGraph() deleting the row of a BelongsToOneRelation', () => {
     const { knex } = session;
 
@@ -40,7 +40,7 @@ module.exports = (session) => {
         });
     }
 
-    before(() => {
+    beforeAll(() => {
       Owner.knex(knex);
     });
 
@@ -54,12 +54,12 @@ module.exports = (session) => {
       await knex('bt1_delete_pet').delete();
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('bt1_delete_owner').dropTableIfExists('bt1_delete_pet');
     });
 
     describe('with ON DELETE SET NULL', () => {
-      before(() => {
+      beforeAll(() => {
         return createTables((table) => {
           table.integer('petId').references('bt1_delete_pet.id').onDelete('SET NULL');
         });
@@ -80,13 +80,13 @@ module.exports = (session) => {
 
         await ValidatedOwner.query().upsertGraph({ id: 1, pet: null });
 
-        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
     });
 
     describe('with a NOT NULL reference and ON DELETE CASCADE', () => {
-      before(() => {
+      beforeAll(() => {
         return createTables((table) => {
           table.integer('petId').notNullable().references('bt1_delete_pet.id').onDelete('CASCADE');
         });
@@ -95,8 +95,8 @@ module.exports = (session) => {
       it('should leave the owner to the database', async () => {
         await Owner.query().upsertGraph({ id: 1, pet: null });
 
-        expect(await knex('bt1_delete_owner')).to.eql([]);
-        expect(await knex('bt1_delete_pet')).to.eql([]);
+        expect(await knex('bt1_delete_owner')).toEqual([]);
+        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
     });
   });

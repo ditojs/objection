@@ -1,12 +1,12 @@
-const { Model, snakeCaseMappers, raw, ref } = require('../../../');
-const { expect } = require('chai');
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { Model, snakeCaseMappers, raw, ref } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   describe('keys with a colon in patch() and update() data', () => {
     let knex = session.knex;
     let Item;
 
-    before(() => {
+    beforeAll(() => {
       return knex.schema
         .dropTableIfExists('field_expression_keys')
         .createTable('field_expression_keys', (table) => {
@@ -20,11 +20,11 @@ module.exports = (session) => {
         });
     });
 
-    after(() => {
+    afterAll(() => {
       return knex.schema.dropTableIfExists('field_expression_keys');
     });
 
-    before(() => {
+    beforeAll(() => {
       Item = class Item extends Model {
         static get tableName() {
           return 'field_expression_keys';
@@ -63,13 +63,13 @@ module.exports = (session) => {
     it('patch() should write a declared key with a colon to its column', async () => {
       await Item.query().patch({ 'ns:name': 'b' }).where('id', 1);
       const item = await Item.query().findById(1);
-      expect(item['ns:name']).to.equal('b');
+      expect(item['ns:name']).toBe('b');
     });
 
     it('update() should write a declared key with a colon to its column', async () => {
       await Item.query().update({ id: 1, 'ns:name': 'c' }).where('id', 1);
       const item = await Item.query().findById(1);
-      expect(item['ns:name']).to.equal('c');
+      expect(item['ns:name']).toBe('c');
     });
 
     it('update() should write a declared key with a colon given as a query property', async () => {
@@ -77,7 +77,7 @@ module.exports = (session) => {
         .update({ id: 1, 'ns:name': raw('?', 'q') })
         .where('id', 1);
       const item = await Item.query().findById(1);
-      expect(item['ns:name']).to.equal('q');
+      expect(item['ns:name']).toBe('q');
     });
 
     it('patch() should write a declared key with a colon mapped by snakeCaseMappers', async () => {
@@ -99,7 +99,7 @@ module.exports = (session) => {
 
       await SnakeCaseItem.query().patch({ 'ns:foo_bar': 'b' }).where('id', 1);
       const row = await knex('field_expression_keys').where('id', 1).first();
-      expect(row['ns:foo_bar']).to.equal('b');
+      expect(row['ns:foo_bar']).toBe('b');
     });
 
     it('patch() should not parse the keys with a colon as database json', async () => {
@@ -111,15 +111,15 @@ module.exports = (session) => {
 
       await StrictItem.query().patch({ 'ns:name': 'b' }).where('id', 1);
       const item = await Item.query().findById(1);
-      expect(item['ns:name']).to.equal('b');
+      expect(item['ns:name']).toBe('b');
     });
 
     if (session.isPostgres()) {
       it('patch() should write an undeclared key with a colon to the json path', async () => {
         await Item.query().patch({ 'ns:name': 'd', 'meta:color': 'red' }).where('id', 1);
         const item = await Item.query().findById(1);
-        expect(item['ns:name']).to.equal('d');
-        expect(item.meta).to.eql({ size: 1, color: 'red' });
+        expect(item['ns:name']).toBe('d');
+        expect(item.meta).toEqual({ size: 1, color: 'red' });
       });
 
       it('update() should write an undeclared key with a query property to the json path', async () => {
@@ -127,7 +127,7 @@ module.exports = (session) => {
           .update({ id: 1, 'ns:name': 'e', 'meta:color': ref('id') })
           .where('id', 1);
         const item = await Item.query().findById(1);
-        expect(item.meta).to.eql({ size: 1, color: 1 });
+        expect(item.meta).toEqual({ size: 1, color: 1 });
       });
 
       it('patch() should not parse the keys of models without a schema as database json', async () => {
@@ -143,7 +143,7 @@ module.exports = (session) => {
 
         await SchemalessItem.query(knex).patch({ 'meta:color': 'blue' }).where('id', 1);
         const row = await knex('field_expression_keys').where('id', 1).first();
-        expect(row.meta).to.eql({ size: 1, color: 'blue' });
+        expect(row.meta).toEqual({ size: 1, color: 'blue' });
       });
     }
   });

@@ -1,9 +1,9 @@
-const expect = require('expect.js');
-const { inheritModel } = require('../../lib/model/inheritModel');
-const { expectPartialEqual: expectPartEql, delay } = require('./../../testUtils/testUtils');
-const { ValidationError, raw } = require('../../');
+import { describe, it, expect, beforeEach } from 'vitest';
+import { inheritModel } from '../../lib/model/inheritModel.js';
+import { expectPartialEqual as expectPartEql, delay } from '../../testUtils/testUtils.js';
+import { ValidationError, raw } from 'objection';
 
-module.exports = (session) => {
+export default (session) => {
   let Model1 = session.models.Model1;
   let Model2 = session.models.Model2;
 
@@ -45,13 +45,13 @@ module.exports = (session) => {
           .update(model)
           .where('id', '=', 2)
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
-            expect(model.$beforeUpdateCalled).to.equal(1);
-            expect(model.$afterUpdateCalled).to.equal(1);
+            expect(numUpdated).toBe(1);
+            expect(model.$beforeUpdateCalled).toBe(1);
+            expect(model.$afterUpdateCalled).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(3);
+            expect(rows).toHaveLength(3);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -63,11 +63,11 @@ module.exports = (session) => {
           .update({ model1Prop1: null, model1Prop2: 100 })
           .where('id', '=', 1)
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
+            expect(numUpdated).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(3);
+            expect(rows).toHaveLength(3);
             expectPartEql(rows[0], { id: 1, model1Prop1: null });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -79,11 +79,11 @@ module.exports = (session) => {
           .update({ model1Prop1: '', model1Prop2: 100 })
           .where('id', '=', 1)
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
+            expect(numUpdated).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(3);
+            expect(rows).toHaveLength(3);
             expectPartEql(rows[0], { id: 1, model1Prop1: '' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -95,11 +95,11 @@ module.exports = (session) => {
           .update({ model1Prop1: 'updated text' })
           .where('id', '=', 2)
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
+            expect(numUpdated).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(3);
+            expect(rows).toHaveLength(3);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -113,11 +113,11 @@ module.exports = (session) => {
           .update(model)
           .where('id_col', '=', 1)
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
+            expect(numUpdated).toBe(1);
             return session.knex('model2').orderBy('id_col');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id_col: 1, model2_prop1: 'updated text', model2_prop2: 2 });
             expectPartEql(rows[1], { id_col: 2, model2_prop1: 'text 2', model2_prop2: 1 });
           });
@@ -128,18 +128,18 @@ module.exports = (session) => {
           .update({ model1Prop1: 'updated text' })
           .where('model1Prop1', '<', 'hello 3')
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(2);
+            expect(numUpdated).toBe(2);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(3);
+            expect(rows).toHaveLength(3);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'updated text' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
           });
       });
 
-      it('should validate', (done) => {
+      it('should validate', () => {
         let ModelWithSchema = subClassWithSchema(Model1, {
           type: 'object',
           properties: {
@@ -149,15 +149,15 @@ module.exports = (session) => {
           },
         });
 
-        ModelWithSchema.query()
+        return ModelWithSchema.query()
           .update({ model1Prop1: 666 })
           .then(() => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(ValidationError);
-            expect(err.type).to.equal('ModelValidation');
-            expect(err.data).to.eql({
+            expect(err).toBeInstanceOf(ValidationError);
+            expect(err.type).toBe('ModelValidation');
+            expect(err.data).toEqual({
               model1Prop1: [
                 {
                   message: 'must be string',
@@ -171,17 +171,15 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
             ]);
-            done();
-          })
-          .catch(done);
+          });
       });
 
-      it('should validate required properties', (done) => {
+      it('should validate required properties', () => {
         let ModelWithSchema = subClassWithSchema(Model1, {
           type: 'object',
           required: ['model1Prop2'],
@@ -192,24 +190,22 @@ module.exports = (session) => {
           },
         });
 
-        ModelWithSchema.query()
+        return ModelWithSchema.query()
           .update({ model1Prop1: 'text' })
           .then(() => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(ValidationError);
+            expect(err).toBeInstanceOf(ValidationError);
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
             ]);
-            done();
-          })
-          .catch(done);
+          });
       });
 
       it('should pass validation if query properties are passed in for required', () => {
@@ -230,11 +226,11 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql(['hello 1', 'hello 3', 'text']);
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual(['hello 1', 'hello 3', 'text']);
           });
       });
 
-      it('should use `Model.createValidationError` to create the error', (done) => {
+      it('should use `Model.createValidationError` to create the error', () => {
         class MyError extends Error {
           constructor({ data }) {
             super('MyError');
@@ -255,14 +251,14 @@ module.exports = (session) => {
           return new MyError(props);
         };
 
-        ModelWithSchema.query()
+        return ModelWithSchema.query()
           .update({ model1Prop1: 666 })
           .then(() => {
-            done(new Error('should not get here'));
+            throw new Error('should not get here');
           })
           .catch((err) => {
-            expect(err).to.be.a(MyError);
-            expect(err.errors).to.eql({
+            expect(err).toBeInstanceOf(MyError);
+            expect(err.errors).toEqual({
               model1Prop1: [
                 {
                   message: 'must be string',
@@ -277,14 +273,12 @@ module.exports = (session) => {
             return session.knex(Model1.getTableName());
           })
           .then((rows) => {
-            expect(rows.map((it) => it.model1Prop1).sort()).to.eql([
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
               'hello 1',
               'hello 2',
               'hello 3',
             ]);
-            done();
-          })
-          .catch(done);
+          });
       });
     });
 
@@ -311,14 +305,14 @@ module.exports = (session) => {
         const model = Model1.fromJson({ model1Prop1: 'updated text' });
         const numUpdated = await Model1.query().updateById(2, model);
 
-        expect(numUpdated).to.equal(1);
-        expect(model.$beforeUpdateCalled).to.equal(1);
-        expect(model.$beforeUpdateOptions).to.eql({});
-        expect(model.$afterUpdateCalled).to.equal(1);
-        expect(model.$afterUpdateOptions).to.eql({});
+        expect(numUpdated).toBe(1);
+        expect(model.$beforeUpdateCalled).toBe(1);
+        expect(model.$beforeUpdateOptions).toEqual({});
+        expect(model.$afterUpdateCalled).toBe(1);
+        expect(model.$afterUpdateOptions).toEqual({});
 
         const rows = await session.knex('Model1').orderBy('id');
-        expect(rows).to.have.length(3);
+        expect(rows).toHaveLength(3);
         expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
         expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text', model1Prop2: 2 });
         expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -326,7 +320,7 @@ module.exports = (session) => {
 
       it('should return 0 if the model does not exist', async () => {
         const numUpdated = await Model1.query().updateById(1000, { model1Prop1: 'updated text' });
-        expect(numUpdated).to.equal(0);
+        expect(numUpdated).toBe(0);
       });
 
       it('should throw a NotFoundError with throwIfNotFound() if the model does not exist', async () => {
@@ -338,7 +332,7 @@ module.exports = (session) => {
           error = err;
         }
 
-        expect(error).to.be.a(Model1.NotFoundError);
+        expect(error).toBeInstanceOf(Model1.NotFoundError);
       });
 
       it('should throw a clear error if undefined is passed as id', async () => {
@@ -350,10 +344,10 @@ module.exports = (session) => {
           error = err;
         }
 
-        expect(error.message).to.equal('undefined was passed to updateById');
+        expect(error.message).toBe('undefined was passed to updateById');
 
         const rows = await session.knex('Model1').where('model1Prop1', 'updated text');
-        expect(rows).to.have.length(0);
+        expect(rows).toHaveLength(0);
       });
     });
 
@@ -393,8 +387,8 @@ module.exports = (session) => {
         return Model1.query()
           .updateAndFetchById(2, model)
           .then((fetchedModel) => {
-            expect(fetchedModel).to.equal(model);
-            expect(fetchedModel).eql({
+            expect(fetchedModel).toBe(model);
+            expect(fetchedModel).toEqual({
               id: 2,
               model1Prop1: 'updated text',
               model1Prop2: null,
@@ -407,7 +401,7 @@ module.exports = (session) => {
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(3);
+            expect(rows).toHaveLength(3);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -420,11 +414,11 @@ module.exports = (session) => {
           .updateAndFetchById(2, model)
           .select('id', 'model1Prop1');
 
-        expect(fetchedModel).to.equal(model);
-        expect(fetchedModel.id).to.equal(2);
-        expect(fetchedModel.model1Prop1).to.equal('updated text');
-        expect(fetchedModel).to.not.have.property('model1Prop2');
-        expect(fetchedModel).to.not.have.property('model1Id');
+        expect(fetchedModel).toBe(model);
+        expect(fetchedModel.id).toBe(2);
+        expect(fetchedModel.model1Prop1).toBe('updated text');
+        expect(fetchedModel).not.toHaveProperty('model1Prop2');
+        expect(fetchedModel).not.toHaveProperty('model1Id');
       });
     });
 
@@ -449,12 +443,12 @@ module.exports = (session) => {
           .$query()
           .update({ model1Prop1: 'updated text' })
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
-            expect(model.model1Prop1).to.eql('updated text');
+            expect(numUpdated).toBe(1);
+            expect(model.model1Prop1).toBe('updated text');
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'updated text' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
           });
@@ -467,13 +461,13 @@ module.exports = (session) => {
           .$query()
           .update()
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
-            expect(model.$beforeUpdateCalled).to.equal(1);
-            expect(model.$afterUpdateCalled).to.equal(1);
+            expect(numUpdated).toBe(1);
+            expect(model.$beforeUpdateCalled).toBe(1);
+            expect(model.$afterUpdateCalled).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'updated text' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
           });
@@ -486,14 +480,14 @@ module.exports = (session) => {
           .$query()
           .update(model)
           .then(() => {
-            expect(model.$beforeUpdateCalled).to.equal(1);
-            expect(model.$beforeUpdateOptions).to.eql({ old: { id: 1 } });
-            expect(model.$afterUpdateCalled).to.equal(1);
-            expect(model.$afterUpdateOptions).to.eql({ old: { id: 1 } });
+            expect(model.$beforeUpdateCalled).toBe(1);
+            expect(model.$beforeUpdateOptions).toEqual({ old: { id: 1 } });
+            expect(model.$afterUpdateCalled).toBe(1);
+            expect(model.$afterUpdateOptions).toEqual({ old: { id: 1 } });
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'updated text' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
           });
@@ -528,13 +522,13 @@ module.exports = (session) => {
           .$query()
           .update({ model1Prop1: 'updated text' })
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
-            expect(before.id).to.equal(1);
-            expect(after.id).to.equal(1);
+            expect(numUpdated).toBe(1);
+            expect(before.id).toBe(1);
+            expect(after.id).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'updated text' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
           });
@@ -554,11 +548,11 @@ module.exports = (session) => {
           .$query()
           .update()
           .then((numUpdated) => {
-            expect(numUpdated).to.equal(1);
+            expect(numUpdated).toBe(1);
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'updated text' });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
           });
@@ -586,10 +580,10 @@ module.exports = (session) => {
           .$query()
           .updateAndFetch({ model1Prop2: 10, undefinedShouldBeIgnored: undefined })
           .then((updated) => {
-            expect(updated.id).to.equal(1);
-            expect(updated.model1Id).to.equal(null);
-            expect(updated.model1Prop1).to.equal('hello 1');
-            expect(updated.model1Prop2).to.equal(10);
+            expect(updated.id).toBe(1);
+            expect(updated.model1Id).toBeNull();
+            expect(updated.model1Prop1).toBe('hello 1');
+            expect(updated.model1Prop2).toBe(10);
             expectPartEql(model, {
               id: 1,
               model1Prop1: 'hello 1',
@@ -599,7 +593,7 @@ module.exports = (session) => {
             return session.knex('Model1').orderBy('id');
           })
           .then((rows) => {
-            expect(rows).to.have.length(2);
+            expect(rows).toHaveLength(2);
             expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1', model1Prop2: 10 });
             expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2', model1Prop2: null });
           });
@@ -644,11 +638,11 @@ module.exports = (session) => {
             .$relatedQuery('model1Relation1')
             .update({ model1Prop1: 'updated text' })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('Model1').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
+              expect(rows).toHaveLength(4);
               expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
               expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
               expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -661,11 +655,11 @@ module.exports = (session) => {
             .$relatedQuery('model1Relation1')
             .update({ model1Prop1: 'updated text', model1Prop2: 1000 })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('Model1').orderBy('id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
+              expect(rows).toHaveLength(4);
               expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
               expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
               expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
@@ -738,11 +732,11 @@ module.exports = (session) => {
             .update({ model2Prop1: 'updated text' })
             .where('id_col', 2)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
+              expect(rows).toHaveLength(6);
               expectPartEql(rows[0], { id_col: 1, model2_prop1: 'text 1' });
               expectPartEql(rows[1], {
                 id_col: 2,
@@ -763,11 +757,11 @@ module.exports = (session) => {
             .where('model2_prop2', '<', 6)
             .where('model2_prop1', 'like', 'text %')
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex('model2').orderBy('id_col');
             })
             .then((rows) => {
-              expect(rows).to.have.length(6);
+              expect(rows).toHaveLength(6);
               expectPartEql(rows[0], { id_col: 1, model2_prop1: 'text 1' });
               expectPartEql(rows[1], {
                 id_col: 2,
@@ -862,11 +856,11 @@ module.exports = (session) => {
             .update({ model1Prop1: 'updated text' })
             .where('Model1.id', 5)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('Model1').orderBy('Model1.id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(8);
+              expect(rows).toHaveLength(8);
               expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
               expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
               expectPartEql(rows[2], { id: 3, model1Prop1: 'blaa 1' });
@@ -885,11 +879,11 @@ module.exports = (session) => {
             .where('model1Prop1', 'like', 'blaa 4')
             .orWhere('model1Prop1', 'like', 'blaa 6')
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex('Model1').orderBy('Model1.id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(8);
+              expect(rows).toHaveLength(8);
               expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
               expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
               expectPartEql(rows[2], { id: 3, model1Prop1: 'blaa 1' });
@@ -907,11 +901,11 @@ module.exports = (session) => {
             .update({ model1Prop1: 'updated text', model1Prop2: 123 })
             .where('model1Prop2', '<', 6)
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(2);
+              expect(numUpdated).toBe(2);
               return session.knex('Model1').orderBy('Model1.id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(8);
+              expect(rows).toHaveLength(8);
               expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
               expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
               expectPartEql(rows[2], { id: 3, model1Prop1: 'blaa 1' });
@@ -975,11 +969,11 @@ module.exports = (session) => {
             .$relatedQuery('model2Relation2')
             .update({ model1Prop1: 'updated text' })
             .then((numUpdated) => {
-              expect(numUpdated).to.equal(1);
+              expect(numUpdated).toBe(1);
               return session.knex('Model1').orderBy('Model1.id');
             })
             .then((rows) => {
-              expect(rows).to.have.length(4);
+              expect(rows).toHaveLength(4);
               expectPartEql(rows[0], { id: 1, model1Prop1: 'hello 1' });
               expectPartEql(rows[1], { id: 2, model1Prop1: 'hello 2' });
               expectPartEql(rows[2], { id: 3, model1Prop1: 'updated text' });

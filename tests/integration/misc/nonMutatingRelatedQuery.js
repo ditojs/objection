@@ -1,6 +1,6 @@
-const { expect } = require('chai');
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
-module.exports = (session) => {
+export default (session) => {
   describe('non-mutating related query', () => {
     class ModelOne extends session.unboundModels.Model1 {
       static get relatedFindQueryMutates() {
@@ -22,7 +22,7 @@ module.exports = (session) => {
       }
     }
 
-    before(() => {
+    beforeAll(() => {
       ModelOne = ModelOne.bindKnex(session.knex);
       ModelTwo = ModelTwo.bindKnex(session.knex);
     });
@@ -63,7 +63,7 @@ module.exports = (session) => {
             return model.$relatedQuery('model1Relation1').then(() => model);
           })
           .then((model) => {
-            expect(model.toJSON()).to.eql({
+            expect(model.toJSON()).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'root',
@@ -79,7 +79,7 @@ module.exports = (session) => {
             return model.$relatedQuery('model1Relation2').then(() => model);
           })
           .then((model) => {
-            expect(model.toJSON()).to.eql({
+            expect(model.toJSON()).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'root',
@@ -95,7 +95,7 @@ module.exports = (session) => {
             return model.$relatedQuery('model1Relation3').then(() => model);
           })
           .then((model) => {
-            expect(model.toJSON()).to.eql({
+            expect(model.toJSON()).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'root',
@@ -116,7 +116,7 @@ module.exports = (session) => {
               .then(() => model);
           })
           .then((model) => {
-            expect(model.toJSON()).to.eql({
+            expect(model.toJSON()).toEqual({
               id: 1,
               model1Id: 10,
               model1Prop1: 'root',
@@ -135,7 +135,7 @@ module.exports = (session) => {
               .then(() => model);
           })
           .then((model) => {
-            expect(model.toJSON()).to.eql({
+            expect(model.toJSON()).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'root',
@@ -154,7 +154,7 @@ module.exports = (session) => {
               .then(() => model);
           })
           .then((model) => {
-            expect(model.toJSON()).to.eql({
+            expect(model.toJSON()).toEqual({
               id: 1,
               model1Id: 2,
               model1Prop1: 'root',
