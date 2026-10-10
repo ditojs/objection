@@ -28,16 +28,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run docker compose
+      - name: Start test databases
         run: |
+          # Retry the pull, public.ecr.aws rate limits anonymous pulls.
           for i in 1 2 3 4 5; do
             docker compose pull && break
             sleep $((i * 15))
           done
-          docker compose up -d
-
-      - name: Setup test db
-        run: node setup-test-db.js
+          npm run db:up
 
       - name: Run tests
         run: npm test

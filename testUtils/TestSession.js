@@ -1,4 +1,3 @@
-import path from 'node:path';
 import * as knexUtils from '../lib/utils/knexUtils.js';
 import { map as promiseMap } from '../lib/utils/promiseUtils/index.js';
 import { delay, cloneDeep } from './testUtils.js';
@@ -298,10 +297,8 @@ class TestSession {
         const err = new Error(
           'Could not connect to ' +
             opt.knexConfig.client +
-            '. Make sure the server is running and the database ' +
-            opt.knexConfig.connection.database +
-            ' is created. You can see the test database configurations from file ' +
-            path.join(import.meta.dirname, 'index.js'),
+            '. Run `npm run db:up` to start the test databases with docker, or see' +
+            ' "Running the tests" in doc/guide/contributing.md to use your own.',
         );
 
         const oldStack = err.stack;
