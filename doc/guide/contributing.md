@@ -54,7 +54,9 @@ npm test
 npm run db:down # Stop the test databases and delete their data.
 ```
 
-`npm run db:up` returns once the databases are ready. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally.
+Docker only runs the two database servers, PostgreSQL 17 and MySQL 8.4, as defined in `docker-compose.yml`. The tests themselves run on your machine with your Node.js, and SQLite runs inside the test process. The containers create the `objection` user and the `objection_test` database on their own, so there is nothing else to set up.
+
+`npm run db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `npm run db:down` removes the containers together with their data, and the next `npm run db:up` starts from scratch.
 
 You can run the tests on a subset of databases by setting the `DATABASES` env variable. SQLite needs no setup, so this works without Docker:
 
