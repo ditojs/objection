@@ -213,7 +213,7 @@ module.exports = (session) => {
                             'insert into "Model1Model2" ("model1Id", "model2Id") values (8, 1) returning "model1Id"',
 
                             'update "Model1" set "model1Prop1" = \'updated belongsToOne\' where "Model1"."id" = 3 and "Model1"."id" in (3)',
-                            'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" in (select "Model1"."id" from "Model1" inner join "Model1Model2" on "Model1"."id" = "Model1Model2"."model1Id" where "Model1Model2"."model2Id" in (1) and "Model1"."id" = \'4\' order by "Model1"."id" asc)',
+                            'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" = \'4\'',
                             'update "model2" set "model2_prop1" = \'updated hasMany 1\' where "model2"."id_col" = 1',
                           ]);
                       } else if (fetchStrategy === FetchStrategy.Everything) {
@@ -234,7 +234,7 @@ module.exports = (session) => {
                             'insert into "Model1Model2" ("model1Id", "model2Id") values (8, 1) returning "model1Id"',
 
                             'update "Model1" set "model1Prop1" = \'updated belongsToOne\' where "Model1"."id" = 3 and "Model1"."id" in (3)',
-                            'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" in (select "Model1"."id" from "Model1" inner join "Model1Model2" on "Model1"."id" = "Model1Model2"."model1Id" where "Model1Model2"."model2Id" in (1) and "Model1"."id" = \'4\' order by "Model1"."id" asc)',
+                            'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" = \'4\'',
                             'update "model2" set "model2_prop1" = \'updated hasMany 1\' where "model2"."id_col" = 1',
                           ]);
                       } else if (fetchStrategy === FetchStrategy.OnlyNeeded) {
@@ -255,7 +255,7 @@ module.exports = (session) => {
                             'insert into "Model1Model2" ("model1Id", "model2Id") values (8, 1) returning "model1Id"',
 
                             'update "Model1" set "model1Prop1" = \'updated belongsToOne\' where "Model1"."id" = 3 and "Model1"."id" in (3)',
-                            'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" in (select "Model1"."id" from "Model1" inner join "Model1Model2" on "Model1"."id" = "Model1Model2"."model1Id" where "Model1Model2"."model2Id" in (1) and "Model1"."id" = \'4\' order by "Model1"."id" asc)',
+                            'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" = \'4\'',
                             'update "model2" set "model2_prop1" = \'updated hasMany 1\' where "model2"."id_col" = 1',
                           ]);
                       }
@@ -1041,7 +1041,7 @@ module.exports = (session) => {
                         'insert into "Model1Model2" ("model1Id", "model2Id") values (8, 1), (6, 1) returning "model1Id"',
 
                         'update "Model1" set "model1Prop1" = \'updated root 2\', "model1Id" = NULL where "Model1"."id" = 2',
-                        'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" in (select "Model1"."id" from "Model1" inner join "Model1Model2" on "Model1"."id" = "Model1Model2"."model1Id" where "Model1Model2"."model2Id" in (1) and "Model1"."id" = 4 order by "Model1"."id" asc)',
+                        'update "Model1" set "model1Prop1" = \'updated manyToMany 1\' where "Model1"."id" = 4',
                         'update "model2" set "model2_prop1" = \'updated hasMany 1\' where "model2"."id_col" = 1',
                       ]);
                   }
@@ -4323,8 +4323,8 @@ module.exports = (session) => {
             'model1Relation2[0].model2Relation1[1].model1Prop1',
           ];
 
-          // The transactions patch the same rows, which can deadlock on MySQL.
-          // Run them one after another there.
+          // One after another, as concurrent transactions that patch the same
+          // rows can deadlock each other on MySQL.
           return promiseMap(
             fails,
             (fail) => {
@@ -4332,7 +4332,7 @@ module.exports = (session) => {
                 Model1.query(trx).upsertGraph(fail, { fetchStrategy }),
               ).catch((err) => createRejectionReflection(err));
             },
-            { concurrency: session.isMySql() ? 1 : undefined },
+            { concurrency: 1 },
           )
             .then((results) => {
               // Check that all transactions have failed because of a validation error.
@@ -4945,11 +4945,29 @@ module.exports = (session) => {
           };
 
           return transaction(session.knex, (trx) => {
+            const sql = [];
+
+            // Wrap the transaction to catch the executed sql.
+            trx = mockKnexFactory(trx, function (mock, oldImpl, args) {
+              sql.push(this.toString());
+              return oldImpl.apply(this, args);
+            });
+
             return Model2.query(trx)
               .upsertGraph(upsert, { fetchStrategy })
               .then((result) => {
                 expect(result.model2Relation1[0].aliasedExtra).to.equal('hello extra 1');
                 expect(result.model2Relation1[1].aliasedExtra).to.equal('hello extra 2');
+
+                if (session.isPostgres()) {
+                  // Only the join rows are patched, by the ids of both ends.
+                  chai
+                    .expect(sql.filter((query) => query.startsWith('update')).sort())
+                    .to.eql([
+                      'update "Model1Model2" set "extra3" = \'hello extra 1\' where "Model1Model2"."model2Id" in (2) and "Model1Model2"."model1Id" = 6',
+                      'update "Model1Model2" set "extra3" = \'hello extra 2\' where "Model1Model2"."model2Id" in (2) and "Model1Model2"."model1Id" = 7',
+                    ]);
+                }
               });
           })
             .then(() => {

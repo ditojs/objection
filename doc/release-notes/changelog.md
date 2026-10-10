@@ -6,6 +6,10 @@
 
 - The graph options of `insertGraph()` / `upsertGraph()` that take relation paths (`relate`, `unrelate`, `insertMissing`, `update`, `noInsert`, `noUpdate`, `noDelete`, `noRelate`, `noUnrelate`) also accept a relation expression in the same syntax as `withGraphFetched()`, e.g. `noInsert: '*'` or `noDelete: '[pets, movies.reviews]'`. Like the array, an expression only matches the relations at the end of the paths it names, so `'movies.reviews'` doesn't match `movies`. `'*'` matches all relations at any depth, and recursive expressions like `'parent.^'` every level of the recursion. Root models are never matched, so `noInsert: '*'` inserts new root models but no related ones. Aliases and empty expressions throw an error. [#131](https://github.com/ditojs/objection/issues/131)
 
+### Fixes
+
+- `upsertGraph()` patches the related models of many-to-many relations by their id, and their extra properties in the join row by the ids of both ends. Until now these patches filtered by a subquery that joins the join table, and on MySQL, the patches of a graph upserted without a transaction deadlocked each other. The SQL of these patches changes. [#135](https://github.com/ditojs/objection/issues/135)
+
 ## 3.5.1
 
 ### Fixes
