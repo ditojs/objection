@@ -721,6 +721,50 @@ describe('AjvValidator', () => {
       });
     });
 
+    it('should resolve external $refs in the schema of the json column', () => {
+      const RefModel = class extends modelClass('test', {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string' },
+          meta: { $ref: 'Meta' },
+          other: { $ref: 'Meta' },
+        },
+      }) {
+        static createValidator() {
+          return new AjvValidator({
+            onCreateAjv: (ajv) => {
+              ajv.addSchema({
+                $id: 'Meta',
+                type: 'object',
+                required: ['size'],
+                properties: {
+                  size: { type: 'integer' },
+                  color: { type: 'string' },
+                },
+              });
+            },
+          });
+        }
+      };
+
+      expect(RefModel.fromJson({ name: 'foo', 'meta:color': 'red' })['meta:color']).to.equal('red');
+      expect(() => RefModel.fromJson({ name: 'foo', 'meta:color': 1 })).to.throwException((err) => {
+        expect(Object.keys(err.data)).to.eql(['meta.color']);
+        expect(err.data['meta.color'][0].keyword).to.equal('type');
+      });
+      // Other properties with the same schema are still validated normally:
+      expect(() =>
+        RefModel.fromJson({ name: 'foo', 'meta:color': 'red', other: { color: 'red' } }),
+      ).to.throwException((err) => {
+        expect(Object.keys(err.data)).to.eql(['other.size']);
+        expect(err.data['other.size'][0].keyword).to.equal('required');
+      });
+      expect(RefModel.fromJson({ 'meta:color': 'red' }, { patch: true })['meta:color']).to.equal(
+        'red',
+      );
+    });
+
     it('should validate keys with a colon that the schema declares as properties', () => {
       const ColonModel = modelClass('test', {
         type: 'object',
