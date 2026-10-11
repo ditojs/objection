@@ -28,6 +28,11 @@ describe('ValueBuilder', () => {
     expect(toRawArgs(builder)).toEqual(['ARRAY[?, ?, ?]', [1, 2, 3]]);
   });
 
+  it('should expand undefined to an array with one value', () => {
+    let builder = val(undefined).asArray();
+    expect(toRawArgs(builder)).toEqual(['ARRAY[?]', [undefined]]);
+  });
+
   it('should support aliasing', () => {
     let builder = val('Hello').as('greeting');
     expect(toRawArgs(builder)).toEqual(['? as ??', ['Hello', 'greeting']]);
