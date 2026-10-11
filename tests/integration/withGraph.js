@@ -1527,6 +1527,30 @@ module.exports = (session) => {
       expect(size).to.equal(2);
     });
 
+    it('resultSize and page should respect distinctOn with joinEager', async function () {
+      if (!session.isPostgres()) {
+        return this.skip();
+      }
+
+      // `model1Prop2` is null for all models, so `distinctOn` returns one.
+      for (const relation of ['model1Relation1', 'model1Relation2']) {
+        const query = Model1.query()
+          .distinctOn('Model1.model1Prop2')
+          .withGraphJoined(relation)
+          .orderBy('Model1.model1Prop2')
+          .orderBy('Model1.id');
+
+        const [models, size, page] = await Promise.all([
+          query,
+          query.resultSize(),
+          query.clone().page(0, 10),
+        ]);
+        expect(models.map((it) => it.id)).to.eql([1]);
+        expect(size).to.equal(1);
+        expect(page.total).to.equal(1);
+      }
+    });
+
     it('page should count the root models with joinEager', () => {
       return Model1.query()
         .whereIn('Model1.id', [1, 6])
