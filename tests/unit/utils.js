@@ -254,8 +254,8 @@ describe('utils', () => {
     });
 
     describe('snakeCaseMappers and field expressions', () => {
-      it('maps json keys of field expressions by default (unchanged behaviour)', () => {
-        const mappers = snakeCaseMappers();
+      it('maps json keys of field expressions with `preserveJsonKeys: false`', () => {
+        const mappers = snakeCaseMappers({ preserveJsonKeys: false });
 
         expect(
           mappers.format({
@@ -270,8 +270,8 @@ describe('utils', () => {
         });
       });
 
-      it('only maps the column part of field expressions with `preserveJsonKeys: true`', () => {
-        const mappers = snakeCaseMappers({ preserveJsonKeys: true });
+      it('only maps the column part of field expressions by default', () => {
+        const mappers = snakeCaseMappers();
 
         expect(
           mappers.format({
@@ -290,8 +290,8 @@ describe('utils', () => {
         });
       });
 
-      it('combines `preserveJsonKeys` with other options', () => {
-        const mappers = snakeCaseMappers({ preserveJsonKeys: true, upperCase: true });
+      it('combines preserving json keys with other options', () => {
+        const mappers = snakeCaseMappers({ upperCase: true });
 
         expect(mappers.format({ 'jsonCol:someKey': 1, fooBar: 2 })).toEqual({
           'JSON_COL:someKey': 1,
@@ -300,7 +300,7 @@ describe('utils', () => {
       });
 
       it('`preserveJsonKeys` does not affect parse', () => {
-        const mappers = snakeCaseMappers({ preserveJsonKeys: true });
+        const mappers = snakeCaseMappers({ preserveJsonKeys: false });
 
         expect(mappers.parse({ foo_bar: 1, 'rel:some_prop': 2 })).toEqual(
           snakeCaseMappers().parse({ foo_bar: 1, 'rel:some_prop': 2 }),

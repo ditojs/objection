@@ -1412,7 +1412,7 @@ class Interview extends objection.Model {
 class JsonKeysModel extends objection.Model {
   static columnNameMappers = objection.snakeCaseMappers({
     upperCase: true,
-    preserveJsonKeys: true,
+    preserveJsonKeys: false,
   });
 }
 
