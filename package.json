@@ -17,7 +17,7 @@
     "test": "pnpm eslint && vitest run && pnpm test:typings",
     "test:fast": "vitest run --bail 1",
     "test:watch": "vitest",
-    "test:typings": "tsc && prettier --check \"typings/**/*.ts\" \"tests/ts/**/*.ts\"",
+    "test:typings": "tsc && tsc -p tests/ts/strict && prettier --check \"typings/**/*.ts\" \"tests/ts/**/*.ts\"",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose --profile mssql down -v",
     "build:parsers": "peggy --format es -o lib/queryBuilder/parsers/jsonFieldExpressionParser.js lib/queryBuilder/parsers/jsonFieldExpressionParser.pegjs && peggy --format es -o lib/queryBuilder/parsers/relationExpressionParser.js lib/queryBuilder/parsers/relationExpressionParser.pegjs && prettier --write \"lib/queryBuilder/parsers/*Parser.js\"",
