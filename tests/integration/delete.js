@@ -1,6 +1,7 @@
 const expect = require('expect.js');
 const expectPartEql = require('./../../testUtils/testUtils').expectPartialEqual;
 const isPostgres = require('../../lib/utils/knexUtils').isPostgres;
+const { resetWarnings } = require('../../lib/utils/warnings');
 
 module.exports = (session) => {
   const Model1 = session.models.Model1;
@@ -126,6 +127,48 @@ module.exports = (session) => {
             expect(rows).to.have.length(1);
             expectPartEql(rows[0], { id: 3, model1Prop1: 'hello 3' });
           });
+      });
+
+      it('should warn about an order with a limit on MySQL, as knex leaves out the order', async function () {
+        // Only MySQL supports a limit in deletes.
+        if (!session.isMySql()) {
+          this.skip();
+        }
+
+        // The warning is only observable through `console.warn()`.
+        const warnings = [];
+        const originalWarn = console.warn;
+        console.warn = (message) => warnings.push(message);
+        resetWarnings();
+
+        try {
+          const query = () => Model1.query().delete().where('id', '>', 1).orderBy('id').limit(1);
+
+          // Building the query doesn't warn, only executing it.
+          query().toKnexQuery().toString();
+          expect(warnings).to.have.length(0);
+
+          // Older knex versions leave out the limit as well, so the count of deleted
+          // rows depends on the knex version.
+          await query();
+          expect(warnings).to.eql([
+            '[objection] orderBy() has no effect in delete queries with limit() on MySQL, so the ' +
+              'limit deletes rows in any order. This will throw an error in objection 4.0.',
+          ]);
+
+          resetWarnings();
+          const model1 = await Model1.query().findById(1);
+          await model1.$relatedQuery('model1Relation2').delete().orderBy('id_col').limit(1);
+          expect(warnings).to.have.length(2);
+
+          // A limit without an order doesn't warn.
+          resetWarnings();
+          await Model1.query().delete().where('id', '>', 1).limit(1);
+          expect(warnings).to.have.length(2);
+        } finally {
+          console.warn = originalWarn;
+          resetWarnings();
+        }
       });
 
       if (isPostgres(session.knex)) {

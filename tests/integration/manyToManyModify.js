@@ -403,6 +403,38 @@ module.exports = (session) => {
         expect(await joinRows()).to.eql(allJoinRows);
       });
 
+      it('should count the related rows of the join rows that a patch with only join table extras changes', async () => {
+        // Model2 1 has two join rows, so it's counted once.
+        const model = await owner(1);
+        const numUpdated = await model
+          .$relatedQuery('model1Relation3')
+          .patch({ extra2: 'z' })
+          .where('model2.id_col', '<', 3);
+
+        expect(numUpdated).to.equal(2);
+
+        const expected = allJoinRows.slice();
+        expected[0] = [1, 1, 'x1', 'z'];
+        expected[1] = [1, 1, 'dup', 'z'];
+        expected[2] = [1, 2, 'x2', 'z'];
+        expect(await joinRows()).to.eql(expected);
+      });
+
+      it('should return the related row that patchAndFetchById() patches with only join table extras', async () => {
+        const model = await owner(1);
+        const patched = await model
+          .$relatedQuery('model1Relation3')
+          .patchAndFetchById(1, { extra2: 'z' });
+
+        expect(patched.idCol).to.equal(1);
+        expect(patched.extra2).to.equal('z');
+
+        const expected = allJoinRows.slice();
+        expected[0] = [1, 1, 'x1', 'z'];
+        expected[1] = [1, 1, 'dup', 'z'];
+        expect(await joinRows()).to.eql(expected);
+      });
+
       it('should only patch the join table extras of join rows matching a filter on the join table (#1853)', async () => {
         const model = await owner(1);
         await model
