@@ -820,20 +820,8 @@ export default (session) => {
     });
 
     describe('.query().insertGraph().onConflict() (#2156)', () => {
-      let warnings;
-      let originalWarn;
-
       beforeEach(() => {
-        resetWarnings();
-        warnings = [];
-        originalWarn = console.warn;
-        console.warn = (message) => warnings.push(message);
         return session.populate(population);
-      });
-
-      afterEach(() => {
-        console.warn = originalWarn;
-        resetWarnings();
       });
 
       const graph = () => ({
@@ -853,22 +841,16 @@ export default (session) => {
       };
 
       for (const [title, createQuery] of Object.entries(cases)) {
-        it(`${title} should warn and insert the graph as without onConflict()`, async () => {
+        it(`${title} should throw and insert nothing`, async () => {
           const method = title.includes('upsertGraph') ? 'upsertGraph' : 'insertGraph';
-          const inserted = await createQuery();
 
-          expect(warnings).toEqual([
-            `[objection] onConflict(), ignore() and merge() are not supported by ${method}(). ` +
-              'Insert the conflicting rows with a separate insert() query instead. ' +
-              'This will throw in objection 4.0.',
-          ]);
+          await expect(createQuery()).rejects.toThrow(
+            `onConflict(), ignore() and merge() are not supported by ${method}(). ` +
+              'Insert the conflicting rows with a separate insert() query instead.',
+          );
 
-          const fetched = await Model1.query()
-            .findById(inserted.id)
-            .withGraphFetched('model1Relation2');
-
-          expect(fetched.model1Prop1).toBe('new root');
-          expect(fetched.model1Relation2.map((it) => it.model2Prop1)).toEqual(['new child']);
+          const rows = await Model1.query().where('model1Prop1', 'new root');
+          expect(rows).toEqual([]);
         });
       }
     });
