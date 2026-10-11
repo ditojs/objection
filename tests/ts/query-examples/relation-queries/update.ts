@@ -14,7 +14,7 @@ import { Person } from '../../fixtures/person.js';
   });
 
   await Person.query().update({
+    firstName: 'Jennifer',
     lastName: ref('someJsonColumn:mother.lastName').castText(),
-    'detailsJsonColumn:address.street': 'Elm street',
-  } as any);
+  });
 })();

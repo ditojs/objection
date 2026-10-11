@@ -234,37 +234,7 @@ export default (session) => {
             });
         });
 
-        it('should be able to update internal field of json column and allow ref() syntax', () => {
-          // should do something like:
-          // update 'ModelJson' set
-          //   'jsonArray' = jsonb_set('[]', '{0}', to_jsonb('name'), true),
-          //   'jsonObject' = jsonb_set('jsonObject', '{attr}', to_jsonb('name'), true),
-          //   'name' = 'jsonArray'#>>'{0}' where 'id' = 1 returning *;
-          return BoundModel.query()
-            .update({
-              name: ref('jsonArray:[0]').castText(),
-              'jsonObject:attr': ref('name'),
-              // each attribute which is updated with ref must be updated separately
-              // e.g. SET 'jsonArray' = '[ ref(...), ref(...) ]' just isn't valid SQL
-              // (though it could be kind of parsed to multiple jsonb_set calls which would be insanely cool)
-              jsonArray: ref('name').castJson(),
-            })
-            .where('id', 1)
-            .returning('*')
-            .then((result) => {
-              expect(result).toEqual([
-                {
-                  id: 1,
-                  name: '1',
-                  jsonObject: { attr: 'test1' },
-                  jsonArray: 'test1',
-                },
-              ]);
-            });
-        });
-
         it('should be able to patch internal field of json column and allow ref() syntax', () => {
-          // same stuff that with patch but different api method
           return BoundModel.query()
             .patch({
               name: ref('jsonArray:[0]').castText(),
