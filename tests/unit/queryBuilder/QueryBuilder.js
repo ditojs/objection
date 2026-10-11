@@ -2846,17 +2846,17 @@ describe('QueryBuilder', () => {
       );
     }
 
-    it('snakeCaseMappers() maps json keys of field expressions in patch (default)', () => {
+    it('snakeCaseMappers() only maps the column part of field expressions in patch', () => {
       testQueries(createModel(objection.snakeCaseMappers()), mockKnex, {
         col: 'jsonCol',
-        patchPath: '{0,inner_key}',
+        patchPath: '{0,innerKey}',
       });
     });
 
-    it('snakeCaseMappers({ preserveJsonKeys: true }) only maps the column part', () => {
-      testQueries(createModel(objection.snakeCaseMappers({ preserveJsonKeys: true })), mockKnex, {
+    it('snakeCaseMappers({ preserveJsonKeys: false }) maps json keys of field expressions in patch', () => {
+      testQueries(createModel(objection.snakeCaseMappers({ preserveJsonKeys: false })), mockKnex, {
         col: 'jsonCol',
-        patchPath: '{0,innerKey}',
+        patchPath: '{0,inner_key}',
       });
     });
 

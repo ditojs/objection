@@ -14,6 +14,7 @@ This section lists the breaking changes in objection 4.0.
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [`update` rejects field expression keys](#update-rejects-field-expression-keys)
+- [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 
 ## objection is an ES module package
 
@@ -136,6 +137,28 @@ await Person.query().patch({ name: 'Jennifer', 'meta:color': 'red' }).where('id'
 ```
 
 Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares in its `properties`, like `'ns:name'`, are normal properties and columns, and `update` writes them as before.
+
+## `snakeCaseMappers` keeps the JSON keys of field expressions
+
+[snakeCaseMappers](/api/objection/#snakecasemappers) only converts the column part of [field expressions](/api/types/#type-fieldexpression) used as property names, and keeps their JSON keys as written: the `preserveJsonKeys` option defaults to `true`. 3.x converted the JSON keys too:
+
+```js
+// 4.0: update "persons" set "json_column" = jsonb_set("json_column", '{someKey}', '1', true)
+// 3.x: update "persons" set "json_column" = jsonb_set("json_column", '{some_key}', '1', true)
+await Person.query().patch({ 'jsonColumn:someKey': 1 });
+```
+
+If your JSON columns contain snake_case keys written this way, set `preserveJsonKeys: false` to keep converting them:
+
+```js
+class Person extends Model {
+  static get columnNameMappers() {
+    return snakeCaseMappers({ preserveJsonKeys: false });
+  }
+}
+```
+
+The mappers don't know the schema, so the first `:` ends the converted part also in column names that contain a `:`. Columns with an underscore after the `:`, like `ns:foo_bar`, are read as `ns:fooBar`, but `ns:fooBar` is written to the column `ns:fooBar`. Set `preserveJsonKeys: false` for such columns, or rename them without underscores after the `:`. [knexSnakeCaseMappers](/api/objection/#knexsnakecasemappers) never converted the JSON keys and is unchanged.
 
 # Migration from objection 2.x to 3.0
 
