@@ -56,6 +56,10 @@ describe('GraphOptions', () => {
       ['a.[b, ^]', '"^" is only supported at the end of a relation path'],
       ['a.[b, ^2]', '"^2" is only supported at the end of a relation path'],
       ['[a, *]', '"*" is only supported at the end of a relation path'],
+      [
+        '[a.b, a.c]',
+        'Duplicate relation name "a". For example, use "a.[foo, bar]" instead of "[a.foo, a.bar]".',
+      ],
     ]) {
       it(`should throw for '${expression}'`, () => {
         expect(() => new GraphOptions({ noInsert: expression })).toThrow(

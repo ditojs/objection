@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { RelationExpression } from 'objection';
-import { resetWarnings } from '../../../lib/utils/warnings.js';
 import { Model } from 'objection';
 
 describe('RelationExpression', () => {
@@ -879,9 +878,9 @@ describe('RelationExpression', () => {
       testParseFail('a asb');
       testParseFail('aas b');
       testParseFail('a asd b');
-      // Throws in objection 4.0, see ditojs/objection#53.
-      // testParseFail('[a.b, a.c]');
-      // testParseFail('a.[b.c, b.d]');
+      // Duplicate relations
+      testParseFail('[a.b, a.c]');
+      testParseFail('a.[b.c, b.d]');
     });
 
     it('should accept single function or modifier name in $modifiers', () => {
@@ -1152,25 +1151,28 @@ describe('RelationExpression', () => {
   });
 
   describe('duplicate relations', () => {
-    it('should warn once that only the last one is used', () => {
-      const warnings = [];
-      const originalWarn = console.warn;
-      console.warn = (message) => warnings.push(message);
-      resetWarnings();
+    for (const [expression, relationName] of [
+      ['[movies.reviews, movies.actors]', 'movies'],
+      ['[movies, movies.reviews]', 'movies'],
+      ['[movies, movies]', 'movies'],
+      ['movies.[reviews.author, reviews.movie]', 'reviews'],
+      ['[m as movies, movies]', 'movies'],
+    ]) {
+      it(`should throw for '${expression}'`, () => {
+        expect(() => RelationExpression.create(expression)).toThrow(
+          expect.objectContaining({
+            message:
+              `Duplicate relation name "${relationName}". For example, use ` +
+              `"${relationName}.[foo, bar]" instead of "[${relationName}.foo, ${relationName}.bar]".`,
+          }),
+        );
+      });
+    }
 
-      try {
-        RelationExpression.create('[movies.reviews, movies.actors]');
-        RelationExpression.create('[movies.actors, movies.director]');
-      } finally {
-        console.warn = originalWarn;
-        resetWarnings();
-      }
-
-      expect(warnings).toEqual([
-        '[objection] Duplicate relation "movies" in a relation expression, only the last one ' +
-          'is used. Use "a.[b, c]" instead of "[a.b, a.c]". This will throw an error in ' +
-          'objection 4.0.',
-      ]);
+    it('should not throw for the same relation under different aliases', () => {
+      expect(RelationExpression.create('[movies, movies as m]').toString()).toBe(
+        '[movies, movies as m]',
+      );
     });
   });
 
