@@ -8,6 +8,7 @@ This section lists the breaking changes in objection 4.0.
 - [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
 - [Model files given as paths](#model-files-given-as-paths)
 - [skipUndefined() is removed](#skipundefined-is-removed)
+- [onConflict() with insertGraph() and upsertGraph() throws](#onconflict-with-insertgraph-and-upsertgraph-throws)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
@@ -79,6 +80,10 @@ if (req.query.firstName !== undefined) {
   query.where('firstName', req.query.firstName);
 }
 ```
+
+## onConflict() with insertGraph() and upsertGraph() throws
+
+`insertGraph()`, `upsertGraph()` and their `*AndFetch()` variants throw an error when the query also uses `onConflict()`, `ignore()` or `merge()`. 3.x ignored these clauses and logged a warning. A graph is inserted using many insert queries, so there's no single query to apply the clause to. Insert the rows that may conflict using a separate `insert()` query and relate them in the graph, for example using `#dbRef` or the `relate` option.
 
 ## typescript: The typings are ES module declarations
 

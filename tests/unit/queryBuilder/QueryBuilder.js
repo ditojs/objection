@@ -5346,102 +5346,48 @@ describe('QueryBuilder', () => {
 
     const graph = () => ({ name: 'Jennifer', pets: [{ name: 'Doggo' }] });
 
-    // Each case: [method, query with onConflict, same query without onConflict].
     const cases = {
       'insertGraph().onConflict().ignore()': [
         'insertGraph',
         () => Person.query().insertGraph(graph()).onConflict('name').ignore(),
-        () => Person.query().insertGraph(graph()),
       ],
       'insertGraph().onConflict().merge()': [
         'insertGraph',
         () => Person.query().insertGraph(graph()).onConflict('name').merge(),
-        () => Person.query().insertGraph(graph()),
       ],
       'insertGraph().onConflict()': [
         'insertGraph',
         () => Person.query().insertGraph(graph()).onConflict('name'),
-        () => Person.query().insertGraph(graph()),
       ],
       'insertGraphAndFetch().onConflict().ignore()': [
         'insertGraph',
         () => Person.query().insertGraphAndFetch(graph()).onConflict('name').ignore(),
-        () => Person.query().insertGraphAndFetch(graph()),
       ],
       'onConflict().ignore().insertGraph()': [
         'insertGraph',
         () => Person.query().onConflict('name').ignore().insertGraph(graph()),
-        () => Person.query().insertGraph(graph()),
       ],
       'relatedQuery().insertGraph().onConflict().ignore()': [
         'insertGraph',
         () => Person.relatedQuery('pets').for(1).insertGraph(graph()).onConflict('name').ignore(),
-        () => Person.relatedQuery('pets').for(1).insertGraph(graph()),
       ],
       'upsertGraph().onConflict().merge()': [
         'upsertGraph',
         () => Person.query().upsertGraph(graph()).onConflict('name').merge(),
-        () => Person.query().upsertGraph(graph()),
       ],
     };
 
-    let warnings;
-    let originalWarn;
+    for (const [title, [method, createQuery]] of Object.entries(cases)) {
+      it(`${title} should throw without executing any queries`, async () => {
+        executedQueries = [];
 
-    beforeEach(() => {
-      resetWarnings();
-      warnings = [];
-      originalWarn = console.warn;
-      console.warn = (message) => warnings.push(message);
-    });
-
-    afterEach(() => {
-      console.warn = originalWarn;
-      resetWarnings();
-    });
-
-    async function run(createQuery) {
-      mockKnexQueryResults = [[{ id: 1 }], [{ id: 2 }]];
-      mockKnexQueryResultIndex = 0;
-      executedQueries = [];
-      await createQuery();
-      return executedQueries;
-    }
-
-    for (const [title, [method, withOnConflict, withoutOnConflict]] of Object.entries(cases)) {
-      it(`${title} should warn once and ignore the clause`, async () => {
-        const expectedQueries = await run(withoutOnConflict);
-        expect(warnings).toEqual([]);
-
-        expect(await run(withOnConflict)).toEqual(expectedQueries);
-        expect(await run(withOnConflict)).toEqual(expectedQueries);
-
-        expect(warnings).toEqual([
-          `[objection] onConflict(), ignore() and merge() are not supported by ${method}(). ` +
-            'Insert the conflicting rows with a separate insert() query instead. ' +
-            'This will throw in objection 4.0.',
-        ]);
+        await expect(createQuery()).rejects.toThrow(
+          `onConflict(), ignore() and merge() are not supported by ${method}(). ` +
+            'Insert the conflicting rows with a separate insert() query instead.',
+        );
+        expect(executedQueries).toEqual([]);
       });
     }
-
-    it('insertGraph().onConflict().ignore() should insert the graph without on conflict', async () => {
-      expect(
-        await run(() => Person.query().insertGraph(graph()).onConflict('name').ignore()),
-      ).toEqual([
-        'insert into "Person" ("name") values (\'Jennifer\') returning "id"',
-        'insert into "Person" ("name", "ownerId") values (\'Doggo\', 1) returning "id"',
-      ]);
-    });
-
-    it('should warn once per method', async () => {
-      await run(() => Person.query().insertGraph(graph()).onConflict('name').ignore());
-      await run(() => Person.query().upsertGraph(graph()).onConflict('name').merge());
-      await run(() => Person.query().insertGraph(graph()).onConflict('name').merge());
-
-      expect(warnings).toHaveLength(2);
-      expect(warnings[0]).toContain('insertGraph()');
-      expect(warnings[1]).toContain('upsertGraph()');
-    });
   });
 
   describe('unknown graph options (#84)', () => {
