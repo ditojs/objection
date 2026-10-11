@@ -2008,6 +2008,33 @@ describe('Model', () => {
     expect(model2).to.eql(inputJson);
   });
 
+  it('should keep JSON strings that parse to a type the schema does not allow', () => {
+    class TestModel extends Model {
+      static get jsonSchema() {
+        return {
+          type: 'object',
+          properties: {
+            string: { type: ['object', 'string'] },
+            integer: { anyOf: [{ type: 'object' }, { type: 'string' }, { type: 'integer' }] },
+            object: { type: 'object' },
+          },
+        };
+      }
+    }
+
+    // Already parsed by the database client, like `pg` does for JSON columns:
+    expect(TestModel.fromDatabaseJson({ string: '123' }).string).to.equal('123');
+    expect(TestModel.fromDatabaseJson({ string: 'true' }).string).to.equal('true');
+    expect(TestModel.fromDatabaseJson({ string: 'null' }).string).to.equal('null');
+    expect(TestModel.fromDatabaseJson({ string: '[1]' }).string).to.equal('[1]');
+    // Still JSON text:
+    expect(TestModel.fromDatabaseJson({ string: '"123"' }).string).to.equal('123');
+    expect(TestModel.fromDatabaseJson({ string: '{"a":1}' }).string).to.eql({ a: 1 });
+    expect(TestModel.fromDatabaseJson({ integer: '123' }).integer).to.equal(123);
+    expect(TestModel.fromDatabaseJson({ integer: '1.5' }).integer).to.equal('1.5');
+    expect(TestModel.fromDatabaseJson({ object: '123' }).object).to.equal(123);
+  });
+
   it('$setJson should do nothing if null is given', () => {
     let Model = modelClass('Model');
     let model = Model.fromJson({ a: 1, b: 2 });
