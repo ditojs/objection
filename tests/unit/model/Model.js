@@ -1798,6 +1798,55 @@ describe('Model', () => {
     expect(json.prop4).to.eql({ also: 'this' });
   });
 
+  it('if pickJsonSchemaProperties = true and jsonSchema is given, should pick field expressions by their json column', () => {
+    let Model = modelClass('Model');
+
+    Model.pickJsonSchemaProperties = true;
+
+    Model.jsonSchema = {
+      type: 'object',
+      properties: {
+        meta: { type: 'object' },
+      },
+    };
+
+    let model = Model.fromJson(
+      {
+        'meta:a': 1,
+        'meta:b.c': 2,
+        'other:a': 3,
+        'meta:[': 4,
+      },
+      { skipValidation: true },
+    );
+
+    expect(model.$toDatabaseJson()).to.eql({ 'meta:a': 1, 'meta:b.c': 2 });
+  });
+
+  it('if pickJsonSchemaProperties = true and jsonSchema is given, should not pick inherited object properties', () => {
+    let Model = modelClass('Model');
+
+    Model.pickJsonSchemaProperties = true;
+
+    Model.jsonSchema = {
+      type: 'object',
+      properties: {
+        prop1: { type: 'number' },
+      },
+    };
+
+    let model = Model.fromJson(
+      {
+        prop1: 10,
+        toString: 'should be removed',
+        'constructor:a': 'should be removed',
+      },
+      { skipValidation: true },
+    );
+
+    expect(model.$toDatabaseJson()).to.eql({ prop1: 10 });
+  });
+
   it('if pickJsonSchemaProperties = true and jsonSchema is given, should omit relations even if defined in jsonSchema', () => {
     let Model = modelClass('Model');
 
