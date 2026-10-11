@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { Model, snakeCaseMappers, raw, ref } from 'objection';
+import { Model, ValidationError, snakeCaseMappers, raw, ref } from 'objection';
 
 export default (session) => {
   describe('keys with a colon in patch(), update() and merge() data', () => {
@@ -84,6 +84,37 @@ export default (session) => {
       expect(item['ns:name']).toBe('q');
     });
 
+    it('update() should reject undeclared keys with a colon', async () => {
+      class SchemalessItem extends Model {
+        static get tableName() {
+          return 'field_expression_keys';
+        }
+      }
+
+      const expectRejected = async (query, keys) => {
+        const err = await query.catch((err) => err);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.type).toBe('ModelValidation');
+        expect(Object.keys(err.data)).toEqual(keys);
+      };
+
+      const item = await Item.query().findById(1);
+      await expectRejected(
+        Item.query().update({ id: 1, 'ns:name': 'b', 'meta:color': 'red', 'meta:size': ref('id') }),
+        ['meta:color', 'meta:size'],
+      );
+      await expectRejected(item.$query().update({ id: 1, 'meta:color': 'red' }), ['meta:color']);
+      await expectRejected(Item.fromJson({ id: 1, 'meta:color': 'red' }).$query().update(), [
+        'meta:color',
+      ]);
+      await expectRejected(SchemalessItem.query(knex).update({ id: 1, 'ns:name': 'b' }), [
+        'ns:name',
+      ]);
+
+      const row = await knex('field_expression_keys').where('id', 1).first();
+      expect(row['ns:name']).toBe('a');
+    });
+
     it('patch() should write a declared key with a colon mapped by snakeCaseMappers', async () => {
       class SnakeCaseItem extends Item {
         static get columnNameMappers() {
@@ -150,14 +181,6 @@ export default (session) => {
         const item = await Item.query().findById(1);
         expect(item['ns:name']).toBe('d');
         expect(item.meta).toEqual({ size: 1, color: 'red' });
-      });
-
-      it('update() should write an undeclared key with a query property to the json path', async () => {
-        await Item.query()
-          .update({ id: 1, 'ns:name': 'e', 'meta:color': ref('id') })
-          .where('id', 1);
-        const item = await Item.query().findById(1);
-        expect(item.meta).toEqual({ size: 1, color: 1 });
       });
 
       it('patch() should pick an undeclared key with a colon by its json column with pickJsonSchemaProperties', async () => {

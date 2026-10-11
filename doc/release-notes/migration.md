@@ -13,6 +13,7 @@ This section lists the breaking changes in objection 4.0.
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
+- [`update` rejects field expression keys](#update-rejects-field-expression-keys)
 
 ## objection is an ES module package
 
@@ -121,6 +122,20 @@ To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, 
 ## typescript: insertGraph() has no allowMarkers option
 
 `InsertGraphOptions` no longer has the deprecated `allowMarkers` option. `insertGraph()` rejects `#unrelate` and `#delete` markers since 3.8.0, so the option had no effect. Remove it from `insertGraph()` calls.
+
+## `update` rejects field expression keys
+
+[update](/api/query-builder/mutate-methods.html#update) replaces whole values, so it throws a [ValidationError](/api/types/#class-validationerror) of type `ModelValidation` for [field expression](/api/types/#type-fieldexpression) keys like `'meta:color'`, which write parts of json columns. 3.x wrote them with `jsonb_set`. Use [patch](/api/query-builder/mutate-methods.html#patch) for them:
+
+```js
+// Before:
+await Person.query().update({ name: 'Jennifer', 'meta:color': 'red' }).where('id', 1);
+
+// After:
+await Person.query().patch({ name: 'Jennifer', 'meta:color': 'red' }).where('id', 1);
+```
+
+Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares in its `properties`, like `'ns:name'`, are normal properties and columns, and `update` writes them as before.
 
 # Migration from objection 2.x to 3.0
 

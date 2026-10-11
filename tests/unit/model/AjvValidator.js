@@ -640,91 +640,6 @@ describe('AjvValidator', () => {
       );
       expect(model).toEqual({ 'meta:b': 'foo' });
     });
-  });
-
-  describe('update validation with field expression keys', () => {
-    const schema = {
-      type: 'object',
-      additionalProperties: false,
-      required: ['name', 'meta'],
-      properties: {
-        id: { type: 'integer' },
-        name: { type: 'string' },
-        status: { type: 'string', default: 'new' },
-        meta: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['a'],
-          default: { a: 'default' },
-          properties: {
-            a: { type: 'string' },
-            b: { type: 'string' },
-          },
-        },
-      },
-    };
-
-    const TestModel = modelClass('test', schema);
-
-    function validationErrorData(fn) {
-      try {
-        fn();
-      } catch (err) {
-        expect(err).toBeInstanceOf(TestModel.ValidationError);
-        return err.data;
-      }
-      throw new Error('expected a validation error');
-    }
-
-    it('should validate field expression keys against the nested schema', () => {
-      const data = validationErrorData(() => TestModel.fromJson({ name: 'foo', 'meta:b': 1 }));
-      expect(Object.keys(data)).toEqual(['meta.b']);
-      expect(data['meta.b'][0].keyword).toBe('type');
-    });
-
-    it('should count the json column as present, without its required properties', () => {
-      expect(TestModel.fromJson({ name: 'foo', 'meta:b': 'foo' })['meta:b']).toBe('foo');
-      expect(TestModel.fromJson({ name: 'foo', 'meta:[0]': 'foo' })).toEqual({
-        name: 'foo',
-        status: 'new',
-        'meta:[0]': 'foo',
-      });
-    });
-
-    it('should report the errors of the field expressions and the other properties together', () => {
-      const data = validationErrorData(() => TestModel.fromJson({ status: 1, 'meta:b': 1 }));
-      expect(Object.keys(data).sort()).toEqual(['meta.b', 'name', 'status']);
-    });
-
-    it('should resolve $refs in the schema of the json column', () => {
-      const RefModel = modelClass('test', {
-        type: 'object',
-        required: ['name', 'meta'],
-        properties: {
-          name: { type: 'string' },
-          meta: { $ref: '#/definitions/Meta' },
-        },
-        definitions: {
-          Meta: {
-            type: 'object',
-            required: ['size'],
-            properties: {
-              size: { type: 'integer' },
-              color: { type: 'string' },
-            },
-          },
-        },
-      });
-
-      expect(RefModel.fromJson({ name: 'foo', 'meta:color': 'red' })['meta:color']).toBe('red');
-      expectThrows(
-        () => RefModel.fromJson({ name: 'foo', 'meta:color': 1 }),
-        (err) => {
-          expect(Object.keys(err.data)).toEqual(['meta.color']);
-          expect(err.data['meta.color'][0].keyword).toBe('type');
-        },
-      );
-    });
 
     it('should resolve external $refs in the schema of the json column', () => {
       const RefModel = class extends modelClass('test', {
@@ -753,113 +668,18 @@ describe('AjvValidator', () => {
         }
       };
 
-      expect(RefModel.fromJson({ name: 'foo', 'meta:color': 'red' })['meta:color']).toBe('red');
+      expect(RefModel.fromJson({ 'meta:color': 'red' }, { patch: true })['meta:color']).toBe('red');
       expectThrows(
-        () => RefModel.fromJson({ name: 'foo', 'meta:color': 1 }),
+        () => RefModel.fromJson({ 'meta:color': 1 }, { patch: true }),
         (err) => {
           expect(Object.keys(err.data)).toEqual(['meta.color']);
           expect(err.data['meta.color'][0].keyword).toBe('type');
         },
       );
-      // Other properties with the same schema are still validated normally:
-      expectThrows(
-        () => RefModel.fromJson({ name: 'foo', 'meta:color': 'red', other: { color: 'red' } }),
-        (err) => {
-          expect(Object.keys(err.data)).toEqual(['other.size']);
-          expect(err.data['other.size'][0].keyword).toBe('required');
-        },
-      );
-      expect(RefModel.fromJson({ 'meta:color': 'red' }, { patch: true })['meta:color']).toBe('red');
-    });
-
-    it('should validate keys with a colon that the schema declares as properties', () => {
-      const ColonModel = modelClass('test', {
-        type: 'object',
-        additionalProperties: false,
-        required: ['ns:name'],
-        properties: { 'ns:name': { type: 'string' } },
+      // Whole values of the referenced schema are patched without its required properties too:
+      expect(RefModel.fromJson({ other: { color: 'red' } }, { patch: true }).other).toEqual({
+        color: 'red',
       });
-      expect(ColonModel.fromJson({ 'ns:name': 'x' })['ns:name']).toBe('x');
-      expectThrows(
-        () => ColonModel.fromJson({}),
-        (err) => {
-          expect(Object.keys(err.data)).toEqual(['ns:name']);
-          expect(err.data['ns:name'][0].keyword).toBe('required');
-        },
-      );
-    });
-
-    it('should not compile new validators for each set of written json columns', () => {
-      const fromJson = (column) => {
-        expectThrows(
-          () => TestModel.fromJson({ name: 'foo', [`${column}:a`]: 1 }),
-          (err) => {
-            expect(Object.keys(err.data)).toEqual([column]);
-          },
-        );
-      };
-
-      fromJson('unknown');
-      // Count the compilations of all Ajv instances:
-      const { compile } = Ajv.prototype;
-      let compileCount = 0;
-      Ajv.prototype.compile = function (...args) {
-        ++compileCount;
-        return compile.apply(this, args);
-      };
-
-      try {
-        for (let i = 0; i < 10; ++i) {
-          fromJson(`unknown${i}`);
-        }
-      } finally {
-        Ajv.prototype.compile = compile;
-      }
-
-      expect(compileCount).toBe(0);
-    });
-
-    it('should still require the other required properties', () => {
-      const data = validationErrorData(() => TestModel.fromJson({ 'meta:b': 'foo' }));
-      expect(Object.keys(data)).toEqual(['name']);
-      expect(data.name[0].keyword).toBe('required');
-    });
-
-    it('should not set the default value of the json column', () => {
-      const model = TestModel.fromJson({ name: 'foo', 'meta:b': 'foo' });
-      expect(model).toEqual({ name: 'foo', status: 'new', 'meta:b': 'foo' });
-    });
-
-    it('should work together with required properties given as query properties', () => {
-      expect(TestModel.fromJson({ name: raw('?', 'foo'), 'meta:b': 'foo' })['meta:b']).toBe('foo');
-      const data = validationErrorData(() =>
-        TestModel.fromJson({ name: raw('?', 'foo'), 'meta:b': 1 }),
-      );
-      expect(Object.keys(data)).toEqual(['meta.b']);
-    });
-
-    it('should count the json column of field expressions with query property values as present', () => {
-      const model = TestModel.fromJson({ name: 'foo', 'meta:b': ref('name') });
-      expect(model.name).toBe('foo');
-      expect(model.status).toBe('new');
-      expect(model.meta).toBeUndefined();
-      const data = validationErrorData(() => TestModel.fromJson({ 'meta:b': raw('?', 'foo') }));
-      expect(Object.keys(data)).toEqual(['name']);
-
-      const NoDefaultModel = modelClass('test', {
-        type: 'object',
-        required: ['name', 'meta'],
-        properties: { name: { type: 'string' }, meta: { type: 'object' } },
-      });
-      expect(NoDefaultModel.fromJson({ name: 'foo', 'meta:b': ref('name') }).name).toBe('foo');
-    });
-
-    it('should not change the validation of the json column without field expressions', () => {
-      const data = validationErrorData(() =>
-        TestModel.fromJson({ name: 'foo', meta: { b: 'foo' } }),
-      );
-      expect(Object.keys(data)).toEqual(['meta.a']);
-      expect(TestModel.fromJson({ name: 'foo' }).meta).toEqual({ a: 'default' });
     });
   });
 

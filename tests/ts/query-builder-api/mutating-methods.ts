@@ -92,8 +92,6 @@ import { Person } from '../fixtures/person.js';
 
   await Person.query().update({
     lastName: ref('someJsonColumn:mother.lastName').castText(),
-    // Unable to support with TypeScript as of Sep 26, 2019 and typescript 3.5.3
-    // 'detailsJsonColumn:address.street': 'Elm street'
   });
 
   await Person.query().updateAndFetchById(134, {
