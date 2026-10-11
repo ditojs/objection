@@ -480,8 +480,8 @@ module.exports = (session) => {
       });
 
       it('should only patch the join rows of the related rows that limit() picks', async function () {
-        // Only MySQL supports a limit in updates.
-        if (!session.isMySql()) {
+        // Only MySQL and SQL Server support a limit in updates.
+        if (!session.isMySql() && !session.isMsSql()) {
           this.skip();
         }
 
@@ -507,8 +507,8 @@ module.exports = (session) => {
       });
 
       it('should count the related rows and not their join rows with limit()', async function () {
-        // Only MySQL supports a limit in updates.
-        if (!session.isMySql()) {
+        // Only MySQL and SQL Server support a limit in updates.
+        if (!session.isMySql() && !session.isMsSql()) {
           this.skip();
         }
 
@@ -547,8 +547,8 @@ module.exports = (session) => {
       });
 
       it('should only patch the join table extras of the related rows that limit() and offset() pick', async function () {
-        // Only MySQL supports a limit in updates.
-        if (!session.isMySql()) {
+        // Only MySQL and SQL Server support a limit in updates.
+        if (!session.isMySql() && !session.isMsSql()) {
           this.skip();
         }
 
@@ -697,8 +697,8 @@ module.exports = (session) => {
         });
 
         it('should patch the related rows that limit() picks and their join rows in batches', async function () {
-          // Only MySQL supports a limit in updates.
-          if (!session.isMySql()) {
+          // Only MySQL and SQL Server support a limit in updates.
+          if (!session.isMySql() && !session.isMsSql()) {
             this.skip();
           }
 
