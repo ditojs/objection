@@ -1762,14 +1762,31 @@ export default (session) => {
       }
     });
 
-    // Throws in objection 4.0, see ditojs/objection#53.
-    it.skip('should fail with a clear error when a duplicate relation is detected', () => {
-      expect(() => {
-        Model1.query().withGraphFetched('[model1Relation1, model1Relation1.model1Relation2]');
-      }).toThrow(
-        expect.objectContaining({
-          message: `Duplicate relation name "model1Relation1" in relation expression "[model1Relation1, model1Relation1.model1Relation2]". Use "a.[b, c]" instead of "[a.b, a.c]".`,
-        }),
+    for (const method of ['withGraphFetched', 'withGraphJoined', 'allowGraph']) {
+      it(`${method}() should fail with a clear error when a duplicate relation is detected`, () => {
+        const expression = '[model1Relation1, model1Relation1.model1Relation2]';
+
+        expect(() => Model1.query()[method](expression)).toThrow(
+          expect.objectContaining({
+            constructor: ValidationError,
+            type: 'RelationExpression',
+            message:
+              `Invalid relation expression "${expression}": Duplicate relation name ` +
+              '"model1Relation1". For example, use "model1Relation1.[foo, bar]" instead of ' +
+              '"[model1Relation1.foo, model1Relation1.bar]".',
+          }),
+        );
+      });
+    }
+
+    it('joinRelated() should fail with a clear error when a duplicate relation is detected', () => {
+      const builder = Model1.query().joinRelated(
+        '[model1Relation1, model1Relation1.model1Relation2]',
+      );
+
+      expect(() => builder.toKnexQuery()).toThrow(
+        'Duplicate relation name "model1Relation1". For example, use "model1Relation1.[foo, bar]" ' +
+          'instead of "[model1Relation1.foo, model1Relation1.bar]".',
       );
     });
 

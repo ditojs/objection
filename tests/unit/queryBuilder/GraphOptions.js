@@ -53,6 +53,10 @@ describe('GraphOptions', () => {
       ['[]', 'the expression is empty'],
       ['a as b', 'aliases like "a as b" are not supported'],
       ['a.[b, c as d]', 'aliases like "c as d" are not supported'],
+      [
+        '[a.b, a.c]',
+        'Duplicate relation name "a". For example, use "a.[foo, bar]" instead of "[a.foo, a.bar]".',
+      ],
     ]) {
       it(`should throw for '${expression}'`, () => {
         expect(() => new GraphOptions({ noInsert: expression })).toThrow(
