@@ -12,6 +12,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
+- [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 
 ## objection is an ES module package
 
@@ -116,6 +117,10 @@ const people = await Person.query()
 The relation query becomes a subquery, and its order moves into a `row_number()` window function. The order can only refer to the related table's columns that are selected and to the aliases of the result columns, see [limiting related items per parent](/api/query-builder/eager-methods.html#limiting-related-items-per-parent). MySQL before 8 has no window functions, so objection fetches relations with a limit with one query per parent there, and builds every fetched relation query once more to find its limit, which runs the relation's `modify` and the `onBuild` and `onBuildKnex` hooks twice.
 
 To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, or in [defaultGraphOptions](/api/model/static-properties.html#static-defaultgraphoptions) for all queries of a model.
+
+## typescript: insertGraph() has no allowMarkers option
+
+`InsertGraphOptions` no longer has the deprecated `allowMarkers` option. `insertGraph()` rejects `#unrelate` and `#delete` markers since 3.8.0, so the option had no effect. Remove it from `insertGraph()` calls.
 
 # Migration from objection 2.x to 3.0
 
