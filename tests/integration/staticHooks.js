@@ -412,6 +412,13 @@ export default (session) => {
           });
         });
 
+        it('should get an empty `result`', async () => {
+          Movie.beforeFind = createHookSpy();
+
+          await Movie.query();
+          expect(Movie.beforeFind.calls[0].args.result).toEqual([]);
+        });
+
         it('should be able to cancel the query', () => {
           Movie.beforeFind = createHookSpy(({ cancelQuery }) => {
             cancelQuery();
@@ -904,6 +911,16 @@ export default (session) => {
 
                 expect(Person.afterFind.calls.length).toBe(1);
               });
+          });
+
+          it('should get an empty `result` if there is no related model', async () => {
+            const pet = await Pet.query().insert({ name: 'Stray' });
+            Person.afterFind = createHookSpy();
+
+            const owner = await pet.$relatedQuery('owner');
+            expect(owner).toBeUndefined();
+            expect(Person.afterFind.calls.length).toBe(1);
+            expect(Person.afterFind.calls[0].args.result).toEqual([]);
           });
         });
       });

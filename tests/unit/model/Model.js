@@ -1970,6 +1970,20 @@ describe('Model', () => {
     expect(model2).toEqual(inputJson);
   });
 
+  it('should use anyOf and oneOf for the json attributes if type is null', () => {
+    let Model = modelClass('Model');
+
+    Model.jsonSchema = {
+      type: 'object',
+      properties: {
+        prop1: { type: null, anyOf: [{ type: 'array' }, { type: 'string' }] },
+        prop2: { type: null, oneOf: [{ type: 'object' }, { type: 'string' }] },
+      },
+    };
+
+    expect(Model.getJsonAttributes()).toEqual(['prop1', 'prop2']);
+  });
+
   it('should convert objects to json based on jsonAttributes array', () => {
     class TestModel extends Model {
       static get tableName() {
