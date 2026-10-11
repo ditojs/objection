@@ -770,6 +770,73 @@ module.exports = (session) => {
       }
     });
 
+    describe('.query().insertGraph() with new models below related models (#217)', () => {
+      let warnings;
+      let originalWarn;
+
+      beforeEach(() => {
+        resetWarnings();
+        warnings = [];
+        originalWarn = console.warn;
+        console.warn = (message) => warnings.push(message);
+        return session.populate(population);
+      });
+
+      afterEach(() => {
+        console.warn = originalWarn;
+        resetWarnings();
+      });
+
+      it('should warn and ignore the new models', async () => {
+        const model = await Model1.query().insertGraph(
+          {
+            model1Prop1: 'root',
+
+            model1Relation1: {
+              id: population.id,
+              model1Relation2: [{ model2Prop1: 'below related' }],
+            },
+          },
+          { relate: true },
+        );
+
+        expect(warnings).to.eql([
+          '[objection] insertGraph() ignores new models below related models. ' +
+            'Insert them with a separate query or use upsertGraph() instead. ' +
+            'This will throw in objection 4.0.',
+        ]);
+
+        const fetched = await Model1.query().findById(model.id);
+
+        expect(fetched.model1Id).to.equal(population.id);
+        expect(await session.knex('model2').where('model2_prop1', 'below related')).to.eql([]);
+      });
+
+      it('should not warn about existing models below related models', async () => {
+        const model = await Model2.query().insertGraph(
+          {
+            model2Prop1: 'root',
+
+            model2Relation1: [
+              {
+                id: population.id,
+                model1Relation3: [{ idCol: population.model1Relation3[0].idCol }],
+              },
+            ],
+          },
+          { relate: true },
+        );
+
+        expect(warnings).to.eql([]);
+
+        const fetched = await Model2.query()
+          .findById(model.idCol)
+          .withGraphFetched('model2Relation1');
+
+        expect(fetched.model2Relation1.map((it) => it.id)).to.eql([population.id]);
+      });
+    });
+
     describe('.query().insertGraph().allowGraph()', () => {
       beforeEach(() => {
         return session.populate(population);
