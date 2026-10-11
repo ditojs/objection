@@ -929,6 +929,23 @@ module.exports = (session) => {
               return check(model);
             });
         });
+
+        it('should insert and relate multiple models (#219)', async () => {
+          await parent.$relatedQuery('model1Relation3').insertGraph([
+            { model2Prop1: 'multi1', extra1: 'extra1' },
+            { model2Prop1: 'multi2', extra1: 'extra2' },
+          ]);
+
+          const models = await parent
+            .$relatedQuery('model1Relation3')
+            .whereIn('model2_prop1', ['multi1', 'multi2'])
+            .orderBy('model2_prop1');
+
+          expect(models.map(({ model2Prop1, extra1 }) => ({ model2Prop1, extra1 }))).to.eql([
+            { model2Prop1: 'multi1', extra1: 'extra1' },
+            { model2Prop1: 'multi2', extra1: 'extra2' },
+          ]);
+        });
       });
     });
 
