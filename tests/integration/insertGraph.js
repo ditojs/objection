@@ -143,6 +143,16 @@ module.exports = (session) => {
           });
       });
 
+      it('should not return the reference markers (#221)', async () => {
+        const inserted = await Model1.query().insertGraph(insertion, { allowRefs: true });
+        const [ref, , dbRef] = inserted.model1Relation1.model1Relation3;
+
+        expect(ref).to.not.have.property('#ref');
+        expect(ref.model2Prop1).to.equal('child1');
+        expect(dbRef).to.not.have.property('#dbRef');
+        expect(dbRef.idCol).to.equal(1);
+      });
+
       describe('jsonSchema: additionalProperties = false', () => {
         let origSchema;
 

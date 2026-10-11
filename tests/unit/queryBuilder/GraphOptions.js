@@ -53,6 +53,9 @@ describe('GraphOptions', () => {
       ['[]', 'the expression is empty'],
       ['a as b', 'aliases like "a as b" are not supported'],
       ['a.[b, c as d]', 'aliases like "c as d" are not supported'],
+      ['a.[b, ^]', '"^" is only supported at the end of a relation path'],
+      ['a.[b, ^2]', '"^2" is only supported at the end of a relation path'],
+      ['[a, *]', '"*" is only supported at the end of a relation path'],
     ]) {
       it(`should throw for '${expression}'`, () => {
         expect(() => new GraphOptions({ noInsert: expression })).to.throwException((err) => {
