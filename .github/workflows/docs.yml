@@ -7,7 +7,7 @@ on:
       - 'doc/**'
       - '.github/workflows/docs.yml'
       - 'package.json'
-      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 permissions:
@@ -24,13 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
       # Native modules (sqlite3) aren't needed to build the docs.
-      - run: npm ci --ignore-scripts
-      - run: npm run docs:build
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm docs:build
       - uses: actions/upload-pages-artifact@v5
         with:
           path: doc/.vitepress/dist

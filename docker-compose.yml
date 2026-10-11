@@ -41,7 +41,7 @@ services:
     image: 'mcr.microsoft.com/mssql/server:2022-latest'
     # There is no arm64 image of SQL Server.
     platform: linux/amd64
-    # Only started on request, e.g. `npm run db:up -- mssql`, as the image is
+    # Only started on request, e.g. `pnpm db:up mssql`, as the image is
     # large and runs emulated on arm64.
     profiles: [mssql]
     ports:
