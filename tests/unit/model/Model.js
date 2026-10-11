@@ -2139,11 +2139,11 @@ describe('Model', () => {
     const model1 = Model1.fromJson({});
 
     const setResult = model1.$setRelated('hasMany', Model2.fromJson({ id: 1 }));
-    expect(model1.hasMany).toEqual([{ id: 1 }]);
+    expect(model1.hasMany).toEqual([{ id: 1, model1Id: null }]);
     expect(setResult === model1).toBe(true);
 
     model1.$setRelated('hasMany', [Model2.fromJson({ id: 2 })]);
-    expect(model1.hasMany).toEqual([{ id: 2 }]);
+    expect(model1.hasMany).toEqual([{ id: 2, model1Id: null }]);
 
     model1.$setRelated('belongsToOne', Model1.fromJson({ id: 1 }));
     expect(model1.belongsToOne).toEqual({ id: 1 });
@@ -2156,6 +2156,199 @@ describe('Model', () => {
 
     model1.$setRelated('manyToMany', [Model1.fromJson({ id: 2 })]);
     expect(model1.manyToMany).toEqual([{ id: 2 }]);
+  });
+
+  describe('$setRelated / $appendRelated foreign keys (#2001)', () => {
+    let Post;
+    let User;
+
+    beforeEach(() => {
+      User = modelClass('User');
+      Post = modelClass('Post');
+
+      Post.relationMappings = {
+        author: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: User,
+          join: { from: 'Post.authorId', to: 'User.id' },
+        },
+        compositeAuthor: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: User,
+          join: { from: ['Post.authorA', 'Post.authorB'], to: ['User.a', 'User.b'] },
+        },
+      };
+
+      User.relationMappings = {
+        posts: {
+          relation: Model.HasManyRelation,
+          modelClass: Post,
+          join: { from: 'User.id', to: 'Post.authorId' },
+        },
+        latestPost: {
+          relation: Model.HasOneRelation,
+          modelClass: Post,
+          join: { from: 'User.id', to: 'Post.authorId' },
+        },
+        likedPosts: {
+          relation: Model.ManyToManyRelation,
+          modelClass: Post,
+          join: {
+            from: 'User.id',
+            through: { from: 'Like.userId', to: 'Like.postId' },
+            to: 'Post.id',
+          },
+        },
+      };
+    });
+
+    it('should set the foreign key of a BelongsToOneRelation', () => {
+      const post = Post.fromJson({});
+      post.$setRelated('author', User.fromJson({ id: 2 }));
+
+      expect(post.author.id).toBe(2);
+      expect(post.authorId).toBe(2);
+    });
+
+    it('should overwrite a conflicting foreign key of a BelongsToOneRelation', () => {
+      const post = Post.fromJson({ authorId: 1 });
+      post.$setRelated('author', [User.fromJson({ id: 2 })]);
+
+      expect(post.authorId).toBe(2);
+
+      post.$appendRelated('author', User.fromJson({ id: 3 }));
+      expect(post.authorId).toBe(3);
+    });
+
+    it('should set composite foreign keys of a BelongsToOneRelation', () => {
+      const post = Post.fromJson({});
+      post.$setRelated('compositeAuthor', [User.fromJson({ a: 1, b: 2 })]);
+
+      expect(post.authorA).toBe(1);
+      expect(post.authorB).toBe(2);
+    });
+
+    it('should clear the foreign key of a cleared BelongsToOneRelation', () => {
+      const post = Post.fromJson({ authorId: 1, authorA: 1, authorB: 2 });
+      post.$setRelated('author', null);
+      post.$setRelated('compositeAuthor', []);
+
+      expect(post.author).toBeNull();
+      expect(post.authorId).toBeNull();
+      expect(post.compositeAuthor).toBeNull();
+      expect(post.authorA).toBeNull();
+      expect(post.authorB).toBeNull();
+    });
+
+    it('should clear the foreign key if the related model of a BelongsToOneRelation has no key', () => {
+      const post = Post.fromJson({ authorId: 1, authorA: 1, authorB: 2 });
+      post.$setRelated('author', User.fromJson({ name: 'new' }));
+      post.$setRelated('compositeAuthor', User.fromJson({ a: 3 }));
+
+      expect(post.authorId).toBeNull();
+      expect(post.authorA).toBeNull();
+      expect(post.authorB).toBeNull();
+    });
+
+    it('should set the foreign keys of the related models of a HasManyRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      user.$setRelated('posts', [Post.fromJson({ authorId: 1 }), Post.fromJson({})]);
+
+      expect(user.posts.map((post) => post.authorId)).toEqual([2, 2]);
+
+      user.$appendRelated('posts', Post.fromJson({ authorId: 3 }));
+      expect(user.posts.map((post) => post.authorId)).toEqual([2, 2, 2]);
+    });
+
+    it('should clear the foreign keys of the models removed from a HasManyRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      const [post1, post2] = [Post.fromJson({ id: 1 }), Post.fromJson({ id: 2 })];
+      user.$setRelated('posts', [post1, post2]);
+      user.$setRelated('posts', [post2]);
+
+      expect(post1.authorId).toBeNull();
+      expect(post2.authorId).toBe(2);
+
+      user.$setRelated('posts', []);
+      expect(post2.authorId).toBeNull();
+    });
+
+    it('should keep the foreign keys of the models in a HasManyRelation when appending', () => {
+      const user = User.fromJson({ id: 2 });
+      const post1 = Post.fromJson({ id: 1 });
+      user.$setRelated('posts', [post1]);
+      user.$appendRelated('posts', [Post.fromJson({ id: 2 })]);
+
+      expect(user.posts.map((post) => post.authorId)).toEqual([2, 2]);
+    });
+
+    it('should keep the foreign keys of removed models that moved to another owner', () => {
+      const user1 = User.fromJson({ id: 1 });
+      const user2 = User.fromJson({ id: 2 });
+      const post = Post.fromJson({ id: 1 });
+      user1.$setRelated('posts', [post]);
+      user2.$setRelated('posts', [post]);
+      user1.$setRelated('posts', []);
+
+      expect(post.authorId).toBe(2);
+    });
+
+    it('should set the foreign key of the related model of a HasOneRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      user.$setRelated('latestPost', Post.fromJson({ authorId: 1 }));
+
+      expect(user.latestPost.authorId).toBe(2);
+    });
+
+    it('should clear the foreign key of the model replaced in a HasOneRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      const [post1, post2, post3] = [1, 2, 3].map((id) => Post.fromJson({ id }));
+      user.$setRelated('latestPost', post1);
+      user.$appendRelated('latestPost', post2);
+
+      expect(post1.authorId).toBeNull();
+      expect(post2.authorId).toBe(2);
+
+      user.$setRelated('latestPost', post3);
+      expect(post2.authorId).toBeNull();
+
+      user.$setRelated('latestPost', null);
+      expect(post3.authorId).toBeNull();
+    });
+
+    it("should clear the related models' foreign keys if the owner has no key", () => {
+      const user = User.fromJson({ name: 'new' });
+      const [post1, post2] = [Post.fromJson({ authorId: 1 }), Post.fromJson({ authorId: 1 })];
+      user.$setRelated('posts', [post1]);
+      user.$appendRelated('posts', post2);
+
+      expect(post1.authorId).toBeNull();
+      expect(post2.authorId).toBeNull();
+
+      const post3 = Post.fromJson({ authorId: 1 });
+      user.$setRelated('latestPost', post3);
+      expect(post3.authorId).toBeNull();
+    });
+
+    it('should not set any keys for ManyToManyRelation', () => {
+      const user = User.fromJson({ id: 2 });
+      const post = Post.fromJson({ id: 5, authorId: 1 });
+      user.$setRelated('likedPosts', [post]);
+      user.$setRelated('likedPosts', []);
+
+      expect(post.toJSON()).toEqual({ id: 5, authorId: 1 });
+      expect(user.toJSON()).toEqual({ id: 2, likedPosts: [] });
+    });
+
+    it('should not sync the foreign keys in fromJson() and $setJson()', () => {
+      const user = User.fromJson({ id: 2, posts: [{ id: 1, authorId: 1 }] });
+      const post = Post.fromJson({ authorId: 1, author: { id: 2 } });
+      post.$setJson({ compositeAuthor: { a: 1, b: 2 } });
+
+      expect(user.posts[0].authorId).toBe(1);
+      expect(post.authorId).toBe(1);
+      expect(post.authorA).toBeUndefined();
+    });
   });
 
   it('appendRelated should append related model instances', () => {
@@ -2196,11 +2389,14 @@ describe('Model', () => {
     const model1 = Model1.fromJson({});
 
     const appendResult = model1.$appendRelated('hasMany', Model2.fromJson({ id: 1 }));
-    expect(model1.hasMany).toEqual([{ id: 1 }]);
+    expect(model1.hasMany).toEqual([{ id: 1, model1Id: null }]);
     expect(appendResult === model1).toBe(true);
 
     model1.$appendRelated('hasMany', [Model2.fromJson({ id: 2 })]);
-    expect(model1.hasMany).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(model1.hasMany).toEqual([
+      { id: 1, model1Id: null },
+      { id: 2, model1Id: null },
+    ]);
 
     model1.$appendRelated('belongsToOne', Model1.fromJson({ id: 1 }));
     expect(model1.belongsToOne).toEqual({ id: 1 });
