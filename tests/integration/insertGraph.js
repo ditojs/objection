@@ -813,6 +813,27 @@ module.exports = (session) => {
     });
 
     describe('.$relatedQuery().insertGraph()', () => {
+      describe('belongs to one relation', () => {
+        let parent;
+
+        beforeEach(async () => {
+          await session.populate(population);
+          parent = await Model1.query().findById(1);
+        });
+
+        it('should insert a model with relations and relate it (#216)', async () => {
+          const inserted = await parent
+            .$relatedQuery('model1Relation1')
+            .insertGraph(insertion, { allowRefs: true });
+
+          expect(parent.model1Id).to.equal(inserted.id);
+          await check(inserted, true);
+
+          const row = await session.knex('Model1').where('id', 1).first();
+          expect(row.model1Id).to.equal(inserted.id);
+        });
+      });
+
       describe('has many relation', () => {
         let parent;
 
