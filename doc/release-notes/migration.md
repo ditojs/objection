@@ -8,6 +8,7 @@ This section lists the breaking changes in objection 4.0.
 - [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
 - [Model files given as paths](#model-files-given-as-paths)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
+- [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 
 ## objection is an ES module package
 
@@ -66,6 +67,15 @@ ES module model files can't use top-level await, or import modules that do, beca
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.
 
 TypeScript projects that compile to CommonJS and use `"module": "nodenext"` need at least TypeScript 5.8, which understands that node can `require()` ES modules. With `"module": "node16"`, TypeScript refuses to `require()` objection from CommonJS files. On TypeScript < 7, projects that use `"module": "commonjs"` with the old `"moduleResolution": "node"` keep working. TypeScript 7 removed that resolution mode, so CommonJS projects need `"module": "nodenext"` there.
+
+## Static hooks get an empty `result` instead of `[null]`
+
+Where a static hook has no result to pass on, its `result` is now `[]` instead of `[null]`:
+
+- in all `before*` hooks, which run before there is a result
+- in `afterFind` of a query for a to-one relation that finds no related model, e.g. `pet.$relatedQuery('owner')` for a pet without owner
+
+Code that checked for the `null` entry, e.g. `result[0] === null`, can check `result.length === 0` instead.
 
 # Migration from objection 2.x to 3.0
 

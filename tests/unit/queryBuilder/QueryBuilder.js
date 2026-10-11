@@ -2639,6 +2639,12 @@ describe('QueryBuilder', () => {
     );
   });
 
+  it('upsertGraph() should fail for an undefined graph', async () => {
+    await expect(TestModel.query().upsertGraph(undefined)).rejects.toThrow(
+      'expected value "undefined" to be an instance of TestModel',
+    );
+  });
+
   describe('json field expressions on other databases (ditojs#113)', () => {
     const message =
       '[objection] JSON field expressions and the whereJson*() methods of objection are only ' +

@@ -10,6 +10,8 @@
 - The database error classes are objection's own, from a vendored copy of db-errors, and `instanceof` checks against classes from the `db-errors` package no longer match. See [migration](/release-notes/migration.md#database-errors-are-objection-s-own-classes)
 - Model files given as paths are loaded with `require()`, so ES module model files need to export the model class as default export or as their only model class, and can't use top-level await. See [migration](/release-notes/migration.md#model-files-given-as-paths)
 - The typings are ES module declarations instead of `export =`. See [migration](/release-notes/migration.md#typescript-the-typings-are-es-module-declarations)
+- The `result` of static hooks is `[]` where it was `[null]`: in all `before*` hooks, and in `afterFind` of a to-one relation query that finds no related model, e.g. `pet.$relatedQuery('owner')` for a pet without owner. See [migration](/release-notes/migration.md#static-hooks-get-an-empty-result-instead-of-null) [#129](https://github.com/ditojs/objection/issues/129)
+- `idColumn = undefined` means that the model has no primary key, like `idColumn = null`, instead of a column named `undefined` [#129](https://github.com/ditojs/objection/issues/129)
 
 ### Other
 
