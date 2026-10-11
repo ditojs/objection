@@ -1258,6 +1258,8 @@ const graph = await Person.query().upsertGraph({
 });
 ```
 
+When the model of a `BelongsToOneRelation` like `parent` is deleted because of `parent: null` or `#delete`, its owner's foreign key is only set to `null` before the delete if the owner's [jsonSchema](/api/model/static-properties.html#static-jsonschema) allows `null` for it, through `type` like `{ type: ['integer', 'null'] }`, `anyOf` / `oneOf` or `nullable: true`. Then the owner is patched, so its update hooks run. Otherwise the row is deleted first and the owner's reference is left to the database, as the column may be `NOT NULL`: `ON DELETE SET NULL` clears it, `ON DELETE CASCADE` deletes the owner, and a foreign key without `ON DELETE` action makes the delete fail.
+
 By giving `relate: true` and/or `unrelate: true` options as the second argument, you can change the behaviour so that instead of inserting and deleting rows, they are related and/or unrelated. Rows with no id still get inserted, but rows that have an id and are not currently related, get related.
 
 ```js
