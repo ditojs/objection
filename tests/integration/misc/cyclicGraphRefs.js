@@ -732,7 +732,10 @@ export default (session) => {
               },
               { idA: 2, idB: 1, name: 'Brad' },
             ],
-            { allowRefs: true, insertMissing: true },
+            // `insertGraph()` always inserts models with ids:
+            method === 'upsertGraph'
+              ? { allowRefs: true, insertMissing: true }
+              : { allowRefs: true },
           );
 
           const jennifer = await CPerson.query()

@@ -10,6 +10,7 @@ This section lists the breaking changes in objection 4.0.
 - [skipUndefined() is removed](#skipundefined-is-removed)
 - [onConflict() with insertGraph() and upsertGraph() throws](#onconflict-with-insertgraph-and-upsertgraph-throws)
 - [Relation expressions that name a relation twice throw](#relation-expressions-that-name-a-relation-twice-throw)
+- [Unknown graph options throw](#unknown-graph-options-throw)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
@@ -92,6 +93,10 @@ if (req.query.firstName !== undefined) {
 ## Relation expressions that name a relation twice throw
 
 Relation expressions that name a relation twice at the same level, like `'[movies.reviews, movies.actors]'` or `'[movies, movies.reviews]'`, throw an error. 3.x logged a warning and only used the last one. This applies to `withGraphFetched()`, `withGraphJoined()`, `allowGraph()`, `joinRelated()` and all other methods that take relation expressions, and to the graph options of `insertGraph()` and `upsertGraph()`. Merge the relations instead, like `'movies.[reviews, actors]'`, or name the deepest relation only, like `'movies.reviews'`, which also loads `movies`. Graph options can use an array like `['movies', 'movies.reviews']` to match a relation together with relations below it.
+
+## Unknown graph options throw
+
+`insertGraph()`, `upsertGraph()` and their `*AndFetch()` variants throw an error for unknown keys in their options, like a misspelled `noInset` instead of `noInsert`. 3.x ignored them and logged a warning, so the operation ran with the default behaviour. `insertGraph()` also throws for the options of `upsertGraph()` that have no effect on an insert, which 3.x ignored silently: `noUpdate`, `noDelete`, `noUnrelate`, `insertMissing`, `update`, `unrelate`, `fetchStrategy` and `allowMarkers`. It accepts `relate`, `noRelate`, `noInsert` and `allowRefs`. Fix or remove the reported keys.
 
 ## typescript: The typings are ES module declarations
 

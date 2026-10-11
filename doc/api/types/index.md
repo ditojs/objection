@@ -102,12 +102,18 @@ Such relations can be fetched, and the related rows can be updated, patched and 
 
 The options that accept relation paths take either an array of relation paths like `['pets', 'movies.reviews']`, or a relation expression string in the same syntax as [withGraphFetched()](/api/query-builder/eager-methods.html#withgraphfetched), like `'[pets, movies.reviews]'`. A relation expression matches the same relations as the array of the relation paths it names: only the relations at the end of each path, not the relations along the way. So `'[pets, movies.reviews]'` matches `pets` and `movies.reviews`, but not `movies`, and `relate: 'movies.actors'` relates the actors of movies, but not the movies themselves. An expression can't name a relation twice, so `'[movies, movies.reviews]'` throws an error. Use an array like `['movies', 'movies.reviews']` to match a relation together with relations below it. Instead of `'[movies.reviews, movies.actors]'`, which also throws, use `'movies.[reviews, actors]'`. `'*'` matches all relations at any depth, `'movies.*'` all relations below `movies`, and recursive expressions like `'parent.^'` match every level of the recursion. Aliases (`movies as m`) and empty expressions are rejected. The root models have no relation path and are never matched by a relation expression, so for example `noInsert: '*'` inserts new root models, but no new related models.
 
+`upsertGraph()` throws an error for unknown options, like a misspelled `noInset`.
+
 ## `type` InsertGraphOptions
 
 | Property  | Type                | Description                                                                                                                                                                                                                                              |
 | --------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | relate    | boolean<br>string<br>string[] | If `true`, models with an `id` are related instead of inserted. Relate functionality can be enabled for a subset of relations of the graph by providing a list of relation paths or a relation expression. See the examples [here](/guide/query-examples.html#graph-inserts). |
+| noRelate  | boolean<br>string<br>string[] | If `true`, no relates are performed, and the models that would be related are left out. Relate operations can be disabled for a subset of relations of the graph by providing a list of relation paths or a relation expression. |
+| noInsert  | boolean<br>string<br>string[] | If `true`, no inserts are performed. Inserts can be disabled for a subset of relations of the graph by providing a list of relation paths or a relation expression, and the models of these relations are left out. |
 | allowRefs | boolean             | This needs to be `true` if you want to use `#ref` in your graphs. See [this section](/guide/query-examples.html#graph-inserts) for `#ref` usage examples.                                                                                                  |
+
+`insertGraph()` throws an error for the other options of `upsertGraph()`, which have no effect on an insert, and for unknown options.
 
 ## `type` FetchGraphOptions
 

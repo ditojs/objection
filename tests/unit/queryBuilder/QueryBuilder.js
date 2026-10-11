@@ -5392,8 +5392,6 @@ describe('QueryBuilder', () => {
 
   describe('unknown graph options (#84)', () => {
     let Person;
-    let warnings;
-    let originalWarn;
 
     beforeEach(() => {
       Person = class Person extends Model {
@@ -5403,42 +5401,77 @@ describe('QueryBuilder', () => {
       };
 
       Person.knex(mockKnex);
-      resetWarnings();
-      warnings = [];
-      originalWarn = console.warn;
-      console.warn = (message) => warnings.push(message);
       mockKnexQueryResults = [[{ id: 1 }]];
       mockKnexQueryResultIndex = 0;
+      executedQueries = [];
     });
 
-    afterEach(() => {
-      console.warn = originalWarn;
-      resetWarnings();
+    const validInsertGraphOptions = 'Valid options are: relate, noRelate, noInsert, allowRefs.';
+    const validUpsertGraphOptions =
+      'Valid options are: noRelate, noUnrelate, noInsert, noUpdate, noDelete, update, relate, ' +
+      'unrelate, insertMissing, fetchStrategy, allowRefs, allowMarkers.';
+
+    it('insertGraph() should throw on an unknown option', async () => {
+      await expect(
+        Person.query().insertGraph({ name: 'Jennifer' }, { relat: true }),
+      ).rejects.toThrow(`"relat" is not an option of insertGraph(). ${validInsertGraphOptions}`);
+      expect(executedQueries).toEqual([]);
     });
 
-    it('insertGraph() should warn once about an unknown option', async () => {
-      await Person.query().insertGraph({ name: 'Jennifer' }, { relat: true });
-      await Person.query().insertGraph({ name: 'Jennifer' }, { relat: true });
+    for (const name of [
+      'noUnrelate',
+      'noUpdate',
+      'noDelete',
+      'update',
+      'unrelate',
+      'insertMissing',
+      'fetchStrategy',
+      'allowMarkers',
+    ]) {
+      it(`insertGraph() should throw on the upsertGraph() option ${name}`, async () => {
+        await expect(
+          Person.query().insertGraphAndFetch({ name: 'Jennifer' }, { [name]: true }),
+        ).rejects.toThrow(
+          `"${name}" is not an option of insertGraph(). ${validInsertGraphOptions}`,
+        );
+        expect(executedQueries).toEqual([]);
+      });
+    }
 
-      expect(warnings).toHaveLength(1);
-      expect(warnings[0]).toContain('Unknown graph option "relat" is ignored.');
+    it('upsertGraph() should throw on an unknown option', async () => {
+      await expect(
+        Person.query().upsertGraph({ name: 'Jennifer' }, { noInset: true }),
+      ).rejects.toThrow(`"noInset" is not an option of upsertGraph(). ${validUpsertGraphOptions}`);
+      expect(executedQueries).toEqual([]);
     });
 
-    it('upsertGraph() should warn about an unknown option', async () => {
-      await Person.query().upsertGraph({ name: 'Jennifer' }, { noInset: true });
-
-      expect(warnings).toHaveLength(1);
-      expect(warnings[0]).toContain('Unknown graph option "noInset" is ignored.');
+    it('should ignore options that are undefined', async () => {
+      await Person.query().insertGraph({ name: 'Jennifer' }, { noDelete: undefined });
+      await Person.query().upsertGraph({ name: 'Jennifer' }, { noInset: undefined });
     });
 
-    it('should not warn about known options', async () => {
-      await Person.query().insertGraph({ name: 'Jennifer' }, { relate: true, allowRefs: true });
+    it('should accept known options', async () => {
+      await Person.query().insertGraph(
+        { name: 'Jennifer' },
+        { relate: true, noRelate: true, noInsert: ['pets'], allowRefs: true },
+      );
       await Person.query().upsertGraph(
         { name: 'Jennifer' },
-        { insertMissing: true, noDelete: true, fetchStrategy: 'OnlyNeeded' },
+        {
+          relate: true,
+          unrelate: true,
+          insertMissing: true,
+          update: true,
+          noInsert: true,
+          noUpdate: true,
+          noDelete: true,
+          noRelate: true,
+          noUnrelate: true,
+          fetchStrategy: 'OnlyNeeded',
+          allowRefs: true,
+          allowMarkers: true,
+        },
       );
-
-      expect(warnings).toEqual([]);
     });
   });
 
