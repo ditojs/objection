@@ -1118,6 +1118,8 @@ export interface OnErrorMethod<QB extends AnyQueryBuilder> {
 
 export interface InsertGraphOptions {
   relate?: boolean | string | string[];
+  noRelate?: boolean | string | string[];
+  noInsert?: boolean | string | string[];
   allowRefs?: boolean;
 }
 

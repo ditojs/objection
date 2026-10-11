@@ -451,42 +451,70 @@ export default (session) => {
           });
       });
 
+      it('noInsert option should leave out the models of the given relations', async () => {
+        const model = await Model1.query().insertGraph(
+          {
+            model1Prop1: 'root',
+            model1Relation1: { model1Prop1: 'parent' },
+            model1Relation2: [{ model2Prop1: 'child' }],
+          },
+          { noInsert: ['model1Relation2'] },
+        );
+
+        const fetched = await Model1.query()
+          .findById(model.id)
+          .withGraphFetched('[model1Relation1, model1Relation2]');
+        expect(fetched.model1Relation1.model1Prop1).toBe('parent');
+        expect(fetched.model1Relation2).toEqual([]);
+        expect(await session.knex('model2').where('model2_prop1', 'child')).toEqual([]);
+      });
+
+      it('noRelate option should leave out the models that would be related', async () => {
+        const model = await Model2.query().insertGraph(
+          {
+            model2Prop1: 'foo',
+            model2Relation1: [{ id: population.id }, { model1Prop1: 'new' }],
+          },
+          { relate: true, noRelate: ['model2Relation1'] },
+        );
+
+        const fetched = await Model2.query()
+          .findById(model.idCol)
+          .withGraphFetched('model2Relation1');
+        expect(fetched.model2Relation1.map((it) => it.model1Prop1)).toEqual(['new']);
+      });
+
       for (const prop of ['#unrelate', '#delete']) {
-        for (const allowMarkers of [false, true]) {
-          it(`should throw if ${prop} is used, with allowMarkers: ${allowMarkers}`, async () => {
-            const err = await Model1.query()
-              .insertGraph(
-                {
-                  model1Prop1: 'root',
-                  model1Relation2: [{ model2Prop1: 'marked', [prop]: true }],
-                },
-                { allowMarkers },
-              )
-              .catch((err) => err);
+        it(`should throw if ${prop} is used`, async () => {
+          const err = await Model1.query()
+            .insertGraph({
+              model1Prop1: 'root',
+              model1Relation2: [{ model2Prop1: 'marked', [prop]: true }],
+            })
+            .catch((err) => err);
 
-            expect(err).toBeInstanceOf(ValidationError);
-            expect(err.type).toBe('InvalidGraph');
-            expect(err.message).toBe(
-              '#unrelate and #delete can only be used in upsertGraph, not in insertGraph',
-            );
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.type).toBe('InvalidGraph');
+          expect(err.message).toBe(
+            '#unrelate and #delete can only be used in upsertGraph, not in insertGraph',
+          );
 
-            expect(await session.knex('Model1').where('model1Prop1', 'root')).toEqual([]);
-          });
+          expect(await session.knex('Model1').where('model1Prop1', 'root')).toEqual([]);
+        });
 
-          it(`should throw if ${prop} is used for a root model, with allowMarkers: ${allowMarkers}`, async () => {
-            const err = await Model1.query()
-              .insertGraph({ model1Prop1: 'root', [prop]: true }, { allowMarkers })
-              .catch((err) => err);
+        it(`should throw if ${prop} is used for a root model`, async () => {
+          const err = await Model1.query()
+            .insertGraph({ model1Prop1: 'root', [prop]: true })
+            .catch((err) => err);
 
-            expect(err).toBeInstanceOf(ValidationError);
-            expect(err.type).toBe('InvalidGraph');
-            expect(err.message).toBe(
-              '#unrelate and #delete can only be used for related models, not for root models',
-            );
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.type).toBe('InvalidGraph');
+          expect(err.message).toBe(
+            '#unrelate and #delete can only be used for related models, not for root models',
+          );
 
-            expect(await session.knex('Model1').where('model1Prop1', 'root')).toEqual([]);
-          });
-        }
+          expect(await session.knex('Model1').where('model1Prop1', 'root')).toEqual([]);
+        });
       }
 
       it('should not insert the descendants of models skipped by noInsert (#215)', async () => {
