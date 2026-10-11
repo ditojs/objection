@@ -1032,9 +1032,14 @@ declare namespace Objection {
     (...args: ReturningArgs): QueryBuilder<M, any[]>;
   }
 
-  type RelateQueryBuilder<QB extends AnyQueryBuilder> = {
-    returning: RelateReturningMethod<ModelType<QB>>;
-  } & NumberQueryBuilder<QB>;
+  /**
+   * `QB extends unknown` defers the type for the polymorphic `this` of
+   * `relate()`, so that custom query builders that override methods like
+   * `withGraph()` still satisfy AnyQueryBuilder.
+   */
+  type RelateQueryBuilder<QB extends AnyQueryBuilder> = QB extends unknown
+    ? { returning: RelateReturningMethod<ModelType<QB>> } & NumberQueryBuilder<QB>
+    : never;
 
   interface TimeoutOptions {
     cancel: boolean;
