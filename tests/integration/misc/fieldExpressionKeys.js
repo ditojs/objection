@@ -130,6 +130,41 @@ module.exports = (session) => {
         expect(item.meta).to.eql({ size: 1, color: 1 });
       });
 
+      it('patch() should pick an undeclared key with a colon by its json column with pickJsonSchemaProperties', async () => {
+        class PickItem extends Item {
+          static get pickJsonSchemaProperties() {
+            return true;
+          }
+        }
+
+        expect(await PickItem.query().patch({ 'meta:color': 'red' }).where('id', 1)).to.equal(1);
+        await PickItem.query()
+          .patch({ 'ns:name': 'f', 'meta:size': 2, 'other:a': 1 })
+          .where('id', 1);
+        const item = await Item.query().findById(1);
+        expect(item['ns:name']).to.equal('f');
+        expect(item.meta).to.eql({ size: 2, color: 'red' });
+      });
+
+      it('upsertGraph() should write an undeclared key with a colon to the json path', async () => {
+        await Item.query().upsertGraph({ id: 1, 'meta:color': 'red' });
+        const item = await Item.query().findById(1);
+        expect(item.meta).to.eql({ size: 1, color: 'red' });
+      });
+
+      it('upsertGraph() should write an undeclared key with a colon to the json path with pickJsonSchemaProperties', async () => {
+        class PickItem extends Item {
+          static get pickJsonSchemaProperties() {
+            return true;
+          }
+        }
+
+        await PickItem.query().upsertGraph({ id: 1, 'ns:name': 'g', 'meta:color': 'red' });
+        const item = await Item.query().findById(1);
+        expect(item['ns:name']).to.equal('g');
+        expect(item.meta).to.eql({ size: 1, color: 'red' });
+      });
+
       it('patch() should not parse the keys of models without a schema as database json', async () => {
         class SchemalessItem extends Model {
           static get tableName() {
