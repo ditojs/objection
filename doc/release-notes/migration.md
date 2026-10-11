@@ -7,6 +7,7 @@ This section lists the breaking changes in objection 4.0.
 - [Dropped support for knex < 3.3](#dropped-support-for-knex-3-3)
 - [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
 - [Model files given as paths](#model-files-given-as-paths)
+- [skipUndefined() is removed](#skipundefined-is-removed)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 
@@ -61,6 +62,22 @@ import { UniqueViolationError } from 'objection';
 `modelClass` can still be an absolute file path, or a module name resolved using [modelPaths](/api/model/static-properties.html#static-modelpaths). objection loads the file synchronously with `require()`, so the file can be a CommonJS module or an ES module. An ES module needs to export the model class as its default export, or as its only exported model class.
 
 ES module model files can't use top-level await, or import modules that do, because `require()` can't load those. Paths without a file extension are resolved like `require()` resolves them, which finds `.js` files, but not `.mjs` files. Give the full file name for those, or pass the model class itself, or a function that returns it, which also avoids the problem of circular imports.
+
+## skipUndefined() is removed
+
+The deprecated `skipUndefined()` method is removed. `undefined` values passed to `where()` and the other SQL builder methods, and `undefined` ids, throw. Leave out the calls with `undefined` values instead:
+
+```js
+// Before:
+Person.query().skipUndefined().where('firstName', req.query.firstName);
+
+// After:
+const query = Person.query();
+
+if (req.query.firstName !== undefined) {
+  query.where('firstName', req.query.firstName);
+}
+```
 
 ## typescript: The typings are ES module declarations
 

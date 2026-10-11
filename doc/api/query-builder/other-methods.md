@@ -749,34 +749,6 @@ Gets the Model subclass this builder is bound to.
 | -------------------- | ------------------------------------------- |
 | [Model](/api/model/) | The Model subclass this builder is bound to |
 
-## skipUndefined()
-
-```js
-queryBuilder = queryBuilder.skipUndefined();
-```
-
-::: warning
-`skipUndefined()` is deprecated and will be removed in objection 4.0.
-:::
-
-If this method is called for a builder then undefined values passed to the query builder methods don't cause an exception but are ignored instead.
-
-For example the following query will return all `Person` rows if `req.query.firstName` is `undefined`.
-
-##### Return value
-
-| Type                                | Description                       |
-| ----------------------------------- | --------------------------------- |
-| [QueryBuilder](/api/query-builder/) | `this` query builder for chaining |
-
-##### Examples
-
-```js
-Person.query()
-  .skipUndefined()
-  .where('firstName', req.query.firstName);
-```
-
 ## transacting()
 
 ```js

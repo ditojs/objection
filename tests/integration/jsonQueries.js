@@ -1128,15 +1128,6 @@ export default (session) => {
               expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
             });
         });
-
-        it('should get skipped if value is undefined and skipUndefined() is called', () => {
-          return BoundModel.query()
-            .skipUndefined()
-            .orWhereJsonSupersetOf('jsonObject', undefined)
-            .then((results) => {
-              expect(results.length).toBe(7);
-            });
-        });
       });
 
       describe('.whereJsonSubsetOf(fieldExpr, <array|object|string>)', () => {

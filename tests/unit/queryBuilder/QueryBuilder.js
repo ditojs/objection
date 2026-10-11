@@ -2408,8 +2408,7 @@ describe('QueryBuilder', () => {
       QueryBuilder.forClass(TestModel).where('id', undefined).toKnexQuery();
     }).toThrow(
       expect.objectContaining({
-        message:
-          "undefined passed as argument #1 for 'where' operation. Call skipUndefined() method to ignore the undefined values.",
+        message: "undefined passed as argument #1 for 'where' operation.",
       }),
     );
 
@@ -2417,8 +2416,7 @@ describe('QueryBuilder', () => {
       QueryBuilder.forClass(TestModel).orWhere('id', '<', undefined).toKnexQuery();
     }).toThrow(
       expect.objectContaining({
-        message:
-          "undefined passed as argument #2 for 'orWhere' operation. Call skipUndefined() method to ignore the undefined values.",
+        message: "undefined passed as argument #2 for 'orWhere' operation.",
       }),
     );
 
@@ -2434,63 +2432,13 @@ describe('QueryBuilder', () => {
       QueryBuilder.forClass(TestModel).delete().whereIn('id', [1, undefined, 3]).toKnexQuery();
     }).toThrow(
       expect.objectContaining({
-        message:
-          "undefined passed as an item in argument #1 for 'whereIn' operation. Call skipUndefined() method to ignore the undefined values.",
+        message: "undefined passed as an item in argument #1 for 'whereIn' operation.",
       }),
     );
   });
 
-  it('undefined values as query builder method arguments should be ignored if `skipUndefined` is called', () => {
-    expect(() => {
-      QueryBuilder.forClass(TestModel).skipUndefined().where('id', undefined).toKnexQuery();
-    }).not.toThrow();
-
-    expect(() => {
-      QueryBuilder.forClass(TestModel).skipUndefined().orWhere('id', '<', undefined).toKnexQuery();
-    }).not.toThrow();
-
-    expect(() => {
-      QueryBuilder.forClass(TestModel).skipUndefined().orWhere('id', undefined, 10).toKnexQuery();
-    }).not.toThrow();
-
-    expect(() => {
-      QueryBuilder.forClass(TestModel).skipUndefined().deleteById(undefined).toKnexQuery();
-    }).not.toThrow();
-
-    expect(() => {
-      QueryBuilder.forClass(TestModel)
-        .skipUndefined()
-        .delete()
-        .whereIn('id', undefined)
-        .toKnexQuery();
-    }).not.toThrow();
-
-    expect(() => {
-      QueryBuilder.forClass(TestModel)
-        .skipUndefined()
-        .delete()
-        .whereIn('id', [1, undefined, 3])
-        .toKnexQuery();
-    }).not.toThrow();
-  });
-
-  it('skipUndefined() should log a deprecation warning once', () => {
-    const warnings = [];
-    const originalWarn = console.warn;
-    console.warn = (message) => warnings.push(message);
-    resetWarnings();
-
-    try {
-      QueryBuilder.forClass(TestModel).skipUndefined();
-      QueryBuilder.forClass(TestModel).skipUndefined();
-
-      expect(warnings).toEqual([
-        '[objection] skipUndefined() is deprecated and will be removed in objection 4.0',
-      ]);
-    } finally {
-      console.warn = originalWarn;
-      resetWarnings();
-    }
+  it('skipUndefined() should not exist', () => {
+    expect(QueryBuilder.forClass(TestModel).skipUndefined).toBeUndefined();
   });
 
   it('all query builder methods should work if model is not bound to a knex, when the query is', () => {

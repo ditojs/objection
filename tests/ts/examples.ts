@@ -750,7 +750,6 @@ const rowsEager3: PromiseLike<Person[]> = Person.query().withGraphFetched({
 });
 
 const children: PromiseLike<Person[]> = Person.query()
-  .skipUndefined()
   .allowGraph('[pets, parent, children.[pets, movies.actors], movies.actors.pets]')
   .allowGraph({ pets: true })
   .allowGraph({ parent: true })
