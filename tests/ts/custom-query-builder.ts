@@ -1,4 +1,16 @@
-import { Model, ModelConstructor, QueryBuilder, Page, TransactionOrKnex } from '../../';
+import {
+  MaybeCompositeId,
+  Model,
+  ModelConstructor,
+  PartialModelObject,
+  QueryBuilder,
+  Page,
+  RelateQueryBuilder,
+  RelationExpression,
+  TransactionOrKnex,
+  WithGraphOptions,
+  WithGraphQueryBuilder,
+} from '../../';
 
 class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   declare ArrayQueryBuilderType: CustomQueryBuilder<M, M[]>;
@@ -19,6 +31,21 @@ class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
 
   delete() {
     return super.delete();
+  }
+
+  // Custom query builders can override withGraph() with its narrowed return type.
+  withGraph<const E extends RelationExpression<M>>(
+    expr: E,
+    options?: WithGraphOptions,
+  ): WithGraphQueryBuilder<this, E> {
+    return super.withGraph(expr, options);
+  }
+
+  // relate() can be overridden with an inferred return type...
+  relate(
+    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
+  ) {
+    return super.relate(ids);
   }
 }
 
@@ -89,6 +116,13 @@ class DefaultSchemaQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M
     super(modelClass);
     this.withSchema('someSchema');
   }
+
+  // ...and with an explicit one, in a model's `static QueryBuilder`.
+  relate(
+    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
+  ): RelateQueryBuilder<this> {
+    return super.relate(ids);
+  }
 }
 
 class DefaultSchemaModel extends Model {
@@ -118,3 +152,19 @@ const patchFirstWithName: CustomQueryBuilder<Person, number> = Person.query()
   .firstWithName('Jennifer');
 // @ts-expect-error first() may return undefined
 const firstWithNameNotUndefined: PromiseLike<Person> = Person.query().firstWithName('Jennifer');
+
+// The withGraph() override keeps the custom query builder.
+const peopleWithPets: CustomQueryBuilder<Person, Person[]> = Person.query()
+  .withGraph('pets')
+  .someCustomMethod();
+
+// relate() keeps the custom query builder, also with returning().
+const numRelatedPets: CustomQueryBuilder<Animal, number> = Person.relatedQuery('pets')
+  .for(1)
+  .relate(2)
+  .someCustomMethod();
+const relatedPetRows: PromiseLike<any[]> = Person.relatedQuery('pets')
+  .for(1)
+  .relate(2)
+  .someCustomMethod()
+  .returning('*');
