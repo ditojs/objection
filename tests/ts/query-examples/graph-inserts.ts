@@ -159,6 +159,6 @@ import { Person } from '../fixtures/person.js';
 
   await Person.query().insertGraph({ firstName: 'Jennifer' }, { allowRefs: true });
 
-  // Deprecated, without effect:
+  // @ts-expect-error: insertGraph() rejects markers, so there's no allowMarkers.
   await Person.query().insertGraph({ firstName: 'Jennifer' }, { allowMarkers: true });
 })();
