@@ -1789,7 +1789,8 @@ export interface SnakeCaseOptions {
 export interface SnakeCaseMappersOptions extends SnakeCaseOptions {
   /**
    * Only convert the column part of field expressions like
-   * `jsonColumn:someKey` and keep their JSON keys as written.
+   * `jsonColumn:someKey` and keep their JSON keys as written. Defaults to
+   * `true`. Set to `false` to convert the JSON keys too.
    */
   preserveJsonKeys?: boolean;
 }
