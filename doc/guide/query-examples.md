@@ -1389,6 +1389,8 @@ await Person.query().upsertGraph(
 );
 ```
 
+The models below a model that gets related are upserted against the current relations of that model, using the options of their own relation paths. If movie 1253 above had `reviews`, they would be upserted as the reviews of that movie: reviews with an id need to be related to it already (unless the `relate` option covers them), and its current reviews that are missing from the list get deleted, or unrelated with the `unrelate` option.
+
 You can disable updates, inserts, deletes etc. for the whole [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) operation or for individual relations by using the `noUpdate`, `noInsert`, `noDelete` etc. options. See [UpsertGraphOptions](/api/types/#type-upsertgraphoptions) docs for more info.
 
 Instead of a list of relation paths, these options also accept a relation expression in the same syntax as [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched). Like the list, it only matches the relations at the end of the paths it names, not the relations along the way. To match a relation together with relations below it, use a list like `['movies', 'movies.reviews']`. `'*'` matches all relations at any depth, and recursive expressions like `'parent.^'` every level of the recursion. The root models are never matched:
