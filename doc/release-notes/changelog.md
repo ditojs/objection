@@ -4,7 +4,8 @@
 
 ### Fixes
 
-- `upsertGraph()` replacing the row of a `BelongsToOneRelation`, e.g. `{ id: 1, pet: { id: 2 } }`, points the owner to the new row before it deletes the old one. Before, the old row was deleted first: with a `NOT NULL` foreign key and `ON DELETE CASCADE`, the database deleted the owner and `upsertGraph()` still succeeded, and foreign keys without `ON DELETE` action failed. Removing the row with `pet: null` still deletes it first and leaves the owner's reference to the database.
+- `upsertGraph()` replacing the row of a `BelongsToOneRelation`, e.g. `{ id: 1, pet: { id: 2 } }`, points the owner to the new row before it deletes the old one. Before, the old row was deleted first: with a `NOT NULL` foreign key and `ON DELETE CASCADE`, the database deleted the owner and `upsertGraph()` still succeeded, and foreign keys without `ON DELETE` action failed.
+- **Behaviour change:** `upsertGraph()` removing the row of a `BelongsToOneRelation` with `pet: null` or `#delete` sets the owner's foreign key to `null` before it deletes the row if the owner's `jsonSchema` allows `null` for it (in `type`, `anyOf`, `oneOf` or with `nullable: true`). Before, the row was deleted first: with `ON DELETE CASCADE` the database deleted the owner, and foreign keys without `ON DELETE` action failed. The owner is now patched, also with `ON DELETE SET NULL`, so its update hooks run (e.g. writing `updatedAt`), and the static delete hooks of these deletes, like those of replaced rows, get no `relation` or `items` in their context. Without a nullable schema for the key, the row is still deleted first and the owner's reference is left to the database. [#212](https://github.com/ditojs/objection/issues/212)
 
 ## 3.8.0
 

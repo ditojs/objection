@@ -27,6 +27,23 @@ module.exports = (session) => {
       }
     }
 
+    // Owners whose schema allows `null` for the reference get it set to `null`
+    // before the referenced row is deleted.
+    function createNullableOwner(petIdSchema) {
+      return class NullableOwner extends Owner {
+        static get jsonSchema() {
+          return {
+            type: 'object',
+            properties: {
+              petId: petIdSchema,
+            },
+          };
+        }
+      };
+    }
+
+    const NullableOwner = createNullableOwner({ type: ['integer', 'null'] });
+
     function createTables(createPetId) {
       return knex.schema
         .dropTableIfExists('bt1_delete_owner')
@@ -57,6 +74,38 @@ module.exports = (session) => {
         expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 2 }]);
         expect(await knex('bt1_delete_pet')).to.eql([{ id: 2 }]);
       });
+    }
+
+    function itShouldRemoveTheReferenceBeforeTheRow() {
+      it('should set a nullable reference to null before deleting the row', async () => {
+        await NullableOwner.query().upsertGraph({ id: 1, pet: null });
+
+        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
+        expect(await knex('bt1_delete_pet')).to.eql([]);
+      });
+
+      it('should set a nullable reference to null before deleting a #delete row', async () => {
+        await NullableOwner.query().upsertGraph(
+          { id: 1, pet: { id: 1, '#delete': true } },
+          { allowMarkers: true },
+        );
+
+        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
+        expect(await knex('bt1_delete_pet')).to.eql([]);
+      });
+
+      for (const petIdSchema of [
+        { anyOf: [{ type: 'integer' }, { type: 'null' }] },
+        { oneOf: [{ type: 'integer' }, { type: 'null' }] },
+        { type: 'integer', nullable: true },
+      ]) {
+        it(`should set a reference to null with schema ${JSON.stringify(petIdSchema)}`, async () => {
+          await createNullableOwner(petIdSchema).query().upsertGraph({ id: 1, pet: null });
+
+          expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: null }]);
+          expect(await knex('bt1_delete_pet')).to.eql([]);
+        });
+      }
     }
 
     before(() => {
@@ -104,6 +153,25 @@ module.exports = (session) => {
       });
 
       itShouldReplaceTheRow();
+      itShouldRemoveTheReferenceBeforeTheRow();
+    });
+
+    describe('with ON DELETE CASCADE', () => {
+      before(() => {
+        return createTables((table) => {
+          table.integer('petId').references('bt1_delete_pet.id').onDelete('CASCADE');
+        });
+      });
+
+      it('should leave the owner to the database without a nullable schema', async () => {
+        await Owner.query().upsertGraph({ id: 1, pet: null });
+
+        expect(await knex('bt1_delete_owner')).to.eql([]);
+        expect(await knex('bt1_delete_pet')).to.eql([]);
+      });
+
+      itShouldReplaceTheRow();
+      itShouldRemoveTheReferenceBeforeTheRow();
     });
 
     describe('with a NOT NULL reference and ON DELETE CASCADE', () => {
@@ -130,7 +198,7 @@ module.exports = (session) => {
         });
       });
 
-      it('should fail to delete the referenced row', async () => {
+      it('should fail to delete the referenced row without a nullable schema', async () => {
         const error = await Owner.query()
           .upsertGraph({ id: 1, pet: null })
           .catch((err) => err);
@@ -141,6 +209,7 @@ module.exports = (session) => {
       });
 
       itShouldReplaceTheRow();
+      itShouldRemoveTheReferenceBeforeTheRow();
     });
   });
 };
