@@ -2674,6 +2674,44 @@ describe('QueryBuilder', () => {
     );
   });
 
+  it('patch should throw if a field expression is combined with a value for its json column', () => {
+    class SnakeCaseModel extends TestModel {
+      static get columnNameMappers() {
+        return objection.snakeCaseMappers();
+      }
+    }
+
+    const toSql = (builder) => builder.toKnexQuery().toString();
+    const expectError = (modelClass, json, key, property) => {
+      expect(() => toSql(modelClass.query().patch(json))).to.throwException((err) => {
+        expect(err).to.be.a(objection.ValidationError);
+        expect(err.type).to.equal('ModelValidation');
+        expect(Object.keys(err.data)).to.eql([key]);
+        expect(err.message).to.equal(
+          `${key}: can't be combined with a value for the json column '${property}'`,
+        );
+      });
+    };
+
+    expectError(TestModel, { 'content:a': 1, content: { a: 2 } }, 'content:a', 'content');
+    expectError(TestModel, { content: { a: 2 }, 'content:a': 1 }, 'content:a', 'content');
+    expectError(
+      TestModel,
+      { content: raw('?', '{}'), 'Model.content:a': 1 },
+      'Model.content:a',
+      'content',
+    );
+    expectError(
+      SnakeCaseModel,
+      { 'jsonCol:innerKey': 1, jsonCol: {} },
+      'jsonCol:innerKey',
+      'jsonCol',
+    );
+    expect(toSql(TestModel.query().patch({ 'content:a': 1, 'content:b': 2 }))).to.equal(
+      `update "Model" set "content" = jsonb_set(jsonb_set("content", '{a}', '1', true), '{b}', '2', true)`,
+    );
+  });
+
   describe('json field expressions on other databases (ditojs#113)', () => {
     const message =
       '[objection] JSON field expressions and the whereJson*() methods of objection are only ' +
