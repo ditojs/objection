@@ -302,7 +302,7 @@ class TestSession {
           connection.filename || `${connection.host}:${connection.port}/${connection.database}`;
         const err = new Error(
           `Could not connect to ${client} at ${target}.` +
-            ' Run `npm run db:up` to start the test databases with docker, or see' +
+            ' Run `pnpm db:up` to start the test databases with docker, or see' +
             ' "Running the tests" in doc/guide/contributing.md to use your own.',
         );
 

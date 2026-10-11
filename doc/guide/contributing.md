@@ -39,39 +39,39 @@ For a pull request to get merged it needs to have the following things:
 git clone git@github.com:<your-account>/objection.git
 ```
 
-3. **Run `npm ci` at the root of the repo**
+3. **Run `pnpm install` at the root of the repo**
 
-4. **Run `npm run docs:dev` and go to `http://localhost:5173/objection/` to see the generated documentation site when you change the markdown files in the `doc` folder.**
+4. **Run `pnpm docs:dev` and go to `http://localhost:5173/objection/` to see the generated documentation site when you change the markdown files in the `doc` folder.**
 
 ## Running the tests
 
-You need Node.js `^20.19.0 || >=22.12.0`. [Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases:
+You need Node.js `^20.19.0 || >=22.12.0` and [pnpm](https://pnpm.io/). [Docker](https://www.docker.com/) is optional, but the easiest way to run the tests against all supported databases:
 
 ```bash
-npm ci
-npm run db:up # Start the PostgreSQL and MySQL test databases.
-npm test
-npm run db:down # Stop the test databases and delete their data.
+pnpm install
+pnpm db:up # Start the PostgreSQL and MySQL test databases.
+pnpm test
+pnpm db:down # Stop the test databases and delete their data.
 ```
 
 Docker only runs the two database servers, PostgreSQL 17 and MySQL 8.4, as defined in `docker-compose.yml`, which needs Docker Compose 2.23.1 or newer. The tests themselves run on your machine with your Node.js, and SQLite runs inside the test process. The containers create the `objection` user and the `objection_test` database on their own, so there is nothing else to set up.
 
-`npm run db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `npm run db:down` removes the containers together with their data, and the next `npm run db:up` starts from scratch.
+`pnpm db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `pnpm db:down` removes the containers together with their data, and the next `pnpm db:up` starts from scratch.
 
-CI also runs the tests on MySQL 5.7. To do that locally, add its override file: `COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml npm run db:up`.
+CI also runs the tests on MySQL 5.7. To do that locally, add its override file: `COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml pnpm db:up`.
 
-CI also runs the tests on SQL Server 2022. Its image is large and runs emulated on arm64, so `npm run db:up` doesn't start it, and `npm test` only runs its tests when they are requested:
+CI also runs the tests on SQL Server 2022. Its image is large and runs emulated on arm64, so `pnpm db:up` doesn't start it, and `pnpm test` only runs its tests when they are requested:
 
 ```bash
-npm run db:up -- mssql # Start SQL Server, on the port 51433.
-DATABASES=mssql npm run test:fast
+pnpm db:up mssql # Start SQL Server, on the port 51433.
+DATABASES=mssql pnpm test:fast
 ```
 
 You can run the tests on a subset of databases by setting the `DATABASES` env variable. SQLite needs no setup, so this works without Docker:
 
 ```bash
-DATABASES=sqlite3 npm test
-DATABASES=postgres npm test
+DATABASES=sqlite3 pnpm test
+DATABASES=postgres pnpm test
 ```
 
 To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*`, `OBJECTION_TEST_MYSQL_*` and `OBJECTION_TEST_MSSQL_*` env variables. The PostgreSQL user needs to own the database or be a superuser, as the tests create schemas in it. The MySQL user needs to be able to create databases and to use the `mysql_native_password` authentication plugin. The SQL Server user needs to be able to create tables and sequences.
@@ -86,10 +86,10 @@ To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*`, `OBJECTI
 
 The SQLite tests use a new database file in the system's temporary directory for each run, which is deleted afterwards. Set `OBJECTION_TEST_SQLITE_FILE` to use a file of your choice, which is kept.
 
-The tests are run with [vitest](https://vitest.dev/). `npm test` also lints the code and checks the typings. Use `npm run test:fast` to only run the tests, stopping at the first failure, or `npm run test:watch` to rerun them whenever files change.
+The tests are run with [vitest](https://vitest.dev/). `pnpm test` also lints the code and checks the typings. Use `pnpm test:fast` to only run the tests, stopping at the first failure, or `pnpm test:watch` to rerun them whenever files change.
 
 SQL Server can't insert explicit values into auto-incrementing (identity) columns. Tests that insert rows with explicit ids create their tables with `session.createTable()` instead of `knex.schema.createTable()`, and their id columns with the `increments()` it passes to the callback.
 
-[prettier](https://prettier.io/) is used to format the code. Remember to run `npm run prettier` before committing code.
+[prettier](https://prettier.io/) is used to format the code. Remember to run `pnpm prettier` before committing code.
 
-The parsers of relation expressions and JSON field expressions in `lib/queryBuilder/parsers` are generated from the `.pegjs` grammars next to them with [Peggy](https://peggyjs.org/). After changing a grammar, run `npm run build:parsers` (Peggy 5 needs Node 20 or newer) and commit the generated files with it. CI checks that they match the grammars.
+The parsers of relation expressions and JSON field expressions in `lib/queryBuilder/parsers` are generated from the `.pegjs` grammars next to them with [Peggy](https://peggyjs.org/). After changing a grammar, run `pnpm build:parsers` (Peggy 5 needs Node 20 or newer) and commit the generated files with it. CI checks that they match the grammars.
