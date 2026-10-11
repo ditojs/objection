@@ -2709,6 +2709,62 @@ module.exports = (session) => {
           });
       });
 
+      it('should upsert the children of a node related through a `relate` path option', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+
+            // Relate idCol=1, which belongs to id=2.
+            model1Relation2: [
+              {
+                idCol: 1,
+
+                // update id=4
+                // keep id=5
+                model2Relation1: [{ id: 4, model1Prop1: 'updated manyToMany 1' }, { id: 5 }],
+              },
+            ],
+          },
+          { fetchStrategy, relate: ['model1Relation2'] },
+        );
+
+        const result = await Model1.query(session.knex)
+          .findById(1)
+          .withGraphFetched('model1Relation2.model2Relation1(orderById)')
+          .modifiers({ orderById: (builder) => builder.orderBy('id') });
+
+        chai.expect(result).to.containSubset({
+          id: 1,
+
+          model1Relation2: [
+            {
+              idCol: 1,
+              model2Prop1: 'hasMany 1',
+
+              model2Relation1: [
+                { id: 4, model1Prop1: 'updated manyToMany 1' },
+                { id: 5, model1Prop1: 'manyToMany 2' },
+              ],
+            },
+          ],
+        });
+      });
+
+      it('should fail for the children of a node that the `noRelate` option keeps from being related', async () => {
+        const err = await Model1.query(session.knex)
+          .upsertGraph(
+            {
+              id: 1,
+              model1Relation2: [{ idCol: 1, model2Relation1: [{ id: 4 }] }],
+            },
+            { fetchStrategy, relate: ['model1Relation2'], noRelate: ['model1Relation2'] },
+          )
+          .catch((err) => err);
+
+        expect(err).to.be.a(Model1.NotFoundError);
+        expect(err.message).to.match(/^model \(id=4\) is not a child of model \(id=1\)/);
+      });
+
       it('should insert with an id instead of throwing an error if `insertMissing` option is true', () => {
         const upsert = {
           id: 2,
