@@ -1478,7 +1478,6 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   forKeyShare: IdentityMethod<this>;
   skipLocked: IdentityMethod<this>;
   noWait: IdentityMethod<this>;
-  skipUndefined: IdentityMethod<this>;
   debug: IdentityMethod<this>;
   alias: OneArgMethod<string, this>;
   aliasFor: AliasForMethod<this>;

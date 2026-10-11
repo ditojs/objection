@@ -112,7 +112,8 @@ import { Model, transaction, UniqueViolationError } from 'objection';
 
   builder.toString();
 
-  Person.query().skipUndefined().where('firstName', 'something');
+  // @ts-expect-error: There's no skipUndefined().
+  Person.query().skipUndefined();
 
   const trx = await transaction.start(Person);
   builder.transacting(trx);
