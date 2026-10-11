@@ -443,16 +443,16 @@ module.exports = (session) => {
         await expectNoRows();
       });
 
-      it('should throw if the owner is not inserted because of noInsert', async () => {
-        await expectCyclicError(
-          Person.query().upsertGraph(
-            {
-              name: 'Jennifer',
-              pets: [{ '#id': 'felix', name: 'Felix' }],
-              favoritePet: { '#ref': 'felix' },
-            },
-            { allowRefs: true, noInsert: true },
-          ),
+      it('should insert nothing if the owner is not inserted because of noInsert (#215)', async () => {
+        // Nothing below a model that isn't inserted is written, so there's no
+        // cycle left to break.
+        await Person.query().upsertGraph(
+          {
+            name: 'Jennifer',
+            pets: [{ '#id': 'felix', name: 'Felix' }],
+            favoritePet: { '#ref': 'felix' },
+          },
+          { allowRefs: true, noInsert: true },
         );
 
         await expectNoRows();
