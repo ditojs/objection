@@ -15,8 +15,7 @@ As mentioned, this method uses multiple queries to fetch the related objects. Ob
 **Limitations:**
 
 - Relations cannot be referenced in the root query because they are not joined.
-- `limit`, `offset` and `page` methods apply to the whole query that fetches a relation for multiple parents when used in `modifyGraph`, `modifiers` or the `modify` of a relation mapping, not to the related items of each parent. You can use them for the root query. To limit the related items per parent, set the `limitPerParent` [graph option](/api/types/#type-graphoptions), see [below](#limiting-related-items-per-parent). `page` and `range` always apply to all parents.
-- Without `limitPerParent`, `first` doesn't limit the related items per parent when applied to a relation: all matching related items are still assigned to the parents, or with `useLimitInFirst`, the whole query is limited to one item.
+- `page` and `range` apply to the whole query that fetches a relation for multiple parents when used in `modifyGraph`, `modifiers` or the `modify` of a relation mapping, not to the related items of each parent. `limit`, `offset` and `first` apply per parent, see [below](#limiting-related-items-per-parent).
 - The related items are assigned to their parents by comparing their key values in JavaScript, which doesn't know the collation of the columns. When a key column's collation ignores differences in case, accents or trailing spaces, as the defaults of MySQL and SQL Server partly do, the database also returns related rows whose keys only match by collation, for example `'CH'` for `'ch'`, but they aren't assigned to the parent. Store the keys in the same form in both tables, or use [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined), which matches the rows in the database.
 
 See the [eager loading](/guide/query-examples.html#eager-loading) section for more examples and [RelationExpression](/api/types/#type-relationexpression) for more info about the relation expression language.
@@ -29,11 +28,11 @@ Note that while [withGraphJoined](/api/query-builder/eager-methods.html#withgrap
 
 ##### Limiting related items per parent
 
-With the `limitPerParent` [graph option](/api/types/#type-graphoptions), `limit`, `offset` and `first` in graph modifiers and in the `modify` of relation mappings apply to the related items of each parent:
+`limit`, `offset` and `first` in graph modifiers and in the `modify` of relation mappings apply to the related items of each parent:
 
 ```js
 const people = await Person.query()
-  .withGraphFetched('pets(latest)', { limitPerParent: true })
+  .withGraphFetched('pets(latest)')
   .modifiers({
     latest: (query) => query.orderBy('createdAt', 'desc').limit(3)
   });
@@ -42,12 +41,14 @@ const people = await Person.query()
 console.log(people[0].pets.length);
 ```
 
-It can be enabled for all queries of a model through [defaultGraphOptions](/api/model/static-properties.html#static-defaultgraphoptions). Note:
+Note:
 
 - The relation query becomes a subquery, and its order moves into a `row_number()` window function that numbers the related items of each parent. The order can only refer to the related table's columns and to the names of the result columns, including aliases: ordering by a column that isn't selected doesn't work, and neither does ordering by a column qualified with another table's name, e.g. `orderBy('owner.name')` after `joinRelated('owner')` or a column of the join table of a many-to-many relation. The names of the selected columns need to be unique.
 - Relation queries with `page` or `range` keep limiting all parents together.
-- MySQL supports window functions since 8.0. On older versions, objection fetches relations with a limit with one query per parent instead. Knex 3.3 and newer detect the MySQL version on the first connection. With older versions of knex, set `version: '5.7.0'` in the knex configuration.
-- `withGraphJoined` ignores the option and logs a warning.
+- MySQL supports window functions since 8.0. On older versions, objection fetches relations with a limit with one query per parent instead. To find out whether a relation query has a limit, objection builds it once more, so the relation's `modify` and the `onBuild` and `onBuildKnex` hooks of every fetched relation query run twice, also without a limit. Knex 3.3 and newer detect the MySQL version on the first connection. With older versions of knex, set `version: '5.7.0'` in the knex configuration.
+- `withGraphJoined` doesn't limit related items per parent. It ignores `limitPerParent: true` and logs a warning.
+
+To apply them to the whole query that fetches the relation for all parents instead, set the `limitPerParent` [graph option](/api/types/#type-graphoptions) to `false`, or in [defaultGraphOptions](/api/model/static-properties.html#static-defaultgraphoptions) for all queries of a model.
 
 ##### Arguments
 

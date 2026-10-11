@@ -564,7 +564,7 @@ class Person extends Model {
 Sets the default options for [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) and [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined). See the possible
 fields [here](/api/types/#type-graphoptions).
 
-Defaults to `{ minimize: false, separator: ':', aliases: {}, maxBatchSize: 10000 }`.
+Defaults to `{ minimize: false, separator: ':', aliases: {}, maxBatchSize: 10000, limitPerParent: true }`.
 
 ## `static` useLimitInFirst
 

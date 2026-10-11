@@ -905,7 +905,7 @@ export default (session) => {
           ];
         });
 
-      const fetchModel1s = (expr, modify, opt = { limitPerParent: true }) =>
+      const fetchModel1s = (expr, modify, opt) =>
         Model1.query()
           .withGraphFetched(expr, opt)
           .whereExists(Model1.relatedQuery('model1Relation2'))
@@ -924,11 +924,11 @@ export default (session) => {
         ]);
       });
 
-      it('should apply limit() to all parents without the option', async () => {
+      it('should apply limit() to all parents with limitPerParent: false', async () => {
         const models = await fetchModel1s(
           'model1Relation2',
           (query) => query.orderBy('id_col', 'desc').limit(1),
-          {},
+          { limitPerParent: false },
         );
 
         expect(relatedIds(models, 'model1Relation2')).toEqual([
@@ -1083,7 +1083,7 @@ export default (session) => {
 
         const models = await Model2.query()
           .whereIn('id_col', [1, 2, 3])
-          .withGraphFetched('model2Relation1', { limitPerParent: true })
+          .withGraphFetched('model2Relation1')
           .modifyGraph('model2Relation1', (query) => query.orderBy('id', 'desc').limit(1))
           .orderBy('id_col');
 
@@ -1191,7 +1191,7 @@ export default (session) => {
         }
 
         const models = await Model1Latest.query()
-          .withGraphFetched('latestModel2', { limitPerParent: true })
+          .withGraphFetched('latestModel2')
           .whereExists(Model1Latest.relatedQuery('latestModel2'))
           .orderBy('id');
 
@@ -1202,10 +1202,10 @@ export default (session) => {
         ]);
       });
 
-      it('should support limitPerParent in defaultGraphOptions', async () => {
+      it('should support limitPerParent: false in defaultGraphOptions', async () => {
         class Model1Defaults extends Model1 {
           static get defaultGraphOptions() {
-            return { limitPerParent: true };
+            return { limitPerParent: false };
           }
         }
 
@@ -1216,9 +1216,9 @@ export default (session) => {
           .orderBy('id');
 
         expect(relatedIds(models, 'model1Relation2')).toEqual([
-          [1, [2]],
+          [1, []],
           [4, [4]],
-          [6, [3]],
+          [6, []],
         ]);
       });
 
@@ -1252,7 +1252,7 @@ export default (session) => {
           it('should fetch the related models of each parent separately', async () => {
             const TestModel = createModel(Model1);
             const models = await TestModel.query()
-              .withGraphFetched('model1Relation2', { limitPerParent: true })
+              .withGraphFetched('model1Relation2')
               .whereExists(TestModel.relatedQuery('model1Relation2'))
               .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc').first())
               .orderBy('id');
@@ -1283,7 +1283,7 @@ export default (session) => {
 
             const TestModel = createModel(Model1Latest);
             const models = await TestModel.query()
-              .withGraphFetched('latestModel2', { limitPerParent: true })
+              .withGraphFetched('latestModel2')
               .whereExists(TestModel.relatedQuery('latestModel2'))
               .orderBy('id');
 
@@ -1297,16 +1297,37 @@ export default (session) => {
 
           it('should fetch the related models of all parents together without a limit', async () => {
             const TestModel = createModel(Model1);
+            let modifyCount = 0;
             const models = await TestModel.query()
-              .withGraphFetched('model1Relation2', { limitPerParent: true })
+              .withGraphFetched('model1Relation2')
               .whereExists(TestModel.relatedQuery('model1Relation2'))
-              .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc'))
+              .modifyGraph('model1Relation2', (query) => {
+                ++modifyCount;
+                query.orderBy('id_col', 'desc');
+              })
               .orderBy('id');
 
             expect(relatedIds(models, 'model1Relation2')).toEqual([
               [1, [2, 1]],
               [4, [4]],
               [6, [3]],
+            ]);
+            expect(queries).toHaveLength(2);
+            expect(modifyCount).toBe(1);
+          });
+
+          it('should fetch the related models of all parents together with limitPerParent: false', async () => {
+            const TestModel = createModel(Model1);
+            const models = await TestModel.query()
+              .withGraphFetched('model1Relation2', { limitPerParent: false })
+              .whereExists(TestModel.relatedQuery('model1Relation2'))
+              .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc').limit(1))
+              .orderBy('id');
+
+            expect(relatedIds(models, 'model1Relation2')).toEqual([
+              [1, []],
+              [4, [4]],
+              [6, []],
             ]);
             expect(queries).toHaveLength(2);
           });

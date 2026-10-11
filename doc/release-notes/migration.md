@@ -10,6 +10,7 @@ This section lists the breaking changes in objection 4.0.
 - [skipUndefined() is removed](#skipundefined-is-removed)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
+- [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 
 ## objection is an ES module package
 
@@ -93,6 +94,23 @@ Where a static hook has no result to pass on, its `result` is now `[]` instead o
 - in `afterFind` of a query for a to-one relation that finds no related model, e.g. `pet.$relatedQuery('owner')` for a pet without owner
 
 Code that checked for the `null` entry, e.g. `result[0] === null`, can check `result.length === 0` instead.
+
+## `limit`, `offset` and `first` apply per parent in graph modifiers
+
+The `limitPerParent` [graph option](/api/types/#type-graphoptions) of `withGraphFetched` defaults to `true`, so `limit`, `offset` and `first` in graph modifiers and in the `modify` of relation mappings apply to the related items of each parent instead of to the whole query that fetches the relation for all parents:
+
+```js
+// Up to three pets per person. In 3.x, up to three pets for all persons together.
+const people = await Person.query()
+  .withGraphFetched('pets(latest)')
+  .modifiers({
+    latest: (query) => query.orderBy('createdAt', 'desc').limit(3)
+  });
+```
+
+The relation query becomes a subquery, and its order moves into a `row_number()` window function. The order can only refer to the related table's columns that are selected and to the aliases of the result columns, see [limiting related items per parent](/api/query-builder/eager-methods.html#limiting-related-items-per-parent). MySQL before 8 has no window functions, so objection fetches relations with a limit with one query per parent there, and builds every fetched relation query once more to find its limit, which runs the relation's `modify` and the `onBuild` and `onBuildKnex` hooks twice.
+
+To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, or in [defaultGraphOptions](/api/model/static-properties.html#static-defaultgraphoptions) for all queries of a model.
 
 # Migration from objection 2.x to 3.0
 

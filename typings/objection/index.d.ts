@@ -1178,6 +1178,10 @@ export interface GraphOptions {
   aliases?: { [key: string]: string };
   joinOperation?: string;
   maxBatchSize?: number;
+  /**
+   * Apply `limit()`, `offset()` and `first()` in graph modifiers to the related
+   * items of each parent. Defaults to `true`. Only applies to `withGraphFetched()`.
+   */
   limitPerParent?: boolean;
 }
 
