@@ -1264,6 +1264,8 @@ When the model of a `BelongsToOneRelation` like `parent` is deleted because of `
 
 By giving `relate: true` and/or `unrelate: true` options as the second argument, you can change the behaviour so that instead of inserting and deleting rows, they are related and/or unrelated. Rows with no id still get inserted, but rows that have an id and are not currently related, get related.
 
+A row that is missing in one place but related or updated in another place of the same graph isn't deleted, it's only unrelated from the place where it's missing. This way, rows can be moved between parents in a single `upsertGraph` call.
+
 ```js
 const options = {
   relate: true,

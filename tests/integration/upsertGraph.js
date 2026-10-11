@@ -3761,6 +3761,86 @@ module.exports = (session) => {
         });
       }
 
+      describe('rows that the graph keeps in another place (#214)', () => {
+        it('should move a HasMany row to another owner instead of deleting it', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            [
+              { id: 2, model1Relation2: [{ idCol: 2 }] },
+              { id: 1, model1Relation2: [{ idCol: 1, model2Prop1: 'moved' }] },
+            ],
+            { relate: true, fetchStrategy },
+          );
+
+          const rows = await session.knex('model2').orderBy('id_col');
+
+          chai.expect(rows.map((row) => [row.id_col, row.model1_id, row.model2_prop1])).to.eql([
+            [1, 1, 'moved'],
+            [2, 2, 'hasMany 2'],
+          ]);
+        });
+
+        it('should unrelate a ManyToMany row that is related elsewhere instead of deleting it', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            {
+              id: 2,
+              model1Relation2: [
+                { idCol: 1, model2Relation1: [{ id: 4 }] },
+                { idCol: 2, model2Relation1: [{ id: 5 }, { id: 6 }, { id: 7 }] },
+              ],
+            },
+            { relate: true, fetchStrategy },
+          );
+
+          const model1Row = await session.knex('Model1').where('id', 5).first();
+          const joinRows = await session
+            .knex('Model1Model2')
+            .where('model1Id', 5)
+            .select('model2Id');
+
+          expect(model1Row.model1Prop1).to.equal('manyToMany 2');
+          chai.expect(joinRows).to.eql([{ model2Id: 2 }]);
+        });
+
+        it('should keep a ManyToMany row related in its old place with noDelete: true', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            {
+              id: 2,
+              model1Relation2: [
+                { idCol: 1, model2Relation1: [{ id: 4 }] },
+                { idCol: 2, model2Relation1: [{ id: 5 }, { id: 6 }, { id: 7 }] },
+              ],
+            },
+            { relate: true, noDelete: true, fetchStrategy },
+          );
+
+          const joinRows = await session
+            .knex('Model1Model2')
+            .where('model1Id', 5)
+            .orderBy('model2Id')
+            .select('model2Id');
+
+          chai.expect(joinRows).to.eql([{ model2Id: 1 }, { model2Id: 2 }]);
+        });
+
+        it('should unrelate a BelongsToOne row that is related elsewhere instead of deleting it', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            [
+              { id: 2, model1Relation1: null },
+              { id: 1, model1Relation1: { id: 3 } },
+            ],
+            { relate: true, fetchStrategy },
+          );
+
+          const rows = await session.knex('Model1').whereIn('id', [1, 2, 3]).orderBy('id');
+
+          chai.expect(rows.map((row) => [row.id, row.model1Id])).to.eql([
+            [1, 3],
+            [2, null],
+            [3, null],
+          ]);
+        });
+      });
+
       describe('relate with children => upsertGraph recursively called', () => {
         beforeEach(() => {
           population = [
