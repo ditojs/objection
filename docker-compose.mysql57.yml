@@ -1,5 +1,5 @@
 # Runs the MySQL tests on MySQL 5.7, used by its own CI job:
-# COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml npm run db:up
+# COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml pnpm db:up
 services:
   mysql:
     image: 'mysql:5.7'

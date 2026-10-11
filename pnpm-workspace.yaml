@@ -1,0 +1,8 @@
+# sqlite3 downloads or builds its native module. esbuild's script only checks
+# its binary, which comes from an optional dependency anyway.
+allowBuilds:
+  esbuild: false
+  sqlite3: true
+# Was newer than pnpm's minimum release age when the lockfile was created.
+minimumReleaseAgeExclude:
+  - tedious@20.3.7
