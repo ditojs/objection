@@ -1922,6 +1922,25 @@ module.exports = (session) => {
             }
           });
         });
+
+        it(`should keep the current BelongsToOneRelation model with ${prop} on a different model`, () => {
+          const upsert = {
+            id: 2,
+            // Row 1 isn't related to row 2, which is related to row 3.
+            model1Relation1: { id: 1, [prop]: true },
+          };
+
+          return transaction(session.knex, async (trx) => {
+            await Model1.query(trx).upsertGraph(upsert, { fetchStrategy, allowMarkers: true });
+
+            const root = await Model1.query(trx).findById(2).withGraphFetched('model1Relation1');
+            expect(root.model1Id).to.equal(3);
+            expect(root.model1Relation1.id).to.equal(3);
+
+            const ids = (await trx('Model1').whereIn('id', [1, 3])).map((it) => it.id);
+            expect(ids.sort()).to.eql([1, 3]);
+          });
+        });
       }
 
       it('should ignore the relations and properties of #unrelate and #delete models', () => {
