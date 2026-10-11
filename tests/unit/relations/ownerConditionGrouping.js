@@ -326,6 +326,24 @@ describe('relation owner condition grouping (#2191)', () => {
       );
     });
 
+    it('deleteById() with orWhere', () => {
+      expect(sql(Pet.query().deleteById(1).where('name', 'a').orWhere('name', 'b'))).to.equal(
+        `delete from "pets" where "pets"."id" = 1 and ("name" = 'a' or "name" = 'b')`,
+      );
+    });
+
+    it('patchById() with orWhere', () => {
+      expect(sql(Pet.query().patchById(1, { name: 'c' }).orWhere('name', 'b'))).to.equal(
+        `update "pets" set "name" = 'c' where "pets"."id" = 1 and ("name" = 'b')`,
+      );
+    });
+
+    it('updateById() with orWhere', () => {
+      expect(sql(Pet.query().updateById(1, { name: 'c' }).orWhere('name', 'b'))).to.equal(
+        `update "pets" set "name" = 'c' where "pets"."id" = 1 and ("name" = 'b')`,
+      );
+    });
+
     it('findById() called by the user stays in the user group', () => {
       expect(sql(owner().$relatedQuery('pets').findById(1).orWhere('name', 'b'))).to.equal(
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("pets"."id" = 1 or "name" = 'b')`,

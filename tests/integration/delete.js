@@ -80,6 +80,17 @@ module.exports = (session) => {
           });
       });
 
+      it('should keep the id condition of deleteById in its own where group (#232)', async () => {
+        const numDeleted = await Model1.query()
+          .deleteById(2)
+          .where('model1Prop1', 'hello 2')
+          .orWhere('model1Prop1', 'hello 3');
+
+        expect(numDeleted).to.equal(1);
+        const rows = await session.knex('Model1').orderBy('id');
+        expect(rows.map((row) => row.id)).to.eql([1, 3]);
+      });
+
       if (session.isPostgres()) {
         it('should delete a model using deleteById and return the deleted column when `returning` is used', () => {
           return Model1.query()
