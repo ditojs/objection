@@ -21,6 +21,7 @@ This section lists the breaking changes in objection 4.0.
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
 - [Misplaced `*` and `^` in relation expressions throw](#misplaced-and-in-relation-expressions-throw)
+- [`$setRelated` and `$appendRelated` sync foreign keys](#setrelated-and-appendrelated-sync-foreign-keys)
 
 ## objection is an ES module package
 
@@ -218,6 +219,22 @@ Grouped queries need to group by the added columns too, or the database rejects 
 ## Misplaced `*` and `^` in relation expressions throw
 
 `*` and `^` end a relation path. 3.x silently ignored everything after them, so `'parent.^.pets'` fetched `parent` recursively without `pets`, and `'*.pets'` fetched all relations. It also ignored modifiers and aliases on them, like `'parent.^(onlyAdults)'`, and treated `*` and `^` in a list, like `'[children, *]'`, as relation names. These expressions throw an error in 4.0, in all methods that take relation expressions and in the graph options of `insertGraph()` and `upsertGraph()`. Remove what follows `*` or `^`, and apply modifiers to the relation itself, like `'parent(onlyAdults).^'`.
+
+## `$setRelated` and `$appendRelated` sync foreign keys
+
+[\$setRelated](/api/model/instance-methods.html#setrelated) and [\$appendRelated](/api/model/instance-methods.html#appendrelated) set the foreign keys to match the relation. 3.x only assigned the related models:
+
+```js
+post.$setRelated('author', user); // post.authorId === user.id
+post.$setRelated('author', null); // post.authorId === null
+
+user.$setRelated('posts', [post1, post2]); // post1.authorId === post2.authorId === user.id
+user.$setRelated('posts', [post2]); // post1.authorId === null
+new User().$setRelated('posts', [post3]); // post3.authorId === null, as the user has no id yet
+```
+
+The synced keys show up in `toJSON()` and are written by a later `patch()`, `update()` or `upsertGraph()` of these models. Code that assigned related models only to serialize them, and relied on their foreign keys staying as they were, can assign the relation property directly, e.g. `post.author = user`.
+
 
 # Migration from objection 2.x to 3.0
 
