@@ -705,6 +705,18 @@ module.exports = (session) => {
               expect(rows.find((it) => it.id === inserted.id).model1Prop1).to.equal('inserted 2');
             });
         });
+
+        it('should not relate anything if the query is resolved without executing it', async () => {
+          await parent1
+            .$relatedQuery('model1Relation1')
+            .insert({ model1Prop1: 'inserted' })
+            .resolve([]);
+
+          expect(parent1.model1Id).to.equal(null);
+          const rows = await session.knex('Model1');
+          expect(rows).to.have.length(2);
+          expect(rows.find((it) => it.id === parent1.id).model1Id).to.equal(null);
+        });
       });
 
       describe('has one relation', () => {
