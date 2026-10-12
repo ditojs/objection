@@ -2595,9 +2595,9 @@ describe('QueryBuilder', () => {
 
   describe('json field expressions on other databases (ditojs#113)', () => {
     const message =
-      '[objection] JSON field expressions and the whereJson*() methods of objection are only ' +
-      'supported on PostgreSQL. Use the JSON methods of knex like whereJsonPath() or ' +
-      'jsonExtract() with other databases.';
+      'JSON field expressions and the whereJson*() methods of objection are only supported on ' +
+      'PostgreSQL. Use the JSON methods of knex like whereJsonPath() or jsonExtract() with ' +
+      'other databases.';
 
     const knexes = {};
     const query = (client) => {
@@ -2660,7 +2660,6 @@ describe('QueryBuilder', () => {
           " and not json_contains('[5]',`content`)" +
           " or (not json_contains('[6]',`content`))",
       );
-      expect(warnings).toEqual([]);
     });
 
     it('andWhereJsonNotSupersetOf() should be an alias of whereJsonNotSupersetOf()', () => {
@@ -2670,61 +2669,46 @@ describe('QueryBuilder', () => {
     });
 
     it('should only pass the json superset and subset methods on to knex on mysql', () => {
-      expect(toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).toBe(
-        'select `Model`.* from `Model` where ( `content` )::jsonb @> \'{"a":1}\'::jsonb',
+      expect(() => toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).toThrow(
+        message,
       );
-      expect(warnings).toEqual([message]);
     });
 
     it('should not pass other forms of the json where methods on to knex', () => {
-      expect(toSql(query('mysql').whereJsonSupersetOf('content:a', { a: 1 }))).toBe(
-        "select `Model`.* from `Model` where ( `content`#>'{a}' )::jsonb @> '{\\\"a\\\":1}'::jsonb",
+      expect(() => toSql(query('mysql').whereJsonSupersetOf('content:a', { a: 1 }))).toThrow(
+        message,
       );
-      expect(toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).toBe(
-        'select `Model`.* from `Model` where ( `content` )::jsonb @> ( `other` )::jsonb',
+      expect(() => toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).toThrow(message);
+      expect(() => toSql(query('mysql').whereJsonSubsetOf('content', ref('other')))).toThrow(
+        message,
       );
-      expect(toSql(query('mysql').whereJsonSubsetOf('content', ref('other')))).toBe(
-        'select `Model`.* from `Model` where ( `content` )::jsonb <@ ( `other` )::jsonb',
-      );
-      expect(toSql(query('mysql').whereJsonSupersetOf('content', raw('?', '[1]')))).toBe(
-        "select `Model`.* from `Model` where ( `content` )::jsonb @> ( '[1]' )::jsonb",
+      expect(() => toSql(query('mysql').whereJsonSupersetOf('content', raw('?', '[1]')))).toThrow(
+        message,
       );
       // knex's version doesn't have the same semantics for empty objects and arrays.
-      expect(toSql(query('mysql').whereJsonIsObject('content'))).toBe(
-        "select `Model`.* from `Model` where ( `content` )::jsonb @> '{}'::jsonb",
-      );
-      expect(toSql(query('mysql').orWhereJsonIsArray('content'))).toBe(
-        "select `Model`.* from `Model` where ( `content` )::jsonb @> '[]'::jsonb",
-      );
-      expect(warnings).toEqual([message]);
+      expect(() => toSql(query('mysql').whereJsonIsObject('content'))).toThrow(message);
+      expect(() => toSql(query('mysql').orWhereJsonIsArray('content'))).toThrow(message);
     });
 
-    for (const client of ['mysql', 'sqlite3']) {
-      it(`should warn once about json field expressions on ${client}`, () => {
-        toSql(query(client).orderBy(ref('content:a.b'), 'desc'));
-        expect(warnings).toEqual([message]);
+    const createQueries = {
+      'ref() with a field expression': (client) =>
+        query(client).orderBy(ref('content:a.b'), 'desc'),
+      'a cast ref() with a field expression': (client) =>
+        query(client).select(ref('content:a').castInt().as('a')),
+      'a field expression in a patch': (client) => query(client).patch({ 'content:a': 1 }),
+      'whereJsonHasAny()': (client) => query(client).whereJsonHasAny('content', ['a']),
+      'whereJsonNotArray()': (client) => query(client).whereJsonNotArray('content'),
+      'whereJsonNotObject()': (client) => query(client).whereJsonNotObject('content'),
+    };
 
-        toSql(query(client).select(ref('content:a').castInt().as('a')));
-        toSql(query(client).patch({ 'content:a': 1 }));
-        toSql(query(client).whereJsonHasAny('content', ['a']));
-        toSql(query(client).whereJsonNotObject('content'));
-        expect(warnings).toEqual([message]);
-      });
-
-      for (const [title, createQuery] of Object.entries({
-        'ref() with a field expression': (client) =>
-          query(client).orderBy(ref('content:a.b'), 'desc'),
-        'a field expression in a patch': (client) => query(client).patch({ 'content:a': 1 }),
-        'whereJsonHasAny()': (client) => query(client).whereJsonHasAny('content', ['a']),
-        'whereJsonNotArray()': (client) => query(client).whereJsonNotArray('content'),
-      })) {
-        it(`should warn about ${title} on ${client}`, () => {
-          toSql(createQuery(client));
-          expect(warnings).toEqual([message]);
+    for (const client of ['mysql', 'mysql2', 'sqlite3', 'better-sqlite3', 'mssql', 'oracledb']) {
+      for (const [title, createQuery] of Object.entries(createQueries)) {
+        it(`should throw for ${title} on ${client}`, () => {
+          expect(() => toSql(createQuery(client))).toThrow(message);
         });
       }
 
-      it(`should not warn about plain refs on ${client}`, () => {
+      it(`should not throw for plain refs on ${client}`, () => {
         toSql(
           query(client)
             .select(ref('Model.content').as('c'), ref('id').castText())
@@ -2732,9 +2716,16 @@ describe('QueryBuilder', () => {
             .orderBy(ref('Model.id')),
         );
         toSql(query(client).patch({ content: ref('other') }));
-        expect(warnings).toEqual([]);
       });
     }
+
+    // Other databases may understand some of the Postgres JSON syntax.
+    it('should warn once about json field expressions on unknown databases', () => {
+      for (const createQuery of Object.values(createQueries)) {
+        toSql(createQuery('redshift'));
+      }
+      expect(warnings).toEqual([`[objection] ${message}`]);
+    });
 
     it('should not warn on postgres', () => {
       toSql(query('pg').orderBy(ref('content:a.b'), 'desc'));

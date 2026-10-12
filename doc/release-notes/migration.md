@@ -123,6 +123,10 @@ In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the curr
 
 `update()`, `patch()` and `delete()` throw an error for `offset()` when the query is executed. knex leaves the offset out of these statements, and on SQL Server the limit too, so they modified other rows than the offset asked for. 3.9 logged a warning. On MySQL, `delete()` also throws for `orderBy()` together with `limit()`, as knex leaves out the order but keeps the limit, so the limit deleted rows in any order. Fetch the ids of the rows to modify in a separate query and filter by them with `whereIn()`, or drop the offset if it was never applied. A many-to-many `patch()` / `update()` with join table extras on MySQL and SQL Server already selects the related rows first, so it honours the offset and doesn't throw.
 
+## JSON field expressions throw on MySQL, SQLite, SQL Server and Oracle
+
+JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, and the `whereJson*()` methods of objection, throw an error on MySQL, SQLite, SQL Server and Oracle. They generate Postgres-only SQL, which these databases reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. 3.x logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex. Other databases than PostgreSQL still get a warning.
+
 
 ## typescript: The typings are ES module declarations
 
