@@ -7,6 +7,7 @@
 - objection is an ES module package with an `exports` map and no default export. Deep imports like `objection/lib/...` no longer work. See [migration](/release-notes/migration.md#objection-is-an-es-module-package)
 - Node 20.19 or newer is required, or 22.12 or newer on node 22. See [migration](/release-notes/migration.md#dropped-support-for-node-20-19)
 - The knex peer dependency is `^3.3.0`. See [migration](/release-notes/migration.md#dropped-support-for-knex-3-3) [#95](https://github.com/ditojs/objection/issues/95)
+- The typings require TypeScript 5.8 or newer, and CI checks them with TypeScript 5.8 and 7. See [migration](/release-notes/migration.md#dropped-support-for-typescript-5-8)
 - The database error classes are objection's own, from a vendored copy of db-errors, and `instanceof` checks against classes from the `db-errors` package no longer match. See [migration](/release-notes/migration.md#database-errors-are-objection-s-own-classes)
 - Model files given as paths are loaded with `require()`, so ES module model files need to export the model class as default export or as their only model class, and can't use top-level await. See [migration](/release-notes/migration.md#model-files-given-as-paths)
 - The deprecated `skipUndefined()` is removed. `undefined` values passed to `where()` and the other SQL builder methods, and `undefined` ids, throw. See [migration](/release-notes/migration.md#skipundefined-is-removed) [#53](https://github.com/ditojs/objection/issues/53)

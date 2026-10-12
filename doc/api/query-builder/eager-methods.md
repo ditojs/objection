@@ -276,8 +276,6 @@ function withChildren<M extends Model>(query: QueryBuilder<M>): QueryBuilder<M> 
 }
 ```
 
-The narrowing requires TypeScript 5.1 or newer, as do the typings.
-
 ## withGraphJoined()
 
 ```js
