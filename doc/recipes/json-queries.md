@@ -4,7 +4,14 @@ You can use the [ref](/api/objection/#ref) function from the main module to refe
 
 See [FieldExpression](/api/types/#type-fieldexpression) for more information about how to refer to json fields.
 
-Json queries currently only work with postgres. Using json field expressions (`ref('column:path')`, `'column:path'` keys in `patch()`) or the `whereJson*()` methods of objection throws an error on MySQL, SQLite, SQL Server and Oracle, as the generated SQL is Postgres-only, and logs a warning on other databases. Use the JSON methods of knex instead, like [whereJsonPath()](https://knexjs.org/guide/query-builder.html#wherejsonpath) and [jsonExtract()](https://knexjs.org/guide/query-builder.html#jsonextract). On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array are passed on to knex, which supports them there.
+Json field expressions in `ref()` work on PostgreSQL, MySQL and SQLite: objection writes the SQL of each database, e.g. `"column"#>'{a,b}'` on PostgreSQL, ``JSON_EXTRACT(`column`, '$."a"."b"')`` on MySQL and ``json_extract(`column`, '$."a"."b"')`` on SQLite. `'column:path'` keys in `patch()` and the `whereJson*()` methods of objection only work on PostgreSQL so far, and throw an error on MySQL and SQLite. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array are passed on to knex, which supports them there. On SQL Server and Oracle, json field expressions throw an error, and on other databases they log a warning and use the SQL of PostgreSQL. Use the JSON methods of knex there, like [whereJsonPath()](https://knexjs.org/guide/query-builder.html#wherejsonpath) and [jsonExtract()](https://knexjs.org/guide/query-builder.html#jsonextract).
+
+The databases differ in a few ways:
+
+- On PostgreSQL, `column:1` and `column:[1]` both refer to an array element or an object key. On MySQL and SQLite, `[1]` only refers to array elements and `.1` only to object keys.
+- Without a cast, a reference is a json value on PostgreSQL and MySQL and the plain SQL value on SQLite, where objects and arrays are json text. The `mysql` driver returns json values as json text, `mysql2` and `pg` parse them.
+- The casts use the types of the database, e.g. `castInt()` is `SIGNED` on MySQL, see [ReferenceBuilder](/api/types/#class-referencebuilder).
+- SQLite can't tell json columns from text columns, so `ref('column').castJson()` throws there for a whole column. Cast it first, e.g. `ref('name').castText().castJson()`, or refer to a json path.
 
 ```js
 import { ref } from 'objection';

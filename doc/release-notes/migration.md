@@ -17,7 +17,8 @@ This section lists the breaking changes in objection 4.0.
 - [upsertGraph() sets the foreign key to null before deleting a BelongsToOneRelation row](#upsertgraph-sets-the-foreign-key-to-null-before-deleting-a-belongstoonerelation-row)
 - [upsertGraph() keeps the current to-one model for ignored models](#upsertgraph-keeps-the-current-to-one-model-for-ignored-models)
 - [offset() in updates and deletes throws](#offset-in-updates-and-deletes-throws)
-- [JSON field expressions throw on MySQL, SQLite, SQL Server and Oracle](#json-field-expressions-throw-on-mysql-sqlite-sql-server-and-oracle)
+- [JSON field expressions throw on SQL Server and Oracle](#json-field-expressions-throw-on-sql-server-and-oracle)
+- [Casts and json values on MySQL and SQLite](#casts-and-json-values-on-mysql-and-sqlite)
 - [Missing and array join properties throw](#missing-and-array-join-properties-throw)
 - [upsertGraph() relates moved rows before it deletes](#upsertgraph-relates-moved-rows-before-it-deletes)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
@@ -141,9 +142,23 @@ In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the curr
 
 `update()`, `patch()` and `delete()` throw an error for `offset()` when the query is executed. knex leaves the offset out of these statements, and on SQL Server the limit too, so they modified other rows than the offset asked for. 3.9 logged a warning. On MySQL, `delete()` also throws for `orderBy()` together with `limit()`, as knex leaves out the order but keeps the limit, so the limit deleted rows in any order. Fetch the ids of the rows to modify in a separate query and filter by them with `whereIn()`, or drop the offset if it was never applied. A many-to-many `patch()` / `update()` with join table extras on MySQL and SQL Server already selects the related rows first, so it honours the offset and doesn't throw.
 
-## JSON field expressions throw on MySQL, SQLite, SQL Server and Oracle
+## JSON field expressions throw on SQL Server and Oracle
 
-JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, and the `whereJson*()` methods of objection, throw an error on MySQL, SQLite, SQL Server and Oracle. They generate Postgres-only SQL, which these databases reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. 3.x logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex. Other databases than PostgreSQL still get a warning.
+JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, `ref('column').castJson()` and the `whereJson*()` methods of objection throw an error on SQL Server and Oracle. 3.x generated the SQL of PostgreSQL, which these databases reject, and logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. Other databases than PostgreSQL, MySQL and SQLite still get a warning.
+
+On MySQL and SQLite, objection writes the SQL of the database for `ref()`, where 3.x generated the SQL of PostgreSQL, which they reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. `'column:path'` keys in `patch()` and the `whereJson*()` methods throw an error on MySQL and SQLite. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex.
+
+## Casts and json values on MySQL and SQLite
+
+The casts of `ref()` and `val()` use the types of MySQL there, as `CAST()` on MySQL only accepts a few types. `castText()`, `castInt()`, `castBigInt()` and `castBool()` were rejected by MySQL before and are `CHAR` and `SIGNED` now. These change their results:
+
+- `castFloat()` is `DOUBLE` instead of `FLOAT`, and `castReal()` is `FLOAT` instead of `DOUBLE`, like `float` and `real` on PostgreSQL. Use `castTo('FLOAT')` or `castTo('DOUBLE')` for the previous types.
+- `castDecimal()` is `DECIMAL(65,30)` instead of `DECIMAL`, which rounds to integers. Use `castTo('DECIMAL(10,2)')` or similar for a fixed precision.
+- Casts of json values in field expressions turn json `null` into `NULL`, like on PostgreSQL and SQLite, instead of `0` or `'null'`.
+
+On MySQL and SQLite, `val()` with an object or array and `val().castJson()` are json values, `CAST(? AS JSON)` on MySQL and `json(?)` on SQLite, so they compare as json. Before, they were json text, which MySQL compared as a string. Pass `JSON.stringify(value)` to compare with json text.
+
+On SQLite, `ref('column').castJson()` throws for a whole column, as SQLite can't tell json columns from text columns. Cast the column first, e.g. `ref('name').castText().castJson()`, or refer to a json path.
 
 ## Missing and array join properties throw
 

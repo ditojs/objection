@@ -2596,8 +2596,11 @@ describe('QueryBuilder', () => {
   describe('json field expressions on other databases (ditojs#113)', () => {
     const message =
       'JSON field expressions and the whereJson*() methods of objection are only supported on ' +
-      'PostgreSQL. Use the JSON methods of knex like whereJsonPath() or jsonExtract() with ' +
-      'other databases.';
+      'PostgreSQL, MySQL and SQLite. Use the JSON methods of knex like whereJsonPath() or ' +
+      'jsonExtract() with other databases.';
+    const postgresOnlyMessage =
+      'JSON field expressions in patch() and merge() and the whereJson*() methods of objection ' +
+      'are not supported on MySQL and SQLite.';
 
     const knexes = {};
     const query = (client) => {
@@ -2670,44 +2673,74 @@ describe('QueryBuilder', () => {
 
     it('should only pass the json superset and subset methods on to knex on mysql', () => {
       expect(() => toSql(query('sqlite3').whereJsonSupersetOf('content', { a: 1 }))).toThrow(
-        message,
+        postgresOnlyMessage,
       );
     });
 
     it('should not pass other forms of the json where methods on to knex', () => {
       expect(() => toSql(query('mysql').whereJsonSupersetOf('content:a', { a: 1 }))).toThrow(
-        message,
+        postgresOnlyMessage,
       );
-      expect(() => toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).toThrow(message);
+      expect(() => toSql(query('mysql').whereJsonSupersetOf('content', 'other'))).toThrow(
+        postgresOnlyMessage,
+      );
       expect(() => toSql(query('mysql').whereJsonSubsetOf('content', ref('other')))).toThrow(
-        message,
+        postgresOnlyMessage,
       );
       expect(() => toSql(query('mysql').whereJsonSupersetOf('content', raw('?', '[1]')))).toThrow(
-        message,
+        postgresOnlyMessage,
       );
       // knex's version doesn't have the same semantics for empty objects and arrays.
-      expect(() => toSql(query('mysql').whereJsonIsObject('content'))).toThrow(message);
-      expect(() => toSql(query('mysql').orWhereJsonIsArray('content'))).toThrow(message);
+      expect(() => toSql(query('mysql').whereJsonIsObject('content'))).toThrow(postgresOnlyMessage);
+      expect(() => toSql(query('mysql').orWhereJsonIsArray('content'))).toThrow(
+        postgresOnlyMessage,
+      );
     });
 
-    const createQueries = {
+    const createReadQueries = {
       'ref() with a field expression': (client) =>
         query(client).orderBy(ref('content:a.b'), 'desc'),
       'a cast ref() with a field expression': (client) =>
         query(client).select(ref('content:a').castInt().as('a')),
+      'ref().castJson()': (client) => query(client).where(ref('content:a').castJson(), 1),
+    };
+
+    const createQueries = {
+      ...createReadQueries,
       'a field expression in a patch': (client) => query(client).patch({ 'content:a': 1 }),
       'whereJsonHasAny()': (client) => query(client).whereJsonHasAny('content', ['a']),
       'whereJsonNotArray()': (client) => query(client).whereJsonNotArray('content'),
       'whereJsonNotObject()': (client) => query(client).whereJsonNotObject('content'),
     };
 
-    for (const client of ['mysql', 'mysql2', 'sqlite3', 'better-sqlite3', 'mssql', 'oracledb']) {
+    for (const client of ['mysql', 'mysql2', 'sqlite3', 'better-sqlite3']) {
+      for (const title of Object.keys(createQueries)) {
+        if (title in createReadQueries) {
+          it(`should support ${title} on ${client}`, () => {
+            toSql(createQueries[title](client));
+            expect(warnings).toEqual([]);
+          });
+        } else {
+          it(`should throw for ${title} on ${client}`, () => {
+            expect(() => toSql(createQueries[title](client))).toThrow(postgresOnlyMessage);
+          });
+        }
+      }
+    }
+
+    for (const client of ['mssql', 'oracledb']) {
+      it(`should throw for a plain ref().castJson() on ${client}`, () => {
+        expect(() => toSql(query(client).where(ref('content').castJson(), 1))).toThrow(message);
+      });
+
       for (const [title, createQuery] of Object.entries(createQueries)) {
         it(`should throw for ${title} on ${client}`, () => {
           expect(() => toSql(createQuery(client))).toThrow(message);
         });
       }
+    }
 
+    for (const client of ['mysql', 'mysql2', 'sqlite3', 'better-sqlite3', 'mssql', 'oracledb']) {
       it(`should not throw for plain refs on ${client}`, () => {
         toSql(
           query(client)

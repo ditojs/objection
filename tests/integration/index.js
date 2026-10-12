@@ -155,7 +155,7 @@ describe('integration tests', () => {
       toKnexQuery(session);
       relationOwnerGrouping(session);
 
-      if (session.isPostgres()) {
+      if (!session.isMsSql()) {
         jsonQueries(session);
         jsonRelations(session);
       }
