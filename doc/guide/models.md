@@ -269,7 +269,7 @@ interface Note extends FromSchema<typeof noteSchema> {}
 
 ## Checking relation mappings in TypeScript
 
-The relation properties of a model have to be declared by hand, and TypeScript doesn't check them against `relationMappings` by default. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation` or `ManyToManyRelation` for an array), and that `modelClass` matches the property's model type:
+The relation properties of a model have to be declared by hand, and TypeScript doesn't check them against `relationMappings` by default. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation`, `ManyToManyRelation` or `BelongsToManyRelation` for an array), and that `modelClass` matches the property's model type:
 
 ```ts
 import { Model, TypedRelationMappings } from 'objection';

@@ -70,6 +70,11 @@ class Pet extends Model {
       modelClass: Owner,
       join: { from: 'pets.ownerId', to: 'owners.id' },
     },
+    friends: {
+      relation: Model.BelongsToManyRelation,
+      modelClass: Pet,
+      join: { from: 'pets.friendIds', to: 'pets.id' },
+    },
   } satisfies TypedRelationMappings<Pet>;
 }
 
@@ -148,6 +153,19 @@ class WrongCardinalityMany extends Model {
       join: { from: 'a.ownerId', to: 'persons.id' },
     },
   } satisfies TypedRelationMappings<WrongCardinalityMany>;
+}
+
+class WrongCardinalityKeys extends Model {
+  owner?: Person;
+
+  static relationMappings = {
+    owner: {
+      // @ts-expect-error a BelongsToManyRelation can't hold a single model
+      relation: Model.BelongsToManyRelation,
+      modelClass: Person,
+      join: { from: 'a.ownerIds', to: 'persons.id' },
+    },
+  } satisfies TypedRelationMappings<WrongCardinalityKeys>;
 }
 
 class WrongModelClass extends Model {

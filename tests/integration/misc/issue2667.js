@@ -117,8 +117,8 @@ export default (session) => {
 
     const arrayError =
       'Unable to fetch relation "tags" of Post: the join property "issue2667Post.tagIds" of some ' +
-      'owner models holds an array, which is not supported. Use a ManyToManyRelation through a ' +
-      'join table instead.';
+      'owner models holds an array, which is not supported. Use a BelongsToManyRelation or a ' +
+      'ManyToManyRelation through a join table instead.';
 
     it('withGraphFetched() should throw if owner join properties hold arrays', async () => {
       await expect(Post.query().withGraphFetched('tags')).rejects.toThrow(arrayError);

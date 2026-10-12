@@ -1351,7 +1351,7 @@ queryBuilder = queryBuilder.whereJsonHasAny(fieldExpression, keys);
 Where any of given strings is found from json object keys.
 
 ::: tip
-Like the `?|` and `?&` operators of PostgreSQL, this matches the keys of objects, the string elements of arrays and string values, but not other array elements. On MySQL, it needs MySQL 8.0.17 or newer.
+Like the `?|` and `?&` operators of PostgreSQL, this matches the keys of objects, the string elements of arrays and string values, but not other array elements.
 :::
 
 ##### Arguments
@@ -1380,7 +1380,7 @@ queryBuilder = queryBuilder.whereJsonHasAll(fieldExpression, keys);
 Where all of given strings are found from json object keys.
 
 ::: tip
-Like the `?|` and `?&` operators of PostgreSQL, this matches the keys of objects, the string elements of arrays and string values, but not other array elements. On MySQL, it needs MySQL 8.0.17 or newer.
+Like the `?|` and `?&` operators of PostgreSQL, this matches the keys of objects, the string elements of arrays and string values, but not other array elements.
 :::
 
 ##### Arguments

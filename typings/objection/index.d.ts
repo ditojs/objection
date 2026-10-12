@@ -2420,6 +2420,9 @@ export interface ManyToManyRelationType extends RelationType {
 export interface HasOneThroughRelationType extends RelationType {
   readonly [relationKind]?: 'HasOneThrough';
 }
+export interface BelongsToManyRelationType extends RelationType {
+  readonly [relationKind]?: 'BelongsToMany';
+}
 
 /**
  * Names of the properties of M that hold related models. Properties typed
@@ -2454,7 +2457,10 @@ export interface TypedRelationMapping<
 
 export type TypedRelationMappingFor<T> =
   NonNullable<T> extends (infer I extends Model)[]
-    ? TypedRelationMapping<I, HasManyRelationType | ManyToManyRelationType>
+    ? TypedRelationMapping<
+        I,
+        HasManyRelationType | ManyToManyRelationType | BelongsToManyRelationType
+      >
     : NonNullable<T> extends infer I extends Model
       ? TypedRelationMapping<
           I,
@@ -2711,6 +2717,7 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
   HasManyRelation: HasManyRelationType;
   ManyToManyRelation: ManyToManyRelationType;
   HasOneThroughRelation: HasOneThroughRelationType;
+  BelongsToManyRelation: BelongsToManyRelationType;
 
   defaultGraphOptions?: GraphOptions;
 
@@ -2823,6 +2830,7 @@ export class Model {
   static HasManyRelation: HasManyRelationType;
   static ManyToManyRelation: ManyToManyRelationType;
   static HasOneThroughRelation: HasOneThroughRelationType;
+  static BelongsToManyRelation: BelongsToManyRelationType;
 
   static defaultGraphOptions?: GraphOptions;
 

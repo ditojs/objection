@@ -15,6 +15,7 @@ import { HasOneRelation } from '../lib/relations/hasOne/HasOneRelation.js';
 import { BelongsToOneRelation } from '../lib/relations/belongsToOne/BelongsToOneRelation.js';
 import { HasOneThroughRelation } from '../lib/relations/hasOneThrough/HasOneThroughRelation.js';
 import { ManyToManyRelation } from '../lib/relations/manyToMany/ManyToManyRelation.js';
+import { BelongsToManyRelation } from '../lib/relations/belongsToMany/BelongsToManyRelation.js';
 import { transaction } from '../lib/transaction.js';
 import { ref } from '../lib/queryBuilder/ReferenceBuilder.js';
 import { raw } from '../lib/queryBuilder/RawBuilder.js';
@@ -40,6 +41,8 @@ describe('main module', () => {
     expect(objection.BelongsToOneRelation).toBe(BelongsToOneRelation);
     expect(objection.HasOneThroughRelation).toBe(HasOneThroughRelation);
     expect(objection.ManyToManyRelation).toBe(ManyToManyRelation);
+    expect(objection.BelongsToManyRelation).toBe(BelongsToManyRelation);
+    expect(objection.Model.BelongsToManyRelation).toBe(BelongsToManyRelation);
     expect(objection.transaction).toBe(transaction);
     expect(objection.transaction.start).toBe(transaction.start);
     expect(objection.ref).toBe(ref);

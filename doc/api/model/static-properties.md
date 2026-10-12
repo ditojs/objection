@@ -726,3 +726,18 @@ class Person extends Model {
 ```
 
 A relation type that can be used in [relationMappings](/api/model/static-properties.html#static-relationmappings) to create a has-one-through relationship. See [this section](/guide/relations.md) for more information about different relation types.
+
+## `static` BelongsToManyRelation
+
+```js
+class Post extends Model {
+  static get relationMappings() {
+    tags: {
+      relation: Model.BelongsToManyRelation,
+      ...
+    }
+  }
+}
+```
+
+A relation type that can be used in [relationMappings](/api/model/static-properties.html#static-relationmappings) to create a belongs-to-many relationship, where the owner holds an array of the related models' keys. See [this section](/guide/relations.md) for more information about different relation types.
