@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Model } from 'objection';
-import { resetWarnings } from '../../../lib/utils/warnings.js';
 
 export default (session) => {
-  describe('warn when fetching relations of owners without join properties #1832', () => {
+  describe('throw when fetching relations of owners loaded without join properties #1832', () => {
     const { knex } = session;
 
     class Person extends Model {
@@ -102,9 +101,6 @@ export default (session) => {
       }
     }
 
-    let warnings;
-    let originalWarn;
-
     beforeAll(async () => {
       await knex.schema
         .dropTableIfExists('issue1832AnimalTag')
@@ -149,152 +145,170 @@ export default (session) => {
         .dropTableIfExists('issue1832Person');
     });
 
-    beforeEach(() => {
-      resetWarnings();
-      warnings = [];
-      originalWarn = console.warn;
-      console.warn = (message) => warnings.push(message);
-    });
+    const missingIdError =
+      'Unable to fetch relation "pets" of Person: some owner models loaded from the database ' +
+      'are missing the join property "issue1832Person.id". Select the column in the owner query.';
 
-    afterEach(() => {
-      console.warn = originalWarn;
-      resetWarnings();
-    });
-
-    const expectedWarning =
-      '[objection] Fetching relation "pets" of Person: some owner models are missing the join ' +
-      'property "issue1832Person.id", so no related models are found for them. ' +
-      'Select the column in the owner query.';
-
-    it('$fetchGraph() should warn if the id is not selected for a HasManyRelation', async () => {
+    it('$fetchGraph() should throw if the id is not selected for a HasManyRelation', async () => {
       const jennifer = await Person.query(knex).findById(1).select('name');
+
+      await expect(jennifer.$fetchGraph('pets', { transaction: knex })).rejects.toThrow(
+        missingIdError,
+      );
+      expect(jennifer.pets).toBeUndefined();
+    });
+
+    it('$relatedQuery() should throw if the id is not selected for a HasManyRelation', async () => {
+      const jennifer = await Person.query(knex).findById(1).select('name');
+
+      await expect(jennifer.$relatedQuery('pets', knex)).rejects.toThrow(missingIdError);
+    });
+
+    it('should throw if the id of some of the owners is not selected', async () => {
+      const people = [
+        ...(await Person.query(knex).select('id', 'name')),
+        ...(await Person.query(knex).select('name')),
+      ];
+
+      await expect(Person.fetchGraph(people, 'pets', { transaction: knex })).rejects.toThrow(
+        missingIdError,
+      );
+    });
+
+    it('should throw for clones of owners loaded without the id', async () => {
+      const jennifer = await Person.query(knex).findById(1).select('name');
+      const clone = jennifer.$clone();
+
+      expect(clone.toJSON()).toEqual({ name: 'Jennifer' });
+      await expect(clone.$fetchGraph('pets', { transaction: knex })).rejects.toThrow(
+        missingIdError,
+      );
+    });
+
+    it('should find no related models for owners built in memory without the id', async () => {
+      const jennifer = Person.fromJson({ name: 'Jennifer' });
       await jennifer.$fetchGraph('pets', { transaction: knex });
+      const pets = await Person.fromJson({ name: 'Jennifer' }).$relatedQuery('pets', knex);
 
       expect(jennifer.pets).toEqual([]);
-      expect(warnings).toEqual([expectedWarning]);
-    });
-
-    it('$relatedQuery() should warn if the id is not selected for a HasManyRelation', async () => {
-      const jennifer = await Person.query(knex).findById(1).select('name');
-      const pets = await jennifer.$relatedQuery('pets', knex);
-
       expect(pets).toEqual([]);
-      expect(warnings).toEqual([expectedWarning]);
     });
 
-    it('should only warn once per relation', async () => {
-      const people = await Person.query(knex).select('name');
-      await Person.fetchGraph(people, 'pets', { transaction: knex });
-      await Person.fetchGraph(people, 'pets', { transaction: knex });
-
-      expect(warnings).toEqual([expectedWarning]);
-    });
-
-    it('should not warn if the foreign key is selected or null', async () => {
+    it('should not throw if the foreign key is selected or null', async () => {
       const animals = await Animal.query(knex).orderBy('id');
       await Animal.fetchGraph(animals, 'owner', { transaction: knex });
 
       expect(animals.map((it) => it.owner && it.owner.name)).toEqual(['Jennifer', null]);
-      expect(warnings).toEqual([]);
     });
 
-    it('withGraphFetched() should not warn if the foreign key is not selected', async () => {
+    it('withGraphFetched() should not throw if the foreign key is not selected', async () => {
       const doggo = await Animal.query(knex)
         .findById(1)
         .select('id', 'name')
         .withGraphFetched('owner');
 
       expect(doggo.owner.name).toBe('Jennifer');
-      expect(warnings).toEqual([]);
     });
 
-    it('$fetchGraph() should warn if a non-id column is not selected for a HasManyRelation', async () => {
+    it('$fetchGraph() should throw if a non-id column is not selected for a HasManyRelation', async () => {
       const jennifer = await Person.query(knex).findById(1).select('id', 'name');
-      await jennifer.$fetchGraph('petsByCode', { transaction: knex });
 
-      expect(jennifer.petsByCode).toEqual([]);
-      expect(warnings).toEqual([
-        '[objection] Fetching relation "petsByCode" of Person: some owner models are missing the ' +
-          'join property "issue1832Person.code", so no related models are found for them. ' +
-          'Select the column in the owner query.',
-      ]);
+      await expect(jennifer.$fetchGraph('petsByCode', { transaction: knex })).rejects.toThrow(
+        'Unable to fetch relation "petsByCode" of Person: some owner models loaded from the ' +
+          'database are missing the join property "issue1832Person.code". Select the column in ' +
+          'the owner query.',
+      );
     });
 
-    it('$fetchGraph() should warn if a foreign key in the composite id is not selected', async () => {
+    it('$fetchGraph() should throw if a foreign key in the composite id is not selected', async () => {
       const tag = await Tag.query(knex).first().select('tag');
-      await tag.$fetchGraph('animal', { transaction: knex });
 
-      expect(tag.animal).toBeNull();
-      expect(warnings).toEqual([
-        '[objection] Fetching relation "animal" of Tag: some owner models are missing the join ' +
-          'property "issue1832AnimalTag.animalId", so no related models are found for them. ' +
-          'Select the column in the owner query.',
-      ]);
+      await expect(tag.$fetchGraph('animal', { transaction: knex })).rejects.toThrow(
+        'Unable to fetch relation "animal" of Tag: some owner models loaded from the database ' +
+          'are missing the join property "issue1832AnimalTag.animalId". Select the column in ' +
+          'the owner query.',
+      );
     });
 
     // Nullable foreign keys that were never set are `undefined` too, e.g. on
     // models returned by `insert()` or created with `fromJson()` (#132).
-    it('should not warn if the foreign key of an inserted model is not set', async () => {
+    it('should not throw if the foreign key of an inserted model is not set', async () => {
       const inserted = await Animal.query(knex).insert({ id: 3, name: 'Newcomer' });
 
       try {
         await inserted.$fetchGraph('owner', { transaction: knex });
 
         expect(inserted.owner).toBeNull();
-        expect(warnings).toEqual([]);
       } finally {
         await Animal.query(knex).deleteById(3);
       }
     });
 
-    it('should not warn if the foreign key of a model created with fromJson() is not set', async () => {
+    it('should not throw if the foreign key of a model created with fromJson() is not set', async () => {
       const stray = Animal.fromJson({ id: 2, name: 'Stray' });
       await stray.$fetchGraph('owner', { transaction: knex });
       const owner = await stray.$relatedQuery('owner', knex);
 
       expect(stray.owner).toBeNull();
       expect(owner).toBeUndefined();
-      expect(warnings).toEqual([]);
     });
 
-    // A foreign key left out of a partial `select()` can't be told apart from
-    // one that was never set, so it doesn't warn either (#132).
-    it('$fetchGraph() should not warn if the foreign key is not selected', async () => {
+    // Inserted models are the instances passed to `insert()`, with only the
+    // returned columns merged into them, so they don't count as loaded.
+    it.skipIf(!session.isPostgres())(
+      'should not throw if the foreign key of a model inserted with returning() is not set',
+      async () => {
+        const inserted = await Animal.query(knex)
+          .insert({ id: 3, name: 'Newcomer' })
+          .returning('id');
+
+        try {
+          await inserted.$fetchGraph('owner', { transaction: knex });
+
+          expect(inserted.owner).toBeNull();
+        } finally {
+          await Animal.query(knex).deleteById(3);
+        }
+      },
+    );
+
+    it('$fetchGraph() should throw if the foreign key is not selected for a BelongsToOneRelation', async () => {
       const doggo = await Animal.query(knex).findById(1).select('id', 'name');
-      await doggo.$fetchGraph('owner', { transaction: knex });
 
-      expect(doggo.owner).toBeNull();
-      expect(warnings).toEqual([]);
+      await expect(doggo.$fetchGraph('owner', { transaction: knex })).rejects.toThrow(
+        'Unable to fetch relation "owner" of Animal: some owner models loaded from the database ' +
+          'are missing the join property "issue1832Animal.ownerId". Select the column in the ' +
+          'owner query.',
+      );
     });
 
-    const expectedThroughWarning = (relation) =>
-      `[objection] Fetching relation "${relation}" of Animal: some owner models are missing the ` +
-      'join property "issue1832Animal.id", so no related models are found for them. ' +
-      'Select the column in the owner query.';
+    const throughError = (relation) =>
+      `Unable to fetch relation "${relation}" of Animal: some owner models loaded from the ` +
+      'database are missing the join property "issue1832Animal.id". Select the column in the ' +
+      'owner query.';
 
-    it('$fetchGraph() should warn if the id is not selected for a ManyToManyRelation', async () => {
+    it('$fetchGraph() should throw if the id is not selected for a ManyToManyRelation', async () => {
       const doggo = await Animal.query(knex).findById(1).select('name');
-      await doggo.$fetchGraph('keepers', { transaction: knex });
 
-      expect(doggo.keepers).toEqual([]);
-      expect(warnings).toEqual([expectedThroughWarning('keepers')]);
+      await expect(doggo.$fetchGraph('keepers', { transaction: knex })).rejects.toThrow(
+        throughError('keepers'),
+      );
     });
 
-    it('$fetchGraph() should warn if the id is not selected for a HasOneThroughRelation', async () => {
+    it('$fetchGraph() should throw if the id is not selected for a HasOneThroughRelation', async () => {
       const doggo = await Animal.query(knex).findById(1).select('name');
-      await doggo.$fetchGraph('keeper', { transaction: knex });
 
-      expect(doggo.keeper).toBeNull();
-      expect(warnings).toEqual([expectedThroughWarning('keeper')]);
+      await expect(doggo.$fetchGraph('keeper', { transaction: knex })).rejects.toThrow(
+        throughError('keeper'),
+      );
     });
 
-    it('should not warn if the id is selected for a ManyToManyRelation', async () => {
+    it('should not throw if the id is selected for a ManyToManyRelation', async () => {
       const animals = await Animal.query(knex).orderBy('id');
       await Animal.fetchGraph(animals, '[keepers, keeper]', { transaction: knex });
 
       expect(animals.map((it) => it.keepers.map((it) => it.name))).toEqual([['Jennifer'], []]);
       expect(animals.map((it) => it.keeper && it.keeper.name)).toEqual(['Jennifer', null]);
-      expect(warnings).toEqual([]);
     });
   });
 };

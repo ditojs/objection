@@ -1,13 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Knex from 'knex';
 import { Model, knexSnakeCaseMappers } from 'objection';
-import { resetWarnings } from '../../../lib/utils/warnings.js';
 
 export default (session) => {
-  describe('warn when fetched related models are missing join properties #2258', () => {
+  describe('throw when fetched related models are missing join properties #2258', () => {
     let knex;
-    let warnings;
-    let originalWarn;
 
     class Registration extends Model {
       static get tableName() {
@@ -116,64 +113,45 @@ export default (session) => {
       await knex.destroy();
     });
 
-    beforeEach(() => {
-      resetWarnings();
-      warnings = [];
-      originalWarn = console.warn;
-      console.warn = (message) => warnings.push(message);
+    const missingPropError =
+      'Unable to fetch relation "snakeRegistrations" of User: some related models are missing ' +
+      'the join property "issue_2258_registration.user_id". Check that the relation mapping ' +
+      'uses the property names of the models, e.g. camelCase names when using ' +
+      'knexSnakeCaseMappers.';
+
+    it('withGraphFetched() should throw if related models are missing the join property', async () => {
+      await expect(
+        User.query(knex).findById(1).withGraphFetched('snakeRegistrations'),
+      ).rejects.toThrow(missingPropError);
     });
 
-    afterEach(() => {
-      console.warn = originalWarn;
-      resetWarnings();
-    });
-
-    const expectedWarning =
-      '[objection] Fetching relation "snakeRegistrations" of User: some related models are ' +
-      'missing the join property "issue_2258_registration.user_id", so they are not assigned to ' +
-      'any owner. Check that the relation mapping uses the property names of the models, ' +
-      'e.g. camelCase names when using knexSnakeCaseMappers.';
-
-    it('withGraphFetched() should warn if related models are missing the join property', async () => {
-      const user = await User.query(knex).findById(1).withGraphFetched('snakeRegistrations');
-
-      expect(user.snakeRegistrations).toEqual([]);
-      expect(warnings).toEqual([expectedWarning]);
-    });
-
-    it('$fetchGraph() should warn if related models are missing the join property', async () => {
+    it('$fetchGraph() should throw if related models are missing the join property', async () => {
       const user = await User.query(knex).findById(1);
-      await user.$fetchGraph('snakeRegistrations', { transaction: knex });
 
-      expect(user.snakeRegistrations).toEqual([]);
-      expect(warnings).toEqual([expectedWarning]);
+      await expect(user.$fetchGraph('snakeRegistrations', { transaction: knex })).rejects.toThrow(
+        missingPropError,
+      );
     });
 
-    it('should not warn if related models have the join property', async () => {
+    it('should not throw if related models have the join property', async () => {
       const user = await User.query(knex).findById(1).withGraphFetched('camelRegistrations');
 
       expect(user.camelRegistrations.map((it) => it.id)).toEqual([1]);
-      expect(warnings).toEqual([]);
     });
 
-    const expectedManyToManyWarning =
-      '[objection] Fetching relation "strictRoles" of User: some related models are missing the ' +
-      'join table column "issue_2258_user_role.userId" selected as "objectiontmpjoin0", so they ' +
-      'are not assigned to any owner. Check that $parseDatabaseJson() and the column name ' +
-      'mappers of the related model keep it.';
-
-    it('should warn if related models of a ManyToManyRelation are missing the owner join column', async () => {
-      const user = await User.query(knex).findById(1).withGraphFetched('strictRoles');
-
-      expect(user.strictRoles).toEqual([]);
-      expect(warnings).toEqual([expectedManyToManyWarning]);
+    it('should throw if related models of a ManyToManyRelation are missing the owner join column', async () => {
+      await expect(User.query(knex).findById(1).withGraphFetched('strictRoles')).rejects.toThrow(
+        'Unable to fetch relation "strictRoles" of User: some related models are missing the ' +
+          'join table column "issue_2258_user_role.userId" selected as "objectiontmpjoin0". ' +
+          'Check that $parseDatabaseJson() and the column name mappers of the related model ' +
+          'keep it.',
+      );
     });
 
-    it('should not warn if related models of a ManyToManyRelation have the owner join column', async () => {
+    it('should not throw if related models of a ManyToManyRelation have the owner join column', async () => {
       const user = await User.query(knex).findById(1).withGraphFetched('roles');
 
       expect(user.roles.map((it) => it.toJSON())).toEqual([{ id: 1, name: 'admin' }]);
-      expect(warnings).toEqual([]);
     });
   });
 };
