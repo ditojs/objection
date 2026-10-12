@@ -1201,6 +1201,45 @@ export default (session) => {
         ]);
       });
 
+      it('should apply first() of a relation mapping modify per parent', async () => {
+        class Model1Latest extends Model1 {
+          static get relationMappings() {
+            return {
+              ...super.relationMappings,
+              latestModel2: {
+                relation: Model1.HasOneRelation,
+                modelClass: Model2,
+                join: { from: 'Model1.id', to: 'model2.model1_id' },
+                modify: (query) => query.orderBy('id_col', 'desc').first(),
+              },
+            };
+          }
+        }
+
+        const models = await Model1Latest.query()
+          .withGraphFetched('latestModel2')
+          .whereExists(Model1Latest.relatedQuery('model1Relation2'))
+          .orderBy('id');
+
+        expect(relatedIds(models, 'latestModel2')).toEqual([
+          [1, 2],
+          [4, 4],
+          [6, 3],
+        ]);
+      });
+
+      it('should apply first() of an onBuild() hook per parent', async () => {
+        const models = await fetchModel1s('model1Relation2', (query) =>
+          query.orderBy('id_col', 'desc').onBuild((query) => query.first()),
+        );
+
+        expect(relatedIds(models, 'model1Relation2')).toEqual([
+          [1, [2]],
+          [4, [4]],
+          [6, [3]],
+        ]);
+      });
+
       it('should support limitPerParent: false in defaultGraphOptions', async () => {
         class Model1Defaults extends Model1 {
           static get defaultGraphOptions() {
