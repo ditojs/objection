@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.1
+
+### Types
+
+- Custom query builders that override `withGraph()` also compile with TypeScript 7, which the fix in 3.9.0 didn't cover
+
 ## 3.9.0
 
 ### Fixes
