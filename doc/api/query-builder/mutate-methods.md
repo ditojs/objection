@@ -470,6 +470,20 @@ See the [section about graph upserts](/guide/query-examples.html#graph-upserts)
 
 In addition to the `#id`, `#ref` and `#dbRef` special properties supported by [insertGraph](/api/query-builder/mutate-methods.html#insertgraph), related models in the graph can be marked with `'#unrelate': true` or `'#delete': true` to unrelate or delete them individually, regardless of the `unrelate`, `noUnrelate` and `noDelete` options. Like `#ref`, these special properties need to be enabled with the `allowMarkers` option, since they let whoever provides the graph unrelate or delete related models. See [this section](/guide/query-examples.html#graph-upserts) for details.
 
+The models in the graph are matched to the rows in the database by comparing their ids in JavaScript, which doesn't know the column types or collations. An id given in a different form than the one the database returns doesn't match its row, for example an uppercase uuid where PostgreSQL returns `uuid` columns in lowercase. Depending on the options, `upsertGraph` then throws a `NotFoundError`, or deletes the row and inserts or relates it again, which can cascade. Normalize such ids in the model, for example in [\$parseJson](/api/model/instance-methods.html#parsejson):
+
+```js
+class Person extends Model {
+  $parseJson(json, opt) {
+    json = super.$parseJson(json, opt);
+    if (typeof json.id === 'string') {
+      json.id = json.id.toLowerCase();
+    }
+    return json;
+  }
+}
+```
+
 ::: warning
 WARNING!
 
