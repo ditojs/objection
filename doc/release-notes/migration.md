@@ -137,6 +137,13 @@ Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or
 - Related models come back without their join property, e.g. because the relation mapping uses column names that `knexSnakeCaseMappers()` maps to other property names. Use the property names of the models in the relation mapping.
 - An owner join property holds an array of keys, e.g. a JSON array column. Use a `ManyToManyRelation` through a join table instead. `$relatedQuery()` without `withGraphFetched()` or `$fetchGraph()` keeps working for them.
 
+## upsertGraph() relates moved rows before it deletes
+
+`upsertGraph()` relates the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation` first, before it deletes or unrelates the rows that the graph removes. 3.x deleted first, so a row that moved out of a deleted parent was deleted with it by `ON DELETE CASCADE`, and failed with a foreign key without `ON DELETE` action. The update hooks of these relates now run before the delete hooks of the same call.
+
+A row related from another owner can no longer take the unique key of a row that the graph removes in its new place, e.g. with `unique(ownerId, name)`: the relate fails with a `UniqueViolationError`. Delete the conflicting row with a separate query in the same transaction first. Replacing such a row by a new one, or renaming a kept row to its key, still works, as do relates into a `HasOneRelation` with a unique foreign key.
+
+
 ## typescript: The typings are ES module declarations
 
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.
