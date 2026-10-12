@@ -27,6 +27,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
 - [typescript: Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype)
+- [typescript: Model.jsonSchema is a readonly schema](#typescript-model-jsonschema-is-a-readonly-schema)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -244,6 +245,30 @@ class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
 ```
 
 The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBuilder`, `NumberQueryBuilder` and `PageQueryBuilder` take any query builder, e.g. `MaybeSingleQueryBuilder<this>` as the return type of an overridden `findById()`. `WithGraphModelQueryBuilder<M, E>` is removed. Use `QueryBuilderType<WithGraphModel<M, E>>` instead. The `ReturningMethod` interface is removed too, `returning()` is a method of `QueryBuilder`. On query builders with an `any` result, e.g. `AnyQueryBuilder`, it returns `QueryBuilder<any, any> | QueryBuilder<any, any[]>` instead of `QueryBuilder<any, any[]>`.
+
+## typescript: Model.jsonSchema is a readonly schema
+
+`static jsonSchema` is typed `ReadonlyJSONSchema`, a JSON schema with readonly arrays, so that schemas declared `as const` can be assigned to it, for `FromSchema`. A `JSONSchema` is assignable to it, but not the other way around: a model's schema read through the static type can't be passed to a parameter typed `JSONSchema`, or returned from `$beforeValidate()`. Declare the type on models that are used that way:
+
+```ts
+import { JSONSchema, Model } from 'objection';
+
+class Person extends Model {
+  static jsonSchema: JSONSchema = {
+    type: 'object',
+    required: ['firstName'],
+    properties: { firstName: { type: 'string' } }
+  };
+}
+
+function describeSchema(schema: JSONSchema) {
+  // ...
+}
+
+describeSchema(Person.jsonSchema);
+```
+
+Code that reads the schema of any model class, e.g. `modelClass.jsonSchema` in plugins or helpers, takes it as `ReadonlyJSONSchema`.
 
 ## `insert` and `update` reject field expression keys
 
