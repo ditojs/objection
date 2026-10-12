@@ -31,6 +31,8 @@ export const fn: FunctionFunction;
 export const compose: ComposeFunction;
 export const mixin: MixinFunction;
 
+export const asArray: AsArrayFunction;
+
 export const snakeCaseMappers: SnakeCaseMappersFactory;
 export const knexSnakeCaseMappers: KnexSnakeCaseMappersFactory;
 export const knexIdentifierMapping: KnexIdentifierMappingFactory;
@@ -118,6 +120,10 @@ export interface FunctionFunction {
 export interface ComposeFunction {
   (...plugins: Plugin[]): Plugin;
   (plugins: Plugin[]): Plugin;
+}
+
+export interface AsArrayFunction {
+  <T>(value: T | T[] | undefined): T[];
 }
 
 export interface Plugin {
@@ -1586,7 +1592,7 @@ export interface TraverserFunction {
 export type ArrayQueryBuilderThunk<M extends Model> = () => ArrayQueryBuilder<QueryBuilderType<M>>;
 export type CancelQueryThunk = (result: any) => void;
 
-export interface StaticHookArguments<M extends Model, R = any> {
+export interface StaticHookArguments<M extends Model, R = undefined> {
   asFindQuery: ArrayQueryBuilderThunk<M>;
   cancelQuery: CancelQueryThunk;
   context: QueryContext;
@@ -1595,7 +1601,7 @@ export interface StaticHookArguments<M extends Model, R = any> {
   modelOptions?: ModelOptions;
   items: Model[];
   inputItems: M[];
-  result?: R;
+  result: R;
 }
 
 export type Transaction = Knex.Transaction;
@@ -2007,13 +2013,13 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
   ): Promise<void>;
 
   beforeFind(args: StaticHookArguments<any>): any;
-  afterFind(args: StaticHookArguments<any>): any;
+  afterFind(args: StaticHookArguments<any, Model | Model[] | undefined>): any;
   beforeInsert(args: StaticHookArguments<any>): any;
-  afterInsert(args: StaticHookArguments<any>): any;
+  afterInsert(args: StaticHookArguments<any, Model | Model[]>): any;
   beforeUpdate(args: StaticHookArguments<any>): any;
-  afterUpdate(args: StaticHookArguments<any>): any;
+  afterUpdate(args: StaticHookArguments<any, number | Model | Model[] | undefined>): any;
   beforeDelete(args: StaticHookArguments<any>): any;
-  afterDelete(args: StaticHookArguments<any>): any;
+  afterDelete(args: StaticHookArguments<any, number | Model | Model[] | undefined>): any;
 }
 
 export class Model {
@@ -2126,13 +2132,13 @@ export class Model {
   ): Promise<void>;
 
   static beforeFind(args: StaticHookArguments<any>): any;
-  static afterFind(args: StaticHookArguments<any>): any;
+  static afterFind(args: StaticHookArguments<any, Model | Model[] | undefined>): any;
   static beforeInsert(args: StaticHookArguments<any>): any;
-  static afterInsert(args: StaticHookArguments<any>): any;
+  static afterInsert(args: StaticHookArguments<any, Model | Model[]>): any;
   static beforeUpdate(args: StaticHookArguments<any>): any;
-  static afterUpdate(args: StaticHookArguments<any>): any;
+  static afterUpdate(args: StaticHookArguments<any, number | Model | Model[] | undefined>): any;
   static beforeDelete(args: StaticHookArguments<any>): any;
-  static afterDelete(args: StaticHookArguments<any>): any;
+  static afterDelete(args: StaticHookArguments<any, number | Model | Model[] | undefined>): any;
 
   $modelClass: ModelClass<this>;
 

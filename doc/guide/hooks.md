@@ -225,7 +225,23 @@ await Person.relatedQuery('pets')
 // relation:   pets
 ```
 
-In `afterDelete`, `afterUpdate`, `afterInsert` and `afterFind` hooks, the `result` property of the input argument contains the result of the query. In `afterInsert`, `result` contains the inserted model instances with only the values returned by the database merged in, even for `insertAndFetch`, which fetches the rows after the hook has run. See [afterInsert](/api/model/static-methods.html#static-afterinsert) for details. You can change the result by returning a non-undefined value from the hook:
+In `afterDelete`, `afterUpdate`, `afterInsert` and `afterFind` hooks, the `result` property of the input argument contains what the query returns: an array of models, a single model, e.g. with `first()`, `findById()`, `insert()` of a single model or `patchAndFetchById()`, `undefined` if nothing was found, or the number of updated or deleted rows. The hooks run as the last step of the query, after `first()` and the fetch of `insertAndFetch()` and `patchAndFetch()`, and before the [runAfter](/api/query-builder/other-methods.html#runafter) callbacks. See the [after hooks](/api/model/static-methods.html#static-afterfind) for the details of each query. In `before*` hooks, `result` is `undefined`.
+
+To handle single models and arrays the same way, turn `result` into an array with [asArray](/api/objection/#asarray):
+
+```js
+import { Model, asArray } from 'objection';
+
+class Person extends Model {
+  static afterFind({ result }) {
+    for (const person of asArray(result)) {
+      person.fullName = `${person.firstName} ${person.lastName}`;
+    }
+  }
+}
+```
+
+You can change the result by returning a non-undefined value from the hook:
 
 ```js
 class Person extends Model {
@@ -242,6 +258,16 @@ const result = await Person.query();
 console.log(result.success);
 console.log(result.result.length);
 ```
+
+[relate](/api/query-builder/mutate-methods.html#relate) and [unrelate](/api/query-builder/mutate-methods.html#unrelate) have no hooks of their own. They run a query in their place, and the hooks of that query get the `relation` and its owners as `items`:
+
+| Relation                                    | Query                         | Hooks                                                                                                      |
+| ------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `HasManyRelation`, `HasOneRelation`         | Update of the related rows    | `beforeUpdate` and `afterUpdate` of the related model class                                               |
+| `BelongsToOneRelation`                      | Update of the owner rows      | `beforeUpdate` and `afterUpdate` of the owner model class                                                  |
+| `ManyToManyRelation`, `HasOneThroughRelation` | Insert or delete of join rows | `beforeInsert` and `afterInsert`, or `beforeDelete` and `afterDelete` of the join table's `through.modelClass` |
+
+The outer queries of [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) and [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) call no static hooks. The queries that they run for each model class of the graph call them instead.
 
 ::: tip
 Note!

@@ -412,11 +412,11 @@ export default (session) => {
           });
         });
 
-        it('should get an empty `result`', async () => {
+        it('should get an undefined `result`', async () => {
           Movie.beforeFind = createHookSpy();
 
           await Movie.query();
-          expect(Movie.beforeFind.calls[0].args.result).toEqual([]);
+          expect(Movie.beforeFind.calls[0].args.result).toBeUndefined();
         });
 
         it('should be able to cancel the query', () => {
@@ -913,14 +913,14 @@ export default (session) => {
               });
           });
 
-          it('should get an empty `result` if there is no related model', async () => {
+          it('should get an undefined `result` if there is no related model', async () => {
             const pet = await Pet.query().insert({ name: 'Stray' });
             Person.afterFind = createHookSpy();
 
             const owner = await pet.$relatedQuery('owner');
             expect(owner).toBeUndefined();
             expect(Person.afterFind.calls.length).toBe(1);
-            expect(Person.afterFind.calls[0].args.result).toEqual([]);
+            expect(Person.afterFind.calls[0].args.result).toBeUndefined();
           });
         });
       });
@@ -1651,7 +1651,7 @@ export default (session) => {
         it('should be able to change the result', () => {
           Movie.afterUpdate = createHookSpy(({ result }) => {
             return {
-              numUpdated: result[0],
+              numUpdated: result,
             };
           });
 
@@ -1731,9 +1731,11 @@ export default (session) => {
                 expect(items.length).toBe(1);
                 expect(inputItems.length).toBe(1);
 
+                // The hook runs last, after the instance has been updated:
+                expect(items).toEqual([movie]);
                 expect(items).toContainSubset([
                   {
-                    name: 'Silver Linings Playbook',
+                    name: 'Updated',
                   },
                 ]);
 
@@ -2412,7 +2414,7 @@ export default (session) => {
         it('should be able to change the result', () => {
           Movie.afterDelete = createHookSpy(({ result }) => {
             return {
-              numDeleted: result[0],
+              numDeleted: result,
             };
           });
 
@@ -3010,8 +3012,8 @@ export default (session) => {
         it('should be able to change the result', () => {
           Movie.afterInsert = createHookSpy(({ result }) => {
             return {
-              someId: result[0].id,
-              someName: result[0].name,
+              someId: result.id,
+              someName: result.name,
             };
           });
 
@@ -3212,6 +3214,374 @@ export default (session) => {
                 expect(Person.afterInsert.calls.length).toBe(1);
               });
           });
+        });
+      });
+    });
+
+    describe('result', () => {
+      let jennifer;
+      let brad;
+      let calls;
+
+      beforeEach(async () => {
+        [jennifer, brad] = await Person.query().insertGraph([
+          {
+            name: 'Jennifer',
+            pets: [
+              { name: 'Doggo', species: 'dog' },
+              { name: 'Cato', species: 'cat' },
+            ],
+            movies: [{ name: 'Silver Linings Playbook' }],
+          },
+          { name: 'Brad' },
+        ]);
+
+        calls = [];
+
+        // Log the calls to the after hooks with their results, in call order.
+        for (const modelClass of [Person, Pet, Movie]) {
+          for (const name of ['afterFind', 'afterInsert', 'afterUpdate', 'afterDelete']) {
+            modelClass[name] = createHookSpy(({ result }) => {
+              calls.push({ hook: `${modelClass.tableName}.${name}`, result });
+            });
+          }
+        }
+      });
+
+      it('should be the model with `first()`', async () => {
+        const person = await Person.query().orderBy('name', 'desc').first();
+
+        expect(person.name).toBe('Jennifer');
+        expect(calls).toEqual([{ hook: 'people.afterFind', result: person }]);
+      });
+
+      it('should be the model with `findById()`', async () => {
+        const person = await Person.query().findById(jennifer.id);
+
+        expect(person.name).toBe('Jennifer');
+        expect(calls).toEqual([{ hook: 'people.afterFind', result: person }]);
+      });
+
+      it('should be undefined with `findById()` if nothing is found', async () => {
+        const person = await Person.query().findById(jennifer.id + brad.id);
+
+        expect(person).toBeUndefined();
+        expect(calls).toEqual([{ hook: 'people.afterFind', result: undefined }]);
+      });
+
+      it('should be the models with `page()`', async () => {
+        const page = await Person.query().orderBy('name', 'desc').page(0, 1);
+
+        expect(page.total).toBe(2);
+        expect(page.results.map((person) => person.name)).toEqual(['Jennifer']);
+        expect(calls).toEqual([{ hook: 'people.afterFind', result: page.results }]);
+      });
+
+      it('should be used as the input of `page()`', async () => {
+        Person.afterFind = ({ result }) => result.map((person) => person.name);
+
+        const page = await Person.query().orderBy('name', 'desc').page(0, 1);
+        expect(page).toEqual({ results: ['Jennifer'], total: 2 });
+      });
+
+      it('should be returned before `runAfter()` callbacks are called', async () => {
+        Person.afterFind = ({ result }) => result.name;
+        const results = [];
+
+        const name = await Person.query()
+          .context({ runAfter: (result) => results.push(result) && result })
+          .runAfter((result) => results.push(result) && result.toUpperCase())
+          .findById(jennifer.id);
+
+        expect(name).toBe('JENNIFER');
+        expect(results).toEqual(['Jennifer', 'Jennifer']);
+      });
+
+      it('should be used by `throwIfNotFound()`', async () => {
+        Person.afterFind = () => [];
+
+        await expect(Person.query().findById(jennifer.id).throwIfNotFound()).rejects.toThrow(
+          Person.NotFoundError,
+        );
+      });
+
+      it('should be the inserted model with `insert()`', async () => {
+        const person = await Person.query().insert({ name: 'Ada' });
+
+        expect(person.id).toBeTypeOf('number');
+        expect(calls).toEqual([{ hook: 'people.afterInsert', result: person }]);
+      });
+
+      it('should be the inserted models with `insert()` and an array', async () => {
+        const people = await Person.query().insert([{ name: 'Ada' }]);
+
+        expect(people).toHaveLength(1);
+        expect(calls).toEqual([{ hook: 'people.afterInsert', result: people }]);
+      });
+
+      it('should be the fetched model with `insertAndFetch()`, after the fetch', async () => {
+        const person = await Person.query().insertAndFetch({ name: 'Ada' });
+
+        expect(person.id).toBeTypeOf('number');
+        expect(calls).toEqual([
+          { hook: 'people.afterFind', result: [person] },
+          { hook: 'people.afterInsert', result: person },
+        ]);
+      });
+
+      it('should be the number of updated rows with `patch()`', async () => {
+        const numUpdated = await Person.query().patch({ name: 'Updated' });
+
+        expect(numUpdated).toBe(2);
+        expect(calls).toEqual([{ hook: 'people.afterUpdate', result: 2 }]);
+      });
+
+      it('should be the fetched model with `patchAndFetchById()`, after the fetch', async () => {
+        const person = await Person.query().patchAndFetchById(jennifer.id, { name: 'Updated' });
+
+        expect(person.name).toBe('Updated');
+        expect(calls).toEqual([
+          { hook: 'people.afterFind', result: person },
+          { hook: 'people.afterUpdate', result: person },
+        ]);
+      });
+
+      it('should be undefined with `patchAndFetchById()` if nothing is updated', async () => {
+        const id = jennifer.id + brad.id;
+        const person = await Person.query().patchAndFetchById(id, { name: 'Updated' });
+
+        expect(person).toBeUndefined();
+        expect(calls).toEqual([{ hook: 'people.afterUpdate', result: undefined }]);
+      });
+
+      it('should be the fetched model with `$query().patchAndFetch()`', async () => {
+        const person = await jennifer.$query().patchAndFetch({ name: 'Updated' });
+
+        expect(person.name).toBe('Updated');
+        expect(calls).toEqual([
+          { hook: 'people.afterFind', result: person },
+          { hook: 'people.afterUpdate', result: person },
+        ]);
+      });
+
+      it('should throw if `afterFind()` returns no model for `patchAndFetchById()`', async () => {
+        Person.afterFind = ({ result }) => result.name;
+
+        await expect(
+          Person.query().patchAndFetchById(jennifer.id, { name: 'Updated' }),
+        ).rejects.toThrow(
+          'Unable to merge the result of Person.afterFind() in patchAndFetch(): expected a model.',
+        );
+      });
+
+      it('should throw if `afterFind()` returns no models for `insertAndFetch()`', async () => {
+        Person.afterFind = ({ result }) => result.map((person) => person.name);
+
+        await expect(Person.query().insertAndFetch({ name: 'Ada' })).rejects.toThrow(
+          'Unable to merge the result of Person.afterFind() in insertAndFetch(): ' +
+            'expected an array of models.',
+        );
+      });
+
+      it('should be the number of deleted rows with `delete()`', async () => {
+        const numDeleted = await Pet.query().delete().where('name', 'Doggo');
+
+        expect(numDeleted).toBe(1);
+        expect(calls).toEqual([{ hook: 'pets.afterDelete', result: 1 }]);
+      });
+
+      it('should be the related models with `$relatedQuery()`', async () => {
+        const pets = await jennifer.$relatedQuery('pets').orderBy('name', 'desc');
+
+        expect(pets.map((pet) => pet.name)).toEqual(['Doggo', 'Cato']);
+        expect(calls).toEqual([{ hook: 'pets.afterFind', result: pets }]);
+      });
+
+      it('should be the related model with `$relatedQuery()` of a to-one relation', async () => {
+        const pet = await Pet.query().findOne({ name: 'Doggo' });
+        calls = [];
+
+        const owner = await pet.$relatedQuery('owner');
+        expect(owner.name).toBe('Jennifer');
+        expect(calls).toEqual([{ hook: 'people.afterFind', result: owner }]);
+      });
+
+      it('should be the related models of all owners in `withGraphFetched()`', async () => {
+        const people = await Person.query()
+          .withGraphFetched('pets')
+          .modifyGraph('pets', (builder) => builder.orderBy('name', 'desc').first())
+          .orderBy('name', 'desc');
+
+        expect(people.map((person) => person.pets.map((pet) => pet.name))).toEqual([['Doggo'], []]);
+        expect(calls).toEqual([
+          { hook: 'pets.afterFind', result: [people[0].pets[0]] },
+          { hook: 'people.afterFind', result: people },
+        ]);
+      });
+
+      it('should be the inserted model with `$relatedQuery().insert()`', async () => {
+        const pet = await brad.$relatedQuery('pets').insert({ name: 'Rob' });
+
+        expect(calls).toEqual([{ hook: 'pets.afterInsert', result: pet }]);
+      });
+
+      it('should be the value of `cancelQuery()` in the shape of the query', async () => {
+        Person.beforeFind = ({ cancelQuery }) => cancelQuery();
+
+        expect(await Person.query().first()).toBeUndefined();
+        expect(await Person.query().findById(jennifer.id)).toBeUndefined();
+        expect(await Person.query()).toEqual([]);
+        expect(calls).toEqual([
+          { hook: 'people.afterFind', result: undefined },
+          { hook: 'people.afterFind', result: undefined },
+          { hook: 'people.afterFind', result: [] },
+        ]);
+      });
+
+      it('should be the value of `resolve()` and `none()` in the shape of the query', async () => {
+        const person = Person.fromJson({ id: 1, name: 'Resolved' });
+
+        expect(await Person.query().resolve([person]).first()).toBe(person);
+        expect(await Person.query().none()).toEqual([]);
+        expect(calls).toEqual([
+          { hook: 'people.afterFind', result: person },
+          { hook: 'people.afterFind', result: [] },
+        ]);
+      });
+
+      it('should merge a single row given to `cancelQuery()` into the inserted model', async () => {
+        Person.beforeInsert = ({ cancelQuery }) => cancelQuery({ id: 42 });
+        queries = [];
+
+        const person = await Person.query().insert({ name: 'Ada' });
+        expect(person).toEqual(Person.fromJson({ id: 42, name: 'Ada' }));
+        expect(calls).toEqual([{ hook: 'people.afterInsert', result: person }]);
+        expect(queries).toHaveLength(0);
+      });
+
+      it('should not call the hooks of the root class for the outer `upsertGraph()` query', async () => {
+        Person.beforeFind = createHookSpy();
+
+        await Person.query().upsertGraph({ id: brad.id, name: 'Bradley' });
+
+        // The query that fetches the current graph calls the find hooks.
+        expect(Person.beforeFind.calls).toHaveLength(1);
+        expect(calls).toEqual([
+          { hook: 'people.afterFind', result: [expect.objectContaining({ id: brad.id })] },
+          { hook: 'people.afterUpdate', result: 1 },
+        ]);
+      });
+
+      it('should not call the hooks of the root class for the outer `insertGraph()` query', async () => {
+        const [person] = await Person.query().insertGraph([
+          { name: 'Ada', pets: [{ name: 'Rob' }] },
+        ]);
+
+        expect(calls).toEqual([
+          { hook: 'people.afterInsert', result: [person] },
+          { hook: 'pets.afterInsert', result: person.pets },
+        ]);
+      });
+
+      it('should not call `afterFind` of the root class in `fetchGraph()`', async () => {
+        const person = await Person.fetchGraph(jennifer.$clone(), 'pets');
+
+        expect(person.pets).toHaveLength(2);
+        expect(calls).toEqual([{ hook: 'pets.afterFind', result: person.pets }]);
+      });
+
+      describe('relate() and unrelate()', () => {
+        let ActorMovie;
+        let Actor;
+
+        beforeEach(() => {
+          ActorMovie = class extends Model {
+            static get tableName() {
+              return 'actorsMovies';
+            }
+          };
+
+          Actor = class extends Person {
+            static get relationMappings() {
+              return {
+                movies: {
+                  relation: Model.ManyToManyRelation,
+                  modelClass: Movie,
+                  join: {
+                    from: 'people.id',
+                    through: {
+                      modelClass: ActorMovie,
+                      from: 'actorsMovies.personId',
+                      to: 'actorsMovies.movieId',
+                    },
+                    to: 'movies.id',
+                  },
+                },
+              };
+            }
+          };
+
+          ActorMovie.knex(knex);
+        });
+
+        // The hooks of the query that relate() or unrelate() runs get the
+        // relation and the owners of the relate or unrelate query.
+        const spyOn = (modelClass, name) => {
+          modelClass[name] = createHookSpy(({ result, relation, items }) => {
+            calls.push({ hook: `${modelClass.tableName}.${name}`, result, relation, items });
+          });
+        };
+
+        it('should pass the relation and the owners to the related `afterUpdate()` of has many', async () => {
+          spyOn(Pet, 'afterUpdate');
+          const pet = await Pet.query().insert({ name: 'Rob' });
+          calls = [];
+
+          expect(await brad.$relatedQuery('pets').relate(pet.id)).toBe(1);
+          expect(await brad.$relatedQuery('pets').unrelate()).toBe(1);
+
+          const relation = Person.getRelation('pets');
+          expect(calls).toEqual([
+            { hook: 'pets.afterUpdate', result: 1, relation, items: [brad] },
+            { hook: 'pets.afterUpdate', result: 1, relation, items: [brad] },
+          ]);
+        });
+
+        it('should pass the relation and the owners to the owner `afterUpdate()` of belongs to one', async () => {
+          spyOn(Pet, 'afterUpdate');
+          const pet = await Pet.query().insert({ name: 'Rob' });
+          calls = [];
+
+          expect(await pet.$relatedQuery('owner').relate(brad.id)).toBe(1);
+          expect(await pet.$relatedQuery('owner').unrelate()).toBe(1);
+
+          const relation = Pet.getRelation('owner');
+          expect(calls).toEqual([
+            { hook: 'pets.afterUpdate', result: 1, relation, items: [pet] },
+            { hook: 'pets.afterUpdate', result: 1, relation, items: [pet] },
+          ]);
+        });
+
+        it('should pass the relation and the owners to the join model hooks of many to many', async () => {
+          spyOn(ActorMovie, 'afterInsert');
+          spyOn(ActorMovie, 'afterDelete');
+          const actor = Actor.fromJson({ id: brad.id, name: 'Brad' });
+          const movie = await Movie.query().insert({ name: 'Fight Club' });
+          calls = [];
+
+          expect(await actor.$relatedQuery('movies').relate(movie.id)).toBe(1);
+          expect(await actor.$relatedQuery('movies').unrelate()).toBe(1);
+
+          const relation = Actor.getRelation('movies');
+          expect(calls).toEqual([
+            {
+              hook: 'actorsMovies.afterInsert',
+              result: [expect.objectContaining({ personId: brad.id, movieId: movie.id })],
+              relation,
+              items: [actor],
+            },
+            { hook: 'actorsMovies.afterDelete', result: 1, relation, items: [actor] },
+          ]);
         });
       });
     });
