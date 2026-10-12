@@ -1845,6 +1845,14 @@ export interface SnakeCaseMappersOptions extends SnakeCaseOptions {
 
 export interface KnexSnakeCaseMappersOptions extends SnakeCaseOptions {}
 
+export type JsonColumnFormat = 'auto' | 'text' | 'parsed';
+
+// Passed by queries to `fromDatabaseJson()`, `$setDatabaseJson()` and
+// `$parseDatabaseJson()`. Overrides pass them on to `super`.
+export interface DatabaseJsonOptions {
+  knex?: Knex;
+}
+
 export interface ColumnNameMappers {
   parse(json: Pojo): Pojo;
   format(json: Pojo, isFieldExpression?: (key: string) => boolean): Pojo;
@@ -1970,6 +1978,7 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
   relatedFindQueryMutates: boolean;
   relatedInsertQueryMutates: boolean;
   useLimitInFirst: boolean;
+  jsonColumnFormat: JsonColumnFormat;
   modifiers: Modifiers;
   columnNameMappers: ColumnNameMappers;
 
@@ -1998,7 +2007,7 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
   ): QueryBuilderType<RM>;
 
   fromJson(json: object, opt?: ModelOptions): M;
-  fromDatabaseJson(json: object): M;
+  fromDatabaseJson(json: object, options?: DatabaseJsonOptions): M;
 
   columnNameToPropertyName(columnName: string): string;
   propertyNameToColumnName(propertyName: string): string;
@@ -2081,6 +2090,7 @@ export class Model {
   static relatedFindQueryMutates: boolean;
   static relatedInsertQueryMutates: boolean;
   static useLimitInFirst: boolean;
+  static jsonColumnFormat: JsonColumnFormat;
   static modifiers: Modifiers;
   static columnNameMappers: ColumnNameMappers;
 
@@ -2113,7 +2123,11 @@ export class Model {
   ): QueryBuilderType<RM>;
 
   static fromJson<M extends Model>(this: ConstructorType<M>, json: object, opt?: ModelOptions): M;
-  static fromDatabaseJson<M extends Model>(this: ConstructorType<M>, json: object): M;
+  static fromDatabaseJson<M extends Model>(
+    this: ConstructorType<M>,
+    json: object,
+    options?: DatabaseJsonOptions,
+  ): M;
 
   static columnNameToPropertyName(columnName: string): string;
   static propertyNameToColumnName(propertyName: string): string;
@@ -2202,7 +2216,7 @@ export class Model {
   ): Rebind<QueryBuilderType<this>, WithGraphModel<this, E>, WithGraphModel<this, E>>;
 
   $formatDatabaseJson(json: Pojo): Pojo;
-  $parseDatabaseJson(json: Pojo): Pojo;
+  $parseDatabaseJson(json: Pojo, options?: DatabaseJsonOptions): Pojo;
 
   $formatJson(json: Pojo, opt?: Pojo): Pojo;
   $parseJson(json: Pojo, opt?: ModelOptions): Pojo;
@@ -2224,7 +2238,7 @@ export class Model {
   toJSON(opt?: ToJsonOptions): ModelObject<this>;
 
   $setJson(json: object, opt?: ModelOptions): this;
-  $setDatabaseJson(json: object): this;
+  $setDatabaseJson(json: object, options?: DatabaseJsonOptions): this;
 
   $setRelated<RM extends Model>(
     relation: String | Relation,

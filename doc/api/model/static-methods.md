@@ -762,11 +762,14 @@ Creates a model instance from a JSON object send by the database driver.
 
 Unlike [fromJson](/api/model/static-methods.html#static-fromjson), this method doesn't validate the input. The input is expected to be in the database format as explained [here](/api/model/overview.html#model-data-lifecycle).
 
+Called by hand, the source of the row is unknown: unless [jsonColumnFormat](/api/model/static-properties.html#static-jsoncolumnformat) says otherwise, strings in [jsonAttributes](/api/model/static-properties.html#static-jsonattributes) that are valid JSON are parsed, and other strings are kept.
+
 ##### Arguments
 
 | Argument | Type   | Description     |
 | -------- | ------ | --------------- |
 | row      | Object | A database row. |
+| options  | Object | Optional. Passed by queries to parse the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes) depending on the driver. Overrides pass it on to `super`. |
 
 ##### Return value
 

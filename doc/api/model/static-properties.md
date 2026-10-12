@@ -371,6 +371,24 @@ The properties listed here are serialized to JSON strings upon insertion/update 
 
 If this property is left unset all properties declared as objects or arrays in the [jsonSchema](/api/model/static-properties.html#static-jsonschema) are implicitly added to this list.
 
+How they're parsed depends on [jsonColumnFormat](/api/model/static-properties.html#static-jsoncolumnformat).
+
+## `static` jsonColumnFormat
+
+```js
+class Person extends Model {
+  static get jsonColumnFormat() {
+    return 'text';
+  }
+}
+```
+
+How the database returns the columns of the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes):
+
+- `'auto'` (default): the PostgreSQL drivers (`pg`, `pgnative`, `cockroachdb`) return `json` and `jsonb` columns parsed, and their values are left as they are. With other drivers, and in rows passed to `fromDatabaseJson()` by hand, strings that are valid JSON are parsed and other strings are kept.
+- `'text'`: the columns hold JSON text, e.g. JSON in `text` columns on PostgreSQL, or on MariaDB. It is parsed with `JSON.parse()`, and invalid JSON throws an error.
+- `'parsed'`: the driver returns the columns parsed. Their values are never parsed.
+
 ## `static` cloneObjectAttributes
 
 ```js

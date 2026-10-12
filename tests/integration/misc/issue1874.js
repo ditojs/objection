@@ -13,7 +13,7 @@ export default (session) => {
         .createTable('issue1874_items', (table) => {
           table.integer('id').primary();
           table.boolean('flag');
-          table.text('data');
+          table.json('data');
         });
     });
 

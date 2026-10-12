@@ -230,7 +230,7 @@ class TestSession {
         this.createTable('model3', (table, { increments }) => {
           increments('id');
           table.string('model3Prop1');
-          table.text('model3JsonProp');
+          table.json('model3JsonProp');
         }),
       )
       .then(() =>

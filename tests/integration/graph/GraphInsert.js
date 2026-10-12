@@ -1094,7 +1094,7 @@ export default (session) => {
       await session.createTable('persons', (table, { increments }) => {
         increments('id');
         table.string('name');
-        table.text('data');
+        table.json('data');
       });
       await session.createTable('pets', (table, { increments }) => {
         increments('id');
