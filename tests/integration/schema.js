@@ -180,6 +180,36 @@ module.exports = (session) => {
           });
       });
 
+      it('join eager with selections of the table without schema', async () => {
+        const people = await Person.query(session.knex)
+          .select('Person.id', 'Person.name')
+          .where('Person.name', 'Arnold')
+          .withGraphJoined('pets');
+
+        expect(people).to.eql([
+          {
+            id: 1,
+            name: 'Arnold',
+            pets: [{ id: 1, name: 'Fluffy', ownerId: 1 }],
+          },
+        ]);
+      });
+
+      it('join eager should replace a select all of the table without schema', async () => {
+        // `withGraphJoined` builds its selections with the table metadata.
+        await Person.fetchTableMetadata({ knex: session.knex });
+        await Animal.fetchTableMetadata({ knex: session.knex });
+
+        const sql = Person.query(session.knex)
+          .select('Person.*')
+          .where('Person.name', 'Arnold')
+          .withGraphJoined('pets')
+          .toKnexQuery()
+          .toQuery();
+
+        expect(sql).to.not.contain('"Person".*');
+      });
+
       it('many-to-many $relatedQuery', () => {
         return Person.query(session.knex)
           .findOne('name', 'Arnold')
