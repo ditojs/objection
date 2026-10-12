@@ -1472,7 +1472,7 @@ Person.fromJson({ id: 1 }).$modelClass.query();
 // Each mapper factory only accepts the options it supports.
 () => {
   const options: objection.SnakeCaseMappersOptions = { upperCase: true, preserveJsonKeys: true };
-  objection.snakeCaseMappers(options);
+  objection.snakeCaseMappers(options).format({ 'ns:fooBar': 1 }, (key) => key !== 'ns:fooBar');
   const knexOptions: objection.KnexSnakeCaseMappersOptions = { upperCase: true };
   objection.knexSnakeCaseMappers(knexOptions);
   const shared: objection.SnakeCaseOptions = { noDoubleUnderscores: true };

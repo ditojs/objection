@@ -290,6 +290,19 @@ describe('utils', () => {
         });
       });
 
+      it('maps keys with a colon that are not field expressions as a whole', () => {
+        const mappers = snakeCaseMappers();
+        const isFieldExpression = (key) => key !== 'ns:fooBar';
+
+        expect(
+          mappers.format({ 'ns:fooBar': 1, 'jsonCol:someKey': 2, fooBar: 3 }, isFieldExpression),
+        ).toEqual({
+          'ns:foo_bar': 1,
+          'json_col:someKey': 2,
+          foo_bar: 3,
+        });
+      });
+
       it('combines preserving json keys with other options', () => {
         const mappers = snakeCaseMappers({ upperCase: true });
 

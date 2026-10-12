@@ -177,7 +177,7 @@ class Person extends Model {
 }
 ```
 
-The mappers don't know the schema, so the first `:` ends the converted part also in column names that contain a `:`. Columns with an underscore after the `:`, like `ns:foo_bar`, are read as `ns:fooBar`, but `ns:fooBar` is written to the column `ns:fooBar`. Set `preserveJsonKeys: false` for such columns, or rename them without underscores after the `:`. [knexSnakeCaseMappers](/api/objection/#knexsnakecasemappers) never converted the JSON keys and is unchanged.
+Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares in its `properties` are columns, not field expressions, and are converted as a whole. A column like `ns:foo_bar` is read as `ns:fooBar` and only written back to `ns:foo_bar` if the schema declares `ns:fooBar`. Declare such columns in the schema. [knexSnakeCaseMappers](/api/objection/#knexsnakecasemappers) never converted the JSON keys and is unchanged.
 
 # Migration from objection 2.x to 3.0
 

@@ -431,12 +431,14 @@ class Person extends Model {
       // database --> code
     },
 
-    format(obj) {
+    format(obj, isFieldExpression) {
       // code --> database
     }
   };
 }
 ```
+
+`format` gets a second argument, `isFieldExpression(key)`, which tells keys with a `:` that are [field expressions](/api/types/#type-fieldexpression) like `'jsonColumn:someKey'` apart from columns that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares, like `'ns:name'`. Mappers can ignore it.
 
 ## `static` uidProp
 

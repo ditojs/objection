@@ -1802,7 +1802,7 @@ export interface KnexSnakeCaseMappersOptions extends SnakeCaseOptions {}
 
 export interface ColumnNameMappers {
   parse(json: Pojo): Pojo;
-  format(json: Pojo): Pojo;
+  format(json: Pojo, isFieldExpression?: (key: string) => boolean): Pojo;
 }
 
 export interface SnakeCaseMappersFactory {
