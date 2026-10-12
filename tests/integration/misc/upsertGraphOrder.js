@@ -254,6 +254,109 @@ export default (session) => {
 
         expect(await selectPets()).toEqual([{ id: 2, name: 'b', ownerId: 1 }]);
       });
+
+      it('should move the current row to another owner before relating its replacement', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: null },
+          ]);
+
+          // Pet 1 moves from person 1 to 2, and pet 2 into its slot:
+          const people = [
+            { id: 1, onePet: { id: 2 } },
+            { id: 2, onePet: { id: 1 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            { id: 2, name: 'b', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should relate a row into a slot after its current row moves into a slot that a delete frees', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+            { id: 3, name: 'c', ownerId: null },
+          ]);
+
+          // Pet 2 is deleted, pet 1 moves into its slot, and pet 3 into pet 1's:
+          const people = [
+            { id: 1, onePet: { id: 3 } },
+            { id: 2, onePet: { id: 1 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            { id: 3, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should relate a row into a slot after its current row moves to a new owner', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: null },
+          ]);
+
+          // Pet 1 moves to the new person 3, and pet 2 into its slot:
+          const people = [
+            { id: 1, onePet: { id: 2 } },
+            { id: 3, onePet: { id: 1 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+            insertMissing: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 3 },
+            { id: 2, name: 'b', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should move a chain of rows between the slots of owners', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+            { id: 3, name: 'c', ownerId: null },
+          ]);
+          await knex('graph_order_person').insert({ id: 3, orgId: 1 });
+
+          // Pet 2 moves from person 2 to 3, pet 1 from person 1 to 2, and pet 3
+          // into the slot of person 1:
+          const people = [
+            { id: 1, onePet: { id: 3 } },
+            { id: 2, onePet: { id: 1 } },
+            { id: 3, onePet: { id: 2 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            { id: 2, name: 'b', ownerId: 3 },
+            { id: 3, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
     });
 
     describe('unique key with the foreign key of a HasManyRelation', () => {
