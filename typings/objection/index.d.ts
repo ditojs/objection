@@ -374,20 +374,30 @@ declare namespace Objection {
 
   /**
    * Converts the query builder NQB to the same result kind as QB:
-   * array, single, maybe-single or page. Any other result type, e.g. after
+   * array, page, single or maybe-single. Any other result type, e.g. after
    * `castTo()` or `patch()`, falls back to QB, without narrowing.
+   * QB's model type M and result type R are separate parameters so that QB
+   * only appears in the result, and TypeScript can relate the kinds of two
+   * query builders, e.g. of a custom query builder and its base class, through
+   * QB alone. The page and `object` checks come before the single ones, so
+   * that results like `number` or `Page<M>` are ruled out for a generic M too.
    */
-  type WithResultKind<QB extends AnyQueryBuilder, NQB extends AnyQueryBuilder> = [
-    ResultType<QB>,
-  ] extends [ModelType<QB>[]]
+  type WithResultKind<
+    QB extends AnyQueryBuilder,
+    NQB extends AnyQueryBuilder,
+    M extends Model = ModelType<QB>,
+    R = ResultType<QB>,
+  > = [R] extends [M[]]
     ? ArrayQueryBuilder<NQB>
-    : [ResultType<QB>] extends [ModelType<QB>]
-      ? SingleQueryBuilder<NQB>
-      : [ResultType<QB>] extends [ModelType<QB> | undefined]
-        ? MaybeSingleQueryBuilder<NQB>
-        : [ResultType<QB>] extends [Page<ModelType<QB>>]
-          ? PageQueryBuilder<NQB>
-          : QB;
+    : [R] extends [Page<M>]
+      ? PageQueryBuilder<NQB>
+      : [R] extends [object | undefined]
+        ? [R] extends [M]
+          ? SingleQueryBuilder<NQB>
+          : [R] extends [M | undefined]
+            ? MaybeSingleQueryBuilder<NQB>
+            : QB
+        : QB;
 
   /**
    * If T is an array, returns the item type, otherwise returns T.
@@ -1032,14 +1042,9 @@ declare namespace Objection {
     (...args: ReturningArgs): QueryBuilder<M, any[]>;
   }
 
-  /**
-   * `QB extends unknown` defers the type for the polymorphic `this` of
-   * `relate()`, so that custom query builders that override methods like
-   * `withGraph()` still satisfy AnyQueryBuilder.
-   */
-  type RelateQueryBuilder<QB extends AnyQueryBuilder> = QB extends unknown
-    ? { returning: RelateReturningMethod<ModelType<QB>> } & NumberQueryBuilder<QB>
-    : never;
+  type RelateQueryBuilder<QB extends AnyQueryBuilder> = {
+    returning: RelateReturningMethod<ModelType<QB>>;
+  } & NumberQueryBuilder<QB>;
 
   interface TimeoutOptions {
     cancel: boolean;
