@@ -16,7 +16,7 @@ This section lists the breaking changes in objection 4.0.
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
-- [`update` rejects field expression keys](#update-rejects-field-expression-keys)
+- [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 
 ## objection is an ES module package
@@ -147,9 +147,9 @@ To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, 
 
 The type parameter of `RelateQueryBuilder` is the number query builder that `relate()` returns, instead of the query builder `relate()` is called on. Custom query builders that override `relate()` with an explicit return type use `RelateQueryBuilder<NumberQueryBuilder<this>>` instead of `RelateQueryBuilder<this>`.
 
-## `update` rejects field expression keys
+## `insert` and `update` reject field expression keys
 
-[update](/api/query-builder/mutate-methods.html#update) replaces whole values, so it throws a [ValidationError](/api/types/#class-validationerror) of type `ModelValidation` for [field expression](/api/types/#type-fieldexpression) keys like `'meta:color'`, which write parts of json columns. 3.x wrote them with `jsonb_set`. Use [patch](/api/query-builder/mutate-methods.html#patch) for them:
+[insert](/api/query-builder/mutate-methods.html#insert) and [update](/api/query-builder/mutate-methods.html#update) write whole values, so they throw a [ValidationError](/api/types/#class-validationerror) of type `ModelValidation` for [field expression](/api/types/#type-fieldexpression) keys like `'meta:color'`, which write parts of json columns. 3.x `update` wrote them with `jsonb_set`, and 3.x `insert` passed them to the database as column names. Use [patch](/api/query-builder/mutate-methods.html#patch) for them:
 
 ```js
 // Before:
@@ -159,7 +159,7 @@ await Person.query().update({ name: 'Jennifer', 'meta:color': 'red' }).where('id
 await Person.query().patch({ name: 'Jennifer', 'meta:color': 'red' }).where('id', 1);
 ```
 
-Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares in its `properties`, like `'ns:name'`, are normal properties and columns, and `update` writes them as before.
+Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares in its `properties`, like `'ns:name'`, are normal properties and columns, and `insert` and `update` write them as before. To insert into a column with a `:` in its name, declare it in the schema.
 
 ## `snakeCaseMappers` keeps the JSON keys of field expressions
 

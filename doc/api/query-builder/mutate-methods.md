@@ -24,6 +24,8 @@ other databases also, but you only get the id of the first (or last) inserted ob
 as a result. If you need batch insert on other databases you can use knex directly
 through [knexQuery](/api/model/static-methods.html#static-knexquery).
 
+`insert` writes whole values, so it rejects [FieldExpressions](/api/types/#type-fieldexpression) like `'meta:a.b'` that write parts of a json column with a [ValidationError](/api/types/#class-validationerror). Use [patch](/api/query-builder/mutate-methods.html#patch) for them. Keys with a `:` that the schema declares in `properties` are normal properties and columns, not field expressions.
+
 Relations in the inserted objects are ignored: `insert` only inserts the columns of the model's own table. Use [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) to insert related objects too. In TypeScript, the data type (`PartialModelObject`) accepts nested relation data, so this isn't reported as a type error.
 
 ##### Arguments

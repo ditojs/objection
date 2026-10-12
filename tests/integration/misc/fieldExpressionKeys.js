@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Model, ValidationError, snakeCaseMappers, raw, ref } from 'objection';
 
 export default (session) => {
-  describe('keys with a colon in patch(), update() and merge() data', () => {
+  describe('keys with a colon in insert(), patch(), update() and merge() data', () => {
     let knex = session.knex;
     let Item;
 
@@ -115,6 +115,37 @@ export default (session) => {
       expect(row['ns:name']).toBe('a');
     });
 
+    it('insert() should reject undeclared keys with a colon', async () => {
+      class SchemalessItem extends Model {
+        static get tableName() {
+          return 'field_expression_keys';
+        }
+      }
+
+      const expectRejected = async (query, keys) => {
+        const err = await query.catch((err) => err);
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.type).toBe('ModelValidation');
+        expect(Object.keys(err.data)).toEqual(keys);
+      };
+
+      await expectRejected(
+        Item.query().insert({ id: 2, 'ns:name': 'b', 'meta:color': 'red', 'meta:size': ref('id') }),
+        ['meta:color', 'meta:size'],
+      );
+      await expectRejected(Item.fromJson({ id: 2, 'meta:color': 'red' }).$query().insert(), [
+        'meta:color',
+      ]);
+      await expectRejected(Item.query().insertGraph({ id: 2, 'meta:color': 'red' }), [
+        'meta:color',
+      ]);
+      await expectRejected(SchemalessItem.query(knex).insert({ id: 2, 'ns:name': 'b' }), [
+        'ns:name',
+      ]);
+
+      expect(await knex('field_expression_keys').where('id', 2)).toEqual([]);
+    });
+
     it('patch() should write a declared key with a colon mapped by snakeCaseMappers', async () => {
       class SnakeCaseItem extends Item {
         static get columnNameMappers() {
@@ -193,6 +224,15 @@ export default (session) => {
           SchemalessItem.fromJson({ id: 2, 'ns:': raw('?', 'x') }),
         );
         expect(await fetchValue(2)).toBe('x');
+      });
+
+      it('insert(), update() and patch() should write a key with a colon that is not a field expression', async () => {
+        await SchemalessItem.query(knex).insert({ id: 2, 'ns:': 'x' });
+        expect(await fetchValue(2)).toBe('x');
+        await SchemalessItem.query(knex).update({ id: 2, 'ns:': 'y' }).where('id', 2);
+        expect(await fetchValue(2)).toBe('y');
+        await SchemalessItem.query(knex).patch({ 'ns:': 'z' }).where('id', 2);
+        expect(await fetchValue(2)).toBe('z');
       });
 
       it('upsertGraph() should fetch a key with a colon that is not a field expression', async () => {
