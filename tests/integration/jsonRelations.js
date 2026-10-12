@@ -252,6 +252,31 @@ module.exports = (session) => {
             });
           });
       });
+
+      it('limitPerParent', async () => {
+        // Chuck's json differs from Arnold's, but holds the same key.
+        const fluffy = await Animal.query().findOne({ name: 'Fluffy' });
+        await Person.query().insert({
+          name: 'Chuck',
+          json: { stuff: { favoritePetId: fluffy.id }, nickname: 'Chucky' },
+        });
+
+        const animals = await Animal.query()
+          .select('name', 'id')
+          .withGraphFetched('peopleWhoseFavoriteIAm(first)', { limitPerParent: true })
+          .modifiers({ first: (query) => query.select('name').orderBy('name').limit(1) })
+          .orderBy('name');
+
+        expect(
+          animals.map((animal) => ({
+            name: animal.name,
+            people: animal.peopleWhoseFavoriteIAm.map((person) => person.name),
+          })),
+        ).to.eql([
+          { name: 'Cato', people: ['Brad'] },
+          { name: 'Fluffy', people: ['Arnold'] },
+        ]);
+      });
     });
 
     describe('$relatedQuery', () => {
