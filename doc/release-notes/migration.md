@@ -30,6 +30,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype)
 - [typescript: Model.jsonSchema is a readonly schema](#typescript-model-jsonschema-is-a-readonly-schema)
 - [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
+- [typescript: Queries are checked against the models](#typescript-queries-are-checked-against-the-models)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -306,6 +307,27 @@ function insertPerson(data: PartialModelRow<Person>) {
 ```
 
 Custom query builders that override these methods use `PartialModelRow<M>` for the data instead of `PartialModelObject<M>`.
+
+## typescript: Queries are checked against the models
+
+The typings check the column names and values of queries against the models: `where('firstNme', …)`, `where('age', 'thirty')` or `withGraphFetched('petz')` are type errors. See [Checking queries in TypeScript](/guide/models.html#checking-queries-in-typescript) for the rules. Code that the checks reject:
+
+- Column names in variables typed `string`: pass them with `ref(column)`, or type them as a union of the model's columns.
+- Columns of other queries, e.g. of an outer query in a subquery, and aliases of selections in `orderBy()` or `having()`: use `ref('persons.id')`.
+- Columns that the model doesn't declare as properties: declare them, or use `ref()` / `raw()`.
+- Column methods after `withGraphFetched()` / `withGraphJoined()` on a generic query builder, e.g. `this.$query().withGraphFetched('pets').where('id', this.id)` in a model method: TypeScript resolves the narrowed query builder to a union there, which only takes `ref()` / `raw()` columns, e.g. `where(ref('id'), this.id)`.
+
+`ModelObject`, `PartialModelObject` and the other property types leave out properties starting with `$`, which objection treats as internal, like `toJSON()` does. Properties like `$app` declared on models aren't columns either.
+
+To keep the typings of 3.x, opt out of the checks:
+
+```ts
+declare module 'objection' {
+  interface TypeConfig {
+    strict: false;
+  }
+}
+```
 
 ## `insert` and `update` reject field expression keys
 

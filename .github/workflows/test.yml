@@ -53,7 +53,9 @@ jobs:
       # is enough.
       - name: Check the typings with TypeScript 5.8
         if: matrix.node-version == '24.x' && matrix.database == 'default'
-        run: pnpm dlx --package=typescript@5.8.3 tsc
+        run: |
+          pnpm dlx --package=typescript@5.8.3 tsc
+          pnpm dlx --package=typescript@5.8.3 tsc -p tests/ts/strict
 
       # Cache the database images, as their registries rate limit anonymous
       # pulls. The month in the key picks up updates of their floating tags.
