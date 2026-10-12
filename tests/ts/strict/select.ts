@@ -126,3 +126,84 @@ async function indexSignature() {
   const row: Record<string, unknown> = (await Person.query().select('id', 'firstName as name'))[0];
   const counts: Record<string, unknown> | undefined = await Person.query().count('id as n').first();
 }
+
+async function distinctOn() {
+  // distinctOn() checks its columns, but doesn't select them.
+  const all = await Person.query().distinctOn('id');
+  all[0].firstName;
+  const selected = await Person.query().distinctOn('id').select('firstName');
+  selected[0].firstName;
+  // @ts-expect-error not selected
+  selected[0].id;
+  // @ts-expect-error
+  await Person.query().distinctOn('nme');
+}
+
+async function clearSelect() {
+  // clearSelect() selects all columns again.
+  const cleared = await Person.query().select('id as key').clearSelect();
+  cleared[0].firstName;
+  // @ts-expect-error not selected
+  cleared[0].key;
+  const reselected = await Person.query().select('id').clearSelect().select('firstName');
+  reselected[0].firstName;
+  // @ts-expect-error not selected
+  reselected[0].id;
+  const first = await Person.query().count('id as n').clearSelect().first();
+  type _first = Expect<Equal<typeof first, Person | undefined>>;
+  const custom = CustomPerson.query().select('id').clearSelect().someCustomMethod();
+  (await custom)[0].firstName;
+}
+
+async function jsonExtract() {
+  // jsonExtract() adds its alias, of unknown type, to all columns or to the
+  // selected ones, before or after select().
+  const extracted = await Person.query().jsonExtract('address', '$.street', 'street');
+  type _street = Expect<Equal<(typeof extracted)[number]['street'], unknown>>;
+  extracted[0].firstName;
+  const before = await Person.query().jsonExtract('address', '$.street', 'street').select('id');
+  before[0].street;
+  // @ts-expect-error not selected
+  before[0].firstName;
+  const after = await Person.query().select('id').jsonExtract('address', '$.street', 'street');
+  after[0].street;
+  // @ts-expect-error not selected
+  after[0].firstName;
+  await Person.query().jsonExtract('address', '$.street', 'street').orderBy('street');
+  // @ts-expect-error
+  await Person.query().jsonExtract('address', '$.street', 'street').orderBy('town');
+  const row: Record<string, unknown> = after[0];
+  // It survives clearSelect(), as it isn't a select, and withGraph*().
+  const cleared = await Person.query().jsonExtract('address', '$.street', 'street').clearSelect();
+  cleared[0].street;
+  const clearedBefore = await Person.query()
+    .jsonExtract('address', '$.street', 'street')
+    .select('id')
+    .clearSelect();
+  clearedBefore[0].street;
+  clearedBefore[0].firstName;
+  const clearedAfter = await Person.query()
+    .select('id')
+    .jsonExtract('address', '$.street', 'street')
+    .clearSelect()
+    .first();
+  type _clearedAfter = Expect<Equal<NonNullable<typeof clearedAfter>['street'], unknown>>;
+  clearedAfter?.firstName;
+  const fetched = await Person.query()
+    .jsonExtract('address', '$.street', 'street')
+    .withGraphFetched('pets');
+  fetched[0].street;
+  fetched[0].pets.length;
+  const joined = await Person.query()
+    .jsonExtract('address', '$.street', 'street')
+    .withGraphJoined('pets')
+    .first()
+    .throwIfNotFound();
+  joined.street;
+  joined.pets.length;
+  // Extractions without aliases add any properties.
+  const unnamed = await Person.query()
+    .select('id')
+    .jsonExtract([['address', '$.street']]);
+  unnamed[0].street;
+}

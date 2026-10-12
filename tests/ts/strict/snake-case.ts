@@ -55,6 +55,8 @@ async function queries() {
   rows[0].mainUrl.toUpperCase();
   // @ts-expect-error
   rows[0].first_name;
+  // @ts-expect-error not selected
+  rows[0].createdAt;
   // orderBy() takes the aliases as written in SQL.
   await Person.query().select('home_url as main_url').orderBy('main_url');
   // @ts-expect-error
@@ -98,6 +100,8 @@ async function upperCase() {
   const rows = await UpperModel.query().select('FIRST_NAME', 'ID as RECORD_ID');
   rows[0].firstName.toUpperCase();
   rows[0].recordId.toFixed();
+  // @ts-expect-error not selected
+  rows[0].id;
   await UpperModel.query().select('ID as RECORD_ID').orderBy('RECORD_ID');
 }
 

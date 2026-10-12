@@ -24,6 +24,8 @@ declare const relationKind: unique symbol;
 declare const generated: unique symbol;
 // Phantom brand of the rows narrowed by `select()`, holding their SQL aliases.
 declare const selected: unique symbol;
+// Phantom brand of the rows with `jsonExtract()` aliases.
+declare const extracted: unique symbol;
 
 export const raw: RawFunction;
 export const val: ValueFunction;
@@ -418,8 +420,9 @@ type WithGraphResult<R, T> = R extends readonly (infer I)[]
 /**
  * Converts the query builder NQB to the same result kind as QB:
  * array, page, single or maybe-single. Rows that `select()` narrowed in
- * strict mode get the relations of tree T. Any other result type, e.g. after
- * `castTo()` or `patch()`, falls back to QB, without narrowing.
+ * strict mode or that have `jsonExtract()` values get the relations of tree T
+ * instead. Any other result type, e.g. after `castTo()` or `patch()`, falls
+ * back to QB, without narrowing.
  * QB's model type M and result type R are separate parameters so that QB
  * only appears in the result, and TypeScript can relate the kinds of two
  * query builders, e.g. of a custom query builder and its base class, through
@@ -432,17 +435,19 @@ export type WithResultKind<
   M extends Model = ModelType<QB>,
   R = ResultType<QB>,
   T = {},
-> = [R] extends [M[]]
-  ? ArrayQueryBuilder<NQB>
-  : [R] extends [Page<M>]
-    ? PageQueryBuilder<NQB>
-    : [R] extends [object | undefined]
-      ? [R] extends [M]
-        ? SingleQueryBuilder<NQB>
-        : [R] extends [M | undefined]
-          ? MaybeSingleQueryBuilder<NQB>
-          : Rebind<QB, M, WithGraphResult<R, T>>
-      : QB;
+> = [R] extends [ExtractedRows]
+  ? Rebind<QB, M, WithGraphResult<R, T>>
+  : [R] extends [M[]]
+    ? ArrayQueryBuilder<NQB>
+    : [R] extends [Page<M>]
+      ? PageQueryBuilder<NQB>
+      : [R] extends [object | undefined]
+        ? [R] extends [M]
+          ? SingleQueryBuilder<NQB>
+          : [R] extends [M | undefined]
+            ? MaybeSingleQueryBuilder<NQB>
+            : Rebind<QB, M, WithGraphResult<R, T>>
+        : QB;
 
 /**
  * The item of the result R of a query for model M, which `first()`,
@@ -1027,24 +1032,54 @@ type StrictSelectionObject<M, O> = {
 /**
  * The query builder QB with its result rows narrowed to the properties P in
  * strict mode, next to the model's methods and relations, as after `select()`
- * and the aggregates, marked as Selected. Repeated selections add up. Queries
+ * and the aggregates, marked with SelectedBrand. Repeated selections add up. Queries
  * that aren't checked, e.g. in generic code, aren't narrowed.
  */
-type NarrowRows<QB extends AnyQueryBuilder, P, All extends boolean = false> = IfStrict<
+type NarrowRows<QB extends AnyQueryBuilder, P, All extends boolean = false> = RowsQueryBuilder<
+  QB,
+  SelectBase<ResultItem<ResultType<QB>, ModelType<QB>>, ModelType<QB>, All> & P & SelectedBrand<{}>
+>;
+
+/**
+ * The query builder QB with the item of its result replaced by Row in strict
+ * mode. Queries that aren't checked keep their rows.
+ */
+type RowsQueryBuilder<QB extends AnyQueryBuilder, Row> = IfStrict<
   QB,
   IsConcreteModel<ModelType<QB>> extends true
-    ? Rebind<
-        QB,
-        ModelType<QB>,
-        SelectResult<
-          ResultType<QB>,
-          SelectBase<ResultItem<ResultType<QB>, ModelType<QB>>, ModelType<QB>, All> &
-            P &
-            SelectedBrand<{}>
-        >
-      >
+    ? Rebind<QB, ModelType<QB>, SelectResult<ResultType<QB>, Row>>
     : QB
 >;
+
+/**
+ * The query builder QB after `clearSelect()`, which selects all columns again,
+ * next to the values of `jsonExtract()`.
+ */
+type ClearSelectQueryBuilder<QB extends AnyQueryBuilder> =
+  ResultItem<ResultType<QB>, ModelType<QB>> extends infer Item
+    ? Item extends SelectedBrand<unknown>
+      ? RowsQueryBuilder<
+          QB,
+          ModelType<QB> &
+            (Item extends ExtractedBrand<infer A>
+              ? ExtractedProperties<ModelType<QB>, keyof A & string>
+              : {})
+        >
+      : QB
+    : never;
+
+/**
+ * The query builder QB after `jsonExtract()` with the alias A, which adds the
+ * extracted value to the rows. It isn't a select, so it doesn't narrow them.
+ */
+type JsonExtractQueryBuilder<QB extends AnyQueryBuilder, A extends string> = RowsQueryBuilder<
+  QB,
+  ResultItem<ResultType<QB>, ModelType<QB>> & ExtractedProperties<ModelType<QB>, A>
+>;
+
+type ExtractedProperties<M, A extends string> = {
+  [K in ResultKey<M, A>]: unknown;
+} & ExtractedBrand<{ [K in A]: true }>;
 
 /**
  * The query builder QB after selecting C. Selections of all columns keep the
@@ -1109,6 +1144,17 @@ type AggregateType<M, Col extends string, V extends AggregateValue> = V extends 
 export type SelectedBrand<A> = { readonly [selected]: A };
 
 /**
+ * The rows with values of `jsonExtract()` carry their SQL aliases A apart from
+ * SelectedBrand, as they aren't narrowed.
+ */
+export type ExtractedBrand<A> = { readonly [extracted]: A };
+
+// The results whose rows have `jsonExtract()` values, which `withGraph*()`
+// keeps instead of converting the result kind:
+type ExtractedRows =
+  ExtractedBrand<unknown>[] | Page<ExtractedBrand<unknown>> | ExtractedBrand<unknown> | undefined;
+
+/**
  * The base of the rows of a selection: the model without its columns for the
  * first one, the rows selected so far for further ones, and the model's
  * columns too when selecting all of them.
@@ -1117,7 +1163,7 @@ type SelectBase<Item, M, All extends boolean> = All extends true
   ? M & Item
   : Item extends SelectedBrand<unknown>
     ? Item
-    : Omit<Item, ColumnName<M>>;
+    : Omit<Item, InsertablePropertyNames<M>>;
 
 // Selections that can't be resolved, e.g. raw ones, add any properties of
 // unknown types, under any aliases.
@@ -1187,8 +1233,9 @@ type CamelCase<S extends string> = S extends `${infer H}_${infer T}`
  * columns.
  */
 type OutputColumn<QB extends AnyQueryBuilder> =
-  ResultItem<ResultType<QB>, ModelType<QB>> extends SelectedBrand<infer A>
-    ? keyof A & string
+  ResultItem<ResultType<QB>, ModelType<QB>> extends infer Item
+    ? | (Item extends SelectedBrand<infer A> ? keyof A & string : never)
+      | (Item extends ExtractedBrand<infer A> ? keyof A & string : never)
     : never;
 
 /**
@@ -1279,17 +1326,26 @@ export interface JsonExtraction {
   singleValue?: boolean;
 }
 
+// Extractions without an alias, or with several, add any properties.
 export interface JsonExtract<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB, const C extends string = never>(
+  <QBP extends QB, const C extends string = never, const A extends string = string>(
     column: ColumnArg<ModelType<QBP>, C>,
     path: string,
-    alias?: string,
+    alias?: A,
     singleValue?: boolean,
-  ): QB;
+  ): JsonExtractQueryBuilder<QBP, A>;
 
-  (column: RefArg<QB>, path: string, alias?: string, singleValue?: boolean): QB;
-  (column: JsonExtraction[] | any[][], singleValue?: boolean): QB;
+  <QBP extends QB, const A extends string = string>(
+    column: RefArg<QBP>,
+    path: string,
+    alias?: A,
+    singleValue?: boolean,
+  ): JsonExtractQueryBuilder<QBP, A>;
+  <QBP extends QB>(
+    column: JsonExtraction[] | any[][],
+    singleValue?: boolean,
+  ): JsonExtractQueryBuilder<QBP, string>;
 }
 
 export interface JsonSet<out QB extends AnyQueryBuilder> {
@@ -1734,6 +1790,10 @@ export interface HasMethod {
   (selector: string | RegExp): boolean;
 }
 
+export interface ClearSelectMethod<out QB extends AnyQueryBuilder> {
+  <QBP extends QB>(): ClearSelectQueryBuilder<QBP>;
+}
+
 export interface ClearMethod<out QB extends AnyQueryBuilder> {
   (selector: string | RegExp): QB;
 }
@@ -1962,7 +2022,8 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   columns: SelectMethod<this>;
   column: SelectMethod<this>;
   distinct: SelectMethod<this>;
-  distinctOn: SelectMethod<this>;
+  // distinctOn() takes columns like groupBy(), and doesn't select them.
+  distinctOn: GroupByMethod<this>;
   as: AsMethod<this>;
 
   from: FromMethod<this>;
@@ -2285,7 +2346,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   has: HasMethod;
   clear: ClearMethod<this>;
 
-  clearSelect: IdentityMethod<this>;
+  clearSelect: ClearSelectMethod<this>;
   clearOrder: IdentityMethod<this>;
   clearWhere: IdentityMethod<this>;
   clearWithGraph: IdentityMethod<this>;
