@@ -119,6 +119,11 @@ When `upsertGraph()` deletes the related row of a `BelongsToOneRelation` because
 
 In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the current model when the graph only holds a model that it ignores: a model marked with `#unrelate` or `#delete` that isn't the current one, or a replacement that `noInsert` or `noRelate` skips. The relation is left as if it wasn't in the graph, as for `BelongsToOneRelation` since 3.9. 3.x deleted or unrelated the current model. To remove the current model, mark it with its own id, like `{ pet: { id: 1, '#delete': true } }`, or pass `pet: null`. To-many relations are unchanged: an array is the full list, so `pets: [{ id: 2, '#delete': true }]` still removes the current pets.
 
+## offset() in updates and deletes throws
+
+`update()`, `patch()` and `delete()` throw an error for `offset()` when the query is executed. knex leaves the offset out of these statements, and on SQL Server the limit too, so they modified other rows than the offset asked for. 3.9 logged a warning. On MySQL, `delete()` also throws for `orderBy()` together with `limit()`, as knex leaves out the order but keeps the limit, so the limit deleted rows in any order. Fetch the ids of the rows to modify in a separate query and filter by them with `whereIn()`, or drop the offset if it was never applied. A many-to-many `patch()` / `update()` with join table extras on MySQL and SQL Server already selects the related rows first, so it honours the offset and doesn't throw.
+
+
 ## typescript: The typings are ES module declarations
 
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { inheritModel } from '../../lib/model/inheritModel.js';
 import { expectPartialEqual as expectPartEql, delay } from '../../testUtils/testUtils.js';
 import { ValidationError, raw } from 'objection';
-import { resetWarnings } from '../../lib/utils/warnings.js';
 
 export default (session) => {
   let Model1 = session.models.Model1;
@@ -140,38 +139,19 @@ export default (session) => {
           });
       });
 
-      it('should warn about an offset, as knex leaves it out', async () => {
-        // The warning is only observable through `console.warn()`.
-        const warnings = [];
-        const originalWarn = console.warn;
-        console.warn = (message) => warnings.push(message);
-        resetWarnings();
+      it('should throw for an offset, as knex leaves it out', async () => {
+        const message = 'offset() is not supported in update queries, as knex leaves it out.';
+        const query = () => Model1.query().update({ model1Prop1: 'updated text' }).offset(1);
 
-        try {
-          const query = () => Model1.query().update({ model1Prop1: 'updated text' }).offset(1);
+        // Building the query doesn't throw, only executing it.
+        query().toKnexQuery().toString();
+        await expect(query()).rejects.toThrow(message);
+        await expect(
+          Model1.query().patch({ model1Prop1: 'patched text' }).offset(1),
+        ).rejects.toThrow(message);
 
-          // Building the query doesn't warn, only executing it.
-          query().toKnexQuery().toString();
-          expect(warnings).toHaveLength(0);
-
-          await query();
-          expect(warnings).toEqual([
-            '[objection] offset() has no effect in update queries, so no rows are skipped, and on ' +
-              'SQL Server limit() is ignored too. This will throw an error in objection 4.0.',
-          ]);
-
-          resetWarnings();
-          await Model1.query().patch({ model1Prop1: 'patched text' }).offset(1);
-          expect(warnings).toHaveLength(2);
-
-          // An update without an offset doesn't warn.
-          resetWarnings();
-          await Model1.query().patch({ model1Prop1: 'patched text' });
-          expect(warnings).toHaveLength(2);
-        } finally {
-          console.warn = originalWarn;
-          resetWarnings();
-        }
+        const rows = await session.knex('Model1').orderBy('id');
+        expect(rows.map((row) => row.model1Prop1)).toEqual(['hello 1', 'hello 2', 'hello 3']);
       });
 
       it('should validate', () => {
