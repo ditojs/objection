@@ -3779,6 +3779,39 @@ module.exports = (session) => {
           ]);
         });
 
+        it('should move a HasMany row below a related model instead of deleting it', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            {
+              id: 2,
+              model1Relation1: { id: 1, model1Relation2: [{ idCol: 1, model2Prop1: 'moved' }] },
+              model1Relation2: [{ idCol: 2 }],
+            },
+            { relate: true, fetchStrategy },
+          );
+
+          const rows = await session.knex('model2').orderBy('id_col');
+
+          chai.expect(rows.map((row) => [row.id_col, row.model1_id, row.model2_prop1])).to.eql([
+            [1, 1, 'moved'],
+            [2, 2, 'hasMany 2'],
+          ]);
+        });
+
+        it('should delete a HasMany row that is marked with #delete below a related model', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            {
+              id: 2,
+              model1Relation1: { id: 1, model1Relation2: [{ idCol: 1, '#delete': true }] },
+              model1Relation2: [{ idCol: 2 }],
+            },
+            { relate: true, allowMarkers: true, fetchStrategy },
+          );
+
+          const rows = await session.knex('model2').orderBy('id_col');
+
+          chai.expect(rows.map((row) => row.id_col)).to.eql([2]);
+        });
+
         it('should unrelate a ManyToMany row that is related elsewhere instead of deleting it', async () => {
           await Model1.query(session.knex).upsertGraph(
             {
