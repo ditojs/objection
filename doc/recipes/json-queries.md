@@ -4,7 +4,7 @@ You can use the [ref](/api/objection/#ref) function from the main module to refe
 
 See [FieldExpression](/api/types/#type-fieldexpression) for more information about how to refer to json fields.
 
-Json field expressions in `ref()` and `'column:path'` keys in `patch()` and `merge()` work on PostgreSQL, MySQL and SQLite: objection writes the SQL of each database, e.g. `"column"#>'{a,b}'` on PostgreSQL, ``JSON_EXTRACT(`column`, '$."a"."b"')`` on MySQL and ``json_extract(`column`, '$."a"."b"')`` on SQLite, and `jsonb_set()`, `JSON_SET()` and `json_set()` for patches. The `whereJson*()` methods of objection only work on PostgreSQL so far, and throw an error on MySQL and SQLite. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array are passed on to knex, which supports them there. On SQL Server and Oracle, json field expressions throw an error, and on other databases they log a warning and use the SQL of PostgreSQL. Use the JSON methods of knex there, like [whereJsonPath()](https://knexjs.org/guide/query-builder.html#wherejsonpath) and [jsonExtract()](https://knexjs.org/guide/query-builder.html#jsonextract).
+Json field expressions in `ref()`, `'column:path'` keys in `patch()` and `merge()` and the `whereJson*()` methods of objection work on PostgreSQL, MySQL and SQLite: objection writes the SQL of each database, e.g. `"column"#>'{a,b}'` on PostgreSQL, ``JSON_EXTRACT(`column`, '$."a"."b"')`` on MySQL and ``json_extract(`column`, '$."a"."b"')`` on SQLite, and `jsonb_set()`, `JSON_SET()` and `json_set()` for patches. SQLite has no json containment, so `whereJsonSupersetOf()` and `whereJsonSubsetOf()` throw an error there. On SQL Server and Oracle, json field expressions throw an error, and on other databases they log a warning and use the SQL of PostgreSQL. Use the JSON methods of knex there, like [whereJsonPath()](https://knexjs.org/guide/query-builder.html#wherejsonpath) and [jsonExtract()](https://knexjs.org/guide/query-builder.html#jsonextract).
 
 The databases differ in a few ways:
 
@@ -15,6 +15,8 @@ The databases differ in a few ways:
 - Patching a path whose parent object is missing leaves the json unchanged on PostgreSQL and MySQL, while SQLite creates the parent objects. Patching an array index after the end appends to the array on PostgreSQL and MySQL, and leaves it unchanged on SQLite.
 - MySQL assigns the columns of an update from left to right, so `patch({ name: 'a', 'json:name': ref('name') })` writes the new name into the json column there.
 - On SQLite, a `ref()` to a whole json column or a subquery that selects one, as the value of a `'column:path'` key, is written as a json string, as SQLite can't tell json columns from text columns. Write `raw('json(??)', ['column'])` to write the json value.
+- `whereJsonSupersetOf()` and `whereJsonSubsetOf()` use `JSON_CONTAINS()` on MySQL, which also finds objects and values in the elements of arrays, e.g. `[{ "a": 1 }]` is a superset of `{}` there.
+- `whereJsonHasAny()` and `whereJsonHasAll()` use `JSON_OVERLAPS()` on MySQL, which needs MySQL 8.0.17 or newer.
 
 ```js
 import { ref } from 'objection';
