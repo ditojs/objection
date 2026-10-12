@@ -412,6 +412,8 @@ A hook that is executed after find queries.
 
 `args.result` is what the query returns: an array of models, or the model of [first](/api/query-builder/other-methods.html#first), [findById](/api/query-builder/find-methods.html#findbyid) and queries for to-one relations, which is `undefined` when nothing is found. With [page](/api/query-builder/other-methods.html#page) and [range](/api/query-builder/other-methods.html#range), it's the models of the page, as the `{ results, total }` object is created after the hook. In the queries of relations loaded with [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched), it's the array of the related models of all owners in the batch. They are assigned to their owners once the relation query has resolved, after the hook and the [runAfter](/api/query-builder/other-methods.html#runafter) callbacks, so the hook can filter or reorder them and return the array. Returning other objects throws an error.
 
+The relations joined with [withGraphJoined](/api/query-builder/eager-methods.html#withgraphjoined) have no query of their own. After the query, the hooks of their model classes are called bottom-up, from the deepest relation to the root, with the related models of all owners as `result`, the `relation`, its owners as `items`, `context` and `transaction`. `asFindQuery()` and `cancelQuery()` throw an error there, and `beforeFind` isn't called for them. What the hooks return is assigned like with `withGraphFetched`.
+
 The hook runs after the instance hooks [\$afterFind](/api/model/instance-methods.html#afterfind) and before the [runAfter](/api/query-builder/other-methods.html#runafter) callbacks of the query, which get its return value.
 
 See these sections for more information:
