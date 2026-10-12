@@ -168,3 +168,12 @@ const relatedPetRows: PromiseLike<any[]> = Person.relatedQuery('pets')
   .relate(2)
   .someCustomMethod()
   .returning('*');
+
+// TypeScript 7, and 5.x depending on the order of checks, relates the
+// withGraph() override to the base method for a generic model, so check that
+// directly.
+function withGraphOverride<M extends Model>(
+  withGraph: CustomQueryBuilder<M, number>['withGraph'],
+): QueryBuilder<M, number>['withGraph'] {
+  return withGraph;
+}
