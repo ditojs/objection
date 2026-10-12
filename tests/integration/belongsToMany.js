@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Model } from 'objection';
 
 export default (session) => {
   describe('BelongsToManyRelation #2667', () => {
     const { knex } = session;
     let onBeforeUpdate = null;
+    let nextTagId = 10;
 
     class Tag extends Model {
       static get tableName() {
@@ -13,6 +14,11 @@ export default (session) => {
 
       static async beforeUpdate(args) {
         await onBeforeUpdate?.(args);
+      }
+
+      // Generate ids like the database would, to be known only after the insert:
+      $beforeInsert() {
+        this.id ??= nextTagId++;
       }
     }
 
@@ -45,6 +51,16 @@ export default (session) => {
             },
           },
 
+          filteredTags: {
+            relation: Model.BelongsToManyRelation,
+            modelClass: Tag,
+            modify: (query) => query.where('name', '<', 'c'),
+            join: {
+              from: 'belongsToManyPost.tagIds',
+              to: 'belongsToManyTag.id',
+            },
+          },
+
           dataTags: {
             relation: Model.BelongsToManyRelation,
             modelClass: Tag,
@@ -66,6 +82,38 @@ export default (session) => {
           }),
         };
       }
+    }
+
+    async function populate() {
+      nextTagId = 10;
+      await knex('belongsToManyPost').delete();
+      await knex('belongsToManyTag').delete();
+
+      await knex('belongsToManyTag').insert([
+        { id: 1, name: 'c' },
+        { id: 2, name: 'b' },
+        { id: 3, name: 'a' },
+        { id: 4, name: 'd' },
+      ]);
+
+      await knex('belongsToManyPost').insert(
+        [
+          { id: 1, tagIds: [3, 1], relatedPostIds: [2, 3] },
+          { id: 2, tagIds: [1, 2, 4], relatedPostIds: [1] },
+          { id: 3, tagIds: [], relatedPostIds: null },
+          { id: 4, tagIds: null, relatedPostIds: [] },
+          { id: 5, tagIds: [9], relatedPostIds: [] },
+        ].map((post) => ({
+          ...post,
+          tagIds: post.tagIds && JSON.stringify(post.tagIds),
+          relatedPostIds: post.relatedPostIds && JSON.stringify(post.relatedPostIds),
+          // Documents without the keys and no document at all hold no keys:
+          data:
+            post.tagIds &&
+            JSON.stringify(post.tagIds.length ? { tagIds: post.tagIds, other: post.id } : {}),
+          ...(session.isPostgres() && { tagIdsArray: post.tagIds }),
+        })),
+      );
     }
 
     beforeAll(async () => {
@@ -98,29 +146,7 @@ export default (session) => {
           }
         });
 
-      await knex('belongsToManyTag').insert([
-        { id: 1, name: 'c' },
-        { id: 2, name: 'b' },
-        { id: 3, name: 'a' },
-        { id: 4, name: 'd' },
-      ]);
-
-      await knex('belongsToManyPost').insert(
-        [
-          { id: 1, tagIds: [3, 1], relatedPostIds: [2, 3] },
-          { id: 2, tagIds: [1, 2, 4], relatedPostIds: [1] },
-          { id: 3, tagIds: [], relatedPostIds: null },
-          { id: 4, tagIds: null, relatedPostIds: [] },
-          { id: 5, tagIds: [9], relatedPostIds: [] },
-        ].map((post) => ({
-          ...post,
-          tagIds: post.tagIds && JSON.stringify(post.tagIds),
-          relatedPostIds: post.relatedPostIds && JSON.stringify(post.relatedPostIds),
-          // Documents without the keys and no document at all hold no keys:
-          data: post.tagIds && JSON.stringify(post.tagIds.length ? { tagIds: post.tagIds } : {}),
-          ...(session.isPostgres() && { tagIdsArray: post.tagIds }),
-        })),
-      );
+      await populate();
     });
 
     afterAll(async () => {
@@ -358,28 +384,281 @@ export default (session) => {
       await knex('belongsToManyTag').update({ name: 'd' }).where('id', 4);
     });
 
-    for (const [method, ...args] of [
-      ['insert', { id: 5 }],
-      ['relate', 1],
-      ['unrelate'],
-      ['delete'],
-    ]) {
-      it(`${method}() should throw`, async () => {
-        const post = Post.fromJson({ tagIds: [] });
+    describe('mutations', () => {
+      beforeEach(populate);
+      afterAll(populate);
 
-        await expect(post.$relatedQuery('tags')[method](...args)).rejects.toThrow(
-          `Post.relationMappings.tags: ${method}() is not supported yet.`,
+      async function allTagIds(prop = 'tagIds') {
+        const posts = await Post.query().orderBy('id');
+        return posts.map((post) => post[prop]);
+      }
+
+      async function allData() {
+        const posts = await Post.query().orderBy('id');
+        return posts.map((post) => post.data);
+      }
+
+      async function allTags() {
+        const tags = await Tag.query().orderBy('id');
+        return tags.map((tag) => `${tag.id}${tag.name}`);
+      }
+
+      it('relate() should add the keys to the array of the owner', async () => {
+        const post = await Post.query().findById(3);
+
+        expect(await post.$relatedQuery('tags').relate([2, 1, 2])).toBe(1);
+        expect(post.tagIds).toEqual([2, 1]);
+        expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [2, 1], null, [9]]);
+      });
+
+      it('relate() should add the keys to the arrays of owner ids and queries', async () => {
+        expect(await Post.relatedQuery('tags').for([1, 2, 4]).relate({ id: 4 })).toBe(2);
+        expect(
+          await Post.relatedQuery('tags')
+            .for(Post.query().where('id', '>', 2))
+            .relate(Tag.fromJson({ id: 3 })),
+        ).toBe(3);
+        expect(await allTagIds()).toEqual([[3, 1, 4], [1, 2, 4], [3], [4, 3], [9, 3]]);
+      });
+
+      it('relate() should not change the arrays that hold the keys', async () => {
+        const post = await Post.query().findById(1);
+
+        expect(await post.$relatedQuery('tags').relate(3)).toBe(0);
+        // The stored key keeps its value:
+        expect(await post.$relatedQuery('tags').relate('1')).toBe(0);
+        expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [], null, [9]]);
+      });
+
+      it('unrelate() should remove the keys of the related rows that the query finds', async () => {
+        const post = await Post.query().findById(2);
+
+        expect(await post.$relatedQuery('tags').unrelate().where('name', 'b')).toBe(1);
+        expect(post.tagIds).toEqual([1, 4]);
+        expect(await Post.relatedQuery('tags').for([1, 5]).unrelate()).toBe(1);
+        expect(await allTagIds()).toEqual([[], [1, 4], [], null, [9]]);
+        expect(await allTags()).toEqual(['1c', '2b', '3a', '4d']);
+      });
+
+      it('insert() should insert the related model and add its key', async () => {
+        const post = await Post.query().findById(4);
+        const tag = await post.$relatedQuery('tags').insert({ id: 5, name: 'e' });
+
+        expect(tag.id).toBe(5);
+        expect(post.tagIds).toEqual([5]);
+        expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [], [5], [9]]);
+        expect(await allTags()).toEqual(['1c', '2b', '3a', '4d', '5e']);
+      });
+
+      it('delete() and insert() should do nothing if resolved without executing', async () => {
+        const post = await Post.query().findById(2);
+
+        await post.$relatedQuery('tags').delete().resolve(0);
+        await post.$relatedQuery('tags').insert({ id: 5, name: 'e' }).resolve({ id: 5 });
+
+        expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [], null, [9]]);
+        expect(await allTags()).toEqual(['1c', '2b', '3a', '4d']);
+      });
+
+      // SQL Server doesn't support JSON field expressions:
+      if (!session.isMsSql()) {
+        it('relate(), unrelate() and delete() should only write the array of a JSON field expression', async () => {
+          expect(await Post.relatedQuery('dataTags').for([1, 3, 4]).relate([4, 3])).toBe(3);
+          expect(await Post.relatedQuery('dataTags').for(1).unrelate().where('id', 1)).toBe(1);
+          expect(await Post.relatedQuery('dataTags').for(2).delete().where('id', 2)).toBe(1);
+          expect(await allData()).toEqual([
+            { tagIds: [3, 4], other: 1 },
+            { tagIds: [1, 4], other: 2 },
+            { tagIds: [4, 3] },
+            { tagIds: [4, 3] },
+            { tagIds: [9], other: 5 },
+          ]);
+        });
+
+        it('upsertGraph() should only write the array of a JSON field expression', async () => {
+          await Post.query().upsertGraph(
+            [
+              { id: 1, dataTags: [{ id: 1 }, { id: 2 }] },
+              { id: 3, dataTags: [{ id: 3 }] },
+              { id: 4, dataTags: [{ id: 4 }] },
+            ],
+            { relate: true, unrelate: true },
+          );
+
+          expect(await allData()).toEqual([
+            { tagIds: [1, 2], other: 1 },
+            { tagIds: [1, 2, 4], other: 2 },
+            { tagIds: [3] },
+            { tagIds: [4] },
+            { tagIds: [9], other: 5 },
+          ]);
+        });
+      }
+
+      it('delete() should delete the related rows and remove their keys', async () => {
+        const post = await Post.query().findById(2);
+
+        expect(await post.$relatedQuery('tags').delete().where('name', '<', 'd')).toBe(2);
+        expect(post.tagIds).toEqual([4]);
+        // Other owners keep the keys, as with any rows deleted without the relation:
+        expect(await allTagIds()).toEqual([[3, 1], [4], [], null, [9]]);
+        expect(await allTags()).toEqual(['3a', '4d']);
+      });
+
+      it('insertGraph() should insert and relate the related models', async () => {
+        const post = await Post.query().insertGraph(
+          {
+            id: 6,
+            tags: [{ name: 'e' }, { '#dbRef': 1 }],
+            relatedPosts: [{ id: 7, tags: [{ '#ref': 'f' }, { '#id': 'f', name: 'f' }] }],
+          },
+          { allowRefs: true },
+        );
+
+        const [e, f] = post.tags[0].id === 10 ? [10, 11] : [11, 10];
+
+        expect(post.tagIds).toEqual([e, 1]);
+        expect(post.relatedPostIds).toEqual([7]);
+        expect((await allTagIds()).slice(5)).toEqual([[e, 1], [f]]);
+        expect(await allTags()).toEqual(
+          ['1c', '2b', '3a', '4d'].concat(e === 10 ? ['10e', '11f'] : ['10f', '11e']),
         );
       });
-    }
 
-    it('insertGraph() and upsertGraph() should throw', async () => {
-      await expect(Post.query().insertGraph({ id: 6, tags: [] })).rejects.toThrow(
-        'Post.relationMappings.tags: insertGraph() and upsertGraph() are not supported yet.',
-      );
-      await expect(Post.query().upsertGraph({ id: 1, relatedPosts: [] })).rejects.toThrow(
-        'Post.relationMappings.relatedPosts: insertGraph() and upsertGraph() are not supported yet.',
-      );
+      it('$relatedQuery().insertGraph() should add the keys to the owner', async () => {
+        const post = await Post.query().findById(3);
+
+        await post.$relatedQuery('tags').insertGraph({ id: 5, name: 'e' });
+
+        expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [5], null, [9]]);
+      });
+
+      for (const fetchStrategy of ['OnlyIdentifiers', 'OnlyNeeded', 'Everything']) {
+        describe(`upsertGraph() (fetchStrategy: ${fetchStrategy})`, () => {
+          const upsertGraph = (graph, options) =>
+            Post.query().upsertGraph(graph, { fetchStrategy, ...options });
+
+          it('should write the keys of the graph and delete the rows it leaves out', async () => {
+            await upsertGraph(
+              {
+                id: 2,
+                tags: [
+                  { id: 4, name: 'x' },
+                  { id: 5, name: 'e' },
+                ],
+              },
+              { insertMissing: true },
+            );
+
+            expect(await allTagIds()).toEqual([[3, 1], [4, 5], [], null, [9]]);
+            expect(await allTags()).toEqual(['3a', '4x', '5e']);
+          });
+
+          it('should only remove the keys with unrelate', async () => {
+            await upsertGraph(
+              { id: 2, tags: [{ id: 3 }, { id: 1 }] },
+              { relate: true, unrelate: true },
+            );
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 3], [], null, [9]]);
+            expect(await allTags()).toEqual(['1c', '2b', '3a', '4d']);
+          });
+
+          it('should keep the keys of the rows it leaves out with noUnrelate', async () => {
+            await upsertGraph({ id: 2, tags: [{ id: 1 }] }, { unrelate: true, noUnrelate: true });
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [], null, [9]]);
+          });
+
+          it('should keep the keys of rows that the relation filters out', async () => {
+            await upsertGraph(
+              { id: 2, filteredTags: [{ id: 3 }] },
+              { relate: true, unrelate: true },
+            );
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 4, 3], [], null, [9]]);
+          });
+
+          it('should keep the keys of missing rows', async () => {
+            await upsertGraph({ id: 5, tags: [{ id: 1 }] }, { relate: true });
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [], null, [9, 1]]);
+          });
+
+          it('should upsert the arrays of related owners in their own upsert', async () => {
+            await upsertGraph(
+              { id: 3, relatedPosts: [{ id: 2, tags: [{ id: 1 }] }] },
+              { relate: true, noDelete: true },
+            );
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [], null, [9]]);
+            expect(await allTagIds('relatedPostIds')).toEqual([[2, 3], [1], [2], [], []]);
+
+            await upsertGraph({ id: 3, relatedPosts: [{ id: 2, tags: [{ id: 1 }] }] });
+
+            expect(await allTagIds()).toEqual([[3, 1], [1], [], null, [9]]);
+            expect(await allTags()).toEqual(['1c', '3a']);
+          });
+
+          it('should keep the keys of the rows it keeps', async () => {
+            await upsertGraph(
+              { id: 2, tags: [{ id: 5, name: 'e' }] },
+              { insertMissing: true, noDelete: true },
+            );
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4, 5], [], null, [9]]);
+          });
+
+          it('should remove the keys of models marked with #unrelate', async () => {
+            await upsertGraph(
+              { id: 2, tags: [{ id: 1 }, { id: 2, '#unrelate': true }, { id: 4 }] },
+              { allowMarkers: true },
+            );
+
+            expect(await allTagIds()).toEqual([[3, 1], [1, 4], [], null, [9]]);
+            expect(await allTags()).toEqual(['1c', '2b', '3a', '4d']);
+          });
+
+          it('should clear the array for an empty graph', async () => {
+            await upsertGraph({ id: 1, tags: [] }, { unrelate: true });
+
+            expect(await allTagIds()).toEqual([[], [1, 2, 4], [], null, [9]]);
+          });
+
+          it('should keep the array if the graph leaves out the relation', async () => {
+            await upsertGraph({ id: 1, relatedPosts: [{ id: 2, tags: [{ id: 1 }] }, { id: 3 }] });
+
+            expect(await allTagIds()).toEqual([[3, 1], [1], [], null, [9]]);
+          });
+
+          it('should not write unchanged arrays', async () => {
+            const queries = [];
+            const collect = ({ sql }) => queries.push(sql);
+
+            knex.on('query', collect);
+
+            try {
+              await upsertGraph({ id: 1, tags: [{ id: 3 }, { id: 1 }] });
+            } finally {
+              knex.removeListener('query', collect);
+            }
+
+            expect(queries.filter((sql) => /^update/i.test(sql))).toEqual([]);
+          });
+        });
+      }
+
+      if (session.isPostgres()) {
+        it('relate() and upsertGraph() should write native arrays', async () => {
+          await Post.relatedQuery('arrayTags').for(3).relate([4, 2]);
+          await Post.query().upsertGraph(
+            { id: 1, arrayTags: [{ id: 2 }] },
+            { relate: true, unrelate: true },
+          );
+
+          expect(await allTagIds('tagIdsArray')).toEqual([[2], [1, 2, 4], [4, 2], null, [9]]);
+        });
+      }
     });
 
     it('should throw for composite keys', () => {

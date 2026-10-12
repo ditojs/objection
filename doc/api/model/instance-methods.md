@@ -855,9 +855,9 @@ Sets related models to a corresponding property in the object.
 The foreign keys follow the relation:
 
 - `BelongsToOneRelation`: the foreign key of the object is set to the key of the related model, e.g. `post.$setRelated('author', user)` also sets `post.authorId` to `user.id`. Clearing the relation with `null` or `[]`, or setting a related model without a key, sets the foreign key to `null`.
+- `BelongsToManyRelation`: the array of keys of the object is set to the keys of the related models, e.g. `post.$setRelated('tags', tags)` sets `post.tagIds` to the ids of `tags`, and to `[]` when the relation is cleared. Related models without a key are left out of the array.
 - `HasOneRelation` and `HasManyRelation`: the foreign keys of the related models are set to the key of the object, e.g. `user.$setRelated('posts', posts)` sets `authorId` of each post to `user.id`. The foreign keys of the models that are no longer related, because the relation is cleared or they are replaced, are set to `null`, unless they already point to another object. If the object has no key yet, the foreign keys of the related models are set to `null`.
 - `ManyToManyRelation` and `HasOneThroughRelation`: nothing is set, as the keys live in the join table.
-- `BelongsToManyRelation`: the array of keys of the object isn't synced yet.
 
 Foreign keys set on the models before are overwritten. Only `$setRelated()` and `$appendRelated()` sync the keys: [fromJson](/api/model/static-methods.html#static-fromjson), [\$setJson](/api/model/instance-methods.html#setjson), queries and direct assignments leave them as they are.
 
@@ -892,7 +892,7 @@ console.log(person.children[0]);
 modelInstance.$appendRelated(relation, relatedModels);
 ```
 
-Appends related models to a corresponding property in the object. The foreign keys of the appended models are synced like with [\$setRelated](/api/model/instance-methods.html#setrelated), and the models already in the relation keep theirs. For `BelongsToOneRelation` and `HasOneRelation`, the related model is replaced like with `$setRelated()`.
+Appends related models to a corresponding property in the object. The foreign keys of the appended models are synced like with [\$setRelated](/api/model/instance-methods.html#setrelated), and the models already in the relation keep theirs. For `BelongsToManyRelation`, the keys of the appended models are added to the array of the object, also when the relation isn't loaded. For `BelongsToOneRelation` and `HasOneRelation`, the related model is replaced like with `$setRelated()`.
 
 ##### Arguments
 
