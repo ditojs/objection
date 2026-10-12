@@ -635,9 +635,9 @@ See [this section](/api/model/overview.html#model-data-lifecycle) for more infor
 
 ```js
 class Person extends Model {
-  $parseDatabaseJson(json) {
+  $parseDatabaseJson(json, options) {
     // Remember to call the super class's implementation.
-    json = super.$parseDatabaseJson(json);
+    json = super.$parseDatabaseJson(json, options);
     // Do your conversion here.
     return json;
   }
@@ -654,11 +654,14 @@ There are a couple of requirements for the implementation:
 
 2. This function must be able to handle any subset of the model's properties coming in.You cannot assume that some column is present in the `json` object as it depends on the select statement. There can also be additional columns because of joins, aliases etc. This method must also be prepared for null values in _any_ property of the `json` object.
 
+The default implementation applies the [columnNameMappers](/api/model/static-properties.html#static-columnnamemappers) and then parses the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes) as [jsonColumnFormat](/api/model/static-properties.html#static-jsoncolumnformat) says.
+
 ##### Arguments
 
 | Argument | Type   | Description                      |
 | -------- | ------ | -------------------------------- |
 | json     | Object | The JSON POJO in database format |
+| options  | Object | Optional. Passed by queries to parse the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes) depending on the driver. Overrides pass it on to `super`. |
 
 ##### Return value
 
@@ -802,13 +805,14 @@ Validates the JSON before setting values.
 modelInstance.$setDatabaseJson(json);
 ```
 
-Sets the values from a JSON object in database format.
+Sets the values from a JSON object in database format, converted by [\$parseDatabaseJson](/api/model/instance-methods.html#parsedatabasejson). Called by hand, the source of `json` is unknown: unless [jsonColumnFormat](/api/model/static-properties.html#static-jsoncolumnformat) says otherwise, strings in [jsonAttributes](/api/model/static-properties.html#static-jsonattributes) that are valid JSON are parsed, and other strings are kept.
 
 ##### Arguments
 
 | Argument | Type   | Description                      |
 | -------- | ------ | -------------------------------- |
 | json     | Object | The JSON POJO in database format |
+| options  | Object | Optional. Passed by queries to parse the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes) depending on the driver. Overrides pass it on to `super`. |
 
 ##### Return value
 

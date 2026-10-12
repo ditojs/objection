@@ -32,6 +32,7 @@ This section lists the breaking changes in objection 4.0.
 - [Misplaced `*` and `^` in relation expressions throw](#misplaced-and-in-relation-expressions-throw)
 - [`$setRelated` and `$appendRelated` sync foreign keys](#setrelated-and-appendrelated-sync-foreign-keys)
 - [findById() and findByIds() keep their id condition in its own group](#findbyid-and-findbyids-keep-their-id-condition-in-its-own-group)
+- [JSON in PostgreSQL text columns is no longer parsed](#json-in-postgresql-text-columns-is-no-longer-parsed)
 
 ## objection is an ES module package
 
@@ -303,6 +304,26 @@ Queries that relied on this, like a lookup by id or slug, need to spell out both
 ```js
 await Person.query().where('id', idOrSlug).orWhere('slug', idOrSlug).first();
 ```
+
+## JSON in PostgreSQL text columns is no longer parsed
+
+The PostgreSQL drivers return `json` and `jsonb` columns parsed. 3.x parsed every string that came out of them a second time, so a JSON attribute that holds the string `'123'` came back as the number `123`, and saving the model wrote the change back. 4.0 keeps the values that these drivers return, so JSON stored in `text` columns comes back as a string. Change these columns to `jsonb`:
+
+```sql
+ALTER TABLE persons ALTER COLUMN address TYPE jsonb USING address::jsonb;
+```
+
+Or tell objection that the model's JSON columns hold text, which it then parses strictly, throwing for invalid JSON:
+
+```js
+class Person extends Model {
+  static jsonColumnFormat = 'text';
+}
+```
+
+Other drivers parse JSON attributes as in 3.x. On MariaDB, which stores JSON as `LONGTEXT`, `jsonColumnFormat = 'text'` avoids guessing whether a string is JSON.
+
+Overrides of the static [fromDatabaseJson](/api/model/static-methods.html#static-fromdatabasejson), [\$setDatabaseJson](/api/model/instance-methods.html#setdatabasejson) and [\$parseDatabaseJson](/api/model/instance-methods.html#parsedatabasejson) get the query's `options` as second argument. Pass them on to `super`, or JSON attributes are parsed as in 3.x.
 
 <br>
 <br>

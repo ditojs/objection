@@ -1416,6 +1416,33 @@ class JsonKeysModel extends objection.Model {
   });
 }
 
+class TextJsonModel extends objection.Model {
+  static jsonColumnFormat = 'text' as const;
+}
+
+class ParsedJsonModel extends objection.Model {
+  static jsonColumnFormat: objection.JsonColumnFormat = 'parsed';
+}
+
+class DatabaseJsonModel extends objection.Model {
+  static fromDatabaseJson<M extends objection.Model>(
+    this: objection.ModelClass<M>,
+    json: object,
+    options?: objection.DatabaseJsonOptions,
+  ): M {
+    return super.fromDatabaseJson(json, options) as M;
+  }
+
+  $parseDatabaseJson(json: objection.Pojo, options?: objection.DatabaseJsonOptions) {
+    return super.$parseDatabaseJson(json, options);
+  }
+}
+
+// @ts-expect-error jsonColumnFormat only takes 'auto', 'text' and 'parsed'
+class InvalidJsonFormatModel extends objection.Model {
+  static jsonColumnFormat = 'json' as const;
+}
+
 async () => {
   // findById with composite key
   const interview: Interview | undefined = await Interview.query().findById([10, 11]);

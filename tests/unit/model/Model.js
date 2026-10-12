@@ -964,6 +964,27 @@ describe('Model', () => {
       expect(model.c).toBe(3);
       expect(calls).toBe(1);
     });
+
+    it('should parse JSON attributes that hold JSON text and keep other strings', () => {
+      Model1.jsonAttributes = ['a', 'b', 'c'];
+      const model = Model1.fromDatabaseJson({ a: '{"d":1}', b: '[1,2]', c: 'not json', d: '[]' });
+      expect(model).toEqual({ a: { d: 1 }, b: [1, 2], c: 'not json', d: '[]' });
+    });
+
+    it("should parse JSON attributes strictly with jsonColumnFormat 'text'", () => {
+      Model1.jsonAttributes = ['a'];
+      Model1.jsonColumnFormat = 'text';
+      expect(Model1.fromDatabaseJson({ a: '"[1]"' }).a).toBe('[1]');
+      expect(() => Model1.fromDatabaseJson({ a: 'not json' })).toThrow(
+        "Invalid JSON in JSON attribute 'a' of model 'Model1'",
+      );
+    });
+
+    it("should not parse JSON attributes with jsonColumnFormat 'parsed'", () => {
+      Model1.jsonAttributes = ['a'];
+      Model1.jsonColumnFormat = 'parsed';
+      expect(Model1.fromDatabaseJson({ a: '{"d":1}' }).a).toBe('{"d":1}');
+    });
   });
 
   describe('$toJson', () => {

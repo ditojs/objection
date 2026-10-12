@@ -83,12 +83,12 @@ export default (session) => {
         .createTable('issue2667Post', (t) => {
           t.integer('id').primary();
           t.string('kind');
-          t.text('tagIds');
+          t.json('tagIds');
 
           if (session.isPostgres()) {
             t.jsonb('data');
           } else {
-            t.text('data');
+            t.json('data');
           }
         })
         .createTable('issue2667PostTag', (t) => {

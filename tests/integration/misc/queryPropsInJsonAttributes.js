@@ -34,7 +34,7 @@ export default (session) => {
         .dropTableIfExists('queryPropsInJsonAttributes')
         .createTable('queryPropsInJsonAttributes', (table) => {
           table.integer('id').primary();
-          table.text('meta');
+          table.json('meta');
         });
     });
 
