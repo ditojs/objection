@@ -2587,6 +2587,35 @@ describe('QueryBuilder', () => {
     );
   });
 
+  it('patch should write field expressions with the json functions of MySQL and SQLite', () => {
+    const toSql = (client, json) =>
+      TestModel.query(Knex({ client, useNullAsDefault: true }))
+        .patch(json)
+        .toKnexQuery()
+        .toString();
+    const json = { 'content:a': 1, 'content:b[0]': { c: 'd' }, 'content:["e?f"]': ref('other:g') };
+
+    expect(toSql('mysql', json)).toBe(
+      'update `Model` set `content` = JSON_SET(JSON_SET(JSON_SET(' +
+        "`Model`.`content`, '$.\"a\"', CAST('1' AS JSON)), " +
+        '\'$."b"[0]\', CAST(\'{\\"c\\":\\"d\\"}\' AS JSON)), ' +
+        `_utf8mb4 X'${Buffer.from('$."e?f"').toString('hex')}', ` +
+        "JSON_EXTRACT(JSON_ARRAY(JSON_EXTRACT(`other`, '$.\"g\"')), '$[0]'))",
+    );
+    expect(toSql('sqlite3', json)).toBe(
+      'update `Model` set `content` = json_set(json_set(json_set(' +
+        "`Model`.`content`, '$.\"a\"', json('1')), " +
+        '\'$."b"[0]\', json(\'{"c":"d"}\')), ' +
+        '\'$."e\\u003ff"\', json_quote(json_extract(`other`, \'$."g"\')))',
+    );
+    expectThrows(
+      () => toSql('mysql', { 'content:a': 1, content: {} }),
+      (err) => {
+        expect(err).toBeInstanceOf(objection.ValidationError);
+      },
+    );
+  });
+
   it('upsertGraph() should fail for an undefined graph', async () => {
     await expect(TestModel.query().upsertGraph(undefined)).rejects.toThrow(
       'expected value "undefined" to be an instance of TestModel',
@@ -2599,8 +2628,7 @@ describe('QueryBuilder', () => {
       'PostgreSQL, MySQL and SQLite. Use the JSON methods of knex like whereJsonPath() or ' +
       'jsonExtract() with other databases.';
     const postgresOnlyMessage =
-      'JSON field expressions in patch() and merge() and the whereJson*() methods of objection ' +
-      'are not supported on MySQL and SQLite.';
+      'The whereJson*() methods of objection are not supported on MySQL and SQLite.';
 
     const knexes = {};
     const query = (client) => {
@@ -2703,11 +2731,11 @@ describe('QueryBuilder', () => {
       'a cast ref() with a field expression': (client) =>
         query(client).select(ref('content:a').castInt().as('a')),
       'ref().castJson()': (client) => query(client).where(ref('content:a').castJson(), 1),
+      'a field expression in a patch': (client) => query(client).patch({ 'content:a': 1 }),
     };
 
     const createQueries = {
       ...createReadQueries,
-      'a field expression in a patch': (client) => query(client).patch({ 'content:a': 1 }),
       'whereJsonHasAny()': (client) => query(client).whereJsonHasAny('content', ['a']),
       'whereJsonNotArray()': (client) => query(client).whereJsonNotArray('content'),
       'whereJsonNotObject()': (client) => query(client).whereJsonNotObject('content'),

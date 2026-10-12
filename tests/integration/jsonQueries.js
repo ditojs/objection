@@ -34,8 +34,7 @@ export default (session) => {
 
     // The mysql driver returns json values as text.
     const jsonValue = (value) => (session.isMySql() ? JSON.stringify(value) : value);
-    // Field expressions in patches and the whereJson*() methods only render the
-    // SQL of Postgres so far.
+    // The whereJson*() methods only render the SQL of Postgres so far.
     const postgresOnly = !session.isPostgres();
 
     beforeAll(() => {
@@ -231,7 +230,7 @@ export default (session) => {
         });
       });
 
-      describe.skipIf(postgresOnly)('.update() and .patch()', () => {
+      describe('.update() and .patch()', () => {
         beforeEach(() => {
           return BoundModel.query()
             .truncate()
@@ -245,34 +244,37 @@ export default (session) => {
             });
         });
 
-        it('should be able to use knex.raw to jsonb column in update', () => {
-          return BoundModel.query()
-            .update({
-              jsonArray: BoundModel.knex().raw('to_jsonb(??)', ['name']),
-            })
-            .then((result) => {
-              expect(result).toBe(4);
-            });
-        });
+        it.skipIf(!session.isPostgres())(
+          'should be able to use knex.raw to jsonb column in update',
+          () => {
+            return BoundModel.query()
+              .update({
+                jsonArray: BoundModel.knex().raw('to_jsonb(??)', ['name']),
+              })
+              .then((result) => {
+                expect(result).toBe(4);
+              });
+          },
+        );
 
         it('should be able to patch internal field of json column and allow ref() syntax', () => {
           return BoundModel.query()
             .patch({
               name: ref('jsonArray:[0]').castText(),
               'jsonObject:attr': ref('name'),
-              jsonArray: ref('name').castJson(),
+              jsonArray: ref('name').castText().castJson(),
             })
             .where('id', 1)
-            .returning('*')
+            .then(() => BoundModel.query().findById(1))
             .then((result) => {
-              expect(result).toEqual([
-                {
-                  id: 1,
-                  name: '1',
-                  jsonObject: { attr: 'test1' },
-                  jsonArray: 'test1',
-                },
-              ]);
+              // MySQL assigns from left to right and reads the updated name.
+              const name = session.isMySql() ? '1' : 'test1';
+              expect(result).toEqual({
+                id: 1,
+                name: '1',
+                jsonObject: { attr: name },
+                jsonArray: name,
+              });
             });
         });
 
@@ -332,6 +334,14 @@ export default (session) => {
             });
         });
 
+        it('should be able to patch internal field of json column using another json column', async () => {
+          // SQLite can't tell json columns from text columns, which ref() would write as strings.
+          const value = session.isSqlite() ? raw('json(??)', ['jsonArray']) : ref('jsonArray');
+          await BoundModel.query().patch({ 'jsonObject:copy': value }).where('id', 2);
+          const result = await BoundModel.query().findById(2).select('jsonObject');
+          expect(result).toEqual({ jsonObject: { attr: 2, copy: [2] } });
+        });
+
         it('should be able to patch multiple fields inside the same json object', () => {
           return BoundModel.query()
             .patch({
@@ -373,16 +383,20 @@ export default (session) => {
             });
         });
 
-        it('should not have the json reference property in the result object', async () => {
-          const item = await BoundModel.query().findById(1);
-          await item.$query().patch({ 'jsonObject:attr': 'bar' }).returning('*');
-          expect(item).toEqual({
-            id: 1,
-            name: 'test1',
-            jsonObject: { attr: 'bar' },
-            jsonArray: [1],
-          });
-        });
+        // MySQL doesn't support returning().
+        it.skipIf(session.isMySql())(
+          'should not have the json reference property in the result object',
+          async () => {
+            const item = await BoundModel.query().findById(1);
+            await item.$query().patch({ 'jsonObject:attr': 'bar' }).returning('*');
+            expect(item).toEqual({
+              id: 1,
+              name: 'test1',
+              jsonObject: { attr: 'bar' },
+              jsonArray: [1],
+            });
+          },
+        );
       });
 
       describe('empty and special json keys', () => {
@@ -414,7 +428,7 @@ export default (session) => {
           },
         );
 
-        it.skipIf(postgresOnly)('should be able to patch empty keys', async () => {
+        it('should be able to patch empty keys', async () => {
           await BoundModel.query().findById(1).patch({ 'jsonObject:[""].a': 3 });
           const item = await BoundModel.query().findById(1);
           expect(item.jsonObject).toEqual({ '': { a: 3 }, 'x, y': 1 });
@@ -472,7 +486,7 @@ export default (session) => {
             },
           );
 
-          it.skipIf(postgresOnly)(`should patch a key with ${name}`, async () => {
+          it(`should patch a key with ${name}`, async () => {
             await BoundModel.query()
               .findById(1)
               .patch({ [`${expr(key)}.a`]: 3 });
@@ -523,7 +537,7 @@ export default (session) => {
           await StrictModel.query().insert({ id: 1, name: 'test1', jsonObject: { attr: 1 } });
         });
 
-        it.skipIf(postgresOnly)('should be able to patch fields of json columns', async () => {
+        it('should be able to patch fields of json columns', async () => {
           await StrictModel.query().findById(1).patch({ 'jsonObject:other': 'foo' });
           const item = await StrictModel.query().findById(1);
           expect(item.jsonObject).toEqual({ attr: 1, other: 'foo' });

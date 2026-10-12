@@ -4,9 +4,6 @@ import { sortBy } from '../../testUtils/testUtils.js';
 
 export default (session) => {
   describe('JSON relations', () => {
-    // Field expressions in patches only render the SQL of Postgres so far.
-    const postgresOnly = !session.isPostgres();
-
     class BaseModel extends Model {
       // MySQL and SQLite return json columns as text.
       static get jsonAttributes() {
@@ -289,7 +286,7 @@ export default (session) => {
 
     describe('$relatedQuery', () => {
       describe('belongs to one relation', () => {
-        it.skipIf(postgresOnly)('insert', () => {
+        it('insert', () => {
           return Person.query()
             .findOne({ name: 'Arnold' })
             .then((it) => it.$relatedQuery('favoritePet').insert({ name: 'Doggo' }))
@@ -331,7 +328,7 @@ export default (session) => {
             });
         });
 
-        it.skipIf(postgresOnly)('relate', () => {
+        it('relate', () => {
           return Person.query()
             .findOne({ name: 'Arnold' })
             .then((it) => it.$relatedQuery('favoritePet').relate(123))
@@ -345,7 +342,7 @@ export default (session) => {
             });
         });
 
-        it.skipIf(postgresOnly)('unrelate', () => {
+        it('unrelate', () => {
           return Person.query()
             .findOne({ name: 'Arnold' })
             .then((it) => it.$relatedQuery('favoritePet').unrelate())
@@ -420,7 +417,7 @@ export default (session) => {
             });
         });
 
-        it.skipIf(postgresOnly)('relate', () => {
+        it('relate', () => {
           return Animal.query()
             .findOne({ name: 'Fluffy' })
             .then((it) => Promise.all([it, Person.query().findOne({ name: 'Brad' })]))
@@ -443,7 +440,7 @@ export default (session) => {
             });
         });
 
-        it.skipIf(postgresOnly)('unrelate', () => {
+        it('unrelate', () => {
           return Animal.query()
             .findOne({ name: 'Fluffy' })
             .then((it) => Promise.all([it, Person.query().findOne({ name: 'Brad' })]))

@@ -38,7 +38,7 @@ export default (session) => {
         table.integer('views');
         table.integer('parentId');
 
-        if (session.isPostgres()) {
+        if (!session.isMsSql()) {
           table.jsonb('data');
         }
       });
@@ -64,7 +64,7 @@ export default (session) => {
       expect(await fetchViews(id)).toBe(100);
     });
 
-    if (session.isPostgres()) {
+    if (!session.isMsSql()) {
       it('should write a json column assigned after a write with a field expression', async () => {
         const { id } = await TestPost.query().insert({ id: 1, name: 'a', data: { a: 1 } });
         const post = await TestPost.query().patchAndFetchById(id, { 'data:a': raw('2') });

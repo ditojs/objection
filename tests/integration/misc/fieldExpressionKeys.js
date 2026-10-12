@@ -15,7 +15,7 @@ export default (session) => {
           table.string('ns:foo_bar');
           table.string('ns:');
 
-          if (session.isPostgres()) {
+          if (!session.isMsSql()) {
             table.jsonb('meta');
             table.jsonb('extra_meta');
           }
@@ -58,7 +58,7 @@ export default (session) => {
       await knex('field_expression_keys').insert({
         id: 1,
         'ns:name': 'a',
-        ...(session.isPostgres()
+        ...(!session.isMsSql()
           ? { meta: JSON.stringify({ size: 1 }), extra_meta: JSON.stringify({ size: 1 }) }
           : {}),
       });
@@ -244,7 +244,10 @@ export default (session) => {
       });
     });
 
-    if (session.isPostgres()) {
+    if (!session.isMsSql()) {
+      // MySQL and SQLite return json columns of raw rows as text.
+      const parseJson = (value) => (typeof value === 'string' ? JSON.parse(value) : value);
+
       it('patch() should write an undeclared key with a colon to the json path', async () => {
         await Item.query().patch({ 'ns:name': 'd', 'meta:color': 'red' }).where('id', 1);
         const item = await Item.query().findById(1);
@@ -293,15 +296,19 @@ export default (session) => {
         expect(item.meta).toEqual({ size: 1, color: 'red' });
       });
 
-      it('merge() should write a key with a colon to the json path of an aliased table', async () => {
-        await Item.query()
-          .alias('i')
-          .insert({ id: 1 })
-          .onConflict('id')
-          .merge({ 'meta:color': 'red', 'meta:size': 2 });
-        const item = await Item.query().findById(1);
-        expect(item.meta).toEqual({ size: 2, color: 'red' });
-      });
+      // knex doesn't support aliases in inserts on MySQL.
+      it.skipIf(session.isMySql())(
+        'merge() should write a key with a colon to the json path of an aliased table',
+        async () => {
+          await Item.query()
+            .alias('i')
+            .insert({ id: 1 })
+            .onConflict('id')
+            .merge({ 'meta:color': 'red', 'meta:size': 2 });
+          const item = await Item.query().findById(1);
+          expect(item.meta).toEqual({ size: 2, color: 'red' });
+        },
+      );
 
       it('merge() should write a key with a colon mapped by snakeCaseMappers to the json path', async () => {
         class SnakeCaseItem extends Item {
@@ -315,7 +322,7 @@ export default (session) => {
           .onConflict('id')
           .merge({ 'extraMeta:color': 'red' });
         const row = await knex('field_expression_keys').where('id', 1).first();
-        expect(row.extra_meta).toEqual({ size: 1, color: 'red' });
+        expect(parseJson(row.extra_meta)).toEqual({ size: 1, color: 'red' });
       });
 
       it('patch() should not parse the keys of models without a schema as database json', async () => {
@@ -331,7 +338,7 @@ export default (session) => {
 
         await SchemalessItem.query(knex).patch({ 'meta:color': 'blue' }).where('id', 1);
         const row = await knex('field_expression_keys').where('id', 1).first();
-        expect(row.meta).toEqual({ size: 1, color: 'blue' });
+        expect(parseJson(row.meta)).toEqual({ size: 1, color: 'blue' });
       });
     }
   });
