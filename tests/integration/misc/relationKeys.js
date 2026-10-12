@@ -270,5 +270,20 @@ module.exports = (session) => {
         });
       });
     }
+
+    it('fetchGraph() with dates in composite ids', async () => {
+      // SQLite returns the dates of the related rows as numbers:
+      const readings = await Reading.fetchGraph(
+        [1, 2, 3].map((value) => ({ sensorId: 1, at: date(value * 100), value })),
+        'notes',
+      );
+      const texts = readings.map(({ value, notes }) => [value, notes.map(({ text }) => text)]);
+
+      expect(texts).to.eql([
+        [1, ['n1']],
+        [2, []],
+        [3, ['n3']],
+      ]);
+    });
   });
 };
