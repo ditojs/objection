@@ -52,6 +52,7 @@
 
 ### Fixes
 
+- A many-to-many `patch()` / `update()` with join table extras and `limit()` on MySQL and SQL Server can order by columns of the join table [#161](https://github.com/ditojs/objection/issues/161)
 - `cancelQuery()` with a single row in the `beforeInsert` hook of an `insert()` merges it into the inserted model, like an array of rows, instead of ignoring it [#66](https://github.com/ditojs/objection/issues/66)
 
 ### Types
