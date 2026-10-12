@@ -5,7 +5,6 @@ import {
   NumberQueryBuilder,
   PartialModelObject,
   QueryBuilder,
-  Page,
   RelateQueryBuilder,
   RelationExpression,
   TransactionOrKnex,
@@ -14,11 +13,7 @@ import {
 } from 'objection';
 
 class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare ArrayQueryBuilderType: CustomQueryBuilder<M, M[]>;
-  declare SingleQueryBuilderType: CustomQueryBuilder<M, M>;
-  declare MaybeSingleQueryBuilderType: CustomQueryBuilder<M, M | undefined>;
-  declare NumberQueryBuilderType: CustomQueryBuilder<M, number>;
-  declare PageQueryBuilderType: CustomQueryBuilder<M, Page<M>>;
+  declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
 
   someCustomMethod(): this {
     return this;
@@ -107,11 +102,7 @@ const throwIfNotFound: CustomQueryBuilder<Person, Person> = Person.query()
 // Custom query builders can define their own constructor and call `super()`
 // with the model class, see #2306.
 class DefaultSchemaQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare ArrayQueryBuilderType: DefaultSchemaQueryBuilder<M, M[]>;
-  declare SingleQueryBuilderType: DefaultSchemaQueryBuilder<M, M>;
-  declare MaybeSingleQueryBuilderType: DefaultSchemaQueryBuilder<M, M | undefined>;
-  declare NumberQueryBuilderType: DefaultSchemaQueryBuilder<M, number>;
-  declare PageQueryBuilderType: DefaultSchemaQueryBuilder<M, Page<M>>;
+  declare RebindType: DefaultSchemaQueryBuilder<this['~M'], this['~R']>;
 
   constructor(modelClass: ModelConstructor<M>) {
     super(modelClass);

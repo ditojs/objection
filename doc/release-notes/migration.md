@@ -26,6 +26,7 @@ This section lists the breaking changes in objection 4.0.
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
+- [typescript: Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -220,6 +221,28 @@ To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, 
 ## typescript: RelateQueryBuilder takes the number query builder
 
 The type parameter of `RelateQueryBuilder` is the number query builder that `relate()` returns, instead of the query builder `relate()` is called on. Custom query builders that override `relate()` with an explicit return type use `RelateQueryBuilder<NumberQueryBuilder<this>>` instead of `RelateQueryBuilder<this>`.
+
+## typescript: Custom query builders declare RebindType
+
+Custom query builders declare one `RebindType` member, from which the query builder types of `first()`, `findById()`, `patch()`, `page()` and the other methods that change the result type are derived. The five `*QueryBuilderType` members of 3.x are removed. Replace them:
+
+```ts
+// 3.x
+class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
+  declare ArrayQueryBuilderType: MyQueryBuilder<M, M[]>;
+  declare SingleQueryBuilderType: MyQueryBuilder<M, M>;
+  declare MaybeSingleQueryBuilderType: MyQueryBuilder<M, M | undefined>;
+  declare NumberQueryBuilderType: MyQueryBuilder<M, number>;
+  declare PageQueryBuilderType: MyQueryBuilder<M, Page<M>>;
+}
+
+// 4.0
+class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
+  declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+}
+```
+
+The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBuilder`, `NumberQueryBuilder` and `PageQueryBuilder` take any query builder, e.g. `MaybeSingleQueryBuilder<this>` as the return type of an overridden `findById()`. `WithGraphModelQueryBuilder<M, E>` is removed. Use `QueryBuilderType<WithGraphModel<M, E>>` instead. The `ReturningMethod` interface is removed too, `returning()` is a method of `QueryBuilder`. On query builders with an `any` result, e.g. `AnyQueryBuilder`, it returns `QueryBuilder<any, any> | QueryBuilder<any, any[]>` instead of `QueryBuilder<any, any[]>`.
 
 ## `insert` and `update` reject field expression keys
 

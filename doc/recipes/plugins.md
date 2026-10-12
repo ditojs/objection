@@ -27,11 +27,7 @@ class Person extends Model {}
 
 ```ts
 class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare ArrayQueryBuilderType: CustomQueryBuilder<M, M[]>;
-  declare SingleQueryBuilderType: CustomQueryBuilder<M, M>;
-  declare MaybeSingleQueryBuilderType: CustomQueryBuilder<M, M | undefined>;
-  declare NumberQueryBuilderType: CustomQueryBuilder<M, number>;
-  declare PageQueryBuilderType: CustomQueryBuilder<M, Page<M>>;
+  declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
 
   someCustomMethod(): this {
     return this;
