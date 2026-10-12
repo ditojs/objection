@@ -5189,6 +5189,57 @@ module.exports = (session) => {
         }
       });
 
+      describe('#ref models related into a HasManyRelation or HasOneRelation (#311)', () => {
+        it('should set the foreign key of the referenced model', async () => {
+          const upsert = {
+            id: 1,
+            model1Relation2: [{ '#ref': 'referenced' }],
+            model1Relation3: [{ '#id': 'referenced', model2Prop1: 'referenced' }],
+          };
+
+          await Model1.query(session.knex).upsertGraph(upsert, { fetchStrategy, allowRefs: true });
+
+          const [row] = await session.knex('model2').where('model2_prop1', 'referenced');
+          expect(row.model1_id).to.equal(1);
+        });
+
+        it('should set the foreign key of the referenced model to an inserted owner', async () => {
+          const upsert = {
+            id: 1,
+            model1Relation1: {
+              model1Prop1: 'inserted owner',
+              model1Relation2: [{ '#ref': 'referenced' }],
+            },
+            model1Relation3: [{ '#id': 'referenced', model2Prop1: 'referenced' }],
+          };
+
+          const result = await Model1.query(session.knex).upsertGraph(upsert, {
+            fetchStrategy,
+            allowRefs: true,
+          });
+
+          const [row] = await session.knex('model2').where('model2_prop1', 'referenced');
+          expect(row.model1_id).to.equal(result.model1Relation1.id);
+        });
+
+        it('should set the foreign key of a referenced model related into a HasOneRelation', async () => {
+          const upsert = {
+            id: 1,
+            model1Relation1: { '#id': 'referenced', model1Prop1: 'referenced' },
+            model1Relation1Inverse: { '#ref': 'referenced' },
+          };
+
+          const result = await Model1.query(session.knex).upsertGraph(upsert, {
+            fetchStrategy,
+            allowRefs: true,
+          });
+
+          const [row] = await session.knex('Model1').where('model1Prop1', 'referenced');
+          expect(row.model1Id).to.equal(1);
+          expect(result.model1Id).to.equal(row.id);
+        });
+      });
+
       describe('cyclic references', () => {
         it('should break cycles through #ref nodes by deferring the foreign key', async () => {
           const upsert = {
