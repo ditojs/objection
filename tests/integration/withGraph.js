@@ -1629,6 +1629,45 @@ module.exports = (session) => {
       }
     });
 
+    it('resultSize and page should respect the order of distinctOn on a joined column with joinEager', async function () {
+      if (!session.isPostgres()) {
+        return this.skip();
+      }
+
+      await session.populate([
+        {
+          id: 1,
+          model1Relation2: [
+            { idCol: 1, model2Prop1: 'a' },
+            { idCol: 2, model2Prop1: 'b' },
+          ],
+        },
+        {
+          id: 2,
+          model1Relation2: [{ idCol: 3, model2Prop1: 'b' }],
+        },
+      ]);
+
+      // The order decides whether 'b' picks the row of model 1 or model 2, and
+      // without it, `distinctOn` picks the same row in both directions.
+      for (const direction of ['asc', 'desc']) {
+        const query = Model1.query()
+          .distinctOn('model1Relation2.model2_prop1')
+          .withGraphJoined('model1Relation2')
+          .orderBy('model1Relation2.model2_prop1')
+          .orderBy('Model1.id', direction);
+
+        const [models, size, page] = await Promise.all([
+          query,
+          query.resultSize(),
+          query.clone().page(0, 10),
+        ]);
+        expect(models.map((it) => it.id).sort()).to.eql(direction === 'asc' ? [1] : [1, 2]);
+        expect(size).to.equal(models.length);
+        expect(page.total).to.equal(models.length);
+      }
+    });
+
     it('page should count the root models with joinEager', () => {
       return Model1.query()
         .whereIn('Model1.id', [1, 6])
