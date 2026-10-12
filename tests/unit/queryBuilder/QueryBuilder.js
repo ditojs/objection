@@ -5334,6 +5334,7 @@ describe('QueryBuilder', () => {
         'Person.id',
       );
       expectIdError(Person.query().select('*').max('pets.id as pets:id'), 'pets:id', 'pets.id');
+      expectIdError(Person.query().max('pets.id as id'), 'id', 'Person.id');
     });
 
     it('should let raws, subqueries and aggregates replace its columns', () => {

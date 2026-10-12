@@ -1324,6 +1324,53 @@ export default (session) => {
         });
     });
 
+    it('should keep an aggregate aliased as the join column (#111)', async () => {
+      const models = await Model1.query()
+        .max('model1Id as model1Id')
+        .count('* as count')
+        .whereNotNull('model1Id')
+        .groupBy('model1Id')
+        .orderBy('model1Id')
+        .withGraphFetched('model1Relation1');
+
+      expect(
+        models.map((model) => [model.model1Id, Number(model.count), model.model1Relation1.id]),
+      ).toEqual([
+        [2, 1, 2],
+        [3, 1, 3],
+        [4, 1, 4],
+        [7, 1, 7],
+        [9, 1, 9],
+      ]);
+    });
+
+    it('should keep raw and subquery selections aliased as the join column (#111)', async () => {
+      const selections = [
+        raw('?? as ??', ['Model1.model1Id', 'model1Id']),
+        Model1.query()
+          .alias('m')
+          .select('m.model1Id')
+          .whereColumn('m.id', 'Model1.id')
+          .as('model1Id'),
+      ];
+
+      for (const selection of selections) {
+        const models = await Model1.query()
+          .select('id', selection)
+          .whereNotNull('model1Id')
+          .orderBy('id')
+          .withGraphFetched('model1Relation1');
+
+        expect(models.map((model) => [model.model1Id, model.model1Relation1.id])).toEqual([
+          [2, 2],
+          [3, 3],
+          [4, 4],
+          [7, 7],
+          [9, 9],
+        ]);
+      }
+    });
+
     it('should work with zero id', () => {
       return promiseMap(
         ['withGraphFetched', 'withGraphJoined'],
