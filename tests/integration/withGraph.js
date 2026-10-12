@@ -1807,6 +1807,22 @@ export default (session) => {
       });
     }
 
+    for (const method of ['withGraphFetched', 'withGraphJoined', 'allowGraph']) {
+      it(`${method}() should fail with a clear error for relations after ^`, () => {
+        const expression = 'model1Relation1.^.model1Relation2';
+
+        expect(() => Model1.query()[method](expression)).toThrow(
+          expect.objectContaining({
+            constructor: ValidationError,
+            type: 'RelationExpression',
+            message:
+              `Invalid relation expression "${expression}": ` +
+              '"^" is only supported at the end of a relation path.',
+          }),
+        );
+      });
+    }
+
     it('joinRelated() should fail with a clear error when a duplicate relation is detected', () => {
       const builder = Model1.query().joinRelated(
         '[model1Relation1, model1Relation1.model1Relation2]',
