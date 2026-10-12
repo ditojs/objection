@@ -15,6 +15,7 @@ This section lists the breaking changes in objection 4.0.
 - [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
+- [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
 - [`update` rejects field expression keys](#update-rejects-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 
@@ -133,6 +134,10 @@ To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, 
 ## typescript: insertGraph() has no allowMarkers option
 
 `InsertGraphOptions` no longer has the deprecated `allowMarkers` option. `insertGraph()` rejects `#unrelate` and `#delete` markers since 3.8.0, so the option had no effect. Remove it from `insertGraph()` calls.
+
+## typescript: RelateQueryBuilder takes the number query builder
+
+The type parameter of `RelateQueryBuilder` is the number query builder that `relate()` returns, instead of the query builder `relate()` is called on. Custom query builders that override `relate()` with an explicit return type use `RelateQueryBuilder<NumberQueryBuilder<this>>` instead of `RelateQueryBuilder<this>`.
 
 ## `update` rejects field expression keys
 

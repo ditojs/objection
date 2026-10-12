@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowJs": false,
     "experimentalDecorators": true,
+    "lib": ["es2022"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "noEmit": true,
