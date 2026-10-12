@@ -1218,6 +1218,23 @@ export default (session) => {
             });
         });
 
+        it('should be able to cancel the queries of upsertGraph', async () => {
+          Pet.beforeUpdate = createHookSpy(({ cancelQuery }) => {
+            cancelQuery();
+          });
+
+          const person = await Person.query()
+            .findOne({ name: 'Jennifer' })
+            .withGraphFetched('pets');
+          const pets = person.pets.map(({ id, name }) => ({ id, name: `${name} 2` }));
+          const result = await Person.query().upsertGraph({ id: person.id, pets });
+
+          expect(result.pets).toHaveLength(2);
+          expect(Pet.beforeUpdate.calls.length).toBe(2);
+          const current = await person.$relatedQuery('pets').orderBy('name');
+          expect(current.map((pet) => pet.name)).toEqual(['Cato', 'Doggo']);
+        });
+
         it('should be able to cancel the query with a value', () => {
           Movie.beforeUpdate = createHookSpy(({ cancelQuery }) => {
             cancelQuery(['lol']);

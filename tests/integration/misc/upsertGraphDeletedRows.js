@@ -25,6 +25,24 @@ export default (session) => {
       static get tableName() {
         return 'deleted_rows_pet';
       }
+
+      // A property that isn't written to the database:
+      $formatDatabaseJson(json) {
+        const { nickname, ...rest } = super.$formatDatabaseJson(json);
+        return rest;
+      }
+    }
+
+    let onBeforeUpdateMovie = null;
+
+    class Movie extends Model {
+      static get tableName() {
+        return 'deleted_rows_movie';
+      }
+
+      static async beforeUpdate() {
+        await onBeforeUpdateMovie?.();
+      }
     }
 
     class Person extends Model {
@@ -38,6 +56,19 @@ export default (session) => {
             relation: Model.HasManyRelation,
             modelClass: Pet,
             join: { from: 'deleted_rows_person.id', to: 'deleted_rows_pet.ownerId' },
+          },
+          movies: {
+            relation: Model.ManyToManyRelation,
+            modelClass: Movie,
+            join: {
+              from: 'deleted_rows_person.id',
+              through: {
+                from: 'deleted_rows_person_movie.personId',
+                to: 'deleted_rows_person_movie.movieId',
+                extra: ['role'],
+              },
+              to: 'deleted_rows_movie.id',
+            },
           },
         };
       }
@@ -62,6 +93,8 @@ export default (session) => {
     function dropTables() {
       return knex.schema
         .dropTableIfExists('deleted_rows_node')
+        .dropTableIfExists('deleted_rows_person_movie')
+        .dropTableIfExists('deleted_rows_movie')
         .dropTableIfExists('deleted_rows_pet')
         .dropTableIfExists('deleted_rows_person')
         .dropTableIfExists('deleted_rows_org');
@@ -80,6 +113,14 @@ export default (session) => {
         .createTable('deleted_rows_pet', (table) => {
           table.integer('id').primary();
           table.integer('ownerId').references('deleted_rows_person.id').onDelete('CASCADE');
+        })
+        .createTable('deleted_rows_movie', (table) => {
+          table.integer('id').primary();
+        })
+        .createTable('deleted_rows_person_movie', (table) => {
+          table.integer('personId');
+          table.integer('movieId');
+          table.string('role');
         });
 
       // SQL Server rejects cascading actions on self-references.
@@ -90,12 +131,15 @@ export default (session) => {
         });
       }
 
-      for (const modelClass of [Node, Pet, Person, Org]) {
+      for (const modelClass of [Node, Pet, Movie, Person, Org]) {
         modelClass.knex(knex);
       }
     });
 
     beforeEach(async () => {
+      onBeforeUpdateMovie = null;
+      await knex('deleted_rows_person_movie').delete();
+      await knex('deleted_rows_movie').delete();
       await knex('deleted_rows_pet').delete();
       await knex('deleted_rows_person').delete();
       await knex('deleted_rows_org').delete();
@@ -133,6 +177,26 @@ export default (session) => {
         'model (id=2) was not found when updating it. An earlier write of the graph or a concurrent query may have deleted it',
       );
       expect(err.data.dataPath).toEqual(['people', 1, 'pets', 0]);
+      await expectNothingWritten();
+    });
+
+    it('should throw when updating the extras of a join row that a concurrent query deleted', async () => {
+      await knex('deleted_rows_movie').insert({ id: 1 });
+      await knex('deleted_rows_person_movie').insert({ personId: 1, movieId: 1, role: 'a' });
+      onBeforeUpdateMovie = () => knex('deleted_rows_person_movie').delete();
+
+      await expect(
+        Person.query().upsertGraph({ id: 1, movies: [{ id: 1, role: 'b' }] }),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should not throw for a patch that writes no column', async () => {
+      const person = await Person.query().upsertGraph({
+        id: 2,
+        pets: [{ id: 2, nickname: 'Rex' }],
+      });
+
+      expect(person.pets[0].nickname).toBe('Rex');
       await expectNothingWritten();
     });
 
