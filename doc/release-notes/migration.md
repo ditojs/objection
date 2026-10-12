@@ -5,6 +5,7 @@ This section lists the breaking changes in objection 4.0.
 - [objection is an ES module package](#objection-is-an-es-module-package)
 - [Dropped support for node < 20.19](#dropped-support-for-node-20-19)
 - [Dropped support for knex < 3.3](#dropped-support-for-knex-3-3)
+- [Dropped support for TypeScript < 5.8](#dropped-support-for-typescript-5-8)
 - [Dropped support for MySQL < 8](#dropped-support-for-mysql-8)
 - [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
 - [Model files given as paths](#model-files-given-as-paths)
@@ -12,6 +13,13 @@ This section lists the breaking changes in objection 4.0.
 - [onConflict() with insertGraph() and upsertGraph() throws](#onconflict-with-insertgraph-and-upsertgraph-throws)
 - [Relation expressions that name a relation twice throw](#relation-expressions-that-name-a-relation-twice-throw)
 - [Unknown graph options throw](#unknown-graph-options-throw)
+- [insertGraph() throws for new models below related models](#insertgraph-throws-for-new-models-below-related-models)
+- [upsertGraph() sets the foreign key to null before deleting a BelongsToOneRelation row](#upsertgraph-sets-the-foreign-key-to-null-before-deleting-a-belongstoonerelation-row)
+- [upsertGraph() keeps the current to-one model for ignored models](#upsertgraph-keeps-the-current-to-one-model-for-ignored-models)
+- [offset() in updates and deletes throws](#offset-in-updates-and-deletes-throws)
+- [JSON field expressions throw on MySQL, SQLite, SQL Server and Oracle](#json-field-expressions-throw-on-mysql-sqlite-sql-server-and-oracle)
+- [Missing and array join properties throw](#missing-and-array-join-properties-throw)
+- [upsertGraph() relates moved rows before it deletes](#upsertgraph-relates-moved-rows-before-it-deletes)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
@@ -60,6 +68,7 @@ Objection 4.0 needs at least knex 3.3.
 ## Dropped support for TypeScript < 5.8
 
 The typings of objection 4.0 need at least TypeScript 5.8, the first version that understands that node can `require()` ES modules. TypeScript 5.8, 6 and 7 are supported.
+
 ## Dropped support for MySQL < 8
 
 Objection 4.0 needs at least MySQL 8.0.14, for window functions and for derived tables that refer to the outer query. MySQL 5.7 reached its end of life in October 2023. 3.x keeps supporting it.
@@ -115,9 +124,11 @@ Relation expressions that name a relation twice at the same level, like `'[movie
 ## insertGraph() throws for new models below related models
 
 `insertGraph()` throws a `ValidationError` of type `InvalidGraph` for new models (models without id) below models that it relates, naming their data path. 3.x ignored them and logged a warning, as `insertGraph()` never writes anything below related models. Insert them with a separate query, or use `upsertGraph()` with the `relate` option, which also upserts the relations of related models. Models with ids below related models, like fetched models with loaded relations, are still ignored.
+
 ## upsertGraph() sets the foreign key to null before deleting a BelongsToOneRelation row
 
 When `upsertGraph()` deletes the related row of a `BelongsToOneRelation` because of `pet: null` or `#delete`, it first sets the owner's foreign key to `null`, like `unrelate()`, whatever the owner's `jsonSchema` says. 3.9 only did this when the schema allowed `null` for the key, and otherwise deleted the row first and left the owner's reference to the database. Now an owner whose schema doesn't allow `null`, like `{ type: 'integer' }`, fails with a `ValidationError`, and a `NOT NULL` column fails with a database error, where `ON DELETE CASCADE` deleted the owner and `ON DELETE SET NULL` cleared the reference. Allow `null` in the schema and the column, or delete the owner itself if it can't exist without the related row.
+
 ## upsertGraph() keeps the current to-one model for ignored models
 
 In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the current model when the graph only holds a model that it ignores: a model marked with `#unrelate` or `#delete` that isn't the current one, or a replacement that `noInsert` or `noRelate` skips. The relation is left as if it wasn't in the graph, as for `BelongsToOneRelation` since 3.9. 3.x deleted or unrelated the current model. To remove the current model, mark it with its own id, like `{ pet: { id: 1, '#delete': true } }`, or pass `pet: null`. To-many relations are unchanged: an array is the full list, so `pets: [{ id: 2, '#delete': true }]` still removes the current pets.
@@ -129,7 +140,6 @@ In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the curr
 ## JSON field expressions throw on MySQL, SQLite, SQL Server and Oracle
 
 JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, and the `whereJson*()` methods of objection, throw an error on MySQL, SQLite, SQL Server and Oracle. They generate Postgres-only SQL, which these databases reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. 3.x logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex. Other databases than PostgreSQL still get a warning.
-
 
 ## Missing and array join properties throw
 
@@ -144,7 +154,6 @@ Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or
 `upsertGraph()` relates the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation` first, before it deletes or unrelates the rows that the graph removes. 3.x deleted first, so a row that moved out of a deleted parent was deleted with it by `ON DELETE CASCADE`, and failed with a foreign key without `ON DELETE` action. The update hooks of these relates now run before the delete hooks of the same call.
 
 A row related from another owner can no longer take the unique key of a row that the graph removes in its new place, e.g. with `unique(ownerId, name)`: the relate fails with a `UniqueViolationError`. Delete the conflicting row with a separate query in the same transaction first. Replacing such a row by a new one, or renaming a kept row to its key, still works, as do relates into a `HasOneRelation` with a unique foreign key.
-
 
 ## typescript: The typings are ES module declarations
 
@@ -259,6 +268,7 @@ await Pet.query().count('* as n').groupBy('ownerId').withGraphFetched('owner');
 ```
 
 Grouped queries need to group by the added columns too, or the database rejects them. Add the join columns to `groupBy()`, like `groupBy('ownerId')` above. In `withGraphJoined()`, the root query selects only its id columns next to the aggregates instead of all its columns. Select the columns you need explicitly.
+
 ## Misplaced `*` and `^` in relation expressions throw
 
 `*` and `^` end a relation path. 3.x silently ignored everything after them, so `'parent.^.pets'` fetched `parent` recursively without `pets`, and `'*.pets'` fetched all relations. It also ignored modifiers and aliases on them, like `'parent.^(onlyAdults)'`, and treated `*` and `^` in a list, like `'[children, *]'`, as relation names. These expressions throw an error in 4.0, in all methods that take relation expressions and in the graph options of `insertGraph()` and `upsertGraph()`. Remove what follows `*` or `^`, and apply modifiers to the relation itself, like `'parent(onlyAdults).^'`.
@@ -294,6 +304,8 @@ Queries that relied on this, like a lookup by id or slug, need to spell out both
 await Person.query().where('id', idOrSlug).orWhere('slug', idOrSlug).first();
 ```
 
+<br>
+<br>
 
 # Migration from objection 2.x to 3.0
 
