@@ -330,7 +330,7 @@ await Person.query().orderBy(ref(sortColumn));
 await Animal.query().whereColumn('animals.ownerId', ref('persons.id'));
 ```
 
-Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
+Models that map their columns with `snakeCaseMappers()` declare it, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html). Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
 
 To turn the checks off, augment `TypeConfig`:
 

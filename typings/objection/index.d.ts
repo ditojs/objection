@@ -434,13 +434,16 @@ export type NonFunctionPropertyNames<T> = {
   [K in keyof T]: T[K] extends Function ? never : K;
 }[keyof T];
 
+// The type-only members of models, which aren't data.
+type ModelTypeMembers = 'QueryBuilderType' | 'ColumnNameMapping';
+
 /**
  * Type that attempts to only select the user-defined model properties.
  * Properties starting with `$` are internal, like in `toJSON()`.
  */
 export type DataPropertyNames<T> = Exclude<
   NonFunctionPropertyNames<T>,
-  'QueryBuilderType' | `$${string}`
+  ModelTypeMembers | `$${string}`
 >;
 
 /**
@@ -593,7 +596,7 @@ export type ModelProps<T extends Model> = Exclude<
           ? never
           : K;
   }[keyof T],
-  undefined | 'QueryBuilderType'
+  undefined | ModelTypeMembers
 >;
 
 /**
@@ -704,9 +707,50 @@ type IsStrict = TypeConfig extends { strict: false } ? false : true;
 type IfStrict<Loose, Strict> = IsStrict extends true ? Strict : Loose;
 
 /**
- * The column names of model M: its properties without methods and relations.
+ * The column names of model M: its properties without methods and relations,
+ * in snake case for models that declare a snake case `ColumnNameMapping`.
  */
-export type ColumnName<M> = InsertablePropertyNames<M> & string;
+export type ColumnName<M> = keyof ModelColumns<M> & string;
+
+/**
+ * The columns of model M by their names in queries, with their types.
+ */
+type ModelColumns<M> = M extends { ColumnNameMapping: 'snakeCase' | 'upperSnakeCase' }
+  ? {
+      [
+        K in InsertablePropertyNames<M> & string as M extends {
+          ColumnNameMapping: 'upperSnakeCase';
+        }
+          ? Uppercase<SnakeCase<K>>
+          : SnakeCase<K>
+      ]: M[K];
+    }
+  : Pick<M, InsertablePropertyNames<M> & keyof M>;
+
+/**
+ * Converts a property name to snake case, as `snakeCaseMappers()` does with its
+ * default options: 'firstName' -> 'first_name', 'fooBAR' -> 'foo_bar'.
+ */
+type SnakeCase<
+  S extends string,
+  Prev extends string = '',
+  Out extends string = '',
+> = S extends `${infer C}${infer Rest}`
+  ? SnakeCase<
+      Rest,
+      C,
+      `${Out}${Prev extends ''
+        ? Lowercase<C>
+        : IsUpperCase<C> extends true
+          ? IsUpperCase<Prev> extends true
+            ? Lowercase<C>
+            : `_${Lowercase<C>}`
+          : C}`
+    >
+  : Out;
+
+type IsUpperCase<C extends string> =
+  C extends Uppercase<C> ? (C extends Lowercase<C> ? false : true) : false;
 
 /**
  * The model at the end of the relation path P of model M, e.g. 'pets:owner',
@@ -745,22 +789,29 @@ type ColumnType<M, C extends string> = C extends `${infer Q}.${infer Col}`
   ? PropertyType<RelationPathModel<M, Q>, Col>
   : PropertyType<M, C>;
 
-type PropertyType<M, K> = [M] extends [never] ? unknown : K extends keyof M ? M[K] : unknown;
-
+type PropertyType<M, C> = [M] extends [never]
+  ? unknown
+  : C extends keyof ModelColumns<M>
+    ? ModelColumns<M>[C]
+    : unknown;
 /**
  * Whether the columns of model M are checked: not for the base `Model` and
  * other models without declared columns, e.g. in untyped modifiers, nor for
- * `any`, which is also what TypeScript checks arguments against when M is
- * generic, e.g. in the methods of custom query builders. `any` is detected by
- * a member that no type has: unlike `0 extends 1 & M`, the check of `[M]` is
- * generic in M, which TypeScript needs to only relate arguments to the `false`
- * branch of conditionals on IsConcreteModel in generic code.
+ * models that declare `ColumnNameMapping: 'open'`, e.g. for custom column name
+ * mappers, nor for `any`, which is also what TypeScript checks arguments
+ * against when M is generic, e.g. in the methods of custom query builders.
+ * `any` is detected by a member that no type has: unlike `0 extends 1 & M`,
+ * the check of `[M]` is generic in M, which TypeScript needs to only relate
+ * arguments to the `false` branch of conditionals on IsConcreteModel in
+ * generic code.
  */
 type IsConcreteModel<M> = [M] extends [{ '~anyModel': true }]
   ? false
-  : [ColumnName<M>] extends [never]
+  : M extends { ColumnNameMapping: 'open' }
     ? false
-    : true;
+    : [ColumnName<M>] extends [never]
+      ? false
+      : true;
 
 type CheckedColumn<M, C extends string> =
   IsConcreteModel<M> extends true ? CheckColumn<M, C> : string;
@@ -2701,6 +2752,14 @@ export class Model {
   $transaction(): Knex;
 
   QueryBuilderType: QueryBuilder<this, this[]>;
+
+  /**
+   * How `static columnNameMappers` maps the column names in queries, for the
+   * column checks of strict mode: 'snakeCase' for `snakeCaseMappers()`,
+   * 'upperSnakeCase' with its `upperCase` option, and 'open' for other mappers,
+   * which turns the checks off.
+   */
+  ColumnNameMapping?: 'snakeCase' | 'upperSnakeCase' | 'open';
 }
 
 /**
