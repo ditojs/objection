@@ -1260,7 +1260,30 @@ const graph = await Person.query().upsertGraph({
 });
 ```
 
+[upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) writes in this order:
+
+1. Relate the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation`, by patching their foreign keys.
+2. Delete or unrelate the removed rows that reference their owners: the rows of `HasManyRelation`s and `HasOneRelation`s, and the join rows of many-to-many relations.
+3. Insert the new rows, and the join rows of many-to-many inserts and relates.
+4. Patch or update the changed rows, relate the remaining rows, and point the owners of `BelongsToOneRelation`s to their new related rows or to `null`.
+5. Delete the removed rows of `BelongsToOneRelation`s.
+6. Upsert the relations of related models, in nested `upsertGraph` calls.
+
+Rows that move to another parent are moved before their old parent is deleted, so they survive `ON DELETE CASCADE` and foreign keys without `ON DELETE` action. New and changed rows can take the unique keys of the rows they replace. A relate into a `HasOneRelation` waits for the removal of the current related model, so it can take its unique foreign key too.
+
 When the model of a `BelongsToOneRelation` like `parent` is deleted because of `parent: null` or `#delete`, its owner's foreign key is set to `null` before the delete, like [unrelate](/api/query-builder/mutate-methods.html#unrelate) does. The owner is patched, so its update hooks and its [jsonSchema](/api/model/static-properties.html#static-jsonschema) validation run, and a `NOT NULL` column makes the patch fail with a database error. Delete the owner itself if it can't exist without the related model.
+
+A row related from another owner can't take the unique key of a row that the graph removes in its new place, as the relate runs before the delete. With `unique(ownerId, name)` on the pets, relating person 2's pet `'Fluffy'` to person 1 while dropping person 1's own `'Fluffy'` fails with a `UniqueViolationError`. Delete the conflicting row with a separate query first:
+
+```js
+await Person.transaction(async (trx) => {
+  await Pet.query(trx).delete().where({ ownerId: 1, name: 'Fluffy' });
+  await Person.query(trx).upsertGraph(
+    { id: 1, pets: [{ id: 1 }, { id: 2 }] },
+    { relate: true }
+  );
+});
+```
 
 By giving `relate: true` and/or `unrelate: true` options as the second argument, you can change the behaviour so that instead of inserting and deleting rows, they are related and/or unrelated. Rows with no id still get inserted, but rows that have an id and are not currently related, get related.
 
