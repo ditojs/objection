@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { expectPartialEqual as expectPartEql } from '../../testUtils/testUtils.js';
 import { isPostgres } from '../../lib/utils/knexUtils.js';
-import { resetWarnings } from '../../lib/utils/warnings.js';
 
 export default (session) => {
   const Model1 = session.models.Model1;
@@ -130,80 +129,44 @@ export default (session) => {
       });
 
       it.skipIf(!session.isMySql())(
-        'should warn about an order with a limit on MySQL, as knex leaves out the order',
+        'should throw for an order with a limit on MySQL, as knex leaves out the order',
         async () => {
           // Only MySQL supports a limit in deletes.
+          const message =
+            'orderBy() is not supported in delete queries with limit() on MySQL, ' +
+            'as knex leaves out the order.';
+          const query = () => Model1.query().delete().where('id', '>', 1).orderBy('id').limit(1);
 
-          // The warning is only observable through `console.warn()`.
-          const warnings = [];
-          const originalWarn = console.warn;
-          console.warn = (message) => warnings.push(message);
-          resetWarnings();
+          // Building the query doesn't throw, only executing it.
+          query().toKnexQuery().toString();
+          await expect(query()).rejects.toThrow(message);
 
-          try {
-            const query = () => Model1.query().delete().where('id', '>', 1).orderBy('id').limit(1);
+          const model1 = await Model1.query().findById(1);
+          await expect(
+            model1.$relatedQuery('model1Relation2').delete().orderBy('id_col').limit(1),
+          ).rejects.toThrow(message);
+          expect(await session.knex('Model1').orderBy('id').pluck('id')).toEqual([1, 2, 3]);
+          expect(await session.knex('model2').orderBy('id_col').pluck('id_col')).toEqual([1, 2]);
 
-            // Building the query doesn't warn, only executing it.
-            query().toKnexQuery().toString();
-            expect(warnings).toHaveLength(0);
-
-            // Older knex versions leave out the limit as well, so the count of deleted
-            // rows depends on the knex version.
-            await query();
-            expect(warnings).toEqual([
-              '[objection] orderBy() has no effect in delete queries with limit() on MySQL, so the ' +
-                'limit deletes rows in any order. This will throw an error in objection 4.0.',
-            ]);
-
-            resetWarnings();
-            const model1 = await Model1.query().findById(1);
-            await model1.$relatedQuery('model1Relation2').delete().orderBy('id_col').limit(1);
-            expect(warnings).toHaveLength(2);
-
-            // A limit without an order doesn't warn.
-            resetWarnings();
-            await Model1.query().delete().where('id', '>', 1).limit(1);
-            expect(warnings).toHaveLength(2);
-          } finally {
-            console.warn = originalWarn;
-            resetWarnings();
-          }
+          // A limit without an order deletes:
+          expect(await Model1.query().delete().where('id', '>', 1).limit(1)).toBe(1);
         },
       );
 
-      it('should warn about an offset, as knex leaves it out', async () => {
-        // The warning is only observable through `console.warn()`.
-        const warnings = [];
-        const originalWarn = console.warn;
-        console.warn = (message) => warnings.push(message);
-        resetWarnings();
+      it('should throw for an offset, as knex leaves it out', async () => {
+        const message = 'offset() is not supported in delete queries, as knex leaves it out.';
+        const query = () => Model1.query().delete().where('id', '>', 1).offset(1);
 
-        try {
-          const query = () => Model1.query().delete().where('id', '>', 1).offset(1);
+        // Building the query doesn't throw, only executing it.
+        query().toKnexQuery().toString();
+        await expect(query()).rejects.toThrow(message);
 
-          // Building the query doesn't warn, only executing it.
-          query().toKnexQuery().toString();
-          expect(warnings).toHaveLength(0);
-
-          await query();
-          expect(warnings).toEqual([
-            '[objection] offset() has no effect in delete queries, so no rows are skipped. ' +
-              'This will throw an error in objection 4.0.',
-          ]);
-
-          resetWarnings();
-          const model1 = await Model1.query().findById(1);
-          await model1.$relatedQuery('model1Relation2').delete().offset(1);
-          expect(warnings).toHaveLength(2);
-
-          // A delete without an offset doesn't warn.
-          resetWarnings();
-          await Model1.query().delete().where('id', '>', 1);
-          expect(warnings).toHaveLength(2);
-        } finally {
-          console.warn = originalWarn;
-          resetWarnings();
-        }
+        const model1 = await Model1.query().findById(1);
+        await expect(model1.$relatedQuery('model1Relation2').delete().offset(1)).rejects.toThrow(
+          message,
+        );
+        expect(await session.knex('Model1').orderBy('id').pluck('id')).toEqual([1, 2, 3]);
+        expect(await session.knex('model2').orderBy('id_col').pluck('id_col')).toEqual([1, 2]);
       });
 
       if (isPostgres(session.knex)) {

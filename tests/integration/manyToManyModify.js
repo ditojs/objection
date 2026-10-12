@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { Model } from 'objection';
-import { resetWarnings } from '../../lib/utils/warnings.js';
 
 export default (session) => {
   const { Model1, Model2 } = session.models;
@@ -588,38 +587,27 @@ export default (session) => {
       );
 
       it.skipIf(!session.isMySql() && !session.isMsSql())(
-        "should not warn about the offset that it doesn't leave out",
+        'should not throw for the offset that it honours with join table extras',
         async () => {
           // Only MySQL and SQL Server support a limit in updates.
-          // The warning is only observable through `console.warn()`.
-          const warnings = [];
-          const originalWarn = console.warn;
-          console.warn = (message) => warnings.push(message);
-          resetWarnings();
-
-          try {
-            const model = await owner(1);
-            await model
-              .$relatedQuery('model1Relation3')
-              .patch({ model2Prop2: 10, extra2: 'z' })
-              .orderBy('model2.id_col')
-              .limit(1)
-              .offset(1);
-            expect(warnings).toHaveLength(0);
-
-            // Without join table extras, the offset is left out.
-            await model
-              .$relatedQuery('model1Relation3')
-              .patch({ model2Prop2: 10 })
-              .limit(1)
-              .offset(1);
-            expect(warnings).toHaveLength(1);
-          } finally {
-            console.warn = originalWarn;
-            resetWarnings();
-          }
+          const model = await owner(1);
+          const numUpdated = await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10, extra2: 'z' })
+            .orderBy('model2.id_col')
+            .limit(1)
+            .offset(1);
+          expect(numUpdated).toBe(1);
         },
       );
+
+      it('should throw for an offset without join table extras, as knex leaves it out', async () => {
+        const model = await owner(1);
+        await expect(
+          model.$relatedQuery('model1Relation3').patch({ model2Prop2: 10 }).limit(1).offset(1),
+        ).rejects.toThrow('offset() is not supported in update queries, as knex leaves it out.');
+        expect(await joinRows()).toEqual(allJoinRows);
+      });
 
       describe('asFindQuery() in a static afterUpdate hook', () => {
         let foundIds = null;
