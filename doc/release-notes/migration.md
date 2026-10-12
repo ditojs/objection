@@ -13,7 +13,7 @@ This section lists the breaking changes in objection 4.0.
 - [Relation expressions that name a relation twice throw](#relation-expressions-that-name-a-relation-twice-throw)
 - [Unknown graph options throw](#unknown-graph-options-throw)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
-- [Static hooks get an empty `result` instead of `[null]`](#static-hooks-get-an-empty-result-instead-of-null)
+- [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
@@ -150,14 +150,34 @@ The typings no longer use `export =`. They declare the named exports of the ES m
 
 TypeScript projects that compile to CommonJS can `require()` objection with `"module": "nodenext"`. With `"module": "node16"`, TypeScript refuses to `require()` objection from CommonJS files. On TypeScript < 7, projects that use `"module": "commonjs"` with the old `"moduleResolution": "node"` keep working. TypeScript 7 removed that resolution mode, so CommonJS projects need `"module": "nodenext"` there.
 
-## Static hooks get an empty `result` instead of `[null]`
+## Static hooks get the result in the shape that the query returns
 
-Where a static hook has no result to pass on, its `result` is now `[]` instead of `[null]`:
+The `result` of the static `after*` hooks is what the query returns, instead of an array that wraps it:
 
-- in all `before*` hooks, which run before there is a result
-- in `afterFind` of a query for a to-one relation that finds no related model, e.g. `pet.$relatedQuery('owner')` for a pet without owner
+- `afterFind` gets the model of `first()`, `findById()` and queries for to-one relations like `pet.$relatedQuery('owner')`, or `undefined` if nothing is found. With `page()` and `range()`, it still gets the array of models.
+- `afterInsert` gets the inserted model when a single model is inserted, and runs after the fetch of `insertAndFetch()`, with the fetched values.
+- `afterUpdate` and `afterDelete` get the number of updated or deleted rows. With `patchAndFetchById()`, `patchAndFetch()` and their `update*` variants, `afterUpdate` runs after the fetch and gets the fetched model, or `undefined` if nothing was updated.
+- In `before*` hooks, `result` is `undefined` instead of `[]`.
 
-Code that checked for the `null` entry, e.g. `result[0] === null`, can check `result.length === 0` instead.
+Code like `result.map(...)`, `result[0]` or `result.length` fails for single models, numbers and `undefined`. Use `asArray()` to get an array in all cases:
+
+```js
+import { Model, asArray } from 'objection';
+
+class Person extends Model {
+  static afterFind({ result }) {
+    for (const person of asArray(result)) {
+      // ...
+    }
+  }
+}
+```
+
+The static `after*` hooks run as the last step of the query, after `first()`, `page()`'s models and the fetches of the `*AndFetch()` methods, but before the `runAfter()` callbacks, including the ones in `context()`, `throwIfNotFound()` and `traverse()`. These callbacks now get the result in the shape that the query returns and after the hooks, e.g. the model with `first()` also if `runAfter()` is called before `first()`, and they run before `page()` and `range()` wrap the result in `{ results, total }`.
+
+The outer queries of `upsertGraph()` and `upsertGraphAndFetch()` no longer call the static `beforeFind` and `afterFind` hooks of the root model class with the input models. The queries that run for the models of the graph and their relations call the hooks as before.
+
+TypeScript: `StaticHookArguments<M, R>` declares `result: R`, with `R = undefined` by default, and the static hooks of `Model` declare the shapes that they get, e.g. `StaticHookArguments<any, Model | Model[] | undefined>` for `afterFind`. Overrides that destructure `result` from `StaticHookArguments<Person>` need the type of the result as second type argument, e.g. `StaticHookArguments<Person, Person | Person[] | undefined>`.
 
 ## `limit`, `offset` and `first` apply per parent in graph modifiers
 

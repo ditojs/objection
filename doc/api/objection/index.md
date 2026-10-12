@@ -297,6 +297,28 @@ const mixins = compose(
 class Person extends mixins(Model) {}
 ```
 
+## asArray
+
+```js
+import { asArray } from 'objection';
+```
+
+Returns arrays as they are, `[]` for `undefined`, and wraps any other value in an array. Use it in [static hooks](/guide/hooks.html#static-query-hooks) to handle a `result` that may be a single model, an array of models or `undefined` the same way.
+
+##### Examples
+
+```js
+import { Model, asArray } from 'objection';
+
+class Person extends Model {
+  static afterFind({ result }) {
+    for (const person of asArray(result)) {
+      person.fullName = `${person.firstName} ${person.lastName}`;
+    }
+  }
+}
+```
+
 ## snakeCaseMappers
 
 ```js

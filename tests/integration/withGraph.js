@@ -3466,12 +3466,13 @@ export default (session) => {
             },
           })
           .then(() => {
+            // `runAfter` callbacks see the models after their `$afterFind()` hooks.
             expect(keys.sort()).toEqual([
-              'Model1: model1Prop1',
-              'Model1: model1Prop1',
-              'Model1: model1Prop1, model1Relation2',
-              'Model2: model2Prop1, model2Relation1',
-              'Model2: model2Prop1, model2Relation1',
+              'Model1: $afterFindCalled, model1Prop1',
+              'Model1: $afterFindCalled, model1Prop1',
+              'Model1: $afterFindCalled, model1Prop1, model1Relation2',
+              'Model2: $afterFindCalled, model2Prop1, model2Relation1',
+              'Model2: $afterFindCalled, model2Prop1, model2Relation1',
             ]);
           });
       });
