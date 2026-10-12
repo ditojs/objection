@@ -106,6 +106,9 @@ Relation expressions that name a relation twice at the same level, like `'[movie
 ## insertGraph() throws for new models below related models
 
 `insertGraph()` throws a `ValidationError` of type `InvalidGraph` for new models (models without id) below models that it relates, naming their data path. 3.x ignored them and logged a warning, as `insertGraph()` never writes anything below related models. Insert them with a separate query, or use `upsertGraph()` with the `relate` option, which also upserts the relations of related models. Models with ids below related models, like fetched models with loaded relations, are still ignored.
+## upsertGraph() sets the foreign key to null before deleting a BelongsToOneRelation row
+
+When `upsertGraph()` deletes the related row of a `BelongsToOneRelation` because of `pet: null` or `#delete`, it first sets the owner's foreign key to `null`, like `unrelate()`, whatever the owner's `jsonSchema` says. 3.9 only did this when the schema allowed `null` for the key, and otherwise deleted the row first and left the owner's reference to the database. Now an owner whose schema doesn't allow `null`, like `{ type: 'integer' }`, fails with a `ValidationError`, and a `NOT NULL` column fails with a database error, where `ON DELETE CASCADE` deleted the owner and `ON DELETE SET NULL` cleared the reference. Allow `null` in the schema and the column, or delete the owner itself if it can't exist without the related row.
 
 ## typescript: The typings are ES module declarations
 

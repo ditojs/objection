@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
-import { Model, ForeignKeyViolationError } from 'objection';
+import { Model, DBError, ValidationError } from 'objection';
 
 export default (session) => {
   describe('upsertGraph() deleting the row of a BelongsToOneRelation', () => {
@@ -26,23 +26,6 @@ export default (session) => {
         };
       }
     }
-
-    // Owners whose schema allows `null` for the reference get it set to `null`
-    // before the referenced row is deleted.
-    function createNullableOwner(petIdSchema) {
-      return class NullableOwner extends Owner {
-        static get jsonSchema() {
-          return {
-            type: 'object',
-            properties: {
-              petId: petIdSchema,
-            },
-          };
-        }
-      };
-    }
-
-    const NullableOwner = createNullableOwner({ type: ['integer', 'null'] });
 
     function createTables(createPetId) {
       return knex.schema
@@ -83,16 +66,18 @@ export default (session) => {
       });
     }
 
+    // Removing the row sets the owner's reference to null before deleting the
+    // row, like `unrelate()`, whatever the owner's schema says.
     function itShouldRemoveTheReferenceBeforeTheRow() {
-      it('should set a nullable reference to null before deleting the row', async () => {
-        await NullableOwner.query().upsertGraph({ id: 1, pet: null });
+      it('should set the reference to null before deleting the row', async () => {
+        await Owner.query().upsertGraph({ id: 1, pet: null });
 
         expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
         expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
-      it('should set a nullable reference to null before deleting a #delete row', async () => {
-        await NullableOwner.query().upsertGraph(
+      it('should set the reference to null before deleting a #delete row', async () => {
+        await Owner.query().upsertGraph(
           { id: 1, pet: { id: 1, '#delete': true } },
           { allowMarkers: true },
         );
@@ -101,18 +86,26 @@ export default (session) => {
         expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
-      for (const petIdSchema of [
-        { anyOf: [{ type: 'integer' }, { type: 'null' }] },
-        { oneOf: [{ type: 'integer' }, { type: 'null' }] },
-        { type: 'integer', nullable: true },
-      ]) {
-        it(`should set a reference to null with schema ${JSON.stringify(petIdSchema)}`, async () => {
-          await createNullableOwner(petIdSchema).query().upsertGraph({ id: 1, pet: null });
+      it("should validate the owner's reference and keep the row", async () => {
+        class ValidatedOwner extends Owner {
+          static get jsonSchema() {
+            return {
+              type: 'object',
+              properties: {
+                petId: { type: 'integer' },
+              },
+            };
+          }
+        }
 
-          expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
-          expect(await knex('bt1_delete_pet')).toEqual([]);
-        });
-      }
+        const error = await ValidatedOwner.query()
+          .upsertGraph({ id: 1, pet: null })
+          .catch((err) => err);
+
+        expect(error).toBeInstanceOf(ValidationError);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 1 }]);
+        expect(await knex('bt1_delete_pet')).toEqual([{ id: 1 }]);
+      });
     }
 
     beforeAll(() => {
@@ -140,25 +133,6 @@ export default (session) => {
         });
       });
 
-      it("should leave the owner's reference to the database, without validating it", async () => {
-        // The owner isn't patched, so its schema doesn't have to allow `null`.
-        class ValidatedOwner extends Owner {
-          static get jsonSchema() {
-            return {
-              type: 'object',
-              properties: {
-                petId: { type: 'integer' },
-              },
-            };
-          }
-        }
-
-        await ValidatedOwner.query().upsertGraph({ id: 1, pet: null });
-
-        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: null }]);
-        expect(await knex('bt1_delete_pet')).toEqual([]);
-      });
-
       itShouldReplaceTheRow();
       itShouldRemoveTheReferenceBeforeTheRow();
     });
@@ -168,13 +142,6 @@ export default (session) => {
         return createTables((table) => {
           table.integer('petId').references('bt1_delete_pet.id').onDelete('CASCADE');
         });
-      });
-
-      it('should leave the owner to the database without a nullable schema', async () => {
-        await Owner.query().upsertGraph({ id: 1, pet: null });
-
-        expect(await knex('bt1_delete_owner')).toEqual([]);
-        expect(await knex('bt1_delete_pet')).toEqual([]);
       });
 
       itShouldReplaceTheRow();
@@ -188,11 +155,15 @@ export default (session) => {
         });
       });
 
-      it('should leave the owner to the database', async () => {
-        await Owner.query().upsertGraph({ id: 1, pet: null });
+      it('should fail to set the reference to null and keep the rows', async () => {
+        const error = await Owner.query()
+          .upsertGraph({ id: 1, pet: null })
+          .catch((err) => err);
 
-        expect(await knex('bt1_delete_owner')).toEqual([]);
-        expect(await knex('bt1_delete_pet')).toEqual([]);
+        // MySQL without strict mode writes 0 instead, which violates the foreign key.
+        expect(error).toBeInstanceOf(DBError);
+        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 1 }]);
+        expect(await knex('bt1_delete_pet')).toEqual([{ id: 1 }]);
       });
 
       itShouldReplaceTheRow();
@@ -203,16 +174,6 @@ export default (session) => {
         return createTables((table) => {
           table.integer('petId').references('bt1_delete_pet.id');
         });
-      });
-
-      it('should fail to delete the referenced row without a nullable schema', async () => {
-        const error = await Owner.query()
-          .upsertGraph({ id: 1, pet: null })
-          .catch((err) => err);
-
-        expect(error).toBeInstanceOf(ForeignKeyViolationError);
-        expect(await knex('bt1_delete_owner')).toEqual([{ id: 1, petId: 1 }]);
-        expect(await knex('bt1_delete_pet')).toEqual([{ id: 1 }]);
       });
 
       itShouldReplaceTheRow();
