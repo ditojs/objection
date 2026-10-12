@@ -692,13 +692,15 @@ module.exports = (session) => {
         // patched in several batches:
         const ids = Array.from({ length: 2101 }, (_, index) => 101 + index);
 
-        beforeEach(async () => {
+        async function insertRows(ids) {
           const rows = ids.map((id) => ({ id_col: id, model2_prop2: 0 }));
           const joinRows = ids.map((id) => ({ model1Id: 1, model2Id: id, extra1: 'many' }));
 
           await session.knex.batchInsert('model2', rows, 300);
           await session.knex.batchInsert('Model1Model2', joinRows, 300);
-        });
+        }
+
+        beforeEach(() => insertRows(ids));
 
         afterEach(() => {
           delete Model2.afterUpdate;
@@ -717,6 +719,29 @@ module.exports = (session) => {
         }
 
         it('should patch all of them and their join rows', async () => {
+          const model = await owner(1);
+          const numUpdated = await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10, extra2: 'z' })
+            .where('Model1Model2.extra1', 'many');
+
+          expect(numUpdated).to.equal(ids.length);
+          expect(await patchedIds()).to.eql(ids);
+          expect(await patchedJoinRowIds()).to.eql(ids);
+        });
+
+        it('should patch all of them with the statistics of a related table that held one row', async function () {
+          if (!session.isPostgres()) {
+            this.skip();
+          }
+
+          // Vacuum the related table while it only holds its last row, as the
+          // autovacuum may do, so that Postgres plans for one related row.
+          const lastId = ids[ids.length - 1];
+          await session.knex('model2').whereNot('id_col', lastId).delete();
+          await session.knex.raw('vacuum analyze model2');
+          await insertRows(ids.slice(0, -1));
+
           const model = await owner(1);
           const numUpdated = await model
             .$relatedQuery('model1Relation3')
