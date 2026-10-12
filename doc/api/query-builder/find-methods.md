@@ -32,12 +32,22 @@ Composite key:
 const person = await Person.query().findById([1, '10']);
 ```
 
-`findById` can be used together with `patch`, `delete` and any other query method. All it does is adds the needed `where` clauses to the query.
+`findById` can be used together with `patch`, `delete` and any other query method:
 
 ```js
 await Person.query()
   .findById(someId)
   .patch({ firstName: 'Jennifer' });
+```
+
+It adds the id condition to the query in its own parentheses, so the other `where` clauses can't widen it, not even `orWhere`:
+
+```js
+// where "persons"."id" = 1 and ("firstName" = 'Jennifer' or "lastName" = 'Aniston')
+await Person.query()
+  .findById(1)
+  .where('firstName', 'Jennifer')
+  .orWhere('lastName', 'Aniston');
 ```
 
 ## findByIds()
@@ -46,7 +56,7 @@ await Person.query()
 queryBuilder = queryBuilder.findByIds(ids);
 ```
 
-Finds a list of items. The order of the returned items is not guaranteed to be the same as the order of the inputs.
+Finds a list of items. The order of the returned items is not guaranteed to be the same as the order of the inputs. Like [findById](#findbyid), it adds the id condition in its own parentheses.
 
 ##### Arguments
 
