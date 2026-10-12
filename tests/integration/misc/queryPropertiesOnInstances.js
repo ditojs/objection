@@ -15,8 +15,17 @@ module.exports = (session) => {
           name: { type: 'string' },
           views: { type: 'integer', default: 0 },
           data: { type: 'object' },
+          parentId: { type: ['integer', 'null'] },
         },
       };
+
+      static relationMappings = () => ({
+        children: {
+          relation: Model.HasManyRelation,
+          modelClass: Post,
+          join: { from: 'Post.id', to: 'Post.parentId' },
+        },
+      });
     }
 
     let TestPost;
@@ -27,6 +36,7 @@ module.exports = (session) => {
         table.integer('id').primary();
         table.string('name');
         table.integer('views');
+        table.integer('parentId');
 
         if (session.isPostgres()) {
           table.jsonb('data');
@@ -203,6 +213,15 @@ module.exports = (session) => {
       post.name = 'b';
       await post.$query().patch();
       expect(await fetchViews(post.id)).to.equal(10);
+    });
+
+    it('should write the foreign key set by a relation over a query property', async () => {
+      const parent = await TestPost.query().insert({ id: 1, name: 'a' });
+      await TestPost.query().insert({ id: 9, name: 'b' });
+      const child = await parent
+        .$relatedQuery('children')
+        .insert({ id: 2, name: 'c', parentId: raw('9') });
+      expect((await TestPost.query().findById(child.id)).parentId).to.equal(1);
     });
 
     it('should run the query properties each time the same builder runs', async () => {
