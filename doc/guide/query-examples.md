@@ -1463,7 +1463,7 @@ The special properties work like this:
 - `#unrelate` and `#delete` take precedence over the `unrelate`, `noUnrelate` and `noDelete` options. A model marked with `#delete` is deleted even if `unrelate` or `noDelete` is set for its relation, and a model marked with `#unrelate` is unrelated even if `noUnrelate` is set.
 - If both `#unrelate` and `#delete` are set, the model is unrelated.
 - The marked model itself is not updated and its relations are ignored, so nothing inside its graph gets inserted, updated, related, unrelated or deleted. Like other deletes, the delete is not recursive (unless you have defined `ON DELETE CASCADE` or other hooks in the db).
-- Only models that are currently related to the parent model are unrelated or deleted. Marked models that don't exist or are related to a different model are ignored. They are never inserted or related, even with the `relate` or `insertMissing` options.
+- Only models that are currently related to the parent model are unrelated or deleted. Marked models that don't exist or are related to a different model are ignored. They are never inserted or related, even with the `relate` or `insertMissing` options. In a to-one relation, a marked model that isn't the current one keeps the current model, as if the relation wasn't in the graph. In a to-many relation, the array is still the full list, so the current models missing from it are removed.
 - Only the value `true` marks a model. Other values are ignored and the properties are never written to the database.
 - Without the `allowMarkers` option, a `ValidationError` is thrown if a model is marked.
 - The special properties can't be used for the root models of the graph. A `ValidationError` is thrown if a root model is marked.

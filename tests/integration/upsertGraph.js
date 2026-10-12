@@ -588,6 +588,31 @@ export default (session) => {
         });
       }
 
+      for (const [title, model1Relation1Inverse, options] of [
+        ['noInsert', { model1Prop1: 'skipped' }, { noInsert: ['model1Relation1Inverse'] }],
+        [
+          'noInsert and insertMissing',
+          { id: 100 },
+          { insertMissing: true, noInsert: ['model1Relation1Inverse'] },
+        ],
+        ['noRelate', { id: 1 }, { relate: true, noRelate: ['model1Relation1Inverse'] }],
+      ]) {
+        it(`should keep the current HasOneRelation model when ${title} skips its replacement`, async () => {
+          await Model1.query(session.knex).upsertGraph(
+            // Row 3 has one row 2 that references it.
+            { id: 3, model1Relation1Inverse },
+            { fetchStrategy, ...options },
+          );
+
+          const root = await Model1.query(session.knex)
+            .findById(3)
+            .withGraphFetched('model1Relation1Inverse');
+
+          expect(root.model1Relation1Inverse.id).toBe(2);
+          expect(await session.knex('Model1')).toHaveLength(7);
+        });
+      }
+
       it('should keep a BelongsToOneRelation model that the graph patches elsewhere when noRelate is set', async () => {
         await session.knex('Model1').where('id', 1).update({ model1Id: 3 });
 
@@ -2021,6 +2046,61 @@ export default (session) => {
 
             const ids = (await trx('Model1').whereIn('id', [1, 3])).map((it) => it.id);
             expect(ids.sort()).toEqual([1, 3]);
+          });
+        });
+
+        it(`should keep the current HasOneRelation model with ${prop} on a different model`, () => {
+          const upsert = {
+            id: 3,
+            // Row 1 isn't related to row 3, which has one row 2.
+            model1Relation1Inverse: { id: 1, [prop]: true },
+          };
+
+          return transaction(session.knex, async (trx) => {
+            await Model1.query(trx).upsertGraph(upsert, { fetchStrategy, allowMarkers: true });
+
+            const root = await Model1.query(trx)
+              .findById(3)
+              .withGraphFetched('model1Relation1Inverse');
+            expect(root.model1Relation1Inverse.id).toBe(2);
+
+            const ids = (await trx('Model1').whereIn('id', [1, 2])).map((it) => it.id);
+            expect(ids.sort()).toEqual([1, 2]);
+          });
+        });
+
+        it(`should keep the current HasOneThroughRelation model with ${prop} on a different model`, () => {
+          const upsert = {
+            idCol: 1,
+            // Row 5 isn't related to row 1, which has one row 4 through the join table.
+            model2Relation2: { id: 5, [prop]: true },
+          };
+
+          return transaction(session.knex, async (trx) => {
+            await trx('Model1Model2One').insert({ model2Id: 1, model1Id: 4 });
+            await Model2.query(trx).upsertGraph(upsert, { fetchStrategy, allowMarkers: true });
+
+            const root = await Model2.query(trx).findById(1).withGraphFetched('model2Relation2');
+            expect(root.model2Relation2.id).toBe(4);
+
+            const ids = (await trx('Model1').whereIn('id', [4, 5])).map((it) => it.id);
+            expect(ids.sort()).toEqual([4, 5]);
+          });
+        });
+
+        it(`should remove the current HasManyRelation models with ${prop} on a different model`, () => {
+          const upsert = {
+            id: 2,
+            // Row 3 of model2 isn't related to row 2, which has rows 1 and 2.
+            model1Relation2: [{ idCol: 3, [prop]: true }],
+          };
+
+          return transaction(session.knex, async (trx) => {
+            await trx('model2').insert({ id_col: 3, model2_prop1: 'other' });
+            await Model1.query(trx).upsertGraph(upsert, { fetchStrategy, allowMarkers: true });
+
+            const root = await Model1.query(trx).findById(2).withGraphFetched('model1Relation2');
+            expect(root.model1Relation2).toEqual([]);
           });
         });
       }
