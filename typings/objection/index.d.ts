@@ -1200,6 +1200,20 @@ export interface ModifyGraphMethod<out QB extends AnyQueryBuilder> {
   ): QB;
 }
 
+export interface JoinAliases {
+  owner: string;
+  related: string;
+  /** The alias of the join table of a `ManyToManyRelation` or `HasOneThroughRelation`. */
+  joinTable?: string;
+}
+
+export interface ModifyJoinMethod<out QB extends AnyQueryBuilder> {
+  (
+    expr: RelationExpression<ModelType<QB>>,
+    modifier: (join: Knex.JoinClause, aliases: JoinAliases) => void,
+  ): QB;
+}
+
 export interface ContextMethod<out QB extends AnyQueryBuilder> {
   (context: object): QB;
   (): QueryContext;
@@ -1530,6 +1544,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   graphExpressionObject: GraphExpressionObjectMethod<this>;
 
   modifyGraph: ModifyGraphMethod<this>;
+  modifyJoin: ModifyJoinMethod<this>;
 
   context: ContextMethod<this>;
   clearContext: ClearContextMethod<this>;

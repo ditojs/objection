@@ -29,6 +29,7 @@ import relationModify from './relationModify.js';
 import nonPrimaryKeyRelations from './nonPrimaryKeyRelations.js';
 import staticHooks from './staticHooks.js';
 import modifiers from './modifiers.js';
+import modifyJoin from './modifyJoin.js';
 import toKnexQuery from './toKnexQuery.js';
 import relationOwnerGrouping from './relationOwnerGrouping.js';
 import jsonQueries from './jsonQueries.js';
@@ -150,6 +151,7 @@ describe('integration tests', () => {
       nonPrimaryKeyRelations(session);
       staticHooks(session);
       modifiers(session);
+      modifyJoin(session);
       toKnexQuery(session);
       relationOwnerGrouping(session);
 

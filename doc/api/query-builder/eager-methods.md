@@ -349,6 +349,16 @@ const people = await Person.query()
   .where('persons.id', '>', 100);
 ```
 
+The `ON` clause of the joins can be modified with [modifyJoin](/api/query-builder/join-methods.html#modifyjoin), e.g. to only join the pets that are younger than their owner, while still returning the people without such pets:
+
+```js
+const people = await Person.query()
+  .withGraphJoined('pets')
+  .modifyJoin('pets', (join, { owner, related }) => {
+    join.andOn(`${related}.age`, '<', `${owner}.age`);
+  });
+```
+
 ##### Mixing withGraphJoined and withGraphFetched
 
 `withGraphJoined` and [withGraphFetched](/api/query-builder/eager-methods.html#withgraphfetched) can be used in the same query. The joined relations are joined to the main query, so you can filter by them, and the fetched relations are then loaded using separate queries for the resulting models. The order of the calls doesn't matter.

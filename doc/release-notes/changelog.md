@@ -48,6 +48,7 @@
 
 - `asArray()` is exported, to turn the `result` of static hooks into an array [#66](https://github.com/ditojs/objection/issues/66)
 - The hooks of the queries that `relate()` and `unrelate()` run get the `relation` and its owners as `items`: the update hooks of the related model class for `HasManyRelation`, of the owner model class for `BelongsToOneRelation`, and the insert and delete hooks of the join model class for `ManyToManyRelation` [#66](https://github.com/ditojs/objection/issues/66)
+- `modifyJoin()` modifies the `ON` clause of the joins of `joinRelated()` and `withGraphJoined()`, with the aliases of the owner, related and join tables, e.g. to compare the related table's columns with the owner's [#1975](https://github.com/Vincit/objection.js/issues/1975)
 
 ### Fixes
 
