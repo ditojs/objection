@@ -2,6 +2,7 @@ const expect = require('expect.js');
 const { inheritModel } = require('../../lib/model/inheritModel');
 const { expectPartialEqual: expectPartEql, delay } = require('./../../testUtils/testUtils');
 const { ValidationError, raw } = require('../../');
+const { resetWarnings } = require('../../lib/utils/warnings');
 
 module.exports = (session) => {
   let Model1 = session.models.Model1;
@@ -137,6 +138,40 @@ module.exports = (session) => {
             expectPartEql(rows[1], { id: 2, model1Prop1: 'updated text' });
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
           });
+      });
+
+      it('should warn about an offset, as knex leaves it out', async () => {
+        // The warning is only observable through `console.warn()`.
+        const warnings = [];
+        const originalWarn = console.warn;
+        console.warn = (message) => warnings.push(message);
+        resetWarnings();
+
+        try {
+          const query = () => Model1.query().update({ model1Prop1: 'updated text' }).offset(1);
+
+          // Building the query doesn't warn, only executing it.
+          query().toKnexQuery().toString();
+          expect(warnings).to.have.length(0);
+
+          await query();
+          expect(warnings).to.eql([
+            '[objection] offset() has no effect in update queries, so no rows are skipped, and on ' +
+              'SQL Server limit() is ignored too. This will throw an error in objection 4.0.',
+          ]);
+
+          resetWarnings();
+          await Model1.query().patch({ model1Prop1: 'patched text' }).offset(1);
+          expect(warnings).to.have.length(2);
+
+          // An update without an offset doesn't warn.
+          resetWarnings();
+          await Model1.query().patch({ model1Prop1: 'patched text' });
+          expect(warnings).to.have.length(2);
+        } finally {
+          console.warn = originalWarn;
+          resetWarnings();
+        }
       });
 
       it('should validate', (done) => {

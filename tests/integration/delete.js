@@ -171,6 +171,41 @@ module.exports = (session) => {
         }
       });
 
+      it('should warn about an offset, as knex leaves it out', async () => {
+        // The warning is only observable through `console.warn()`.
+        const warnings = [];
+        const originalWarn = console.warn;
+        console.warn = (message) => warnings.push(message);
+        resetWarnings();
+
+        try {
+          const query = () => Model1.query().delete().where('id', '>', 1).offset(1);
+
+          // Building the query doesn't warn, only executing it.
+          query().toKnexQuery().toString();
+          expect(warnings).to.have.length(0);
+
+          await query();
+          expect(warnings).to.eql([
+            '[objection] offset() has no effect in delete queries, so no rows are skipped. ' +
+              'This will throw an error in objection 4.0.',
+          ]);
+
+          resetWarnings();
+          const model1 = await Model1.query().findById(1);
+          await model1.$relatedQuery('model1Relation2').delete().offset(1);
+          expect(warnings).to.have.length(2);
+
+          // A delete without an offset doesn't warn.
+          resetWarnings();
+          await Model1.query().delete().where('id', '>', 1);
+          expect(warnings).to.have.length(2);
+        } finally {
+          console.warn = originalWarn;
+          resetWarnings();
+        }
+      });
+
       if (isPostgres(session.knex)) {
         it('should delete and return multiple', () => {
           let deleted1;
