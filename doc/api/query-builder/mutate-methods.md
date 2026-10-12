@@ -362,7 +362,7 @@ await Person.query().update({
 });
 ```
 
-Referring to attributes inside json columns (only with postgres). Use [patch](/api/query-builder/mutate-methods.html#patch) to update single values inside json columns.
+Referring to attributes inside json columns (PostgreSQL, MySQL and SQLite). Use [patch](/api/query-builder/mutate-methods.html#patch) to update single values inside json columns.
 
 ```js
 await Person.query().update({

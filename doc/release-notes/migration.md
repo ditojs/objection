@@ -146,7 +146,7 @@ In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the curr
 
 JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, `ref('column').castJson()` and the `whereJson*()` methods of objection throw an error on SQL Server and Oracle. 3.x generated the SQL of PostgreSQL, which these databases reject, and logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. Other databases than PostgreSQL, MySQL and SQLite still get a warning.
 
-On MySQL and SQLite, objection writes the SQL of the database for `ref()`, where 3.x generated the SQL of PostgreSQL, which they reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. `'column:path'` keys in `patch()` and the `whereJson*()` methods throw an error on MySQL and SQLite. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex.
+On MySQL and SQLite, objection writes the SQL of the database for `ref()` and `'column:path'` keys in `patch()`, where 3.x generated the SQL of PostgreSQL, which they reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. The `whereJson*()` methods throw an error on MySQL and SQLite. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex.
 
 ## Casts and json values on MySQL and SQLite
 
