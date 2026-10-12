@@ -1,4 +1,12 @@
-import { Generated, Model, Pojo, QueryBuilder } from 'objection';
+import {
+  Generated,
+  Model,
+  Pojo,
+  QueryBuilder,
+  RelationExpression,
+  WithGraphOptions,
+  WithGraphQueryBuilder,
+} from 'objection';
 
 export class Program extends Model {
   static tableName = 'programs';
@@ -47,6 +55,17 @@ export class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M
 
   someCustomMethod(): this {
     return this;
+  }
+
+  withGraph<const E extends RelationExpression<M>>(
+    expr: E,
+    options?: WithGraphOptions,
+  ): WithGraphQueryBuilder<this, E> {
+    return super.withGraph(expr, options);
+  }
+
+  firstByName(name: string) {
+    return this.where('name', name).first();
   }
 }
 

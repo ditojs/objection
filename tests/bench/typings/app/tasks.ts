@@ -204,7 +204,7 @@ export async function attachmentOwnerComment(a: Attachment) {
 export async function tagsWithCounts() {
   return Tag.query()
     .select('tags.*', Tag.relatedQuery('tasks').count().as('taskCount'))
-    .orderBy(ref('taskCount'), 'desc');
+    .orderBy('taskCount', 'desc');
 }
 
 export async function tasksForMilestones(ids: number[]) {

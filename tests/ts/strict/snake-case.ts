@@ -48,6 +48,17 @@ async function queries() {
   await Person.query().patch({ firstName: 'Jennifer' });
   const people = await Person.query().where('first_name', 'Jennifer');
   people[0].firstName;
+
+  // Selected columns and aliases come back in camel case.
+  const rows = await Person.query().select('first_name', 'home_url as main_url');
+  rows[0].firstName.toUpperCase();
+  rows[0].mainUrl.toUpperCase();
+  // @ts-expect-error
+  rows[0].first_name;
+  // orderBy() takes the aliases as written in SQL.
+  await Person.query().select('home_url as main_url').orderBy('main_url');
+  // @ts-expect-error
+  await Person.query().select('home_url as main_url').orderBy('mainUrl');
 }
 
 // The declaration isn't a property of the model data.
@@ -84,6 +95,10 @@ async function upperCase() {
   await UpperModel.query().where('FIRST_NAME', 'Jennifer').orderBy('ID');
   // @ts-expect-error
   await UpperModel.query().where('first_name', 'Jennifer');
+  const rows = await UpperModel.query().select('FIRST_NAME', 'ID as RECORD_ID');
+  rows[0].firstName.toUpperCase();
+  rows[0].recordId.toFixed();
+  await UpperModel.query().select('ID as RECORD_ID').orderBy('RECORD_ID');
 }
 
 // Models with other column name mappers declare 'open', and aren't checked.
