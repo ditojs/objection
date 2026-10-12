@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as utils from '../../lib/utils/knexUtils.js';
 import { transaction, ValidationError, Model } from 'objection';
-import { resetWarnings } from '../../lib/utils/warnings.js';
 import { cloneDeep, sortBy } from '../../testUtils/testUtils.js';
 
 export default (session) => {
@@ -884,48 +883,37 @@ export default (session) => {
     });
 
     describe('.query().insertGraph() with new models below related models (#217)', () => {
-      let warnings;
-      let originalWarn;
-
       beforeEach(() => {
-        resetWarnings();
-        warnings = [];
-        originalWarn = console.warn;
-        console.warn = (message) => warnings.push(message);
         return session.populate(population);
       });
 
-      afterEach(() => {
-        console.warn = originalWarn;
-        resetWarnings();
-      });
+      it('should throw and insert nothing', async () => {
+        const err = await Model1.query()
+          .insertGraph(
+            {
+              model1Prop1: 'root',
 
-      it('should warn and ignore the new models', async () => {
-        const model = await Model1.query().insertGraph(
-          {
-            model1Prop1: 'root',
-
-            model1Relation1: {
-              id: population.id,
-              model1Relation2: [{ model2Prop1: 'below related' }],
+              model1Relation1: {
+                id: population.id,
+                model1Relation2: [{ model2Prop1: 'below related' }],
+              },
             },
-          },
-          { relate: true },
+            { relate: true },
+          )
+          .catch((err) => err);
+
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.type).toBe('InvalidGraph');
+        expect(err.message).toBe(
+          "insertGraph cannot insert the new model at 'model1Relation1.model1Relation2[0]' " +
+            'below a related model. Insert it with a separate query or use upsertGraph instead',
         );
 
-        expect(warnings).toEqual([
-          '[objection] insertGraph() ignores new models below related models. ' +
-            'Insert them with a separate query or use upsertGraph() instead. ' +
-            'This will throw in objection 4.0.',
-        ]);
-
-        const fetched = await Model1.query().findById(model.id);
-
-        expect(fetched.model1Id).toBe(population.id);
+        expect(await Model1.query().where('model1Prop1', 'root')).toEqual([]);
         expect(await session.knex('model2').where('model2_prop1', 'below related')).toEqual([]);
       });
 
-      it('should not warn about existing models below related models', async () => {
+      it('should ignore existing models below related models', async () => {
         const model = await Model2.query().insertGraph(
           {
             model2Prop1: 'root',
@@ -940,13 +928,34 @@ export default (session) => {
           { relate: true },
         );
 
-        expect(warnings).toEqual([]);
+        const fetched = await Model2.query()
+          .findById(model.idCol)
+          .withGraphFetched('model2Relation1');
+
+        expect(fetched.model2Relation1.map((it) => it.id)).toEqual([population.id]);
+      });
+
+      it('should ignore models with ids below related models that are not related', async () => {
+        const model = await Model2.query().insertGraph(
+          {
+            model2Prop1: 'root',
+
+            model2Relation1: [
+              {
+                id: population.id,
+                model1Relation3: [{ idCol: 1000, model2Prop1: 'with id' }],
+              },
+            ],
+          },
+          { relate: ['model2Relation1'] },
+        );
 
         const fetched = await Model2.query()
           .findById(model.idCol)
           .withGraphFetched('model2Relation1');
 
         expect(fetched.model2Relation1.map((it) => it.id)).toEqual([population.id]);
+        expect(await Model2.query().findById(1000)).toBeUndefined();
       });
     });
 

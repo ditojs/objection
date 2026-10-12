@@ -1086,7 +1086,7 @@ await Person.query().insertGraph(
 );
 ```
 
-`insertGraph` doesn't insert, update or relate anything below the related models, and new models below them are dropped. A warning is logged when that happens, and objection 4.0 will throw an error instead. New models below models that aren't related because of the `noRelate` option are dropped too. Use [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) to modify the relations of related models.
+`insertGraph` doesn't insert, update or relate anything below the related models, and throws a `ValidationError` of type `InvalidGraph` for new models (models without id) below them. Models with ids below the related models are ignored, so fetched models with loaded relations can be related. New models below models that aren't related because of the `noRelate` option are dropped. Use [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) to modify the relations of related models.
 
 If you need to mix inserts and relates inside a single relation, you can use the special property `#dbRef`
 

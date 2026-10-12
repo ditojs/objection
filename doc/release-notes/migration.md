@@ -103,6 +103,10 @@ Relation expressions that name a relation twice at the same level, like `'[movie
 
 `insertGraph()`, `upsertGraph()` and their `*AndFetch()` variants throw an error for unknown keys in their options, like a misspelled `noInset` instead of `noInsert`. 3.x ignored them and logged a warning, so the operation ran with the default behaviour. `insertGraph()` also throws for the options of `upsertGraph()` that have no effect on an insert, which 3.x ignored silently: `noUpdate`, `noDelete`, `noUnrelate`, `insertMissing`, `update`, `unrelate`, `fetchStrategy` and `allowMarkers`. It accepts `relate`, `noRelate`, `noInsert` and `allowRefs`. Fix or remove the reported keys.
 
+## insertGraph() throws for new models below related models
+
+`insertGraph()` throws a `ValidationError` of type `InvalidGraph` for new models (models without id) below models that it relates, naming their data path. 3.x ignored them and logged a warning, as `insertGraph()` never writes anything below related models. Insert them with a separate query, or use `upsertGraph()` with the `relate` option, which also upserts the relations of related models. Models with ids below related models, like fetched models with loaded relations, are still ignored.
+
 ## typescript: The typings are ES module declarations
 
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.
