@@ -425,7 +425,7 @@ post.$setRelated('author', user); // post.authorId === user.id
 post.$setRelated('author', null); // post.authorId === null
 
 user.$setRelated('posts', [post1, post2]); // post1.authorId === post2.authorId === user.id
-user.$setRelated('posts', [post2]); // post1.authorId === null
+user.$setRelated('posts', [post2]); // post1.authorId === null, unless it already pointed to another user
 new User().$setRelated('posts', [post3]); // post3.authorId === null, as the user has no id yet
 ```
 

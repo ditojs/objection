@@ -3,8 +3,10 @@
 ## TypeScript Example
 
 ```ts
-export function Mixin(options = {}) {
-  return function<T extends typeof Model>(Base: T) {
+type Constructor<T> = new (...args: any[]) => T;
+
+export function Mixin() {
+  return function <T extends Constructor<Model>>(Base: T) {
     return class extends Base {
       mixinMethod() {}
     };
@@ -15,17 +17,14 @@ export function Mixin(options = {}) {
 
 class Person extends Model {}
 
-const MixinPerson = Mixin(Person);
-
-// Or as a decorator:
-
-@Mixin
-class Person extends Model {}
+const MixinPerson = Mixin()(Person);
 ```
 
 ## TypeScript Example with Custom QueryBuilder
 
 ```ts
+type Constructor<T> = new (...args: any[]) => T;
+
 class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
 
@@ -34,11 +33,11 @@ class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   }
 }
 
-export function CustomQueryBuilderMixin(options = {}) {
-  return function<T extends typeof Model>(Base: T) {
+export function CustomQueryBuilderMixin() {
+  return function <T extends Constructor<Model>>(Base: T) {
     return class extends Base {
-      static QueryBuilder = QueryBuilder;
-      QueryBuilderType: CustomQueryBuilder<this, this[]>;
+      static QueryBuilder = CustomQueryBuilder;
+      declare QueryBuilderType: CustomQueryBuilder<this>;
 
       mixinMethod() {}
     };
@@ -47,20 +46,17 @@ export function CustomQueryBuilderMixin(options = {}) {
 
 // Usage
 
-class Person extends Model {}
+class Person extends Model {
+  id!: number;
+}
 
-const MixinPerson = CustomQueryBuilderMixin(Person);
-
-// Or as a decorator:
-
-@CustomQueryBuilderMixin
-class Person extends Model {}
+const MixinPerson = CustomQueryBuilderMixin()(Person);
 
 async () => {
   const z = await MixinPerson.query()
     .whereIn('id', [1, 2])
     .someCustomMethod()
-    .where('foo', 1)
+    .where('id', 1)
     .someCustomMethod();
 
   z[0].mixinMethod();
