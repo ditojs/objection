@@ -71,6 +71,7 @@
 - A many-to-many `patch()` / `update()` with join table extras and `limit()` on MySQL and SQL Server can order by columns of the join table [#161](https://github.com/ditojs/objection/issues/161)
 - `cancelQuery()` with a single row in the `beforeInsert` hook of an `insert()` merges it into the inserted model, like an array of rows, instead of ignoring it [#66](https://github.com/ditojs/objection/issues/66)
 - `insertGraph()` and `upsertGraph()` reject only after the queries they already started have finished, so a transaction is rolled back after them. Before, rows of these queries could be committed after the rollback on SQLite. [#335](https://github.com/ditojs/objection/pull/335)
+- `upsertGraph()` sets the foreign key of a model that a `#ref` relates into a `HasManyRelation` or `HasOneRelation`. Before, the row was left without it, and the id of the owner could be cleared [#311](https://github.com/ditojs/objection/issues/311)
 
 ### Types
 
