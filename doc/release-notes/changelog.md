@@ -74,6 +74,7 @@
 - `cancelQuery()` with a single row in the `beforeInsert` hook of an `insert()` merges it into the inserted model, like an array of rows, instead of ignoring it [#66](https://github.com/ditojs/objection/issues/66)
 - `insertGraph()` and `upsertGraph()` reject only after the queries they already started have finished, so a transaction is rolled back after them. Before, rows of these queries could be committed after the rollback on SQLite. [#335](https://github.com/ditojs/objection/pull/335)
 - `upsertGraph()` sets the foreign key of a model that a `#ref` relates into a `HasManyRelation` or `HasOneRelation`. Before, the row was left without it, and the id of the owner could be cleared [#311](https://github.com/ditojs/objection/issues/311)
+- `patch()` and `merge()` with field expression keys like `'meta:color'` keep writing them when the query is built more than once, e.g. with `toKnexQuery()` before running it, or through a `clone()`, instead of resolving to 0 without a write. Building the query no longer changes the data of `patch()` and `merge()`: the patched model keeps these keys until the write has run, so `$afterUpdate()` sees them, and then loses them, also with `snakeCaseMappers()`, so the models that `$query().patch()`, `patchAndFetch*()` and `upsertGraph()` return don't have them [#53](https://github.com/ditojs/objection/issues/53)
 
 ### Types
 
