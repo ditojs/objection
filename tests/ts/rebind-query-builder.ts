@@ -135,7 +135,7 @@ async function relatedQueries() {
   type _a = Expect<Equal<typeof a, MyQueryBuilder<Animal, Animal[]>>>;
 
   const b = person.$relatedQuery('parent').someCustomMethod();
-  type _b = Expect<Equal<typeof b, MyQueryBuilder<Person, Person>>>;
+  type _b = Expect<Equal<typeof b, MyQueryBuilder<Person, Person | undefined>>>;
 
   const c = Person.relatedQuery('pets').for(1).first().someCustomMethod();
   type _c = Expect<Equal<typeof c, MyQueryBuilder<Animal, Animal | undefined>>>;

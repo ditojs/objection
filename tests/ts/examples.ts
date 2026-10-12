@@ -334,7 +334,7 @@ class Movie extends objection.Model {
   // prettier-ignore
   director!: Person;
 
-  fetchDirector(): PromiseLike<Person> {
+  fetchDirector(): PromiseLike<Person | undefined> {
     return this.$relatedQuery('director');
   }
 
@@ -378,6 +378,9 @@ function takesMovie(m: Movie) {
 async () => {
   // Another example of strongly-typed $relatedQuery without a cast:
   takesPeople(await new Movie().$relatedQuery('actors'));
+  takesMaybePerson(await new Movie().$relatedQuery('director'));
+  takesPerson(await new Movie().$relatedQuery('director').throwIfNotFound());
+  // @ts-expect-error there may be no director
   takesPerson(await new Movie().$relatedQuery('director'));
 
   takesMaybePerson(await new Movie().$relatedQuery('actors').first());
