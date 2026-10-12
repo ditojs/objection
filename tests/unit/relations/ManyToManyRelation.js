@@ -1752,7 +1752,7 @@ describe('ManyToManyRelation', () => {
         .then((result) => {
           expect(result).to.equal(1);
           expect(executedQueries).to.eql([
-            `select "RelatedModel"."id" from "RelatedModel" where "RelatedModel"."id" in (select "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55 and "JoinModel"."extra1" = 'foo')`,
+            `select distinct "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55 and "JoinModel"."extra1" = 'foo'`,
             `update "JoinModel" set "extra2" = 'extraVal' where "JoinModel"."ownerId" in (666) and exists (select 1 from "RelatedModel" where "RelatedModel"."rid" = "JoinModel"."relatedId" and "RelatedModel"."code" = 55 and "JoinModel"."extra1" = 'foo')`,
             `update "RelatedModel" set "a" = 'str1' where ("RelatedModel"."id" in (5))`,
           ]);
@@ -1771,7 +1771,7 @@ describe('ManyToManyRelation', () => {
         .where('RelatedModel.code', 55)
         .then(() => {
           expect(executedQueries).to.eql([
-            `select "RelatedModel"."id" from "RelatedModel" where "RelatedModel"."id" in (select "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55)`,
+            `select distinct "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55`,
             `update "JoinModel" set "extra2" = 'extraVal' where "JoinModel"."ownerId" in (666) and exists (select 1 from "RelatedModel" where "RelatedModel"."rid" = "JoinModel"."relatedId" and "RelatedModel"."code" = 55)`,
             `update "RelatedModel" set "a" = 'str1' where (1 = 0)`,
           ]);
@@ -1781,7 +1781,7 @@ describe('ManyToManyRelation', () => {
     describe('in batches of ids (#161)', () => {
       const owner = () => RelationOwner.create(OwnerModel.fromJson({ oid: 666 }));
       const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
-      const selectIds = `select "RelatedModel"."id" from "RelatedModel" where "RelatedModel"."id" in (select "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55)`;
+      const selectIds = `select distinct "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55`;
       const patchJoinRows = `update "JoinModel" set "extra2" = 'extraVal' where "JoinModel"."ownerId" in (666) and exists (select 1 from "RelatedModel" where "RelatedModel"."rid" = "JoinModel"."relatedId" and "RelatedModel"."code" = 55)`;
       const patchRelated = (ids) =>
         `update "RelatedModel" set "a" = 'str1' where ("RelatedModel"."id" in (${ids.join(', ')}))`;
@@ -1902,7 +1902,7 @@ describe('ManyToManyRelation', () => {
         .where('RelatedModel.code', 55)
         .then(() => {
           expect(executedQueries).to.eql([
-            `select "RelatedModel"."id" from "RelatedModel" where "RelatedModel"."id" in (select "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55)`,
+            `select distinct "RelatedModel"."id" from "RelatedModel" inner join "JoinModel" on "RelatedModel"."rid" = "JoinModel"."relatedId" where "JoinModel"."ownerId" in (666) and "RelatedModel"."code" = 55`,
             `update "JoinModel" set "extra2" = 'extraVal' where "JoinModel"."ownerId" in (666) and exists (select 1 from "RelatedModel" where "RelatedModel"."rid" = "JoinModel"."relatedId" and "RelatedModel"."code" = 55)`,
           ]);
         });
@@ -1995,7 +1995,7 @@ describe('ManyToManyRelation', () => {
         .then((result) => {
           expect(result).to.equal(1);
           expect(executedQueries).to.eql([
-            'select `RelatedModel`.`id` from `RelatedModel` where `RelatedModel`.`id` in (select `RelatedModel`.`id` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55)',
+            'select distinct `RelatedModel`.`id` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55',
             'select `JoinModel`.`ownerId`, `JoinModel`.`relatedId` from `JoinModel` where `JoinModel`.`ownerId` in (666) and exists (select 1 from `RelatedModel` where `RelatedModel`.`rid` = `JoinModel`.`relatedId` and `code` = 55)',
             "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`ownerId` in (666) and (`JoinModel`.`ownerId`, `JoinModel`.`relatedId`) in ((666, 5))",
             "update `RelatedModel` set `a` = 'str1' where (`RelatedModel`.`id` in (5))",
@@ -2204,7 +2204,7 @@ describe('ManyToManyRelation', () => {
         .where('code', 55)
         .then(() => {
           expect(executedQueries).to.eql([
-            'select [RelatedModel].[id] from [RelatedModel] where [RelatedModel].[id] in ((select [RelatedModel].[id] from [RelatedModel] inner join [JoinModel] on [RelatedModel].[rid] = [JoinModel].[relatedId] where [JoinModel].[ownerId] in (666) and [code] = 55))',
+            'select distinct [RelatedModel].[id] from [RelatedModel] inner join [JoinModel] on [RelatedModel].[rid] = [JoinModel].[relatedId] where [JoinModel].[ownerId] in (666) and [code] = 55',
             "update [JoinModel] set [extra2] = 'extraVal' where [JoinModel].[ownerId] in (666) and exists (select 1 from [RelatedModel] where [RelatedModel].[rid] = [JoinModel].[relatedId] and [code] = 55);select @@rowcount",
           ]);
         });
@@ -2265,7 +2265,7 @@ describe('ManyToManyRelation', () => {
         .then((result) => {
           expect(result).to.equal(1);
           expect(executedQueries).to.eql([
-            'select `RelatedModel`.`id` from `RelatedModel` where `RelatedModel`.`_rowid_` in (select `RelatedModel`.`_rowid_` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55)',
+            'select distinct `RelatedModel`.`id` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55',
             "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`ownerId` in (666) and exists (select 1 from `RelatedModel` where `RelatedModel`.`rid` = `JoinModel`.`relatedId` and `code` = 55)",
             "update `RelatedModel` set `a` = 'str1' where (`RelatedModel`.`id` in (5))",
           ]);
