@@ -21,6 +21,8 @@ This section lists the breaking changes in objection 4.0.
 - [Casts, json values and json methods on MySQL and SQLite](#casts-json-values-and-json-methods-on-mysql-and-sqlite)
 - [Missing and array join properties throw](#missing-and-array-join-properties-throw)
 - [upsertGraph() relates moved rows before it deletes](#upsertgraph-relates-moved-rows-before-it-deletes)
+- [upsertGraph() upserts below related models in the same graph](#upsertgraph-upserts-below-related-models-in-the-same-graph)
+- [insertGraph() and upsertGraph() write in fewer queries](#insertgraph-and-upsertgraph-write-in-fewer-queries)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
@@ -174,9 +176,21 @@ Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or
 
 ## upsertGraph() relates moved rows before it deletes
 
-`upsertGraph()` relates the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation` first, before it deletes or unrelates the rows that the graph removes. 3.x deleted first, so a row that moved out of a deleted parent was deleted with it by `ON DELETE CASCADE`, and failed with a foreign key without `ON DELETE` action. The update hooks of these relates now run before the delete hooks of the same call.
+`upsertGraph()` relates the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation` first, before it deletes or unrelates the rows that the graph removes. 3.x deleted first, so a row that moved out of a deleted parent was deleted with it by `ON DELETE CASCADE`, and failed with a foreign key without `ON DELETE` action. The update hooks of these relates now run before the delete hooks of the same call. Rows that wait for the keys or references of models that the graph inserts are moved without them, and patched again once these are known, which runs their update hooks a second time, as the nested `upsertGraph()` calls of 3.x did. Their first write keeps the old values of the props that wait, e.g. a name from a `#ref{}` to an inserted model, so a unique key at the new owner that only the new value satisfies fails with a `UniqueViolationError`.
 
 A row related from another owner can no longer take the unique key of a row that the graph removes in its new place, e.g. with `unique(ownerId, name)`: the relate fails with a `UniqueViolationError`. Delete the conflicting row with a separate query in the same transaction first. Replacing such a row by a new one, or renaming a kept row to its key, still works, as do relates into a `HasOneRelation` with a unique foreign key.
+
+## upsertGraph() upserts below related models in the same graph
+
+3.x upserted the models below a related model with a nested `upsertGraph()` call for each owner and relation, after all other writes of the graph. 4.0 fetches the rows of the related models with their relations together with the rest of the graph, and writes them in the same steps, so their deletes, inserts and patches run with the others of their kind instead of last. The options keep matching the full relation paths.
+
+A related model with relations whose row doesn't exist throws a `NotFoundError` saying that the model doesn't exist, before anything is written. 3.x wrote the rest of the graph first and then failed in the nested call, or with a foreign key error.
+
+## insertGraph() and upsertGraph() write in fewer queries
+
+Rows that the graph removes are deleted or unrelated with one query per relation instead of one per owner, so the static `beforeDelete` and `afterDelete` hooks (or `beforeUpdate` and `afterUpdate` for has-many unrelates) run once with all owners as `items`. Join rows are still removed per owner.
+
+The changed rows of a model class without `beforeUpdate`, `afterUpdate`, `$beforeUpdate` and `$afterUpdate` hooks are patched with one `UPDATE` per table that picks the values of each row with `CASE`, unless the upsert uses `returning('*')`, the values include json or raw values, or the rows are patched through a many-to-many or belongs-to-one relation. Custom query builders see that one patch query instead of one per row. Models with update hooks are patched one by one, as before.
 
 ## typescript: The typings are ES module declarations
 

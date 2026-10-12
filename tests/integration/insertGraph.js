@@ -444,6 +444,27 @@ export default (session) => {
         });
       });
 
+      it('should resolve #ref{} in a foreign key that the relation also sets (Vincit#1378)', async () => {
+        const inserted = await Model1.query().insertGraph(
+          {
+            '#id': 'root',
+            model1Prop1: 'root',
+            model1Relation2: [{ model2Prop1: 'child', model1Id: '#ref{root.id}' }],
+          },
+          { allowRefs: true },
+        );
+
+        const child = await Model2.query().findOne('model2_prop1', 'child');
+        expect(child.model1Id).toBe(inserted.id);
+      });
+
+      it('should insert several models without properties (Vincit#1694)', async () => {
+        const inserted = await Model1.query().insertGraph([{}, {}]);
+
+        expect(inserted.map((model) => typeof model.id)).toEqual(['number', 'number']);
+        expect(await Model1.query().findByIds(inserted.map((model) => model.id))).toHaveLength(2);
+      });
+
       it('relate: true option should cause models with id to be related instead of inserted', () => {
         return Model2.query()
           .insertGraph(
