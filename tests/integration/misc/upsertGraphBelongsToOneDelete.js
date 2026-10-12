@@ -74,6 +74,13 @@ module.exports = (session) => {
         expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 2 }]);
         expect(await knex('bt1_delete_pet')).to.eql([{ id: 2 }]);
       });
+
+      it('should keep the row when noInsert skips the replacement', async () => {
+        await Owner.query().upsertGraph({ id: 1, pet: {} }, { noInsert: ['pet'] });
+
+        expect(await knex('bt1_delete_owner')).to.eql([{ id: 1, petId: 1 }]);
+        expect(await knex('bt1_delete_pet')).to.eql([{ id: 1 }]);
+      });
     }
 
     function itShouldRemoveTheReferenceBeforeTheRow() {

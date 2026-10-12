@@ -574,6 +574,52 @@ module.exports = (session) => {
         chai.expect(model2Rows).to.have.length(2);
       });
 
+      for (const [title, model1Relation1, options] of [
+        ['noInsert', { model1Prop1: 'skipped' }, { noInsert: ['model1Relation1'] }],
+        [
+          'noInsert and insertMissing',
+          { id: 100 },
+          { insertMissing: true, noInsert: ['model1Relation1'] },
+        ],
+        ['noRelate', { id: 1 }, { relate: true, noRelate: ['model1Relation1'] }],
+      ]) {
+        it(`should keep the current BelongsToOneRelation model when ${title} skips its replacement`, async () => {
+          await Model1.query(session.knex).upsertGraph(
+            { id: 2, model1Relation1 },
+            { fetchStrategy, ...options },
+          );
+
+          const root = await Model1.query(session.knex)
+            .findById(2)
+            .withGraphFetched('model1Relation1');
+
+          chai.expect(root.model1Id).to.equal(3);
+          chai.expect(root.model1Relation1.id).to.equal(3);
+          chai.expect(await session.knex('Model1')).to.have.length(7);
+        });
+      }
+
+      it('should keep a BelongsToOneRelation model that the graph patches elsewhere when noRelate is set', async () => {
+        await session.knex('Model1').where('id', 1).update({ model1Id: 3 });
+
+        await Model1.query(session.knex).upsertGraph(
+          [
+            { id: 2, model1Relation1: { model1Prop1: 'inserted' } },
+            { id: 1, model1Relation1: { id: 3, model1Prop1: 'patched' } },
+          ],
+          { fetchStrategy, relate: true, noRelate: ['model1Relation1'] },
+        );
+
+        const roots = await Model1.query(session.knex)
+          .findByIds([1, 2])
+          .withGraphFetched('model1Relation1')
+          .orderBy('id');
+
+        chai
+          .expect(roots.map((root) => root.model1Relation1.model1Prop1))
+          .to.eql(['patched', 'inserted']);
+      });
+
       for (const noInsert of [
         ['model1Relation1', 'model1Relation2.model2Relation1'],
         '[model1Relation1, model1Relation2.model2Relation1]',
