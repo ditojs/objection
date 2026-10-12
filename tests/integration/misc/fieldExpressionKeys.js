@@ -255,6 +255,40 @@ export default (session) => {
         expect(item.meta).toEqual({ size: 1, color: 'red' });
       });
 
+      it('patch() should write an undeclared key with a colon to the json path when built before', async () => {
+        const query = Item.query().patch({ 'meta:color': 'red' }).where('id', 1);
+        query.toKnexQuery();
+        query.clone().toKnexQuery();
+        expect(await query).toBe(1);
+        const item = await Item.query().findById(1);
+        expect(item.meta).toEqual({ size: 1, color: 'red' });
+      });
+
+      it('upsertGraph() should not return the undeclared keys with a colon', async () => {
+        const item = await Item.query().upsertGraph({ id: 1, 'meta:color': 'red' });
+        expect(item).not.toHaveProperty('meta:color');
+      });
+
+      it('patchAndFetchById() should not return the undeclared keys with a colon', async () => {
+        const item = await Item.query().patchAndFetchById(1, { 'meta:color': 'red' });
+        expect(item).not.toHaveProperty('meta:color');
+        expect(item.meta).toEqual({ size: 1, color: 'red' });
+      });
+
+      it('$query().patch() should not set the keys with a colon mapped by snakeCaseMappers', async () => {
+        class SnakeCaseItem extends Item {
+          static get columnNameMappers() {
+            return snakeCaseMappers();
+          }
+        }
+
+        const item = await SnakeCaseItem.query().findById(1);
+        await item.$query().patch({ 'extraMeta:color': 'red' });
+        expect(item).not.toHaveProperty('extraMeta:color');
+        const row = await knex('field_expression_keys').where('id', 1).first();
+        expect(parseJson(row.extra_meta)).toEqual({ size: 1, color: 'red' });
+      });
+
       it('patch() should pick an undeclared key with a colon by its json column with pickJsonSchemaProperties', async () => {
         class PickItem extends Item {
           static get pickJsonSchemaProperties() {
@@ -292,6 +326,17 @@ export default (session) => {
 
       it('merge() should write an undeclared key with a colon to the json path', async () => {
         await Item.query().insert({ id: 1 }).onConflict('id').merge({ 'meta:color': 'red' });
+        const item = await Item.query().findById(1);
+        expect(item.meta).toEqual({ size: 1, color: 'red' });
+      });
+
+      it('merge() should write an undeclared key with a colon to the json path when built before', async () => {
+        const query = Item.query()
+          .insert({ id: 1 })
+          .onConflict('id')
+          .merge({ 'meta:color': 'red' });
+        query.toKnexQuery();
+        await query;
         const item = await Item.query().findById(1);
         expect(item.meta).toEqual({ size: 1, color: 'red' });
       });
