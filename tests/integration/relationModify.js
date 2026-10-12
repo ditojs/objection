@@ -261,6 +261,37 @@ export default (session) => {
             return persons.map((person) => person.parent && person.parent.name);
           }
         });
+
+        it('unrelate should only clear the keys of the owner models that it unrelates', async () => {
+          const arnold = await findArnold();
+          const meinhard = await findMeinhard();
+          await meinhard.$relatedQuery('parent').relate(arnold.id);
+          const gustavId = arnold.parentId;
+
+          expect(
+            await arnold
+              .$relatedQuery('parent')
+              .context(modifyBelongsToOne((qb) => qb.where('name', 'Not Gustav')))
+              .unrelate(),
+          ).toBe(0);
+          expect(arnold.parentId).toBe(gustavId);
+
+          expect(
+            await Person.relatedQuery('parent')
+              .for([arnold, meinhard])
+              .context(modifyBelongsToOne((qb) => qb.where('name', 'Gustav')))
+              .unrelate(),
+          ).toBe(1);
+          expect([arnold.parentId, meinhard.parentId]).toEqual([null, arnold.id]);
+
+          expect(
+            await meinhard
+              .$relatedQuery('parent')
+              .context(modifyBelongsToOne((qb) => qb.where('name', 'Arnold')))
+              .unrelate(),
+          ).toBe(1);
+          expect(meinhard.parentId).toBe(null);
+        });
       });
 
       describe('has many relation', () => {

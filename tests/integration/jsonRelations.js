@@ -355,6 +355,20 @@ export default (session) => {
               expect(brad.json.stuff.favoritePetId).toBe(brad.favoritePet.id);
             });
         });
+
+        it('unrelate should only clear the keys of the owner models that it unrelates', async () => {
+          const [arnold, brad] = await Person.query().orderBy('name');
+          const bradPetId = brad.json.stuff.favoritePetId;
+
+          expect(
+            await Person.relatedQuery('favoritePet')
+              .for([arnold, brad])
+              .unrelate()
+              .where('name', 'Fluffy'),
+          ).toBe(1);
+          expect(arnold.json.stuff.favoritePetId).toBeNull();
+          expect(brad.json.stuff.favoritePetId).toBe(bradPetId);
+        });
       });
 
       describe('has many relation', () => {
