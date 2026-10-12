@@ -209,7 +209,7 @@ class Person extends Model {
 
 The static `after*` hooks run as the last step of the query, after `first()`, `page()`'s models and the fetches of the `*AndFetch()` methods, but before the `runAfter()` callbacks, including the ones in `context()`, `throwIfNotFound()` and `traverse()`. These callbacks now get the result in the shape that the query returns and after the hooks, e.g. the model with `first()` also if `runAfter()` is called before `first()`, and they run before `page()` and `range()` wrap the result in `{ results, total }`.
 
-The outer queries of `upsertGraph()` and `upsertGraphAndFetch()` no longer call the static `beforeFind` and `afterFind` hooks of the root model class with the input models. The queries that run for the models of the graph and their relations call the hooks as before.
+The outer queries of `upsertGraph()` and `upsertGraphAndFetch()` no longer call the static `beforeFind` and `afterFind` hooks of the root model class with the input models. The queries that run for the models of the graph and their relations call the hooks as before. Likewise, `fetchGraph()` / `$fetchGraph()` and the relations that `skipFetched` skips no longer call the static `beforeFind` hook of the models they already have, as they didn't call `afterFind`: the find hooks are only called for queries that run.
 
 TypeScript: `StaticHookArguments<M, R>` declares `result: R`, with `R = undefined` by default, and the static hooks of `Model` declare the shapes that they get, e.g. `StaticHookArguments<any, Model | Model[] | undefined>` for `afterFind`. Overrides that destructure `result` from `StaticHookArguments<Person>` need the type of the result as second type argument, e.g. `StaticHookArguments<Person, Person | Person[] | undefined>`.
 

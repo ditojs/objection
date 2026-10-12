@@ -450,6 +450,33 @@ export default (session) => {
         expect(await allTags()).toEqual(['1c', '2b', '3a', '4d', '5e']);
       });
 
+      it('relate(), unrelate(), insert() and delete() should not call the find hooks', async () => {
+        const post = await Post.query().findById(2);
+        const hooks = [];
+
+        // Hooks that filter all rows out, e.g. for soft deletes or access control:
+        for (const modelClass of [Post, Tag]) {
+          modelClass.beforeFind = () => hooks.push(`${modelClass.name}.beforeFind`);
+          modelClass.afterFind = () => (hooks.push(`${modelClass.name}.afterFind`), []);
+        }
+
+        try {
+          expect(await post.$relatedQuery('tags').relate(3)).toBe(1);
+          expect(await post.$relatedQuery('tags').unrelate().where('id', 1)).toBe(1);
+          await post.$relatedQuery('tags').insert({ id: 5, name: 'e' });
+          expect(await post.$relatedQuery('tags').delete().where('id', 2)).toBe(1);
+        } finally {
+          for (const modelClass of [Post, Tag]) {
+            delete modelClass.beforeFind;
+            delete modelClass.afterFind;
+          }
+        }
+
+        expect(hooks).toEqual([]);
+        expect(post.tagIds).toEqual([4, 3, 5]);
+        expect(await allTagIds()).toEqual([[3, 1], [4, 3, 5], [], null, [9]]);
+      });
+
       it('delete() and insert() should do nothing if resolved without executing', async () => {
         const post = await Post.query().findById(2);
 
