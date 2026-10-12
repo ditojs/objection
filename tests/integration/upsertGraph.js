@@ -3620,7 +3620,7 @@ export default (session) => {
           })
           .catch((err) => {
             expect(err.message).toBe(
-              'upsertGraph query should contain no other query builder calls like `findById`, `where` or `$relatedQuery` that would affect the SQL. They have no effect.',
+              'upsertGraph query should contain no other query builder calls like `findById`, `where`, `$query` or `$relatedQuery` that would affect the SQL. They have no effect.',
             );
           });
       });
@@ -3642,7 +3642,7 @@ export default (session) => {
           })
           .catch((err) => {
             expect(err.message).toBe(
-              'upsertGraph query should contain no other query builder calls like `findById`, `where` or `$relatedQuery` that would affect the SQL. They have no effect.',
+              'upsertGraph query should contain no other query builder calls like `findById`, `where`, `$query` or `$relatedQuery` that would affect the SQL. They have no effect.',
             );
           });
       });
@@ -3664,7 +3664,7 @@ export default (session) => {
           })
           .catch((err) => {
             expect(err.message).toBe(
-              'upsertGraph query should contain no other query builder calls like `findById`, `where` or `$relatedQuery` that would affect the SQL. They have no effect.',
+              'upsertGraph query should contain no other query builder calls like `findById`, `where`, `$query` or `$relatedQuery` that would affect the SQL. They have no effect.',
             );
           });
       });
@@ -3685,9 +3685,20 @@ export default (session) => {
           })
           .catch((err) => {
             expect(err.message).toBe(
-              'upsertGraph query should contain no other query builder calls like `findById`, `where` or `$relatedQuery` that would affect the SQL. They have no effect.',
+              'upsertGraph query should contain no other query builder calls like `findById`, `where`, `$query` or `$relatedQuery` that would affect the SQL. They have no effect.',
             );
           });
+      });
+
+      it('should throw if `upsertGraph` is used with `$query` (Vincit#1168)', async () => {
+        const err = await Model1.fromJson({ id: 1 })
+          .$query(session.knex)
+          .upsertGraph({ id: 1, model1Prop1: 'updated' }, { fetchStrategy })
+          .catch((err) => err);
+
+        expect(err.message).toBe(
+          'upsertGraph query should contain no other query builder calls like `findById`, `where`, `$query` or `$relatedQuery` that would affect the SQL. They have no effect.',
+        );
       });
 
       if (fetchStrategy !== FetchStrategy.OnlyIdentifiers) {
