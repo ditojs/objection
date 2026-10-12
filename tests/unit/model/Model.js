@@ -2198,6 +2198,11 @@ describe('Model', () => {
           modelClass: User,
           join: { from: ['Post.authorA', 'Post.authorB'], to: ['User.a', 'User.b'] },
         },
+        editors: {
+          relation: Model.BelongsToManyRelation,
+          modelClass: User,
+          join: { from: 'Post.editorIds', to: 'User.id' },
+        },
       };
 
       User.relationMappings = {
@@ -2349,6 +2354,41 @@ describe('Model', () => {
       const post3 = Post.fromJson({ authorId: 1 });
       user.$setRelated('latestPost', post3);
       expect(post3.authorId).toBeNull();
+    });
+
+    it('should set the array of keys of a BelongsToManyRelation', () => {
+      const post = Post.fromJson({ editorIds: [9] });
+      post.$setRelated('editors', [User.fromJson({ id: 2 }), User.fromJson({ id: 1 })]);
+
+      expect(post.editorIds).toEqual([2, 1]);
+
+      post.$setRelated('editors', User.fromJson({ id: 3 }));
+      expect(post.editorIds).toEqual([3]);
+
+      post.$setRelated('editors', null);
+      expect(post.editorIds).toEqual([]);
+    });
+
+    it('should append to the array of keys of a BelongsToManyRelation', () => {
+      const post = Post.fromJson({ editorIds: [1, 2] });
+      post.$appendRelated('editors', [User.fromJson({ id: 2 }), User.fromJson({ id: 3 })]);
+
+      expect(post.editorIds).toEqual([1, 2, 3]);
+      expect(post.editors.map((user) => user.id)).toEqual([2, 3]);
+
+      post.$appendRelated('editors', User.fromJson({ id: 4 }));
+      expect(post.editorIds).toEqual([1, 2, 3, 4]);
+    });
+
+    it('should leave models without a key out of the array of a BelongsToManyRelation', () => {
+      const post = Post.fromJson({});
+      post.$setRelated('editors', [User.fromJson({ name: 'new' }), User.fromJson({ id: 1 })]);
+
+      expect(post.editorIds).toEqual([1]);
+
+      post.$appendRelated('editors', User.fromJson({ name: 'other' }));
+      expect(post.editorIds).toEqual([1]);
+      expect(post.editors).toHaveLength(3);
     });
 
     it('should not set any keys for ManyToManyRelation', () => {

@@ -626,12 +626,14 @@ queryBuilder = queryBuilder.relate(ids);
 Relate (attach) an existing item to another item through a relation.
 
 This method doesn't create a new item but only updates the foreign keys. In
-the case of a many-to-many relation, creates a join row to the join table.
+the case of a many-to-many relation, creates a join row to the join table. In
+the case of a belongs-to-many relation, adds the keys to the arrays of the
+owners.
 
 Multiple items can be related by giving an array of identifiers: for has-many
-relations on all databases, for many-to-many relations only on Postgres and SQL
-Server, as it needs a batch insert. Belongs-to-one relations take one
-identifier.
+and belongs-to-many relations on all databases, for many-to-many relations only
+on Postgres and SQL Server, as it needs a batch insert. Belongs-to-one relations
+take one identifier.
 
 The return value of the query is the number of affected items. On all databases
 except MySQL you can chain [returning('\*')](/api/query-builder/find-methods.html#returning)
@@ -642,6 +644,9 @@ relations return the join rows built from the input, without columns generated
 by the database, and the other relations still return the number of affected
 items. As the TypeScript typings can't tell these apart, the rows are typed as
 plain objects, `Pojo[]`.
+
+For belongs-to-many relations, the return value is the number of owners whose
+arrays changed, with or without `returning`.
 
 ##### Arguments
 
@@ -771,13 +776,15 @@ queryBuilder = queryBuilder.unrelate();
 Remove (detach) a connection between two items.
 
 Doesn't delete the items. Only removes the connection. For ManyToMany relations this
-deletes the join row from the join table. For other relation types this sets the
-join columns to null.
+deletes the join row from the join table. For BelongsToMany relations this removes
+the keys of the found items from the arrays of the owners. For other relation types
+this sets the join columns to null.
 
 Note that, unlike for `relate`, you shouldn't pass arguments for the `unrelate` method.
 Use `unrelate` like `delete` and filter the rows using the returned query builder.
 
-The return value of the query is the number of affected items.
+The return value of the query is the number of affected items. For BelongsToMany
+relations it's the number of owners whose arrays changed.
 
 ##### Return value
 
