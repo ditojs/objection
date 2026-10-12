@@ -16,7 +16,7 @@ The databases differ in a few ways:
 - MySQL assigns the columns of an update from left to right, so `patch({ name: 'a', 'json:name': ref('name') })` writes the new name into the json column there.
 - On SQLite, a `ref()` to a whole json column or a subquery that selects one, as the value of a `'column:path'` key, is written as a json string, as SQLite can't tell json columns from text columns. Write `raw('json(??)', ['column'])` to write the json value.
 - `whereJsonSupersetOf()` and `whereJsonSubsetOf()` use `JSON_CONTAINS()` on MySQL, which also finds objects and values in the elements of arrays, e.g. `[{ "a": 1 }]` is a superset of `{}` there.
-- `whereJsonHasAny()` and `whereJsonHasAll()` use `JSON_OVERLAPS()` on MySQL, which needs MySQL 8.0.17 or newer.
+- `whereJsonHasAny()` and `whereJsonHasAll()` use `JSON_OVERLAPS()` on MySQL.
 
 ```js
 import { ref } from 'objection';

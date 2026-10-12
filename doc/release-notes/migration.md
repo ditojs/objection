@@ -80,7 +80,7 @@ The typings of objection 4.0 need at least TypeScript 5.8, the first version tha
 
 ## Dropped support for MySQL < 8
 
-Objection 4.0 needs at least MySQL 8.0.14, for window functions and for derived tables that refer to the outer query. MySQL 5.7 reached its end of life in October 2023. 3.x keeps supporting it.
+Objection 4.0 needs at least MySQL 8.0.17, for window functions, for derived tables that refer to the outer query, and for `JSON_OVERLAPS()` in `whereJsonHasAny()` and `whereJsonHasAll()` and the `MEMBER OF` operator of `BelongsToManyRelation`. MySQL 5.7 reached its end of life in October 2023. 3.x keeps supporting it.
 
 ## Database errors are objection's own classes
 
@@ -162,8 +162,6 @@ The casts of `ref()` and `val()` use the types of MySQL there, as `CAST()` on My
 
 On MySQL and SQLite, `val()` with an object or array and `val().castJson()` are json values, `CAST(? AS JSON)` on MySQL and `json(?)` on SQLite, so they compare as json. Before, they were json text, which MySQL compared as a string. Pass `JSON.stringify(value)` to compare with json text.
 
-`whereJsonHasAny()` and `whereJsonHasAll()` need MySQL 8.0.17 or newer, as they use `JSON_OVERLAPS()`.
-
 On SQLite, `ref('column').castJson()` throws for a whole column, as SQLite can't tell json columns from text columns. Cast the column first, e.g. `ref('name').castText().castJson()`, or refer to a json path.
 
 ## Missing and array join properties throw
@@ -172,7 +170,7 @@ Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or
 
 - Owner models loaded from the database are missing a join property, e.g. because a partial `select()` left out the id. Select the column in the owner query. Owner models built in memory, e.g. with `fromJson()`, may not have their keys yet and still find no related models, now without a warning. This includes the foreign key of a `BelongsToOneRelation`, which 3.x didn't report. Models returned by `insert()` count as built in memory, also with `returning()`.
 - Related models come back without their join property, e.g. because the relation mapping uses column names that `knexSnakeCaseMappers()` maps to other property names. Use the property names of the models in the relation mapping.
-- An owner join property holds an array of keys, e.g. a JSON array column. Use a `ManyToManyRelation` through a join table instead. `$relatedQuery()` without `withGraphFetched()` or `$fetchGraph()` keeps working for them.
+- An owner join property holds an array of keys, e.g. a JSON array column. Use a `BelongsToManyRelation` instead, or a `ManyToManyRelation` through a join table. `$relatedQuery()` without `withGraphFetched()` or `$fetchGraph()` keeps working for them.
 
 ## upsertGraph() relates moved rows before it deletes
 

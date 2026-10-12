@@ -14,6 +14,9 @@ Relationships are a very basic concept in relational databases and if you aren't
    Each row in `C` joins one `A` with one `B`. Therefore an `A` row can be related to multiple `B` rows and a `B` row can be related to
    multiple `A` rows through table `C`.
 
+4. Table `A` has a column that holds an array of table `B`'s ids. This relationship is called a `BelongsToManyRelation` in objection.
+   We can say that `A` belongs to many `B`'s.
+
 While relations are usually created between the primary key of one table and a foreign key reference of another table, objection has no such limitations. You can create relationship using any two columns (or any sets of columns). You can even create relation using values nested deep inside json columns.
 
 If you've used other ORMs you may notice that objection's [relationMappings](/api/model/static-properties.html#static-relationmappings) are pretty verbose. There are couple of reasons for that:
@@ -143,6 +146,37 @@ class Person extends Model {
   }
 }
 ```
+
+`BelongsToManyRelation`: Use this relation when the source model holds an array of the related models' keys
+
+```js
+class Post extends Model {
+  static tableName = 'posts';
+
+  // The JSON array is parsed and stringified like any other JSON column.
+  static jsonAttributes = ['tagIds'];
+
+  static get relationMappings() {
+    return {
+      tags: {
+        relation: Model.BelongsToManyRelation,
+        modelClass: Tag,
+        join: {
+          // posts.tagIds holds an array like [1, 4, 7].
+          from: 'posts.tagIds',
+          to: 'tags.id'
+        }
+      }
+    };
+  }
+}
+```
+
+The array can be a JSON column on all databases: `json` or `jsonb` on PostgreSQL, `json` on MySQL, and a text column on SQLite and SQL Server. PostgreSQL also supports native array columns like `integer[]`, which are left out of `jsonAttributes`. The array can also sit inside a JSON column, mapped with a field expression like `'posts.data:tagIds'`. On SQL Server, the relation needs SQL Server 2016 or newer for `OPENJSON`. The keys in the array need to have the same JSON type as the related column, e.g. numbers for an integer `id`, and not strings like the `bigint` ids that node-postgres returns: on PostgreSQL and MySQL, joins and queries for owner ids or subqueries find no related rows for keys of another type. Only single-column keys are supported, and `relatedQuery().for()` with a query of another model class needs to select the array under the name of the owner's column.
+
+The related models of each owner come in the order of the relation query, e.g. as sorted by a modifier with `orderBy()`, not in the order of the keys in the array. A related model that the arrays of several owners hold is assigned to each of them. `limit()`, `offset()` and `first()` in the modifiers of `withGraphFetched()` can't be applied to each owner, and require the `limitPerParent: false` graph option.
+
+`BelongsToManyRelation` supports finding related models with `$relatedQuery()`, `relatedQuery()`, `withGraphFetched()`, `withGraphJoined()` and `joinRelated()`, and updating and patching them through `$relatedQuery()`. Inserting, deleting, relating and unrelating through the relation, `insertGraph()` and `upsertGraph()` aren't supported yet and throw an error, and `$setRelated()` and `$appendRelated()` don't sync the array yet.
 
 ## Circular imports (require loops)
 

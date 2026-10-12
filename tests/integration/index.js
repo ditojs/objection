@@ -34,6 +34,7 @@ import toKnexQuery from './toKnexQuery.js';
 import relationOwnerGrouping from './relationOwnerGrouping.js';
 import jsonQueries from './jsonQueries.js';
 import jsonRelations from './jsonRelations.js';
+import belongsToMany from './belongsToMany.js';
 
 // DATABASES environment variable can contain a comma separated list
 // of databases to test.
@@ -153,6 +154,7 @@ describe('integration tests', () => {
       modifyJoin(session);
       toKnexQuery(session);
       relationOwnerGrouping(session);
+      belongsToMany(session);
 
       if (!session.isMsSql()) {
         jsonQueries(session);
