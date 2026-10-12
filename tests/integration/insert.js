@@ -282,28 +282,39 @@ export default (session) => {
           });
       });
 
-      if (session.isPostgres()) {
-        it('should accept a json array', () => {
-          return Model1.query()
-            .insert([{ model1Prop1: 'hello 3' }, { model1Prop1: 'hello 4' }])
-            .then((inserted) => {
-              expect(inserted[0]).toBeInstanceOf(Model1);
-              expect(inserted[1]).toBeInstanceOf(Model1);
-              expect(inserted.map((it) => it.id).sort()).toEqual([3, 4]);
-              expect(inserted.map((it) => it.model1Prop1).sort()).toEqual(['hello 3', 'hello 4']);
-              return session.knex(Model1.getTableName());
-            })
-            .then((rows) => {
-              expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
-                'hello 1',
-                'hello 2',
-                'hello 3',
-                'hello 4',
-              ]);
-              expect(rows.map((it) => it.id).sort()).toEqual([1, 2, 3, 4]);
-            });
-        });
+      it('should accept a json array of models with ids', async () => {
+        const inserted = await Model1.query().insert([
+          { id: 100, model1Prop1: 'hello 100' },
+          { id: 101, model1Prop1: 'hello 101' },
+        ]);
 
+        expect(inserted.map((it) => it.id)).toEqual([100, 101]);
+        expect(await session.knex(Model1.getTableName()).whereIn('id', [100, 101])).toHaveLength(2);
+      });
+
+      // MySQL doesn't return the ids of all rows inserted by one query.
+      it.skipIf(session.isMySql())('should accept a json array', () => {
+        return Model1.query()
+          .insert([{ model1Prop1: 'hello 3' }, { model1Prop1: 'hello 4' }])
+          .then((inserted) => {
+            expect(inserted[0]).toBeInstanceOf(Model1);
+            expect(inserted[1]).toBeInstanceOf(Model1);
+            expect(inserted.map((it) => it.id).sort()).toEqual([3, 4]);
+            expect(inserted.map((it) => it.model1Prop1).sort()).toEqual(['hello 3', 'hello 4']);
+            return session.knex(Model1.getTableName());
+          })
+          .then((rows) => {
+            expect(rows.map((it) => it.model1Prop1).sort()).toEqual([
+              'hello 1',
+              'hello 2',
+              'hello 3',
+              'hello 4',
+            ]);
+            expect(rows.map((it) => it.id).sort()).toEqual([1, 2, 3, 4]);
+          });
+      });
+
+      if (session.isPostgres()) {
         it('returning("*") should return all columns', () => {
           return Model1.query()
             .insert({ model1Prop1: 'hello 3' })

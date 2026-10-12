@@ -18,11 +18,11 @@ properties - see [this recipe](/recipes/returning-tricks.html) for some examples
 `returning(['only', 'some', 'props'])` note that the result object will still contain the input properies
 **plus** the properties listed in `returning`. On other databases you can use the [insertAndFetch](/api/query-builder/mutate-methods.html#insertandfetch) method.
 
-Batch inserts only work on Postgres because Postgres is the only database engine
-that returns the identifiers of _all_ inserted rows. knex supports batch inserts on
-other databases also, but you only get the id of the first (or last) inserted object
-as a result. If you need batch insert on other databases you can use knex directly
-through [knexQuery](/api/model/static-methods.html#static-knexquery).
+Batch inserts work on Postgres, SQL Server and SQLite (3.35 or newer), which return
+the identifiers of _all_ inserted rows. On MySQL, they only work if all models have
+their identifiers already, as MySQL only returns the id of the first inserted row.
+If you need batch inserts of new rows on MySQL, you can use knex directly through
+[knexQuery](/api/model/static-methods.html#static-knexquery).
 
 `insert` writes whole values, so it rejects [FieldExpressions](/api/types/#type-fieldexpression) like `'meta:a.b'` that write parts of a json column with a [ValidationError](/api/types/#class-validationerror). Use [patch](/api/query-builder/mutate-methods.html#patch) for them. Keys with a `:` that the schema declares in `properties` are normal properties and columns, not field expressions.
 
@@ -51,7 +51,7 @@ const jennifer = await Person.query().insert({
 console.log(jennifer.id);
 ```
 
-Batch insert (Only works on Postgres):
+Batch insert (on MySQL only for models with identifiers):
 
 ```js
 const actors = await Movie.relatedQuery('actors')
