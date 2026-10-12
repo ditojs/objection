@@ -4,7 +4,15 @@ import { sortBy } from '../../testUtils/testUtils.js';
 
 export default (session) => {
   describe('JSON relations', () => {
+    // Field expressions in patches only render the SQL of Postgres so far.
+    const postgresOnly = !session.isPostgres();
+
     class BaseModel extends Model {
+      // MySQL and SQLite return json columns as text.
+      static get jsonAttributes() {
+        return ['json'];
+      }
+
       static get modifiers() {
         return ['name', 'id', 'json'].reduce((obj, prop) => {
           obj[prop] = (qb) => qb.select(prop);
@@ -281,7 +289,7 @@ export default (session) => {
 
     describe('$relatedQuery', () => {
       describe('belongs to one relation', () => {
-        it('insert', () => {
+        it.skipIf(postgresOnly)('insert', () => {
           return Person.query()
             .findOne({ name: 'Arnold' })
             .then((it) => it.$relatedQuery('favoritePet').insert({ name: 'Doggo' }))
@@ -323,7 +331,7 @@ export default (session) => {
             });
         });
 
-        it('relate', () => {
+        it.skipIf(postgresOnly)('relate', () => {
           return Person.query()
             .findOne({ name: 'Arnold' })
             .then((it) => it.$relatedQuery('favoritePet').relate(123))
@@ -337,7 +345,7 @@ export default (session) => {
             });
         });
 
-        it('unrelate', () => {
+        it.skipIf(postgresOnly)('unrelate', () => {
           return Person.query()
             .findOne({ name: 'Arnold' })
             .then((it) => it.$relatedQuery('favoritePet').unrelate())
@@ -412,7 +420,7 @@ export default (session) => {
             });
         });
 
-        it('relate', () => {
+        it.skipIf(postgresOnly)('relate', () => {
           return Animal.query()
             .findOne({ name: 'Fluffy' })
             .then((it) => Promise.all([it, Person.query().findOne({ name: 'Brad' })]))
@@ -435,7 +443,7 @@ export default (session) => {
             });
         });
 
-        it('unrelate', () => {
+        it.skipIf(postgresOnly)('unrelate', () => {
           return Animal.query()
             .findOne({ name: 'Fluffy' })
             .then((it) => Promise.all([it, Person.query().findOne({ name: 'Brad' })]))

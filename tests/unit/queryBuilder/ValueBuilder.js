@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import Knex from 'knex';
 import { val, Model } from 'objection';
 import { ValueBuilder } from '../../../lib/queryBuilder/ValueBuilder.js';
 
+const knex = Knex({ client: 'pg' });
+
 function toRawArgs(ref) {
-  return ref._createRawArgs(Model.query());
+  return ref._createRawArgs(Model.query(knex));
 }
 
 describe('ValueBuilder', () => {
@@ -41,5 +44,29 @@ describe('ValueBuilder', () => {
   it('should support simultaneous casting and aliasing', () => {
     let builder = val('1').castBigInt().as('total');
     expect(toRawArgs(builder)).toEqual(['CAST(? AS bigint) as ??', ['1', 'total']]);
+  });
+
+  it('should convert json values on MySQL and SQLite', () => {
+    class TestModel extends Model {
+      static get tableName() {
+        return 'Table';
+      }
+    }
+
+    const toSql = (client) =>
+      TestModel.query(Knex({ client, useNullAsDefault: true }))
+        .where('a', val({ a: 1 }))
+        .where('b', val('x').castJson())
+        .where('c', val(1).castFloat())
+        .toKnexQuery()
+        .toString();
+    expect(toSql('mysql')).toBe(
+      'select `Table`.* from `Table` where `a` = CAST(\'{\\"a\\":1}\' AS JSON) ' +
+        'and `b` = CAST(\'\\"x\\"\' AS JSON) and `c` = CAST(1 AS DOUBLE)',
+    );
+    expect(toSql('sqlite3')).toBe(
+      'select `Table`.* from `Table` where `a` = json(\'{"a":1}\') ' +
+        'and `b` = json(\'"x"\') and `c` = CAST(1 AS float)',
+    );
   });
 });

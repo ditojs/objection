@@ -202,7 +202,7 @@ await Person.query()
   .where('age', '>', ref('someTable.ageLimit'));
 ```
 
-In the above example, we assume `persons` table has a column named `jsonColumn` of type `jsonb` (only works on postgres).
+In the above example, we assume `persons` table has a column named `jsonColumn` of type `jsonb` on PostgreSQL or `json` on MySQL and SQLite. On MySQL and SQLite, `[1]` only refers to array elements and `.1` only to object keys, see the [JSON queries recipe](/recipes/json-queries.html).
 
 ## `type` RelationExpression
 
@@ -609,6 +609,8 @@ An instance of this is returned from the [ref](/api/objection/#ref) helper funct
 
 ### Instance Methods
 
+The casts use the types of PostgreSQL. On MySQL, which can only cast to a few types, they are mapped to `CHAR` (`text`), `SIGNED` (`integer`, `bigint` and `boolean`), `DOUBLE` (`float`), `FLOAT` (`real`) and `DECIMAL(65,30)` (`decimal`). SQLite accepts the type names as they are.
+
 #### castText()
 
 Cast reference to sql type `text`.
@@ -639,14 +641,13 @@ Cast reference to sql type `boolean`.
 
 #### castTo()
 
-Give custom type to which referenced value is cast to.
+Give custom type to which referenced value is cast to. The types of the casts above are mapped on MySQL, others are used as they are.
 
 `.castTo('mytype') --> CAST(?? as mytype)`
 
 #### castJson()
 
-In addition to other casts wrap reference to_jsonb() function so that final value
-reference will be json type.
+In addition to other casts, convert the reference to a json value: `to_jsonb()` on PostgreSQL, `JSON_EXTRACT(JSON_ARRAY(??), '$[0]')` on MySQL and `json_quote()` on SQLite. SQLite can't tell json columns from text columns, so a reference to a whole column needs a cast before `castJson()` there, e.g. `ref('name').castText().castJson()`, and throws without one.
 
 #### as()
 
@@ -701,8 +702,7 @@ Give custom type to which referenced value is cast to.
 
 #### castJson()
 
-Converts the value to json (jsonb in case of postgresql). The default
-cast type for object values.
+Converts the value to json: `jsonb` on PostgreSQL, `JSON` on MySQL and `json()` on SQLite. Object and array values are json by default, which is `CAST(? AS JSON)` on MySQL and `json(?)` on SQLite, while PostgreSQL infers the type from the context.
 
 #### asArray()
 
