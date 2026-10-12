@@ -51,13 +51,15 @@ for (let copy = 0; copy < +options.copies; copy++) {
   }
 }
 
-// One project per mode. Loose mode opts out with the `TypeConfig` augmentation:
+// One project per mode. Loose mode opts out with the `TypeConfig` augmentation.
+// The checks for declaration emit of the type tests aren't measured:
 const extendsConfig = path.relative(generatedDir, path.join(root, 'tsconfig.json'));
 for (const mode of ['strict', 'loose']) {
   const include = ['app/**/*.ts', ...(mode === 'loose' ? ['loose.ts'] : [])];
+  const compilerOptions = { declaration: false };
   fs.writeFileSync(
     path.join(generatedDir, `tsconfig.${mode}.json`),
-    JSON.stringify({ extends: extendsConfig, include, exclude: [] }, null, 2),
+    JSON.stringify({ extends: extendsConfig, compilerOptions, include, exclude: [] }, null, 2),
   );
 }
 fs.writeFileSync(

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": false,
+    "declaration": true,
     "experimentalDecorators": true,
     "lib": ["es2022"],
     "module": "nodenext",

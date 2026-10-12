@@ -120,3 +120,9 @@ async function aliases() {
   await Person.query().select('id').where('age', '>', 1).orderBy('lastName');
   await Person.query().select('id').orderBy(ref('anything'));
 }
+
+async function indexSignature() {
+  // The rows keep the implicit index signature of object types.
+  const row: Record<string, unknown> = (await Person.query().select('id', 'firstName as name'))[0];
+  const counts: Record<string, unknown> | undefined = await Person.query().count('id as n').first();
+}
