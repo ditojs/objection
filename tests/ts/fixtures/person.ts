@@ -1,6 +1,7 @@
 import { Ajv } from 'ajv';
 import * as objection from 'objection';
 import { Animal } from './animal.js';
+import { Comment } from './comment.js';
 import { Movie } from './movie.js';
 
 class CustomValidationError extends Error {}

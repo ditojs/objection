@@ -2,6 +2,7 @@ import {
   MaybeCompositeId,
   Model,
   ModelConstructor,
+  NumberQueryBuilder,
   PartialModelObject,
   QueryBuilder,
   Page,
@@ -120,7 +121,7 @@ class DefaultSchemaQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M
   // ...and with an explicit one, in a model's `static QueryBuilder`.
   relate(
     ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
-  ): RelateQueryBuilder<this> {
+  ): RelateQueryBuilder<NumberQueryBuilder<this>> {
     return super.relate(ids);
   }
 }
@@ -177,3 +178,40 @@ function withGraphOverride<M extends Model>(
 ): QueryBuilder<M, number>['withGraph'] {
   return withGraph;
 }
+
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Expect<T extends true> = T;
+
+// The exact result types of the methods that are typed through `this`.
+function resultTypes() {
+  const relate = Person.relatedQuery('pets').for(1).relate(2).someCustomMethod().relate(3);
+  type _relate = Expect<
+    Equal<typeof relate, RelateQueryBuilder<CustomQueryBuilder<Animal, number>>>
+  >;
+  const relateReturning = Person.relatedQuery('pets').for(1).relate(2).debug().returning('*');
+  type _relateReturning = Expect<Equal<typeof relateReturning, QueryBuilder<Animal, any[]>>>;
+  const first = Person.query().someCustomMethod().first();
+  type _first = Expect<Equal<typeof first, CustomQueryBuilder<Person, Person | undefined>>>;
+  const insertGraph = Person.query().insertGraph({ firstName: 'Jennifer' });
+  type _insertGraph = Expect<Equal<typeof insertGraph, CustomQueryBuilder<Person, Person>>>;
+  const insertGraphs = Person.query().insertGraph([{ firstName: 'Jennifer' }]);
+  type _insertGraphs = Expect<Equal<typeof insertGraphs, CustomQueryBuilder<Person, Person[]>>>;
+  const upsertGraph = Person.query().upsertGraph({ firstName: 'Jennifer' });
+  type _upsertGraph = Expect<Equal<typeof upsertGraph, CustomQueryBuilder<Person, Person>>>;
+  const patchReturning = Person.query().patch({ firstName: 'Jennifer' }).returning('*');
+  type _patchReturning = Expect<Equal<typeof patchReturning, CustomQueryBuilder<Person, Person[]>>>;
+  const where = Person.query().where({ firstName: 'Jennifer' });
+  type _where = Expect<Equal<typeof where, CustomQueryBuilder<Person, Person[]>>>;
+}
+
+// Query builders of subclasses and their result kinds stay assignable to the
+// base types, and not the other way around.
+const toBaseModel: QueryBuilder<Model> = Person.query();
+const toBaseQueryBuilder: QueryBuilder<Person> = Person.query();
+const toBaseModelNumber: QueryBuilder<Model, number> = Person.query().patch({});
+const toMaybeSingle: QueryBuilder<Person, Person | undefined> = Person.query().findById(1);
+// @ts-expect-error the base model's query builder isn't a Person query builder
+const fromBaseModel: QueryBuilder<Person> = new QueryBuilder(Model);
+// @ts-expect-error a number result isn't an array result
+const fromNumber: QueryBuilder<Person> = Person.query().patch({});

@@ -646,7 +646,8 @@ export type SingleQueryBuilder<T extends { SingleQueryBuilderType: any }> =
 /**
  * Gets the single or undefined item query builder type for a query builder.
  */
-export type MaybeSingleQueryBuilder<QB extends AnyQueryBuilder> = QB['MaybeSingleQueryBuilderType'];
+export type MaybeSingleQueryBuilder<T extends { MaybeSingleQueryBuilderType: any }> =
+  T['MaybeSingleQueryBuilderType'];
 
 /**
  * Gets the multi-item query builder type for a query builder.
@@ -678,7 +679,7 @@ export type JsonObjectOrFieldExpression = object | object[] | FieldExpression;
 
 export type Selection<QB extends AnyQueryBuilder> = ColumnRef | AnyQueryBuilder | CallbackVoid<QB>;
 
-export interface SelectMethod<QB extends AnyQueryBuilder> {
+export interface SelectMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(...columns: ModelProps<ModelType<QBP>>[]): QB;
   <QBP extends QB>(columns: ModelProps<ModelType<QBP>>[]): QB;
@@ -690,15 +691,15 @@ export interface SelectMethod<QB extends AnyQueryBuilder> {
   <QBP extends QB>(...args: any[]): QB;
 }
 
-export interface AsMethod<QB extends AnyQueryBuilder> {
+export interface AsMethod<out QB extends AnyQueryBuilder> {
   (alias: string): QB;
 }
 
-export interface FromMethod<QB extends AnyQueryBuilder> {
+export interface FromMethod<out QB extends AnyQueryBuilder> {
   (table: TableRef<QB>, options?: { only?: boolean }): QB;
 }
 
-export interface FromRawMethod<QB extends AnyQueryBuilder> extends RawInterface<QB> {}
+export interface FromRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
 
 export interface JsonExtraction {
   column: string | Raw | Knex.QueryBuilder;
@@ -707,7 +708,7 @@ export interface JsonExtraction {
   singleValue?: boolean;
 }
 
-export interface JsonExtract<QB extends AnyQueryBuilder> {
+export interface JsonExtract<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(
     column: ModelProps<ModelType<QBP>>,
@@ -720,7 +721,7 @@ export interface JsonExtract<QB extends AnyQueryBuilder> {
   (column: JsonExtraction[] | any[][], singleValue?: boolean): QB;
 }
 
-export interface JsonSet<QB extends AnyQueryBuilder> {
+export interface JsonSet<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(
     column: ModelProps<ModelType<QBP>>,
@@ -732,7 +733,7 @@ export interface JsonSet<QB extends AnyQueryBuilder> {
   (column: ColumnRef, path: string, value: any, alias?: string): QB;
 }
 
-export interface JsonInsert<QB extends AnyQueryBuilder> {
+export interface JsonInsert<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(
     column: ModelProps<ModelType<QBP>>,
@@ -744,14 +745,14 @@ export interface JsonInsert<QB extends AnyQueryBuilder> {
   (column: ColumnRef, path: string, value: any, alias?: string): QB;
 }
 
-export interface JsonRemove<QB extends AnyQueryBuilder> {
+export interface JsonRemove<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(column: ModelProps<ModelType<QBP>>, path: string, alias?: string): QB;
 
   (column: ColumnRef, path: string, alias?: string): QB;
 }
 
-export interface WhereMethod<QB extends AnyQueryBuilder> {
+export interface WhereMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(
     col: ModelProps<ModelType<QBP>>,
@@ -769,26 +770,26 @@ export interface WhereMethod<QB extends AnyQueryBuilder> {
   (raw: Raw): QB;
   <QBA extends AnyQueryBuilder>(qb: QBA): QB;
 
-  (obj: PartialModelProps<ModelType<QB>>): QB;
+  <QBP extends QB>(obj: PartialModelProps<ModelType<QBP>>): QB;
   // We must allow any keys in the object. The previous type
   // is kind of useless, but maybe one day vscode and other
   // tools can autocomplete using it.
   (obj: object): QB;
 }
 
-export interface WhereRawMethod<QB extends AnyQueryBuilder> extends RawInterface<QB> {}
+export interface WhereRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
 
-export interface WhereWrappedMethod<QB extends AnyQueryBuilder> {
+export interface WhereWrappedMethod<out QB extends AnyQueryBuilder> {
   (cb: CallbackVoid<QB>): QB;
 }
 
-export interface WhereExistsMethod<QB extends AnyQueryBuilder> {
+export interface WhereExistsMethod<out QB extends AnyQueryBuilder> {
   (cb: CallbackVoid<QB>): QB;
   (raw: Raw): QB;
   <QBA extends AnyQueryBuilder>(qb: QBA): QB;
 }
 
-export interface WhereInMethod<QB extends AnyQueryBuilder> {
+export interface WhereInMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(col: ModelProps<ModelType<QBP>>, expr: Expression<PrimitiveValue>): QB;
   <QBP extends QB>(col: ModelProps<ModelType<QBP>>, cb: CallbackVoid<QB>): QB;
@@ -799,15 +800,15 @@ export interface WhereInMethod<QB extends AnyQueryBuilder> {
   (col: ColumnRef | ColumnRef[], qb: AnyQueryBuilder): QB;
 }
 
-export interface WhereBetweenMethod<QB extends AnyQueryBuilder> {
+export interface WhereBetweenMethod<out QB extends AnyQueryBuilder> {
   (column: ColumnRef, range: [Expression<PrimitiveValue>, Expression<PrimitiveValue>]): QB;
 }
 
-export interface WhereNullMethod<QB extends AnyQueryBuilder> {
+export interface WhereNullMethod<out QB extends AnyQueryBuilder> {
   (column: ColumnRef): QB;
 }
 
-export interface WhereColumnMethod<QB extends AnyQueryBuilder> {
+export interface WhereColumnMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(col1: ModelProps<ModelType<QBP>>, op: Operator, col2: ColumnRef): QB;
   <QBP extends QB>(col1: ModelProps<ModelType<QBP>>, col2: ColumnRef): QB;
@@ -816,14 +817,14 @@ export interface WhereColumnMethod<QB extends AnyQueryBuilder> {
   (col1: ColumnRef, col2: ColumnRef): QB;
 }
 
-export interface WhereJsonObject<QB extends AnyQueryBuilder> {
+export interface WhereJsonObject<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(col: ModelProps<ModelType<QBP>>, value: any): QB;
 
   (col: ColumnRef, value: any): QB;
 }
 
-export interface WhereJsonPath<QB extends AnyQueryBuilder> {
+export interface WhereJsonPath<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
   <QBP extends QB>(
     col: ModelProps<ModelType<QBP>>,
@@ -835,23 +836,23 @@ export interface WhereJsonPath<QB extends AnyQueryBuilder> {
   (col: ColumnRef, jsonPath: string, operator: string, value: any): QB;
 }
 
-export interface WhereJsonMethod<QB extends AnyQueryBuilder> {
+export interface WhereJsonMethod<out QB extends AnyQueryBuilder> {
   (fieldExpression: FieldExpression, jsonObjectOrFieldExpression: JsonObjectOrFieldExpression): QB;
 }
 
-export interface WhereFieldExpressionMethod<QB extends AnyQueryBuilder> {
+export interface WhereFieldExpressionMethod<out QB extends AnyQueryBuilder> {
   (fieldExpression: FieldExpression): QB;
 }
 
-export interface WhereJsonExpressionMethod<QB extends AnyQueryBuilder> {
+export interface WhereJsonExpressionMethod<out QB extends AnyQueryBuilder> {
   (fieldExpression: FieldExpression, keys: string | string[]): QB;
 }
 
-export interface WhereJsonField<QB extends AnyQueryBuilder> {
+export interface WhereJsonField<out QB extends AnyQueryBuilder> {
   (fieldExpression: FieldExpression, operator: string, value: boolean | number | string | null): QB;
 }
 
-export interface WhereCompositeMethod<QB extends AnyQueryBuilder> {
+export interface WhereCompositeMethod<out QB extends AnyQueryBuilder> {
   (column: ColumnRef[], op: Operator, expr: readonly Expression<PrimitiveValue>[]): QB;
   (column: ColumnRef, expr: Expression<PrimitiveValue>): QB;
   (column: ColumnRef, op: Operator, expr: Expression<PrimitiveValue>): QB;
@@ -859,7 +860,7 @@ export interface WhereCompositeMethod<QB extends AnyQueryBuilder> {
   (column: ColumnRef[], qb: AnyQueryBuilder): QB;
 }
 
-export interface WhereInCompositeMethod<QB extends AnyQueryBuilder> {
+export interface WhereInCompositeMethod<out QB extends AnyQueryBuilder> {
   (column: ColumnRef, expr: readonly Expression<PrimitiveValue>[]): QB;
   (column: ColumnRef, qb: AnyQueryBuilder): QB;
   (column: ColumnRef[], expr: readonly Expression<PrimitiveValue>[][]): QB;
@@ -868,16 +869,16 @@ export interface WhereInCompositeMethod<QB extends AnyQueryBuilder> {
 
 export type QBOrCallback<QB extends AnyQueryBuilder> = AnyQueryBuilder | CallbackVoid<QB>;
 
-export interface BaseSetOperations<QB extends AnyQueryBuilder> {
+export interface BaseSetOperations<out QB extends AnyQueryBuilder> {
   (callbackOrBuilder: QBOrCallback<QB>, wrap?: boolean): QB;
   (callbacksOrBuilders: QBOrCallback<QB>[], wrap?: boolean): QB;
 }
 
-export interface SetOperationsMethod<QB extends AnyQueryBuilder> extends BaseSetOperations<QB> {
+export interface SetOperationsMethod<out QB extends AnyQueryBuilder> extends BaseSetOperations<QB> {
   (...callbacksOrBuilders: QBOrCallback<QB>[]): QB;
 }
 
-export interface UnionMethod<QB extends AnyQueryBuilder> extends BaseSetOperations<QB> {
+export interface UnionMethod<out QB extends AnyQueryBuilder> extends BaseSetOperations<QB> {
   (arg1: QBOrCallback<QB>, wrap?: boolean): QB;
   (arg1: QBOrCallback<QB>, arg2: QBOrCallback<QB>, wrap?: boolean): QB;
   (arg1: QBOrCallback<QB>, arg2: QBOrCallback<QB>, arg3: QBOrCallback<QB>, wrap?: boolean): QB;
@@ -917,7 +918,7 @@ export interface UnionMethod<QB extends AnyQueryBuilder> extends BaseSetOperatio
   ): QB;
 }
 
-export interface WithMethod<QB extends AnyQueryBuilder> {
+export interface WithMethod<out QB extends AnyQueryBuilder> {
   (alias: string, expr: CallbackVoid<QB> | AnyQueryBuilder | Raw): QB;
   (alias: string, columns: string[], expr: CallbackVoid<QB> | AnyQueryBuilder | Raw): QB;
 }
@@ -927,11 +928,11 @@ export interface JoinRelatedOptions {
   aliases?: Record<string, string>;
 }
 
-export interface JoinRelatedMethod<QB extends AnyQueryBuilder> {
+export interface JoinRelatedMethod<out QB extends AnyQueryBuilder> {
   (expr: RelationExpression<ModelType<QB>>, opt?: JoinRelatedOptions): QB;
 }
 
-export interface JoinMethod<QB extends AnyQueryBuilder> {
+export interface JoinMethod<out QB extends AnyQueryBuilder> {
   (table: TableRef<QB>, leftCol: ColumnRef, op: Operator, rightCol: ColumnRef): QB;
   (table: TableRef<QB>, leftCol: ColumnRef, rightCol: ColumnRef): QB;
   (table: TableRef<QB>, cb: CallbackVoid<Knex.JoinClause>): QB;
@@ -940,24 +941,24 @@ export interface JoinMethod<QB extends AnyQueryBuilder> {
   (raw: Raw): QB;
 }
 
-export interface JoinRawMethod<QB extends AnyQueryBuilder> extends RawInterface<QB> {}
+export interface JoinRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
 
-export interface IncrementDecrementMethod<QB extends AnyQueryBuilder> {
+export interface IncrementDecrementMethod<out QB extends AnyQueryBuilder> {
   (column: string, amount?: number): QB;
 }
 
-export interface AggregateMethod<QB extends AnyQueryBuilder> {
+export interface AggregateMethod<out QB extends AnyQueryBuilder> {
   (column: ColumnRef): QB;
   (aliasToColumnDict: { [alias: string]: ColumnRef }): QB;
 }
 
-export interface CountMethod<QB extends AnyQueryBuilder> {
+export interface CountMethod<out QB extends AnyQueryBuilder> {
   (column?: ColumnRef, options?: { as: string }): QB;
   (aliasToColumnDict: { [alias: string]: string | string[] }): QB;
   (...columns: ColumnRef[]): QB;
 }
 
-export interface GroupByMethod<QB extends AnyQueryBuilder> {
+export interface GroupByMethod<out QB extends AnyQueryBuilder> {
   (...columns: ColumnRef[]): QB;
   (columns: ColumnRef[]): QB;
 }
@@ -970,26 +971,26 @@ export interface OrderByDescriptor {
 
 export type ColumnRefOrOrderByDescriptor = ColumnRef | OrderByDescriptor;
 
-export interface OrderByMethod<QB extends AnyQueryBuilder> {
+export interface OrderByMethod<out QB extends AnyQueryBuilder> {
   (column: ColumnRef, order?: OrderByDirection, nulls?: OrderByNulls): QB;
   (columns: ColumnRefOrOrderByDescriptor[]): QB;
 }
 
-export interface OrderByRawMethod<QB extends AnyQueryBuilder> extends RawInterface<QB> {}
+export interface OrderByRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
 
 export interface FirstMethod {
-  <QB extends AnyQueryBuilder>(
+  <QB extends { ResultType: any; MaybeSingleQueryBuilderType: any }>(
     this: QB,
   ): [ResultType<QB>] extends [any[]] ? MaybeSingleQueryBuilder<QB> : QB;
 }
 
 export type ForIdValue = MaybeCompositeId | AnyQueryBuilder;
 
-export interface AllowGraphMethod<QB extends AnyQueryBuilder> {
+export interface AllowGraphMethod<out QB extends AnyQueryBuilder> {
   (expr: RelationExpression<ModelType<QB>>): QB;
 }
 
-export interface IdentityMethod<QB extends AnyQueryBuilder> {
+export interface IdentityMethod<out QB extends AnyQueryBuilder> {
   (): QB;
 }
 
@@ -1009,11 +1010,11 @@ export interface HasMethod {
   (selector: string | RegExp): boolean;
 }
 
-export interface ClearMethod<QB extends AnyQueryBuilder> {
+export interface ClearMethod<out QB extends AnyQueryBuilder> {
   (selector: string | RegExp): QB;
 }
 
-export interface ColumnInfoMethod<QB extends AnyQueryBuilder> {
+export interface ColumnInfoMethod<out QB extends AnyQueryBuilder> {
   (): Promise<Knex.ColumnInfo>;
 }
 
@@ -1021,7 +1022,7 @@ export interface TableRefForMethod {
   (modelClassOrTableName: string | AnyModelConstructor): string;
 }
 
-export interface AliasForMethod<QB extends AnyQueryBuilder> {
+export interface AliasForMethod<out QB extends AnyQueryBuilder> {
   (modelClassOrTableName: string | AnyModelConstructor): string | null;
   (modelClassOrTableName: string | AnyModelConstructor, alias: string): QB;
 }
@@ -1044,7 +1045,7 @@ export type ReturningArgs =
   ReturningColumn[] | [ReturningColumn, ...ReturningColumn[], ReturningOptions | undefined];
 
 export interface ReturningMethod {
-  <QB extends AnyQueryBuilder>(
+  <QB extends { NumberQueryBuilderType: any; ArrayQueryBuilderType: any }>(
     this: QB,
     ...args: ReturningArgs
   ): QB extends NumberQueryBuilder<QB> ? ArrayQueryBuilder<QB> : QB;
@@ -1063,15 +1064,15 @@ export interface RelateReturningMethod<M extends Model> {
   (...args: ReturningArgs): QueryBuilder<M, any[]>;
 }
 
-export type RelateQueryBuilder<QB extends AnyQueryBuilder> = {
-  returning: RelateReturningMethod<ModelType<QB>>;
-} & NumberQueryBuilder<QB>;
+export type RelateQueryBuilder<NQB extends AnyQueryBuilder> = {
+  returning: RelateReturningMethod<ModelType<NQB>>;
+} & NQB;
 
 export interface TimeoutOptions {
   cancel: boolean;
 }
 
-export interface TimeoutMethod<QB extends AnyQueryBuilder> {
+export interface TimeoutMethod<out QB extends AnyQueryBuilder> {
   (ms: number, options?: TimeoutOptions): QB;
 }
 
@@ -1084,7 +1085,7 @@ export interface RunBeforeCallback<QB extends AnyQueryBuilder> {
   (this: QB, result: any, query: QB): any;
 }
 
-export interface RunBeforeMethod<QB extends AnyQueryBuilder> {
+export interface RunBeforeMethod<out QB extends AnyQueryBuilder> {
   (cb: RunBeforeCallback<QB>): QB;
 }
 
@@ -1092,11 +1093,11 @@ export interface RunAfterCallback<QB extends AnyQueryBuilder> {
   (this: QB, result: ResultType<QB>, query: QB): any;
 }
 
-export interface RunAfterMethod<QB extends AnyQueryBuilder> {
+export interface RunAfterMethod<out QB extends AnyQueryBuilder> {
   (cb: RunAfterCallback<QB>): QB;
 }
 
-export interface OnBuildMethod<QB extends AnyQueryBuilder> {
+export interface OnBuildMethod<out QB extends AnyQueryBuilder> {
   (cb: CallbackVoid<QB>): QB;
 }
 
@@ -1104,7 +1105,7 @@ export interface OnBuildKnexCallback<QB extends AnyQueryBuilder> {
   (this: QB, knexQuery: Knex.QueryBuilder, query: QB): void;
 }
 
-export interface OnBuildKnexMethod<QB extends AnyQueryBuilder> {
+export interface OnBuildKnexMethod<out QB extends AnyQueryBuilder> {
   (cb: OnBuildKnexCallback<QB>): QB;
 }
 
@@ -1112,7 +1113,7 @@ export interface OnErrorCallback<QB extends AnyQueryBuilder> {
   (this: QB, error: Error, query: QB): any;
 }
 
-export interface OnErrorMethod<QB extends AnyQueryBuilder> {
+export interface OnErrorMethod<out QB extends AnyQueryBuilder> {
   (cb: OnErrorCallback<QB>): QB;
 }
 
@@ -1124,13 +1125,13 @@ export interface InsertGraphOptions {
 }
 
 export interface InsertGraphMethod<M extends Model> {
-  <QB extends AnyQueryBuilder>(
+  <QB extends { SingleQueryBuilderType: any }>(
     this: QB,
     graph: PartialModelGraph<M>,
     options?: InsertGraphOptions,
   ): SingleQueryBuilder<QB>;
 
-  <QB extends AnyQueryBuilder>(
+  <QB extends { ArrayQueryBuilderType: any }>(
     this: QB,
     graph: PartialModelGraph<M>[],
     options?: InsertGraphOptions,
@@ -1152,20 +1153,20 @@ export interface UpsertGraphOptions {
 }
 
 export interface UpsertGraphMethod<M extends Model> {
-  <QB extends AnyQueryBuilder>(
+  <QB extends { ArrayQueryBuilderType: any }>(
     this: QB,
     graph: PartialModelGraph<M>[],
     options?: UpsertGraphOptions,
   ): ArrayQueryBuilder<QB>;
 
-  <QB extends AnyQueryBuilder>(
+  <QB extends { SingleQueryBuilderType: any }>(
     this: QB,
     graph: PartialModelGraph<M>,
     options?: UpsertGraphOptions,
   ): SingleQueryBuilder<QB>;
 }
 
-export interface GraphExpressionObjectMethod<QB extends AnyQueryBuilder> {
+export interface GraphExpressionObjectMethod<out QB extends AnyQueryBuilder> {
   (): any;
 }
 
@@ -1186,27 +1187,27 @@ export interface WithGraphOptions extends GraphOptions {
   algorithm?: 'fetch' | 'join';
 }
 
-export interface ModifyGraphMethod<QB extends AnyQueryBuilder> {
+export interface ModifyGraphMethod<out QB extends AnyQueryBuilder> {
   <M extends Model>(
     expr: RelationExpression<ModelType<QB>>,
     modifier: Modifier<QueryBuilderType<M>>,
   ): QB;
 }
 
-export interface ContextMethod<QB extends AnyQueryBuilder> {
+export interface ContextMethod<out QB extends AnyQueryBuilder> {
   (context: object): QB;
   (): QueryContext;
 }
 
-export interface ClearContextMethod<QB extends AnyQueryBuilder> {
+export interface ClearContextMethod<out QB extends AnyQueryBuilder> {
   (): QB;
 }
 
-export interface ModifyMethod<QB extends AnyQueryBuilder> {
+export interface ModifyMethod<out QB extends AnyQueryBuilder> {
   (modifier: Modifier<QB> | Modifier<QB>[], ...args: any[]): QB;
 }
 
-export interface ModifiersMethod<QB extends AnyQueryBuilder> {
+export interface ModifiersMethod<out QB extends AnyQueryBuilder> {
   (modifiers: Modifiers): QB;
   (): QB;
 }
@@ -1447,7 +1448,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   relate(
     ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
-  ): RelateQueryBuilder<this>;
+  ): RelateQueryBuilder<NumberQueryBuilder<this>>;
 
   unrelate(): NumberQueryBuilder<this>;
   for(ids: ForIdValue | ForIdValue[]): this;
