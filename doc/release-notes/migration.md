@@ -50,6 +50,10 @@ Objection 4.0 needs at least node 20.19, the first version of node 20 that can `
 
 Objection 4.0 needs at least knex 3.3.
 
+## Dropped support for TypeScript < 5.8
+
+The typings of objection 4.0 need at least TypeScript 5.8, the first version that understands that node can `require()` ES modules. TypeScript 5.8, 6 and 7 are supported.
+
 ## Database errors are objection's own classes
 
 The database error classes (`DBError`, `UniqueViolationError`, `NotNullViolationError`, `ForeignKeyViolationError`, `ConstraintViolationError`, `CheckViolationError` and `DataError`) are no longer imported from the [db-errors](https://github.com/Vincit/db-errors) library. objection includes its own copy of it, and doesn't depend on the `db-errors` package anymore.
@@ -102,7 +106,7 @@ Relation expressions that name a relation twice at the same level, like `'[movie
 
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.
 
-TypeScript projects that compile to CommonJS and use `"module": "nodenext"` need at least TypeScript 5.8, which understands that node can `require()` ES modules. With `"module": "node16"`, TypeScript refuses to `require()` objection from CommonJS files. On TypeScript < 7, projects that use `"module": "commonjs"` with the old `"moduleResolution": "node"` keep working. TypeScript 7 removed that resolution mode, so CommonJS projects need `"module": "nodenext"` there.
+TypeScript projects that compile to CommonJS can `require()` objection with `"module": "nodenext"`. With `"module": "node16"`, TypeScript refuses to `require()` objection from CommonJS files. On TypeScript < 7, projects that use `"module": "commonjs"` with the old `"moduleResolution": "node"` keep working. TypeScript 7 removed that resolution mode, so CommonJS projects need `"module": "nodenext"` there.
 
 ## Static hooks get an empty `result` instead of `[null]`
 
