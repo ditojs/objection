@@ -2,13 +2,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import mockKnexFactory from '../../../testUtils/mockKnex.js';
 
 import { Model, raw } from 'objection';
-import { ModelGraph } from '../../../lib/model/graph/ModelGraph.js';
-import { GraphInsert } from '../../../lib/queryBuilder/graph/insert/GraphInsert.js';
-import { GraphOptions } from '../../../lib/queryBuilder/graph/GraphOptions.js';
-import { GraphNodeDbExistence } from '../../../lib/queryBuilder/graph/GraphNodeDbExistence.js';
-import { GraphFetcher } from '../../../lib/queryBuilder/graph/GraphFetcher.js';
-import { GraphData } from '../../../lib/queryBuilder/graph/GraphData.js';
-import { asArray } from '../../../lib/utils/objectUtils.js';
 
 export default (session) => {
   const ID_NOT_IN_DB = 1000000;
@@ -285,6 +278,10 @@ export default (session) => {
       it("should only insert rows that don't exists in db", () => {
         return test({
           modelClass: Person,
+          // `insertGraph()` doesn't fetch the existing rows, so leave them
+          // untouched with `upsertGraph()`:
+          upsert: true,
+          graphOptions: { noUpdate: true, noDelete: true },
 
           graphIn: {
             id: matti.id,
@@ -338,7 +335,8 @@ export default (session) => {
             ],
           },
 
-          postgresNumQueries: 3,
+          // 3 queries to fetch the current graph and 3 to insert the new rows:
+          postgresNumQueries: 6,
         });
       });
     });
@@ -1026,39 +1024,19 @@ export default (session) => {
     function test({
       modelClass,
       graphIn,
-      graphOptions: rawGraphOptions = {},
+      graphOptions = {},
+      upsert = false,
       queryOut,
       graphOut,
       postgresNumQueries = null,
       check,
     }) {
-      const builder = modelClass.query();
-      const models = modelClass.ensureModelArray(graphIn, { skipValidation: true });
-      rawGraphOptions = Object.assign({}, rawGraphOptions, { insertMissing: true });
-      const graphOptions = new GraphOptions(rawGraphOptions);
-      const graph = assignDbRefsAsRelateProps(ModelGraph.create(modelClass, models));
-      const nodeDbExistence = GraphNodeDbExistence.createEveryNodeExistsExistence();
+      numExecutedQueries = 0;
 
-      return GraphFetcher.fetchCurrentGraph({ builder, graph, graphOptions })
-        .then((currentGraph) => {
-          numExecutedQueries = 0;
+      const query = modelClass.query();
+      const options = { allowRefs: true, ...graphOptions };
 
-          const graphData = new GraphData({
-            graph,
-            currentGraph,
-            graphOptions,
-            nodeDbExistence,
-          });
-          const graphInsert = new GraphInsert(graphData.planActions());
-          const actions = graphInsert.createActions();
-          let promise = Promise.resolve();
-
-          actions.forEach((action) => {
-            promise = promise.then(() => action.run(builder));
-          });
-
-          return promise;
-        })
+      return (upsert ? query.upsertGraph(graphIn, options) : query.insertGraph(graphIn, options))
         .then(() => {
           if (session.isPostgres() && postgresNumQueries) {
             expect(numExecutedQueries).toBe(postgresNumQueries);
@@ -1072,18 +1050,6 @@ export default (session) => {
             check(result);
           }
         });
-    }
-
-    function assignDbRefsAsRelateProps(graph) {
-      for (const node of graph.nodes) {
-        if (!node.parentEdge || !node.parentEdge.relation || !node.isDbReference) {
-          continue;
-        }
-
-        node.parentEdge.relation.setRelateProp(node.obj, asArray(node.dbReference));
-      }
-
-      return graph;
     }
 
     async function createSchema() {

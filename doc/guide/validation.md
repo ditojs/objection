@@ -75,3 +75,25 @@ try {
   }
 }
 ```
+
+## Write-only properties
+
+`insertGraph()` and `upsertGraph()` validate their models once the references and keys of the graph are resolved, after the models are created. A property that a setter consumes when the model is created, e.g. a `password` that a setter turns into a hash, is gone by then, and fails a `required` rule or skips its other rules. Keep such properties on the model and transform them in the `$beforeInsert` and `$beforeUpdate` hooks, which run after the validation in all queries:
+
+```js
+class User extends Model {
+  static jsonSchema = {
+    type: 'object',
+    required: ['password'],
+    properties: {
+      password: { type: 'string', minLength: 8 }
+    },
+  };
+
+  async $beforeInsert(context) {
+    await super.$beforeInsert(context);
+    this.passwordHash = await hash(this.password);
+    delete this.password;
+  }
+}
+```

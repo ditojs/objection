@@ -2565,6 +2565,7 @@ export interface Relation {
   joinTableOwnerProp: RelationProperty;
   joinTableRelatedProp: RelationProperty;
   isOneToOne(): boolean;
+  keySide: 'owner' | 'related' | 'join';
 }
 
 export interface RelationProperty {

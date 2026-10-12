@@ -230,6 +230,18 @@ export default (session) => {
       expect(await selectPets().select('id', 'name')).toEqual([{ id: 3, name: 'c' }]);
     });
 
+    it('should give #ref models related into a HasManyRelation their foreign key (#311)', async () => {
+      await createTables();
+      await knex('graph_order_person').insert({ id: 1 });
+
+      await Person.query().upsertGraph(
+        { id: 1, favoritePet: { '#id': 'x', id: 3, name: 'c' }, pets: [{ '#ref': 'x' }] },
+        { relate: true, insertMissing: true, allowRefs: true },
+      );
+
+      expect(await selectPets()).toEqual([{ id: 3, name: 'c', ownerId: 1 }]);
+    });
+
     describe('unique foreign key of a HasOneRelation', () => {
       it('should delete the current row before inserting its replacement', async () => {
         await createTables({ uniqueOwner: true });

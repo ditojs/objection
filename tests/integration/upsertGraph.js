@@ -1899,6 +1899,23 @@ export default (session) => {
         expect(result.model1Relation1.model1Relation1).not.toHaveProperty('#dbRef');
       });
 
+      it('should not return the markers of removed and skipped models', async () => {
+        const result = await Model1.query(session.knex).upsertGraph(
+          {
+            id: 2,
+            model1Relation2: [
+              { idCol: 1, '#delete': true },
+              { idCol: 2 },
+              { '#id': 'skipped', model2Prop1: 'skipped' },
+            ],
+          },
+          { fetchStrategy, allowMarkers: true, noInsert: ['model1Relation2'] },
+        );
+
+        expect(result.model1Relation2[0]).not.toHaveProperty('#delete');
+        expect(result.model1Relation2[2]).not.toHaveProperty('#id');
+      });
+
       it('should not fail when trying to #unrelate or #delete a model which either does not exist or is linked elsewhere', () => {
         const upsert = {
           id: 2,
@@ -4314,6 +4331,25 @@ export default (session) => {
           });
         });
 
+        it('should throw before writing anything if a related model with relations does not exist', async () => {
+          const upsert = {
+            id: 2,
+            model1Prop1: 'updated root 2',
+            model1Relation3: [{ idCol: NONEXISTENT_ID, model2Relation3: [{ id: 1 }] }],
+          };
+
+          const err = await Model1.query(session.knex)
+            .upsertGraph(upsert, { relate: true, fetchStrategy })
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(Model1.NotFoundError);
+          expect(err.message).toBe(
+            'model (id=1000) does not exist. If you want to insert it with an id, use the insertMissing option',
+          );
+          expect(err.data.dataPath).toEqual(['model1Relation3', 0]);
+          expect(await session.knex('Model1').where('model1Prop1', 'updated root 2')).toEqual([]);
+        });
+
         for (const [title, options] of [
           [
             'flags',
@@ -5502,6 +5538,30 @@ export default (session) => {
               expect(model.model2Relation1[0].id).toBe(5);
               expect(model.model2Relation1[0].aliasedExtra).toBe('foo');
             });
+        });
+
+        it('relate the same model twice with different extras (Vincit#1268)', async () => {
+          await Model2.query(session.knex).upsertGraph(
+            {
+              idCol: 2,
+              model2Relation1: [
+                { id: 5, aliasedExtra: 'foo' },
+                { id: 5, aliasedExtra: 'bar' },
+              ],
+            },
+            { relate: true, fetchStrategy },
+          );
+
+          const rows = await session
+            .knex('Model1Model2')
+            .select('model1Id', 'extra3')
+            .where('model2Id', 2)
+            .orderBy('extra3');
+
+          expect(rows).toEqual([
+            { model1Id: 5, extra3: 'bar' },
+            { model1Id: 5, extra3: 'foo' },
+          ]);
         });
 
         it('update', () => {

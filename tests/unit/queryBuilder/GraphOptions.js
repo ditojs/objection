@@ -7,9 +7,8 @@ describe('GraphOptions', () => {
     return { relationPath, relationPathKey };
   }
 
-  function matches(noInsert, relationPathKey, rootRelationPath) {
-    const options = new GraphOptions({ noInsert }, rootRelationPath);
-    return options._hasOption(createNode(relationPathKey), 'noInsert');
+  function matches(noInsert, relationPathKey) {
+    return new GraphOptions({ noInsert }).has(createNode(relationPathKey), 'noInsert');
   }
 
   describe('relation expressions', () => {
@@ -41,12 +40,6 @@ describe('GraphOptions', () => {
       });
     }
 
-    it('should match the full relation path in recursive upserts', () => {
-      expect(matches('a.b', 'b', ['a'])).toBe(true);
-      expect(matches('a.b', '', ['a'])).toBe(false);
-      expect(matches('a', '', ['a'])).toBe(true);
-    });
-
     for (const [expression, message] of [
       ['', 'the expression is empty'],
       [' ', 'the expression is empty'],
@@ -71,31 +64,5 @@ describe('GraphOptions', () => {
         );
       });
     }
-  });
-
-  describe('rebasedOptions', () => {
-    function rebasedMatches(noInsert, rootRelationPathKey, relationPathKey) {
-      const options = new GraphOptions({ noInsert }).rebasedOptions(
-        createNode(rootRelationPathKey),
-      );
-      return options._hasOption(createNode(relationPathKey), 'noInsert');
-    }
-
-    for (const noInsert of [['a', 'a.b', 'ab.c', 'x.a'], '[a.b, ab.c, x.a]']) {
-      it(`should match ${JSON.stringify(noInsert)} against the full relation path`, () => {
-        expect(rebasedMatches(noInsert, 'a', 'b')).toBe(true);
-        expect(rebasedMatches(noInsert, 'a', 'c')).toBe(false);
-        expect(rebasedMatches(noInsert, 'a', 'a')).toBe(false);
-        expect(rebasedMatches(noInsert, 'x', 'a')).toBe(true);
-      });
-    }
-
-    it('should match the new root', () => {
-      expect(rebasedMatches(['a'], 'a', '')).toBe(true);
-      expect(rebasedMatches('a', 'a', '')).toBe(true);
-      expect(rebasedMatches(['a'], 'b', '')).toBe(false);
-      expect(rebasedMatches(['a.b'], 'a.b', '')).toBe(true);
-      expect(rebasedMatches(['b'], 'a.b', '')).toBe(false);
-    });
   });
 });
