@@ -31,6 +31,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: Model.jsonSchema is a readonly schema](#typescript-model-jsonschema-is-a-readonly-schema)
 - [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
 - [typescript: Queries are checked against the models](#typescript-queries-are-checked-against-the-models)
+- [typescript: $relatedQuery() of to-one relations may resolve to undefined](#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -329,6 +330,17 @@ declare module 'objection' {
     strict: false;
   }
 }
+```
+
+## typescript: $relatedQuery() of to-one relations may resolve to undefined
+
+`$relatedQuery()` of a `BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` resolves to `undefined` when there is no related row, and its type says so now:
+
+```ts
+const parent = await person.$relatedQuery('parent'); // Person | undefined
+
+// Throw instead, if the row has to exist:
+const parent = await person.$relatedQuery('parent').throwIfNotFound(); // Person
 ```
 
 ## `insert` and `update` reject field expression keys

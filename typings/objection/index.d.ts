@@ -654,10 +654,11 @@ export type ModelRelations<T extends Model> = Defined<
 
 /**
  * Given a model property type, returns a query builer type of
- * correct kind if the property is a model or a model array.
+ * correct kind if the property is a model or a model array. Queries for
+ * to-one relations resolve to `undefined` when there's no related row.
  */
 export type RelatedQueryBuilder<T> = T extends Model
-  ? SingleQueryBuilder<QueryBuilderType<T>>
+  ? MaybeSingleQueryBuilder<QueryBuilderType<T>>
   : T extends Array<infer I>
     ? I extends Model
       ? QueryBuilderType<I>

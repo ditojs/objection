@@ -307,7 +307,7 @@ async function relatedQueries() {
   c[0].parent?.id;
 
   const d = await person.$relatedQuery('parent').withGraphFetched('pets');
-  type _d = Expect<Equal<(typeof d)['pets'], Animal[]>>;
+  type _d = Expect<Equal<NonNullable<typeof d>['pets'], Animal[]>>;
 
   const e = await person.$query().withGraphFetched('pets');
   type _e = Expect<Equal<(typeof e)['pets'], Animal[]>>;
