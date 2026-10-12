@@ -1097,6 +1097,84 @@ module.exports = (session) => {
         expect(models[1].model2Relation1[0].aliasedExtra).to.equal('extra 6');
       });
 
+      // SQLite can't select `schema.table.*`.
+      if (!session.isSqlite()) {
+        it('should apply limit() per parent with schema-qualified table names', async () => {
+          // The tables are in the default schema of each database:
+          const schema = session.isPostgres()
+            ? 'public'
+            : session.isMsSql()
+              ? 'dbo'
+              : session.knex.client.database();
+
+          class SchemaModel1 extends Model1 {
+            static get tableName() {
+              return `${schema}.Model1`;
+            }
+
+            static get relationMappings() {
+              return {
+                model1Relation2: {
+                  relation: Model1.HasManyRelation,
+                  modelClass: SchemaModel2,
+                  join: { from: `${schema}.Model1.id`, to: `${schema}.model2.model1_id` },
+                },
+              };
+            }
+          }
+
+          class SchemaModel2 extends Model2 {
+            static tableName() {
+              return `${schema}.model2`;
+            }
+
+            static get relationMappings() {
+              return {
+                model2Relation1: {
+                  relation: Model2.ManyToManyRelation,
+                  modelClass: SchemaModel1,
+                  join: {
+                    from: `${schema}.model2.id_col`,
+                    through: {
+                      from: `${schema}.Model1Model2.model2Id`,
+                      to: `${schema}.Model1Model2.model1Id`,
+                    },
+                    to: `${schema}.Model1.id`,
+                  },
+                },
+              };
+            }
+          }
+
+          // The order can still refer to the table without its schema.
+          const model1s = await SchemaModel1.query()
+            .withGraphFetched('model1Relation2', { limitPerParent: true })
+            .whereExists(SchemaModel1.relatedQuery('model1Relation2'))
+            .modifyGraph('model1Relation2', (query) =>
+              query.orderBy('model2.id_col', 'desc').limit(1),
+            )
+            .orderBy('id');
+
+          expect(relatedIds(model1s, 'model1Relation2')).to.eql([
+            [1, [2]],
+            [4, [4]],
+            [6, [3]],
+          ]);
+
+          const model2s = await SchemaModel2.query()
+            .whereIn('id_col', [1, 2, 3])
+            .withGraphFetched('model2Relation1', { limitPerParent: true })
+            .modifyGraph('model2Relation1', (query) => query.orderBy('id', 'desc').limit(1))
+            .orderBy('id_col');
+
+          expect(relatedIds(model2s, 'model2Relation1', 'id')).to.eql([
+            [1, []],
+            [2, [6]],
+            [3, []],
+          ]);
+        });
+      }
+
       it('should apply limit() of a relation mapping modify per parent', async () => {
         class Model1Latest extends Model1 {
           static get relationMappings() {
