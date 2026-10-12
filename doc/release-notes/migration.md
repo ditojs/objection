@@ -20,6 +20,7 @@ This section lists the breaking changes in objection 4.0.
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
+- [Misplaced `*` and `^` in relation expressions throw](#misplaced-and-in-relation-expressions-throw)
 
 ## objection is an ES module package
 
@@ -205,6 +206,9 @@ await Pet.query().count('* as n').groupBy('ownerId').withGraphFetched('owner');
 ```
 
 Grouped queries need to group by the added columns too, or the database rejects them. Add the join columns to `groupBy()`, like `groupBy('ownerId')` above. In `withGraphJoined()`, the root query selects only its id columns next to the aggregates instead of all its columns. Select the columns you need explicitly.
+## Misplaced `*` and `^` in relation expressions throw
+
+`*` and `^` end a relation path. 3.x silently ignored everything after them, so `'parent.^.pets'` fetched `parent` recursively without `pets`, and `'*.pets'` fetched all relations. It also ignored modifiers and aliases on them, like `'parent.^(onlyAdults)'`, and treated `*` and `^` in a list, like `'[children, *]'`, as relation names. These expressions throw an error in 4.0, in all methods that take relation expressions and in the graph options of `insertGraph()` and `upsertGraph()`. Remove what follows `*` or `^`, and apply modifiers to the relation itself, like `'parent(onlyAdults).^'`.
 
 # Migration from objection 2.x to 3.0
 

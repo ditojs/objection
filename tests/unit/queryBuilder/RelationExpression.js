@@ -1176,6 +1176,49 @@ describe('RelationExpression', () => {
     });
   });
 
+  describe('misplaced * and ^', () => {
+    for (const [expression, token] of [
+      ['a.^.b', '^'],
+      ['a.^3.b', '^3'],
+      ['a.^.[b, c]', '^'],
+      ['*.a', '*'],
+      ['*.[a, b]', '*'],
+      ['a.*.b', '*'],
+      ['a.[b.*.c, d]', '*'],
+      ['a.^(f)', '^'],
+      ['a.* as b', '*'],
+      ['* as a', '*'],
+      ['[a, *]', '*'],
+      ['a.[b, ^2]', '^2'],
+      ['^', '^'],
+    ]) {
+      it(`should throw for '${expression}'`, () => {
+        expect(() => RelationExpression.create(expression)).toThrow(
+          expect.objectContaining({
+            message: `"${token}" is only supported at the end of a relation path.`,
+          }),
+        );
+      });
+    }
+
+    for (const expression of ['a.^', 'a.^3', 'a.*', '[a.^3, b.*]', 'a.[b.*, c.^2]']) {
+      it(`should parse '${expression}'`, () => {
+        expect(RelationExpression.create(expression).toString()).toBe(expression);
+      });
+    }
+
+    it("should parse '*'", () => {
+      expect(RelationExpression.create('*').node.$allRecursive).toBe(true);
+    });
+
+    it('should parse an alias named like a token as a relation', () => {
+      expect(RelationExpression.create('a.b as ^').node.a['^']).toContainSubset({
+        $relation: 'b',
+        $recursive: false,
+      });
+    });
+  });
+
   describe('inherited object properties (#63)', () => {
     it("shouldn't be mistaken for relations when parsing", () => {
       const warnings = [];
@@ -1345,7 +1388,6 @@ describe('RelationExpression', () => {
     testNotSubExpression('[a.^, b.[c.^, d]]', '[c, b]');
     testNotSubExpression('[a.^, b.[c.^, d]]', '[c, b]');
     testNotSubExpression('[a.^, b.[c.^, d]]', 'b.c.d');
-    testNotSubExpression('a.^', 'a.[b, ^, c]');
     testNotSubExpression('a.^3', 'a.^');
     testNotSubExpression('a.^3', 'a.^4');
     testNotSubExpression('a.^3', 'a.a.a.a');
