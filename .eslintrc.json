@@ -23,6 +23,14 @@
       "parserOptions": {
         "ecmaVersion": 2020
       }
+    },
+    {
+      "files": [
+        "tests/**/*.js"
+      ],
+      "env": {
+        "es2021": true
+      }
     }
   ]
 }

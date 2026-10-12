@@ -6303,6 +6303,21 @@ describe('QueryBuilder', () => {
       expect(err).to.not.be.a(objection.UniqueViolationError);
     });
 
+    it('should throw a DBError with the messages of several errors', async () => {
+      // knex prepends the SQL to the empty message of tedious' AggregateError.
+      const error = new AggregateError([
+        createMsSqlError(102, "Incorrect syntax near '@p0'.", 15),
+        createMsSqlError(153, 'Invalid usage of the option next in the FETCH statement.', 15),
+      ]);
+      error.message = 'select * - ';
+      const err = await expectError(error, objection.DBError);
+
+      expect(err.nativeError).to.equal(error);
+      expect(err.message).to.equal(
+        "select * - Incorrect syntax near '@p0'. Invalid usage of the option next in the FETCH statement.",
+      );
+    });
+
     it('should throw unknown errors unchanged', async () => {
       const error = createMsSqlError(1033, 'The ORDER BY clause is invalid.', 15);
       let thrown;

@@ -2,7 +2,7 @@ const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
 
 const { KnexTimeoutError } = require('knex');
-const { raw, ref, val, fn, Model, QueryBuilderOperation } = require('../..');
+const { raw, ref, val, fn, Model, QueryBuilderOperation, DBError } = require('../..');
 const { range, sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
@@ -88,6 +88,27 @@ module.exports = (session) => {
             expect(result.total === 3).to.equal(true);
             expect(result.results.map((it) => it.model2Prop2)).to.eql([20, 10]);
           });
+      });
+
+      it('should give the reasons of several errors on SQL Server', async function () {
+        if (!session.isMsSql()) {
+          this.skip();
+        }
+
+        // SQL Server needs an order for an offset, and reports two errors.
+        let error;
+
+        try {
+          await Model2.query().offset(1).limit(2);
+        } catch (err) {
+          error = err;
+        }
+
+        expect(error).to.be.a(DBError);
+        expect(error.nativeError).to.be.an(AggregateError);
+        expect(error.message).to.contain(
+          " - Incorrect syntax near '@p0'. Invalid usage of the option next in the FETCH statement.",
+        );
       });
 
       it('should return the given page and total count when page() is called', () => {
