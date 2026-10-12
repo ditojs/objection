@@ -304,6 +304,44 @@ class Person extends Model {
 
 `modelClass` is only checked when it is a class or a function returning one, not when it is a module path. Models are compared structurally, so a model class whose instances have all the properties of the expected model passes too.
 
+## Checking queries in TypeScript
+
+The typings check the column names and values of queries against the models. A column is a property of the model that is neither a method nor a relation, nor starts with `$`. Columns qualified with a relation path, as objection names joined relations, are checked against the related model, whether the relation is joined before or after:
+
+```ts
+await Person.query()
+  .where('firstName', 'Jennifer')
+  .where('pets.species', 'dog')
+  .where('pets:owner.age', '>', 30)
+  .joinRelated('pets.owner')
+  .orderBy('lastName');
+
+await Person.query().where('firstNme', 'Jennifer'); // Error: not a column of Person
+await Person.query().where('pets.nme', 'Fluffy'); // Error: not a column of Animal
+await Person.query().where('age', 'thirty'); // Error: age is a number
+```
+
+`where()`, `select()`, `orderBy()`, `groupBy()`, `having()`, the aggregates, `whereIn()` and the other column methods are checked this way, and so are the names of relations in relation expressions, e.g. in `withGraphFetched()` and `joinRelated()`. Values are checked against the property types: `null` is accepted for any column, and dates also take strings.
+
+Qualifiers that aren't relation paths, like table names and aliases, are passed through unchecked: `persons.firstName`, or `p.name` after `joinRelated('pets as p')`. Column names that aren't literals, columns of other queries, and aliases of selections are referenced with `ref()`, or passed as `raw()`:
+
+```ts
+await Person.query().orderBy(ref(sortColumn));
+await Animal.query().whereColumn('animals.ownerId', ref('persons.id'));
+```
+
+Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
+
+To turn the checks off, augment `TypeConfig`:
+
+```ts
+declare module 'objection' {
+  interface TypeConfig {
+    strict: false;
+  }
+}
+```
+
 ## Typing generated properties in TypeScript
 
 `insert()` accepts any subset of the model's properties without the relations, and `insertGraph()` accepts the relations too. To check that the data for a new row is complete, mark the properties the database generates, like auto-incremented ids, timestamps or columns with defaults, as `Generated`, and type the data as `Insertable`:

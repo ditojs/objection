@@ -12,5 +12,6 @@
     "target": "es2022",
     "types": ["node"]
   },
-  "include": ["tests/ts/**/*.ts"]
+  "include": ["tests/ts/**/*.ts"],
+  "exclude": ["tests/ts/strict"]
 }

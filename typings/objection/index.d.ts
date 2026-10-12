@@ -436,8 +436,12 @@ export type NonFunctionPropertyNames<T> = {
 
 /**
  * Type that attempts to only select the user-defined model properties.
+ * Properties starting with `$` are internal, like in `toJSON()`.
  */
-export type DataPropertyNames<T> = Exclude<NonFunctionPropertyNames<T>, 'QueryBuilderType'>;
+export type DataPropertyNames<T> = Exclude<
+  NonFunctionPropertyNames<T>,
+  'QueryBuilderType' | `$${string}`
+>;
 
 /**
  * Removes `undefined` from a type.
@@ -683,6 +687,262 @@ export type NumberQueryBuilder<QB extends AnyQueryBuilder> = QB['~number'];
  */
 export type PageQueryBuilder<QB extends AnyQueryBuilder> = QB['~page'];
 
+// Strict mode, on by default, checks the column names and values of queries
+// against the models. Augment `TypeConfig` to opt out:
+//
+//   declare module 'objection' {
+//     interface TypeConfig {
+//       strict: false;
+//     }
+//   }
+
+export interface TypeConfig {}
+
+type IsStrict = TypeConfig extends { strict: false } ? false : true;
+
+// As IsStrict isn't generic, IfStrict resolves eagerly.
+type IfStrict<Loose, Strict> = IsStrict extends true ? Strict : Loose;
+
+/**
+ * The column names of model M: its properties without methods and relations.
+ */
+export type ColumnName<M> = InsertablePropertyNames<M> & string;
+
+/**
+ * The model at the end of the relation path P of model M, e.g. 'pets:owner',
+ * as objection names joined relations. `never` if P isn't a relation path.
+ */
+type RelationPathModel<M, P extends string> = P extends `${infer R}:${infer Rest}`
+  ? R extends RelationPropertyNames<M>
+    ? RelationPathModel<RelatedModel<M[R]>, Rest>
+    : never
+  : P extends RelationPropertyNames<M>
+    ? RelatedModel<M[P]>
+    : never;
+
+type RelatedModel<P> = NonNullable<P> extends readonly (infer I)[] ? I : NonNullable<P>;
+
+/**
+ * Checks the column C of a query for model M: a column of M, or qualified
+ * with a relation path, a column of the related model. Other qualifiers, e.g.
+ * table names and aliases, aren't checked. Resolves to C if it is valid, or
+ * else to the valid columns, for the error message.
+ */
+type CheckColumn<M, C extends string> = C extends `${infer Q}.${infer Col}`
+  ? [RelationPathModel<M, Q>] extends [never]
+    ? C
+    : Col extends ColumnName<RelationPathModel<M, Q>>
+      ? C
+      : `${Q}.${ColumnName<RelationPathModel<M, Q>>}`
+  : C extends ColumnName<M>
+    ? C
+    : ColumnName<M>;
+
+/**
+ * The type of the column C of model M, `unknown` if it can't be resolved.
+ */
+type ColumnType<M, C extends string> = C extends `${infer Q}.${infer Col}`
+  ? PropertyType<RelationPathModel<M, Q>, Col>
+  : PropertyType<M, C>;
+
+type PropertyType<M, K> = [M] extends [never] ? unknown : K extends keyof M ? M[K] : unknown;
+
+/**
+ * Whether the columns of model M are checked: not for the base `Model` and
+ * other models without declared columns, e.g. in untyped modifiers, nor for
+ * `any`, which is also what TypeScript checks arguments against when M is
+ * generic, e.g. in the methods of custom query builders. `any` is detected by
+ * a member that no type has: unlike `0 extends 1 & M`, the check of `[M]` is
+ * generic in M, which TypeScript needs to only relate arguments to the `false`
+ * branch of conditionals on IsConcreteModel in generic code.
+ */
+type IsConcreteModel<M> = [M] extends [{ '~anyModel': true }]
+  ? false
+  : [ColumnName<M>] extends [never]
+    ? false
+    : true;
+
+type CheckedColumn<M, C extends string> =
+  IsConcreteModel<M> extends true ? CheckColumn<M, C> : string;
+
+/**
+ * A column argument: checked against model M in strict mode, any column in
+ * loose mode, where the model's properties come first, for autocompletion.
+ */
+type ColumnArg<M, C extends string> = IfStrict<ModelProps<M & Model>, CheckedColumn<M, C>>;
+
+/**
+ * The value of a column of type T in conditions: `null` is always accepted,
+ * for `IS NULL` checks, dates accept strings too, and objects (JSON columns)
+ * and columns of unknown type anything.
+ */
+type ColumnValue<T> = unknown extends T
+  ? PrimitiveValue | object
+  : NonNullable<T> extends Date
+    ? Date | string | null
+    : NonNullable<T> extends readonly unknown[] | string | number | boolean | bigint
+      ? NonNullable<T> | null
+      : NonNullable<T> extends object
+        ? PrimitiveValue | object
+        : NonNullable<T> | null;
+
+/**
+ * The operators that compare a value of the column's type. Others, e.g.
+ * 'like' or the JSON operators, take any value.
+ */
+type ComparisonOperator = '=' | '<>' | '!=' | '<' | '>' | '<=' | '>=' | 'in' | 'not in';
+
+type ValueArg<M, C extends string> = IfStrict<
+  Expression<PrimitiveValue>,
+  IsConcreteModel<M> extends true
+    ? Expression<ColumnValue<ColumnType<M, C>>>
+    : Expression<PrimitiveValue>
+>;
+
+/**
+ * The values of conditions with the operator O: comparisons are checked
+ * against the column's type, also as lists for 'in', other operators take
+ * any value.
+ */
+type OperatorValueArg<M, C extends string, O extends string> = IfStrict<
+  Expression<PrimitiveValue> | readonly Expression<PrimitiveValue>[],
+  Lowercase<O> extends ComparisonOperator
+    ? ValueArg<M, C> | readonly ValueArg<M, C>[]
+    : Expression<PrimitiveValue | object> | readonly Expression<PrimitiveValue>[]
+>;
+
+/**
+ * The column checks of strict mode: C resolved to the checked column, or
+ * `string` for models that aren't concrete. In loose mode, `never`, which
+ * disables the overloads that use it.
+ */
+type StrictColumn<M, C extends string> = IfStrict<never, CheckedColumn<M, C>>;
+
+/**
+ * Column references that aren't checked: any in loose mode, only raw and
+ * `ref()` in strict mode, the way to refer to columns of other queries, and
+ * any column for query builders whose model isn't concrete. Some generic
+ * query builders, e.g. after `withGraphFetched()` in model methods, resolve to
+ * unions, on which only these non-generic signatures can be called.
+ */
+type RefArg<QB extends AnyQueryBuilder> = IfStrict<
+  ColumnRef,
+  Raw | ReferenceBuilder | (IsConcreteModel<ModelType<QB>> extends true ? never : string)
+>;
+
+/**
+ * Checks the columns C of a column list. Raw and `ref()` are passed through.
+ */
+type StrictColumns<M, C extends readonly unknown[]> = IfStrict<
+  never,
+  {
+    [I in keyof C]: C[I] extends string
+      ? StrictColumn<M, C[I]>
+      : C[I] extends Raw | ReferenceBuilder
+        ? C[I]
+        : Raw | ReferenceBuilder;
+  }
+>;
+
+/**
+ * Field expressions: a column, optionally followed by a JSON path,
+ * 'column:path.to.key'. The column is checked as in CheckColumn.
+ */
+type StrictFieldExpression<M, C extends string> = IfStrict<
+  never,
+  IsConcreteModel<M> extends true
+    ? CheckColumn<M, FieldColumn<M, C>> extends FieldColumn<M, C>
+      ? C
+      : CheckColumn<M, FieldColumn<M, C>>
+    : string
+>;
+
+type FieldColumn<M, C extends string> = C extends `${infer Q}.${infer Rest}`
+  ? [RelationPathModel<M, Q>] extends [never]
+    ? FieldRootColumn<C>
+    : `${Q}.${FieldRootColumn<Rest>}`
+  : FieldRootColumn<C>;
+
+type FieldRootColumn<C extends string> = C extends `${infer Col}:${string}` ? Col : C;
+
+/**
+ * Selections and aggregations: '*', 'table.*', columns and 'column as alias'.
+ */
+type CheckSelection<M, C extends string> = C extends '*' | `${string}.*`
+  ? C
+  : C extends `${infer Col} ${'as' | 'AS'} ${string}`
+    ? Col extends '*'
+      ? C
+      : CheckColumn<M, Col> extends Col
+        ? C
+        : `${CheckColumn<M, Col>} as ${string}`
+    : CheckColumn<M, C>;
+
+type CheckedSelection<M, C extends string> =
+  IsConcreteModel<M> extends true ? CheckSelection<M, C> : string;
+
+type StrictSelections<M, C extends readonly unknown[]> = IfStrict<
+  never,
+  {
+    [I in keyof C]: C[I] extends string
+      ? CheckedSelection<M, C[I]>
+      : C[I] extends number | Raw | ReferenceBuilder | AnyQueryBuilder
+        ? C[I]
+        : C[I] extends object
+          ? StrictSelectionObject<M, C[I]>
+          : never;
+  }
+>;
+
+type StrictSelectionObject<M, O> = {
+  [K in keyof O]: O[K] extends string
+    ? CheckedSelection<M, O[K]>
+    : O[K] extends readonly unknown[]
+      ? StrictSelections<M, O[K]>
+      : O[K] extends Raw | ReferenceBuilder | AnyQueryBuilder
+        ? O[K]
+        : never;
+};
+
+/**
+ * Checks the keys of a where object as columns, and their values.
+ */
+type StrictWhereObject<M, O> = IfStrict<
+  never,
+  IsConcreteModel<M> extends true
+    ? {
+        [K in keyof O]: K extends string
+          ? CheckColumn<M, K> extends K
+            ? Expression<ColumnValue<ColumnType<M, K>>>
+            : never
+          : never;
+      }
+    : object
+>;
+
+/**
+ * The names in the relation tree T that aren't relations of model M, or of
+ * the related models along the tree.
+ */
+type UnknownRelations<M, T> = {
+  [K in keyof T & string]: K extends RelationPropertyNames<M>
+    ? UnknownRelations<RelatedModel<M[K]>, T[K]>
+    : K;
+}[keyof T & string];
+
+/**
+ * In strict mode, relation expressions are intersected with this, to reject
+ * the names of unknown relations.
+ */
+type CheckRelationExpression<M, E> = IfStrict<
+  unknown,
+  IsConcreteModel<M> extends true
+    ? [UnknownRelations<M, ParseRelationExpression<E>>] extends [never]
+      ? unknown
+      : { '~unknownRelation': UnknownRelations<M, ParseRelationExpression<E>> }
+    : unknown
+>;
+
 export interface ForClassMethod {
   <M extends Model>(modelClass: ModelConstructor<M>): QueryBuilderType<M>;
 }
@@ -698,14 +958,21 @@ export type Selection<QB extends AnyQueryBuilder> = ColumnRef | AnyQueryBuilder 
 
 export interface SelectMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(...columns: ModelProps<ModelType<QBP>>[]): QB;
-  <QBP extends QB>(columns: ModelProps<ModelType<QBP>>[]): QB;
+  <QBP extends QB>(...columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
+  <QBP extends QB>(columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
 
-  <QBP extends QB>(...columns: Selection<QBP>[]): QB;
-  <QBP extends QB>(columns: Selection<QBP>[]): QB;
+  <QBP extends QB>(...columns: IfStrict<Selection<QBP>, Exclude<Selection<QBP>, string>>[]): QB;
+  <QBP extends QB>(columns: IfStrict<Selection<QBP>, Exclude<Selection<QBP>, string>>[]): QB;
 
   // Allows things like `select(1)`, not sure if we should be more specific here?
-  <QBP extends QB>(...args: any[]): QB;
+  <QBP extends QB>(...args: IfStrict<any, never>[]): QB;
+
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    ...columns: StrictSelections<ModelType<QBP>, C>
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    columns: StrictSelections<ModelType<QBP>, C>,
+  ): QB;
 }
 
 export interface AsMethod<out QB extends AnyQueryBuilder> {
@@ -727,71 +994,86 @@ export interface JsonExtraction {
 
 export interface JsonExtract<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(
-    column: ModelProps<ModelType<QBP>>,
+  <QBP extends QB, const C extends string = never>(
+    column: ColumnArg<ModelType<QBP>, C>,
     path: string,
     alias?: string,
     singleValue?: boolean,
   ): QB;
 
-  (column: ColumnRef, path: string, alias?: string, singleValue?: boolean): QB;
+  (column: RefArg<QB>, path: string, alias?: string, singleValue?: boolean): QB;
   (column: JsonExtraction[] | any[][], singleValue?: boolean): QB;
 }
 
 export interface JsonSet<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(
-    column: ModelProps<ModelType<QBP>>,
+  <QBP extends QB, const C extends string = never>(
+    column: ColumnArg<ModelType<QBP>, C>,
     path: string,
     value: any,
     alias?: string,
   ): QB;
 
-  (column: ColumnRef, path: string, value: any, alias?: string): QB;
+  (column: RefArg<QB>, path: string, value: any, alias?: string): QB;
 }
 
 export interface JsonInsert<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(
-    column: ModelProps<ModelType<QBP>>,
+  <QBP extends QB, const C extends string = never>(
+    column: ColumnArg<ModelType<QBP>, C>,
     path: string,
     value: any,
     alias?: string,
   ): QB;
 
-  (column: ColumnRef, path: string, value: any, alias?: string): QB;
+  (column: RefArg<QB>, path: string, value: any, alias?: string): QB;
 }
 
 export interface JsonRemove<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(column: ModelProps<ModelType<QBP>>, path: string, alias?: string): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: ColumnArg<ModelType<QBP>, C>,
+    path: string,
+    alias?: string,
+  ): QB;
 
-  (column: ColumnRef, path: string, alias?: string): QB;
+  (column: RefArg<QB>, path: string, alias?: string): QB;
 }
 
 export interface WhereMethod<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
-  <QBP extends QB>(
-    col: ModelProps<ModelType<QBP>>,
-    op: Operator,
-    expr: Expression<PrimitiveValue>,
-  ): QB;
-
-  <QBP extends QB>(col: ModelProps<ModelType<QBP>>, expr: Expression<PrimitiveValue>): QB;
-
-  (col: ColumnRef, op: Operator, expr: Expression<PrimitiveValue>): QB;
-  (col: ColumnRef, expr: Expression<PrimitiveValue>): QB;
-
   (condition: boolean): QB;
   (cb: CallbackVoid<QB>): QB;
   (raw: Raw): QB;
   <QBA extends AnyQueryBuilder>(qb: QBA): QB;
 
-  <QBP extends QB>(obj: PartialModelProps<ModelType<QBP>>): QB;
+  (col: RefArg<QB>, op: Operator, expr: Expression<PrimitiveValue>): QB;
+  (col: RefArg<QB>, expr: Expression<PrimitiveValue>): QB;
+
+  // The column overloads come last, so that errors are reported for them.
+  <QBP extends QB, const C extends string = never, const O extends Operator = Operator>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    op: O,
+    expr: OperatorValueArg<ModelType<QBP>, C, O>,
+  ): QB;
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    expr: ValueArg<ModelType<QBP>, C>,
+  ): QB;
+
+  <QBP extends QB>(obj: IfStrict<PartialModelProps<ModelType<QBP>>, never>): QB;
   // We must allow any keys in the object. The previous type
   // is kind of useless, but maybe one day vscode and other
   // tools can autocomplete using it.
-  (obj: object): QB;
+  (obj: IfStrict<object, never>): QB;
+  <QBP extends QB, const O extends object = {}>(obj: O & StrictWhereObject<ModelType<QBP>, O>): QB;
+}
+
+export interface WhereLikeMethod<out QB extends AnyQueryBuilder> {
+  (col: RefArg<QB>, expr: Expression<string>): QB;
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    expr: Expression<string>,
+  ): QB;
 }
 
 export interface WhereRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
@@ -808,80 +1090,162 @@ export interface WhereExistsMethod<out QB extends AnyQueryBuilder> {
 
 export interface WhereInMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(col: ModelProps<ModelType<QBP>>, expr: Expression<PrimitiveValue>): QB;
-  <QBP extends QB>(col: ModelProps<ModelType<QBP>>, cb: CallbackVoid<QB>): QB;
-  <QBP extends QB>(col: ModelProps<ModelType<QBP>>, qb: AnyQueryBuilder): QB;
+  <QBP extends QB>(
+    col: IfStrict<ModelProps<ModelType<QBP>>, never>,
+    expr: Expression<PrimitiveValue>,
+  ): QB;
+  <QBP extends QB>(col: IfStrict<ModelProps<ModelType<QBP>>, never>, cb: CallbackVoid<QB>): QB;
+  <QBP extends QB>(col: IfStrict<ModelProps<ModelType<QBP>>, never>, qb: AnyQueryBuilder): QB;
 
-  (col: ColumnRef | ColumnRef[], expr: readonly Expression<PrimitiveValue>[]): QB;
-  (col: ColumnRef | ColumnRef[], cb: CallbackVoid<QB>): QB;
-  (col: ColumnRef | ColumnRef[], qb: AnyQueryBuilder): QB;
+  (col: RefArg<QB> | RefArg<QB>[], expr: readonly Expression<PrimitiveValue>[]): QB;
+  (col: RefArg<QB> | RefArg<QB>[], cb: CallbackVoid<QB>): QB;
+  (col: RefArg<QB> | RefArg<QB>[], qb: AnyQueryBuilder): QB;
+
+  <QBP extends QB, const C extends string = never>(
+    col: StrictColumn<ModelType<QBP>, C>,
+    expr: readonly ValueArg<ModelType<QBP>, C>[] | Raw | AnyQueryBuilder | CallbackVoid<QB>,
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    col: StrictColumns<ModelType<QBP>, C>,
+    expr: readonly Expression<PrimitiveValue>[] | Raw | AnyQueryBuilder | CallbackVoid<QB>,
+  ): QB;
 }
 
 export interface WhereBetweenMethod<out QB extends AnyQueryBuilder> {
-  (column: ColumnRef, range: [Expression<PrimitiveValue>, Expression<PrimitiveValue>]): QB;
+  (column: RefArg<QB>, range: [Expression<PrimitiveValue>, Expression<PrimitiveValue>]): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: StrictColumn<ModelType<QBP>, C>,
+    range: [ValueArg<ModelType<QBP>, C>, ValueArg<ModelType<QBP>, C>],
+  ): QB;
 }
 
 export interface WhereNullMethod<out QB extends AnyQueryBuilder> {
-  (column: ColumnRef): QB;
+  (column: RefArg<QB>): QB;
+  <QBP extends QB, const C extends string = never>(column: StrictColumn<ModelType<QBP>, C>): QB;
 }
 
 export interface WhereColumnMethod<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(col1: ModelProps<ModelType<QBP>>, op: Operator, col2: ColumnRef): QB;
-  <QBP extends QB>(col1: ModelProps<ModelType<QBP>>, col2: ColumnRef): QB;
+  <QBP extends QB, const C extends string = never, const D extends string = never>(
+    col1: ColumnArg<ModelType<QBP>, C>,
+    op: Operator,
+    col2: RefArg<QB> | StrictColumn<ModelType<QBP>, D>,
+  ): QB;
+  <QBP extends QB, const C extends string = never, const D extends string = never>(
+    col1: ColumnArg<ModelType<QBP>, C>,
+    col2: RefArg<QB> | StrictColumn<ModelType<QBP>, D>,
+  ): QB;
 
-  (col1: ColumnRef, op: Operator, col2: ColumnRef): QB;
-  (col1: ColumnRef, col2: ColumnRef): QB;
+  <QBP extends QB, const D extends string = never>(
+    col1: RefArg<QB>,
+    op: Operator,
+    col2: RefArg<QB> | StrictColumn<ModelType<QBP>, D>,
+  ): QB;
+  <QBP extends QB, const D extends string = never>(
+    col1: RefArg<QB>,
+    col2: RefArg<QB> | StrictColumn<ModelType<QBP>, D>,
+  ): QB;
 }
 
 export interface WhereJsonObject<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(col: ModelProps<ModelType<QBP>>, value: any): QB;
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    value: any,
+  ): QB;
 
-  (col: ColumnRef, value: any): QB;
+  (col: RefArg<QB>, value: any): QB;
 }
 
 export interface WhereJsonPath<out QB extends AnyQueryBuilder> {
   // These must come first so that we get autocomplete.
-  <QBP extends QB>(
-    col: ModelProps<ModelType<QBP>>,
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
     jsonPath: string,
     operator: string,
     value: any,
   ): QB;
 
-  (col: ColumnRef, jsonPath: string, operator: string, value: any): QB;
+  (col: RefArg<QB>, jsonPath: string, operator: string, value: any): QB;
 }
 
+/**
+ * Field expressions, checked in strict mode.
+ */
+type FieldExpressionArg<M, C extends string> = IfStrict<
+  FieldExpression,
+  StrictFieldExpression<M, C>
+>;
+
 export interface WhereJsonMethod<out QB extends AnyQueryBuilder> {
-  (fieldExpression: FieldExpression, jsonObjectOrFieldExpression: JsonObjectOrFieldExpression): QB;
+  <QBP extends QB, const C extends string = never>(
+    fieldExpression: FieldExpressionArg<ModelType<QBP>, C>,
+    jsonObjectOrFieldExpression: JsonObjectOrFieldExpression,
+  ): QB;
 }
 
 export interface WhereFieldExpressionMethod<out QB extends AnyQueryBuilder> {
-  (fieldExpression: FieldExpression): QB;
+  <QBP extends QB, const C extends string = never>(
+    fieldExpression: FieldExpressionArg<ModelType<QBP>, C>,
+  ): QB;
 }
 
 export interface WhereJsonExpressionMethod<out QB extends AnyQueryBuilder> {
-  (fieldExpression: FieldExpression, keys: string | string[]): QB;
+  <QBP extends QB, const C extends string = never>(
+    fieldExpression: FieldExpressionArg<ModelType<QBP>, C>,
+    keys: string | string[],
+  ): QB;
 }
 
 export interface WhereJsonField<out QB extends AnyQueryBuilder> {
-  (fieldExpression: FieldExpression, operator: string, value: boolean | number | string | null): QB;
+  <QBP extends QB, const C extends string = never>(
+    fieldExpression: FieldExpressionArg<ModelType<QBP>, C>,
+    operator: string,
+    value: boolean | number | string | null,
+  ): QB;
 }
 
 export interface WhereCompositeMethod<out QB extends AnyQueryBuilder> {
-  (column: ColumnRef[], op: Operator, expr: readonly Expression<PrimitiveValue>[]): QB;
-  (column: ColumnRef, expr: Expression<PrimitiveValue>): QB;
-  (column: ColumnRef, op: Operator, expr: Expression<PrimitiveValue>): QB;
-  (column: ColumnRef[], expr: readonly Expression<PrimitiveValue>[]): QB;
-  (column: ColumnRef[], qb: AnyQueryBuilder): QB;
+  (column: RefArg<QB>[], op: Operator, expr: readonly Expression<PrimitiveValue>[]): QB;
+  (column: RefArg<QB>, expr: Expression<PrimitiveValue>): QB;
+  (column: RefArg<QB>, op: Operator, expr: Expression<PrimitiveValue>): QB;
+  (column: RefArg<QB>[], expr: readonly Expression<PrimitiveValue>[]): QB;
+  (column: RefArg<QB>[], qb: AnyQueryBuilder): QB;
+
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    column: StrictColumns<ModelType<QBP>, C>,
+    op: Operator,
+    expr: readonly Expression<PrimitiveValue>[],
+  ): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: StrictColumn<ModelType<QBP>, C>,
+    expr: ValueArg<ModelType<QBP>, C>,
+  ): QB;
+  <QBP extends QB, const C extends string = never, const O extends Operator = Operator>(
+    column: StrictColumn<ModelType<QBP>, C>,
+    op: O,
+    expr: OperatorValueArg<ModelType<QBP>, C, O>,
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    column: StrictColumns<ModelType<QBP>, C>,
+    expr: readonly Expression<PrimitiveValue>[] | AnyQueryBuilder,
+  ): QB;
 }
 
 export interface WhereInCompositeMethod<out QB extends AnyQueryBuilder> {
-  (column: ColumnRef, expr: readonly Expression<PrimitiveValue>[]): QB;
-  (column: ColumnRef, qb: AnyQueryBuilder): QB;
-  (column: ColumnRef[], expr: readonly Expression<PrimitiveValue>[][]): QB;
-  (column: ColumnRef[], qb: AnyQueryBuilder): QB;
+  (column: RefArg<QB>, expr: readonly Expression<PrimitiveValue>[]): QB;
+  (column: RefArg<QB>, qb: AnyQueryBuilder): QB;
+  (column: RefArg<QB>[], expr: readonly Expression<PrimitiveValue>[][]): QB;
+  (column: RefArg<QB>[], qb: AnyQueryBuilder): QB;
+
+  <QBP extends QB, const C extends string = never>(
+    column: StrictColumn<ModelType<QBP>, C>,
+    expr: readonly ValueArg<ModelType<QBP>, C>[] | AnyQueryBuilder,
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    column: StrictColumns<ModelType<QBP>, C>,
+    expr: readonly (readonly Expression<PrimitiveValue>[])[] | AnyQueryBuilder,
+  ): QB;
 }
 
 export type QBOrCallback<QB extends AnyQueryBuilder> = AnyQueryBuilder | CallbackVoid<QB>;
@@ -946,7 +1310,10 @@ export interface JoinRelatedOptions {
 }
 
 export interface JoinRelatedMethod<out QB extends AnyQueryBuilder> {
-  (expr: RelationExpression<ModelType<QB>>, opt?: JoinRelatedOptions): QB;
+  <QBP extends QB, const E extends RelationExpression<ModelType<QBP>> = never>(
+    expr: E & CheckRelationExpression<ModelType<QBP>, E>,
+    opt?: JoinRelatedOptions,
+  ): QB;
 }
 
 export interface JoinMethod<out QB extends AnyQueryBuilder> {
@@ -961,23 +1328,54 @@ export interface JoinMethod<out QB extends AnyQueryBuilder> {
 export interface JoinRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
 
 export interface IncrementDecrementMethod<out QB extends AnyQueryBuilder> {
-  (column: string, amount?: number): QB;
+  (column: IfStrict<string, never>, amount?: number): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: StrictColumn<ModelType<QBP>, C>,
+    amount?: number,
+  ): QB;
 }
 
 export interface AggregateMethod<out QB extends AnyQueryBuilder> {
-  (column: ColumnRef): QB;
-  (aliasToColumnDict: { [alias: string]: ColumnRef }): QB;
+  (column: RefArg<QB>): QB;
+  (aliasToColumnDict: IfStrict<{ [alias: string]: ColumnRef }, never>): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: StrictAggregation<ModelType<QBP>, C>,
+  ): QB;
+  <QBP extends QB, const O extends object = {}>(
+    aliasToColumnDict: O & IfStrict<never, StrictSelectionObject<ModelType<QBP>, O>>,
+  ): QB;
 }
 
 export interface CountMethod<out QB extends AnyQueryBuilder> {
-  (column?: ColumnRef, options?: { as: string }): QB;
-  (aliasToColumnDict: { [alias: string]: string | string[] }): QB;
-  (...columns: ColumnRef[]): QB;
+  (column?: RefArg<QB>, options?: { as: string }): QB;
+  (aliasToColumnDict: IfStrict<{ [alias: string]: string | string[] }, never>): QB;
+  (...columns: RefArg<QB>[]): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: StrictAggregation<ModelType<QBP>, C>,
+    options?: { as: string },
+  ): QB;
+  <QBP extends QB, const O extends object = {}>(
+    aliasToColumnDict: O & IfStrict<never, StrictSelectionObject<ModelType<QBP>, O>>,
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    ...columns: StrictSelections<ModelType<QBP>, C>
+  ): QB;
 }
 
+/**
+ * Aggregations: '*', columns and 'column as alias', checked in strict mode.
+ */
+type StrictAggregation<M, C extends string> = IfStrict<never, CheckedSelection<M, C>>;
+
 export interface GroupByMethod<out QB extends AnyQueryBuilder> {
-  (...columns: ColumnRef[]): QB;
-  (columns: ColumnRef[]): QB;
+  (...columns: RefArg<QB>[]): QB;
+  (columns: RefArg<QB>[]): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    ...columns: StrictColumns<ModelType<QBP>, C>
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    columns: StrictColumns<ModelType<QBP>, C>,
+  ): QB;
 }
 
 export interface OrderByDescriptor {
@@ -988,9 +1386,30 @@ export interface OrderByDescriptor {
 
 export type ColumnRefOrOrderByDescriptor = ColumnRef | OrderByDescriptor;
 
+type StrictOrderBy<M, C extends readonly unknown[]> = IfStrict<
+  never,
+  {
+    [I in keyof C]: C[I] extends string
+      ? StrictColumn<M, C[I]>
+      : C[I] extends { column: infer D extends string }
+        ? Omit<OrderByDescriptor, 'column'> & { column: StrictColumn<M, D> }
+        : C[I] extends Raw | ReferenceBuilder | OrderByDescriptor
+          ? C[I]
+          : never;
+  }
+>;
+
 export interface OrderByMethod<out QB extends AnyQueryBuilder> {
-  (column: ColumnRef, order?: OrderByDirection, nulls?: OrderByNulls): QB;
-  (columns: ColumnRefOrOrderByDescriptor[]): QB;
+  (column: RefArg<QB>, order?: OrderByDirection, nulls?: OrderByNulls): QB;
+  (columns: IfStrict<ColumnRefOrOrderByDescriptor[], never>): QB;
+  <QBP extends QB, const C extends string = never>(
+    column: StrictColumn<ModelType<QBP>, C>,
+    order?: OrderByDirection,
+    nulls?: OrderByNulls,
+  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    columns: StrictOrderBy<ModelType<QBP>, C>,
+  ): QB;
 }
 
 export interface OrderByRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
@@ -1274,12 +1693,12 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   whereNot: WhereMethod<this>;
   andWhereNot: WhereMethod<this>;
   orWhereNot: WhereMethod<this>;
-  whereLike: WhereMethod<this>;
-  andWhereLike: WhereMethod<this>;
-  orWhereLike: WhereMethod<this>;
-  whereILike: WhereMethod<this>;
-  andWhereILike: WhereMethod<this>;
-  orWhereILike: WhereMethod<this>;
+  whereLike: IfStrict<WhereMethod<this>, WhereLikeMethod<this>>;
+  andWhereLike: IfStrict<WhereMethod<this>, WhereLikeMethod<this>>;
+  orWhereLike: IfStrict<WhereMethod<this>, WhereLikeMethod<this>>;
+  whereILike: IfStrict<WhereMethod<this>, WhereLikeMethod<this>>;
+  andWhereILike: IfStrict<WhereMethod<this>, WhereLikeMethod<this>>;
+  orWhereILike: IfStrict<WhereMethod<this>, WhereLikeMethod<this>>;
 
   whereRaw: WhereRawMethod<this>;
   orWhereRaw: WhereRawMethod<this>;
@@ -1480,15 +1899,15 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   // With literal relation expressions, the fetched relations become required
   // on the result type, see WithGraphQueryBuilder.
   withGraphFetched<const E extends RelationExpression<M>>(
-    expr: E,
+    expr: E & CheckRelationExpression<M, E>,
     options?: GraphOptions,
   ): WithGraphQueryBuilder<this, E>;
   withGraphJoined<const E extends RelationExpression<M>>(
-    expr: E,
+    expr: E & CheckRelationExpression<M, E>,
     options?: GraphOptions,
   ): WithGraphQueryBuilder<this, E>;
   withGraph<const E extends RelationExpression<M>>(
-    expr: E,
+    expr: E & CheckRelationExpression<M, E>,
     options?: WithGraphOptions,
   ): WithGraphQueryBuilder<this, E>;
 
