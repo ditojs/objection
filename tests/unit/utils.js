@@ -398,6 +398,22 @@ describe('utils', () => {
           });
       });
 
+      it('should wait for started operations before rejecting', async () => {
+        const finished = [];
+
+        await expect(
+          map(range(4), async (item) => {
+            if (item === 0) {
+              throw new Error('fail');
+            }
+            await delay(10 * item);
+            finished.push(item);
+          }),
+        ).rejects.toThrow('fail');
+
+        expect(finished).toEqual([1, 2, 3]);
+      });
+
       it('should only run opt.concurrency operations at a time', () => {
         const concurrency = 4;
         const numItems = 20;

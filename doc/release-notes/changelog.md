@@ -70,6 +70,7 @@
 - `upsertGraphAndFetch()` loads the relations of a `withGraphFetched()` on its query with their modifiers, named modifiers, aliases and options into the fetched models, like `insertGraphAndFetch()`, instead of ignoring the modifiers and aliases [#839](https://github.com/Vincit/objection.js/issues/839)
 - A many-to-many `patch()` / `update()` with join table extras and `limit()` on MySQL and SQL Server can order by columns of the join table [#161](https://github.com/ditojs/objection/issues/161)
 - `cancelQuery()` with a single row in the `beforeInsert` hook of an `insert()` merges it into the inserted model, like an array of rows, instead of ignoring it [#66](https://github.com/ditojs/objection/issues/66)
+- `insertGraph()` and `upsertGraph()` reject only after the queries they already started have finished, so a transaction is rolled back after them. Before, rows of these queries could be committed after the rollback on SQLite. [#335](https://github.com/ditojs/objection/pull/335)
 
 ### Types
 
