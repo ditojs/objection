@@ -64,8 +64,7 @@ import { Person } from '../fixtures/person.js';
     age: Person.query().avg('age'),
     firstName: raw("'Jenni' || 'fer'"),
     oldLastName: ref('lastName'),
-    // Unable to support with TypeScript as of Sep 26, 2019 and typescript 3.5.3
-    // 'detailsJsonColumn:address.street': 'Elm street'
+    'detailsJsonColumn:address.street': 'Elm street',
   });
 
   await Person.query().patchAndFetchById(134, { age: 24 });
@@ -78,6 +77,20 @@ import { Person } from '../fixtures/person.js';
 
   let jennifer = await Person.query().findOne({ firstName: 'Jennifer' });
   let updatedJennifer = await jennifer!.$query().patchAndFetch({ age: 24 });
+
+  // Field expression keys write parts of json columns, only with patch().
+  await Person.query().patchById(1, { 'address:street': 'Elm street', age: 24 });
+  await jennifer!.$query().patchAndFetch({ 'address:tags[0]': 'x' });
+  await Person.query()
+    .insert({ firstName: 'Jennifer' })
+    .onConflict('id')
+    .merge({ 'address:street': 'Elm street' });
+  // @ts-expect-error not a column
+  await Person.query().patch({ 'nonColumn:street': 'Elm street' });
+  // @ts-expect-error
+  await Person.query().update({ 'address:street': 'Elm street' });
+  // @ts-expect-error
+  await Person.query().insert({ 'address:street': 'Elm street' });
 
   await Person.query()
     .update({ firstName: 'Jennifer', lastName: 'Lawrence', age: 24 })

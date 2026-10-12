@@ -155,7 +155,7 @@ The patch object is validated against the model's [jsonSchema](/api/model/static
 
 If validation fails the Promise is rejected with a [ValidationError](/api/types/#class-validationerror).
 
-Relations in the patch object are ignored, only the columns of the model's own table are updated. Use [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) to update related objects too. In TypeScript, the data type (`PartialModelRow`) rejects relation properties, unless the data is a model instance.
+Relations in the patch object are ignored, only the columns of the model's own table are updated. Use [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) to update related objects too. In TypeScript, the data type (`PartialModelPatch`) rejects relation properties, unless the data is a model instance, and takes [FieldExpression](/api/types/#type-fieldexpression) keys of the model's columns, like `'address:street'`, with values of any type.
 
 The return value of the query will be the number of affected rows. If you want to update a single row and retrieve the updated row as a result, you may want to use the [patchById](/api/query-builder/mutate-methods.html#patchbyid) or [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid) methods or _take a look at [this recipe](/recipes/returning-tricks.html) if you're using Postgres_.
 

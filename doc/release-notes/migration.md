@@ -307,7 +307,7 @@ function insertPerson(data: PartialModelRow<Person>) {
 }
 ```
 
-Custom query builders that override these methods use `PartialModelRow<M>` for the data instead of `PartialModelObject<M>`.
+Custom query builders that override these methods use `PartialModelRow<M>` for the data instead of `PartialModelObject<M>`, and `PartialModelPatch<M>` for `patch()`, its variants and `merge()`, which also takes field expression keys like `'address:street'`.
 
 ## typescript: Queries are checked against the models
 
