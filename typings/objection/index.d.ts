@@ -1040,7 +1040,7 @@ type NarrowRows<QB extends AnyQueryBuilder, P, All extends boolean = false> = If
           ResultType<QB>,
           SelectBase<ResultItem<ResultType<QB>, ModelType<QB>>, ModelType<QB>, All> &
             P &
-            Selected<{}>
+            SelectedBrand<{}>
         >
       >
     : QB
@@ -1071,14 +1071,14 @@ type AggregateQueryBuilder<
   QB,
   [A] extends [never]
     ? AggregatedProperties<ModelType<QB>, C, V>
-    : { [K in ResultKey<ModelType<QB>, A>]: number | string } & Selected<{ [K in A]: true }>
+    : { [K in ResultKey<ModelType<QB>, A>]: number | string } & SelectedBrand<{ [K in A]: true }>
 >;
 
 type AggregateValue = 'number' | 'column';
 
 type AggregatedProperties<M, C, V extends AggregateValue> = C extends `${infer Col} ${
   'as' | 'AS'} ${infer A}`
-  ? { [K in ResultKey<M, A>]: AggregateType<M, Col, V> } & Selected<{ [K in A]: true }>
+  ? { [K in ResultKey<M, A>]: AggregateType<M, Col, V> } & SelectedBrand<{ [K in A]: true }>
   : C extends string
     ? UnknownSelection
     : C extends readonly unknown[]
@@ -1087,7 +1087,7 @@ type AggregatedProperties<M, C, V extends AggregateValue> = C extends `${infer C
           [K in keyof C & string as ResultKey<M, K>]: C[K] extends string
             ? AggregateType<M, C[K], V>
             : unknown;
-        } & Selected<{ [K in keyof C & string]: true }>;
+        } & SelectedBrand<{ [K in keyof C & string]: true }>;
 
 type AggregatedList<
   M,
@@ -1103,9 +1103,10 @@ type AggregateType<M, Col extends string, V extends AggregateValue> = V extends 
 
 /**
  * The rows narrowed by `select()` carry the SQL aliases A of their selections,
- * which `orderBy()` takes, see OutputColumn.
+ * which `orderBy()` takes, see OutputColumn. It is exported for declaration
+ * files to name the rows, like GeneratedBrand.
  */
-type Selected<A> = { readonly [selected]: A };
+export type SelectedBrand<A> = { readonly [selected]: A };
 
 /**
  * The base of the rows of a selection: the model without its columns for the
@@ -1114,13 +1115,13 @@ type Selected<A> = { readonly [selected]: A };
  */
 type SelectBase<Item, M, All extends boolean> = All extends true
   ? M & Item
-  : Item extends Selected<unknown>
+  : Item extends SelectedBrand<unknown>
     ? Item
     : Omit<Item, ColumnName<M>>;
 
 // Selections that can't be resolved, e.g. raw ones, add any properties of
 // unknown types, under any aliases.
-type UnknownSelection = { [key: string]: unknown } & Selected<{ [key: string]: true }>;
+type UnknownSelection = { [key: string]: unknown } & SelectedBrand<{ [key: string]: true }>;
 
 type SelectsAll<X> = X extends '*' | `${string}.*` ? true : false;
 
@@ -1147,7 +1148,7 @@ type SelectedRow<M, C extends readonly unknown[]> = C extends readonly [infer X,
 type SelectedProperties<M, X> = X extends '*' | `${string}.*`
   ? {}
   : X extends `${infer Col} ${'as' | 'AS'} ${infer A}`
-    ? { [K in ResultKey<M, A>]: SelectedType<M, Col> } & Selected<{ [K in A]: true }>
+    ? { [K in ResultKey<M, A>]: SelectedType<M, Col> } & SelectedBrand<{ [K in A]: true }>
     : X extends string
       ? { [K in ResultKey<M, X extends `${string}.${infer Col}` ? Col : X>]: SelectedType<M, X> }
       : X extends Raw | ReferenceBuilder | AnyQueryBuilder | Function | number
@@ -1156,7 +1157,7 @@ type SelectedProperties<M, X> = X extends '*' | `${string}.*`
             [K in keyof X & string as ResultKey<M, K>]: X[K] extends string
               ? SelectedType<M, X[K]>
               : unknown;
-          } & Selected<{ [K in keyof X & string]: true }>;
+          } & SelectedBrand<{ [K in keyof X & string]: true }>;
 
 // Columns qualified with a name that isn't a relation path, usually the
 // table name, are looked up in the model.
@@ -1186,7 +1187,9 @@ type CamelCase<S extends string> = S extends `${infer H}_${infer T}`
  * columns.
  */
 type OutputColumn<QB extends AnyQueryBuilder> =
-  ResultItem<ResultType<QB>, ModelType<QB>> extends Selected<infer A> ? keyof A & string : never;
+  ResultItem<ResultType<QB>, ModelType<QB>> extends SelectedBrand<infer A>
+    ? keyof A & string
+    : never;
 
 /**
  * Checks the keys of a where object as columns, and their values.
