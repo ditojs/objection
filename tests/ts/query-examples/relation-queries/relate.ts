@@ -20,4 +20,11 @@ import { Person } from '../../fixtures/person.js';
     id: 50,
     someExtra: "I'll be written to the join table",
   });
+
+  // With returning(), the rows depend on the relation: join rows, related rows
+  // or owner rows. They are plain objects, not models.
+  const rows = await person.$relatedQuery('movies').relate(50).returning('*');
+  rows[0].movieId;
+  // @ts-expect-error
+  const movies: Movie[] = rows;
 })();

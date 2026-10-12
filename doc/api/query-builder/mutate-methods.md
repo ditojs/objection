@@ -641,7 +641,7 @@ rows for belongs-to-one relations. MySQL has no `returning`: there, many-to-many
 relations return the join rows built from the input, without columns generated
 by the database, and the other relations still return the number of affected
 items. As the TypeScript typings can't tell these apart, the rows are typed as
-`any`.
+plain objects, `Pojo[]`.
 
 ##### Arguments
 
