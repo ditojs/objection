@@ -23,6 +23,7 @@ This section lists the breaking changes in objection 4.0.
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
 - [Misplaced `*` and `^` in relation expressions throw](#misplaced-and-in-relation-expressions-throw)
 - [`$setRelated` and `$appendRelated` sync foreign keys](#setrelated-and-appendrelated-sync-foreign-keys)
+- [findById() and findByIds() keep their id condition in its own group](#findbyid-and-findbyids-keep-their-id-condition-in-its-own-group)
 
 ## objection is an ES module package
 
@@ -276,6 +277,22 @@ new User().$setRelated('posts', [post3]); // post3.authorId === null, as the use
 ```
 
 The synced keys show up in `toJSON()` and are written by a later `patch()`, `update()` or `upsertGraph()` of these models. Code that assigned related models only to serialize them, and relied on their foreign keys staying as they were, can assign the relation property directly, e.g. `post.author = user`.
+
+## findById() and findByIds() keep their id condition in its own group
+
+[findById](/api/query-builder/find-methods.html#findbyid) and [findByIds](/api/query-builder/find-methods.html#findbyids) put their id condition in its own parentheses, like `$query()` and `patchById()`, `updateById()` and `deleteById()` already do. 3.x added it to the other `where` clauses of the query, so an `orWhere()` widened it:
+
+```js
+// 4.0: where "persons"."id" = 1 and ("slug" = 'jennifer')
+// 3.x: where "persons"."id" = 1 or "slug" = 'jennifer'
+await Person.query().findById(1).orWhere('slug', 'jennifer');
+```
+
+Queries that relied on this, like a lookup by id or slug, need to spell out both conditions:
+
+```js
+await Person.query().where('id', idOrSlug).orWhere('slug', idOrSlug).first();
+```
 
 
 # Migration from objection 2.x to 3.0

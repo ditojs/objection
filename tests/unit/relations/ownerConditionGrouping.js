@@ -46,6 +46,12 @@ describe('relation owner condition grouping (#2191)', () => {
             filter: orFilter,
             join: { from: 'owners.id', to: 'pets.ownerId' },
           },
+          petsByIds: {
+            relation: Model.HasManyRelation,
+            modelClass: Pet,
+            filter: (query) => query.findByIds([1, 2]).orWhere('name', 'b'),
+            join: { from: 'owners.id', to: 'pets.ownerId' },
+          },
           favoritePet: {
             relation: Model.BelongsToOneRelation,
             modelClass: Pet,
@@ -338,12 +344,6 @@ describe('relation owner condition grouping (#2191)', () => {
       );
     });
 
-    it('findById() called by the user stays in the user group', () => {
-      expect(sql(owner().$relatedQuery('pets').findById(1).orWhere('name', 'b'))).toBe(
-        `select "pets".* from "pets" where "pets"."ownerId" in (1) and ("pets"."id" = 1 or "name" = 'b')`,
-      );
-    });
-
     it('asFindQuery() in afterUpdate keeps the where groups of the executed query', async () => {
       const findQueries = [];
 
@@ -365,6 +365,56 @@ describe('relation owner condition grouping (#2191)', () => {
       expect(findQueries).toEqual([
         `select "pets".* from "pets" where "pets"."ownerId" in (1) and "pets"."id" = 1 and ("name" = 'b')`,
       ]);
+    });
+  });
+
+  describe('findById() and findByIds() (#271)', () => {
+    it('findById() with orWhere', () => {
+      expect(sql(Pet.query().findById(1).orWhere('name', 'b'))).toBe(
+        `select "pets".* from "pets" where "pets"."id" = 1 and ("name" = 'b')`,
+      );
+    });
+
+    it('findById() after orWhere', () => {
+      expect(sql(Pet.query().where('name', 'a').orWhere('name', 'b').findById(1))).toBe(
+        `select "pets".* from "pets" where ("name" = 'a' or "name" = 'b') and "pets"."id" = 1`,
+      );
+    });
+
+    it('findByIds() with orWhere', () => {
+      expect(sql(Pet.query().findByIds([1, 2]).where('name', 'a').orWhere('name', 'b'))).toBe(
+        `select "pets".* from "pets" where "pets"."id" in (1, 2) and ("name" = 'a' or "name" = 'b')`,
+      );
+    });
+
+    it('findById().patch() with orWhere', () => {
+      expect(sql(Pet.query().findById(1).patch({ name: 'c' }).orWhere('name', 'b'))).toBe(
+        `update "pets" set "name" = 'c' where "pets"."id" = 1 and ("name" = 'b')`,
+      );
+    });
+
+    it('findByIds().delete() with orWhere', () => {
+      expect(sql(Pet.query().findByIds([1, 2]).delete().orWhere('name', 'b'))).toBe(
+        `delete from "pets" where "pets"."id" in (1, 2) and ("name" = 'b')`,
+      );
+    });
+
+    it('findById() in a HasManyRelation query with orWhere', () => {
+      expect(sql(owner().$relatedQuery('pets').findById(1).orWhere('name', 'b'))).toBe(
+        `select "pets".* from "pets" where "pets"."ownerId" in (1) and "pets"."id" = 1 and ("name" = 'b')`,
+      );
+    });
+
+    it('findByIds() in a ManyToManyRelation query with orWhere', () => {
+      expect(sql(owner().$relatedQuery('toys').findByIds([1, 2]).orWhere('name', 'b'))).toBe(
+        `select "toys".* from "toys" inner join "ownersToys" on "toys"."id" = "ownersToys"."toyId" where "ownersToys"."ownerId" in (1) and "toys"."id" in (1, 2) and ("name" = 'b')`,
+      );
+    });
+
+    it('findByIds() in a relation filter with orWhere', () => {
+      expect(sql(owner().$relatedQuery('petsByIds').orWhere('name', 'c'))).toBe(
+        `select "pets".* from "pets" where "pets"."ownerId" in (1) and "pets"."id" in (1, 2) and ("name" = 'b') and ("name" = 'c')`,
+      );
     });
   });
 
