@@ -1,5 +1,6 @@
 const expect = require('expect.js');
 const { Model } = require('../../');
+const { resetWarnings } = require('../../lib/utils/warnings');
 
 module.exports = (session) => {
   const { Model1, Model2 } = session.models;
@@ -595,6 +596,41 @@ module.exports = (session) => {
         const expected = allJoinRows.slice();
         expected[2] = [1, 2, 'x2', 'z'];
         expect(await joinRows()).to.eql(expected);
+      });
+
+      it("should not warn about the offset that it doesn't leave out", async function () {
+        // Only MySQL and SQL Server support a limit in updates.
+        if (!session.isMySql() && !session.isMsSql()) {
+          this.skip();
+        }
+
+        // The warning is only observable through `console.warn()`.
+        const warnings = [];
+        const originalWarn = console.warn;
+        console.warn = (message) => warnings.push(message);
+        resetWarnings();
+
+        try {
+          const model = await owner(1);
+          await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10, extra2: 'z' })
+            .orderBy('model2.id_col')
+            .limit(1)
+            .offset(1);
+          expect(warnings).to.have.length(0);
+
+          // Without join table extras, the offset is left out.
+          await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10 })
+            .limit(1)
+            .offset(1);
+          expect(warnings).to.have.length(1);
+        } finally {
+          console.warn = originalWarn;
+          resetWarnings();
+        }
       });
 
       describe('asFindQuery() in a static afterUpdate hook', () => {
