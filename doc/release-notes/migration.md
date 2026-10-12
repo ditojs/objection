@@ -129,6 +129,14 @@ In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the curr
 JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, and the `whereJson*()` methods of objection, throw an error on MySQL, SQLite, SQL Server and Oracle. They generate Postgres-only SQL, which these databases reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. 3.x logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex. Other databases than PostgreSQL still get a warning.
 
 
+## Missing and array join properties throw
+
+Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or `$relatedQuery()` throws an error in these cases, where 3.x logged a warning and returned no related models:
+
+- Owner models loaded from the database are missing a join property, e.g. because a partial `select()` left out the id. Select the column in the owner query. Owner models built in memory, e.g. with `fromJson()`, may not have their keys yet and still find no related models, now without a warning. This includes the foreign key of a `BelongsToOneRelation`, which 3.x didn't report. Models returned by `insert()` count as built in memory, also with `returning()`.
+- Related models come back without their join property, e.g. because the relation mapping uses column names that `knexSnakeCaseMappers()` maps to other property names. Use the property names of the models in the relation mapping.
+- An owner join property holds an array of keys, e.g. a JSON array column. Use a `ManyToManyRelation` through a join table instead. `$relatedQuery()` without `withGraphFetched()` or `$fetchGraph()` keeps working for them.
+
 ## typescript: The typings are ES module declarations
 
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.

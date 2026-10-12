@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Model, ref } from 'objection';
-import { resetWarnings } from '../../../lib/utils/warnings.js';
 
 export default (session) => {
-  describe('warn when a relation owner join property holds an array #2667', () => {
+  describe('throw when a relation owner join property holds an array #2667', () => {
     const { knex } = session;
 
     class Tag extends Model {
@@ -68,9 +67,6 @@ export default (session) => {
       }
     }
 
-    let warnings;
-    let originalWarn;
-
     beforeAll(async () => {
       Tag.knex(knex);
       Post.knex(knex);
@@ -119,75 +115,53 @@ export default (session) => {
         .dropTableIfExists('issue2667Tag');
     });
 
-    beforeEach(() => {
-      resetWarnings();
-      warnings = [];
-      originalWarn = console.warn;
-      console.warn = (message) => warnings.push(message);
+    const arrayError =
+      'Unable to fetch relation "tags" of Post: the join property "issue2667Post.tagIds" of some ' +
+      'owner models holds an array, which is not supported. Use a ManyToManyRelation through a ' +
+      'join table instead.';
+
+    it('withGraphFetched() should throw if owner join properties hold arrays', async () => {
+      await expect(Post.query().withGraphFetched('tags')).rejects.toThrow(arrayError);
     });
 
-    afterEach(() => {
-      console.warn = originalWarn;
-      resetWarnings();
+    it('should throw for many-to-many relations', async () => {
+      await expect(Post.query().withGraphFetched('manyTags')).rejects.toThrow(
+        'Unable to fetch relation "manyTags" of Post: the join property "issue2667Post.tagIds" ' +
+          'of some owner models holds an array, which is not supported. Map the relation from a ' +
+          'column that holds a single key instead.',
+      );
     });
 
-    const expectedWarning =
-      '[objection] Fetching relation "tags" of Post: the join property "issue2667Post.tagIds" of ' +
-      'some owner models holds an array, which is not supported, so no related models are found ' +
-      'for them. Use a ManyToManyRelation through a join table instead.';
-
-    it('withGraphFetched() should warn once if owner join properties hold arrays', async () => {
-      const posts = await Post.query().withGraphFetched('tags').orderBy('id');
-
-      // Results are unchanged: array join properties aren't supported.
-      expect(posts.map((it) => it.tags)).toEqual([[], []]);
-      expect(warnings).toEqual([expectedWarning]);
-
-      await Post.query().withGraphFetched('tags');
-      expect(warnings).toEqual([expectedWarning]);
-    });
-
-    it('should warn for many-to-many relations', async () => {
-      const posts = await Post.query().withGraphFetched('manyTags').orderBy('id');
-
-      expect(posts.map((it) => it.manyTags)).toEqual([[], []]);
-      expect(warnings).toEqual([
-        '[objection] Fetching relation "manyTags" of Post: the join property ' +
-          '"issue2667Post.tagIds" of some owner models holds an array, which is not supported, ' +
-          'so no related models are found for them. Map the relation from a column that holds a ' +
-          'single key instead.',
-      ]);
-    });
-
-    it('$fetchGraph() should warn once if owner join properties hold arrays', async () => {
+    it('$fetchGraph() should throw if owner join properties hold arrays', async () => {
       const post = await Post.query().findById(1);
-      await post.$fetchGraph('tags');
 
-      expect(post.tags).toEqual([]);
-      expect(warnings).toEqual([expectedWarning]);
+      await expect(post.$fetchGraph('tags')).rejects.toThrow(arrayError);
     });
 
-    it('$relatedQuery() should not warn and keep returning the related models', async () => {
+    it('should throw for owners built in memory', async () => {
+      const post = Post.fromJson({ id: 1, tagIds: [1, 2] });
+
+      await expect(post.$fetchGraph('tags')).rejects.toThrow(arrayError);
+    });
+
+    it('$relatedQuery() should not throw and keep returning the related models', async () => {
       const post = await Post.query().findById(1);
       const tags = await post.$relatedQuery('tags').orderBy('id');
 
       expect(tags.map((it) => it.id)).toEqual([1, 2]);
-      expect(warnings).toEqual([]);
     });
 
-    it('should not warn for composite keys', async () => {
+    it('should not throw for composite keys', async () => {
       const posts = await Post.query().withGraphFetched('compositeTags').orderBy('id');
 
       expect(posts.map((post) => post.compositeTags.map((it) => it.id).sort())).toEqual([[1], [3]]);
-      expect(warnings).toEqual([]);
     });
 
     if (session.isPostgres()) {
-      it('should not warn for scalar JSON reference keys', async () => {
+      it('should not throw for scalar JSON reference keys', async () => {
         const posts = await Post.query().withGraphFetched('jsonRefTag').orderBy('id');
 
         expect(posts.map((it) => it.jsonRefTag.id)).toEqual([1, 3]);
-        expect(warnings).toEqual([]);
       });
     }
   });
