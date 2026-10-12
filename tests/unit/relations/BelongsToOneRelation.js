@@ -81,6 +81,9 @@ describe('BelongsToOneRelation', () => {
   });
 
   describe('find', () => {
+    // The callers of `find()` assign its result to the owners.
+    let findOperation;
+
     it('should generate a find query', () => {
       let owner = OwnerModel.fromJson({ id: 666, relatedId: 1 });
       let expectedResult = [{ id: 1, a: 10, rid: 1 }];
@@ -88,10 +91,11 @@ describe('BelongsToOneRelation', () => {
       mockKnexQueryResults = [expectedResult];
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory((builder) => {
-        return relation.find(builder, RelationOwner.create(owner));
+        return (findOperation = relation.find(builder, RelationOwner.create(owner)));
       });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toEqual(expectedResult[0]);
         expect(owner.nameOfOurRelation).toEqual(expectedResult[0]);
         expect(result).toBeInstanceOf(RelatedModel);
@@ -119,10 +123,11 @@ describe('BelongsToOneRelation', () => {
       ];
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory((builder) => {
-        return compositeKeyRelation.find(builder, RelationOwner.create(owners));
+        return (findOperation = compositeKeyRelation.find(builder, RelationOwner.create(owners)));
       });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owners[0].nameOfOurRelation).toBe(result[0]);
@@ -153,10 +158,11 @@ describe('BelongsToOneRelation', () => {
       ];
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory((builder) => {
-        return relation.find(builder, RelationOwner.create(owners));
+        return (findOperation = relation.find(builder, RelationOwner.create(owners)));
       });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owners[0].nameOfOurRelation).toBe(result[0]);
@@ -180,11 +186,12 @@ describe('BelongsToOneRelation', () => {
 
       let builder = QueryBuilder.forClass(RelatedModel)
         .findOperationFactory((builder) => {
-          return relation.find(builder, RelationOwner.create(owner));
+          return (findOperation = relation.find(builder, RelationOwner.create(owner)));
         })
         .select('name');
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toEqual(expectedResult[0]);
         expect(owner.nameOfOurRelation).toEqual(expectedResult[0]);
         expect(result).toBeInstanceOf(RelatedModel);
@@ -206,10 +213,11 @@ describe('BelongsToOneRelation', () => {
       let owner = OwnerModel.fromJson({ id: 666, relatedId: 1 });
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory((builder) => {
-        return relation.find(builder, RelationOwner.create(owner));
+        return (findOperation = relation.find(builder, RelationOwner.create(owner)));
       });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toEqual(expectedResult[0]);
         expect(owner.nameOfOurRelation).toEqual(expectedResult[0]);
         expect(result).toBeInstanceOf(RelatedModel);
@@ -233,10 +241,11 @@ describe('BelongsToOneRelation', () => {
       mockKnexQueryResults = [expectedResult];
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory((builder) => {
-        return relation.find(builder, RelationOwner.create(owner));
+        return (findOperation = relation.find(builder, RelationOwner.create(owner)));
       });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toEqual(expectedResult[0]);
         expect(owner.nameOfOurRelation).toEqual(expectedResult[0]);
         expect(result).toBeInstanceOf(RelatedModel);
@@ -258,10 +267,11 @@ describe('BelongsToOneRelation', () => {
       mockKnexQueryResults = [expectedResult];
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory((builder) => {
-        return relation.find(builder, RelationOwner.create(owner));
+        return (findOperation = relation.find(builder, RelationOwner.create(owner)));
       });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toEqual(expectedResult[0]);
         expect(owner.nameOfOurRelation).toEqual(expectedResult[0]);
         expect(result).toBeInstanceOf(RelatedModel);

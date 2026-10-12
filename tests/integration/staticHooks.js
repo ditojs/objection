@@ -3490,6 +3490,100 @@ export default (session) => {
         expect(calls).toEqual([{ hook: 'pets.afterFind', result: person.pets }]);
       });
 
+      describe('withGraphFetched()', () => {
+        it('should assign the related models that `afterFind()` returns', async () => {
+          Pet.afterFind = ({ result }) => result.filter((pet) => pet.species === 'dog');
+          Movie.afterFind = () => [];
+
+          const people = await Person.query()
+            .withGraphFetched('[pets, movies]')
+            .orderBy('name', 'desc');
+
+          expect(people.map((person) => person.pets.map((pet) => pet.name))).toEqual([
+            ['Doggo'],
+            [],
+          ]);
+          expect(people.map((person) => person.movies)).toEqual([[], []]);
+        });
+
+        it('should keep the order of the related models that `afterFind()` returns', async () => {
+          Pet.afterFind = ({ result }) => [...result].sort((a, b) => a.name.localeCompare(b.name));
+
+          const person = await Person.query()
+            .findById(jennifer.id)
+            .withGraphFetched('pets')
+            .modifyGraph('pets', (builder) => builder.orderBy('name', 'desc'));
+
+          expect(person.pets.map((pet) => pet.name)).toEqual(['Cato', 'Doggo']);
+        });
+
+        it('should assign null to to-one relations if `afterFind()` filters the model', async () => {
+          Person.afterFind = () => [];
+
+          const pet = await Pet.query().findOne({ name: 'Doggo' }).withGraphFetched('owner');
+          expect(pet.owner).toBeNull();
+        });
+
+        it('should throw if `afterFind()` returns other objects than the related models', async () => {
+          Pet.afterFind = ({ result }) => result.map((pet) => ({ ...pet }));
+
+          await expect(Person.query().withGraphFetched('pets')).rejects.toThrow(
+            'Unable to assign the result to relation "pets" of Person: afterFind() and ' +
+              'runAfter() can only return the related models that the query found, filtered ' +
+              'or reordered.',
+          );
+        });
+
+        it('should assign what `runAfter()` returns', async () => {
+          const person = await Person.query()
+            .findById(jennifer.id)
+            .withGraphFetched('pets')
+            .modifyGraph('pets', (builder) =>
+              builder.runAfter((pets) => pets.filter((pet) => pet.species === 'cat')),
+            );
+
+          expect(person.pets.map((pet) => pet.name)).toEqual(['Cato']);
+        });
+
+        it('should assign what `runAfter` callbacks of the context return', async () => {
+          const runAfter = (result, builder) =>
+            builder.modelClass() === Pet ? result.filter((pet) => pet.species === 'dog') : result;
+
+          const person = await Person.query()
+            .findById(jennifer.id)
+            .withGraphFetched('pets')
+            .context({ runAfter });
+
+          expect(person.pets.map((pet) => pet.name)).toEqual(['Doggo']);
+        });
+
+        it('should throw if `runAfter()` returns other objects than the related models', async () => {
+          await expect(
+            Person.query()
+              .withGraphFetched('pets')
+              .modifyGraph('pets', (builder) => builder.runAfter((pets) => pets.length)),
+          ).rejects.toThrow('Unable to assign the result to relation "pets" of Person');
+        });
+
+        it('should assign the models of `page()` with `relatedFindQueryMutates`', async () => {
+          Person.relatedFindQueryMutates = true;
+
+          const page = await jennifer.$relatedQuery('pets').orderBy('name').page(0, 1);
+          expect(page.total).toBe(2);
+          expect(jennifer.pets).toEqual(page.results);
+          expect(jennifer.pets.map((pet) => pet.name)).toEqual(['Cato']);
+        });
+
+        it('should assign what `afterFind()` returns with `relatedFindQueryMutates`', async () => {
+          Person.relatedFindQueryMutates = true;
+          Pet.afterFind = ({ result }) => result.filter((pet) => pet.species === 'cat');
+
+          const pets = await jennifer.$relatedQuery('pets');
+          expect(pets.map((pet) => pet.name)).toEqual(['Cato']);
+          expect(jennifer.pets).toEqual(pets);
+        });
+      });
+
       describe('relate() and unrelate()', () => {
         let ActorMovie;
         let Actor;
