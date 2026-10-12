@@ -137,6 +137,35 @@ export default (session) => {
       expect(row['ns:foo_bar']).toBe('b');
     });
 
+    it('insert(), patch() and update() should round-trip a declared key with a colon mapped by snakeCaseMappers', async () => {
+      class SnakeCaseItem extends Item {
+        static get columnNameMappers() {
+          return snakeCaseMappers();
+        }
+
+        static get jsonSchema() {
+          return {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              'ns:fooBar': { type: 'string' },
+            },
+          };
+        }
+      }
+
+      const fetchRow = () => knex('field_expression_keys').where('id', 2).first();
+
+      await SnakeCaseItem.query().insert({ id: 2, 'ns:fooBar': 'a' });
+      expect((await fetchRow())['ns:foo_bar']).toBe('a');
+      const item = await SnakeCaseItem.query().findById(2);
+      expect(item['ns:fooBar']).toBe('a');
+      await item.$query().patch({ 'ns:fooBar': 'b' });
+      expect((await fetchRow())['ns:foo_bar']).toBe('b');
+      await item.$query().update({ id: 2, 'ns:fooBar': 'c' });
+      expect((await fetchRow())['ns:foo_bar']).toBe('c');
+    });
+
     it('patch() should not parse the keys with a colon as database json', async () => {
       class StrictItem extends Item {
         $parseDatabaseJson() {
