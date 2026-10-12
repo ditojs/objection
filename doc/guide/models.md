@@ -345,7 +345,7 @@ people[0].petCount; // number | string
 people[0].lastName; // Error: not selected
 ```
 
-`select('*')` and `select('persons.*')` keep all columns, `first()`, `findById()`, `page()` and `withGraphFetched()` keep the narrowed rows, and repeated selections add up.
+`select('*')` and `select('persons.*')` keep all columns, `first()`, `findById()`, `page()` and `withGraphFetched()` keep the narrowed rows, and repeated selections add up. `clearSelect()` gives back all columns. `distinctOn()` doesn't select its columns and `jsonExtract()` isn't a selection: they don't narrow the rows, and `jsonExtract()` adds its alias to them, of unknown type.
 
 Models that map their columns with `snakeCaseMappers()` declare it, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html). Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
 

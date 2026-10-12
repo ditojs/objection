@@ -32,3 +32,7 @@ export function graph() {
 export function custom() {
   return CustomPerson.query().select('id').someCustomMethod();
 }
+
+export function extraction() {
+  return Person.query().select('id').jsonExtract('address', '$.street', 'street');
+}
