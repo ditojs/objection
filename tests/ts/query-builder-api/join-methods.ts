@@ -39,6 +39,21 @@ import { raw } from 'objection';
     .joinRelated('[pets as pt, parent as pr.[pets as pt, parent as pr]]')
     .where('pr:pt.species', 'dog');
 
+  await Person.query()
+    .leftJoinRelated('pets')
+    .modifyJoin('pets', (join, { owner, related }) => {
+      const ownerAlias: string = owner;
+      const relatedAlias: string = related;
+      join.andOn(`${relatedAlias}.ownerId`, '=', `${ownerAlias}.id`);
+    });
+
+  await Person.query()
+    .withGraphJoined('movies')
+    .modifyJoin('movies', (join, { joinTable }) => {
+      const joinTableAlias: string | undefined = joinTable;
+      join.andOnVal(`${joinTableAlias}.role`, 'lead');
+    });
+
   await Person.query().innerJoinRelated('pets');
   await Person.query().outerJoinRelated('pets');
   await Person.query().leftJoinRelated('pets');

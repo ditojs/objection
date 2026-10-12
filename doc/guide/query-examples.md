@@ -892,6 +892,17 @@ const people = await Person.query()
   .where('children:pets.age', '>', 10);
 ```
 
+A `where` on a left joined relation drops the owners without matching related rows. To keep them, add the condition to the join itself using [modifyJoin](/api/query-builder/join-methods.html#modifyjoin). It gets the aliases of the owner and related tables, so the condition can compare their columns:
+
+```js
+// All people, with only the pets that are younger than them.
+const people = await Person.query()
+  .withGraphJoined('pets')
+  .modifyJoin('pets', (join, { owner, related }) => {
+    join.andOn(`${related}.age`, '<', `${owner}.age`);
+  });
+```
+
 ## Graph inserts
 
 Arbitrary relation graphs can be inserted using the [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) method. This is best explained using examples, so check them out.
