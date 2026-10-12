@@ -1830,6 +1830,15 @@ module.exports = (session) => {
         });
       });
 
+      it('should not return the reference markers below #delete models (#221)', async () => {
+        const result = await Model1.query(session.knex).upsertGraph(
+          { id: 2, model1Relation1: { id: 3, '#delete': true, model1Relation1: { '#dbRef': 1 } } },
+          { fetchStrategy, allowMarkers: true, allowRefs: true },
+        );
+
+        expect(result.model1Relation1.model1Relation1).to.not.have.property('#dbRef');
+      });
+
       it('should not fail when trying to #unrelate or #delete a model which either does not exist or is linked elsewhere', () => {
         const upsert = {
           id: 2,
