@@ -3,7 +3,7 @@ const utils = require('../../lib/utils/knexUtils');
 const expect = require('expect.js');
 const { transaction, ValidationError, Model } = require('../../');
 const { resetWarnings } = require('../../lib/utils/warnings');
-const { cloneDeep, sortBy } = require('../../testUtils/testUtils');
+const { cloneDeep, delay, range, sortBy } = require('../../testUtils/testUtils');
 
 module.exports = (session) => {
   let Model1 = session.models.Model1;
@@ -367,6 +367,41 @@ module.exports = (session) => {
           graph.model1Relation1.model1Relation3[1].model2Prop1 = 666;
         }, 'model1Relation1.model1Relation3[1].model2Prop1'),
       );
+
+      it('should roll back after the inserts that already started when a model fails validation', async () => {
+        let numStarted = 0;
+        let numInserted = 0;
+
+        class ValidatedModel1 extends Model1 {
+          static jsonSchema = {
+            type: 'object',
+            properties: {
+              model1Prop1: { type: 'string' },
+            },
+          };
+
+          // Keep the valid inserts running when the invalid model fails:
+          async $beforeInsert() {
+            numStarted++;
+            await delay(10);
+          }
+
+          $afterInsert() {
+            numInserted++;
+          }
+        }
+
+        const graph = [...range(7).map((i) => ({ model1Prop1: `${i}` })), { model1Prop1: 666 }];
+
+        const err = await transaction(ValidatedModel1, (ValidatedModel1) =>
+          ValidatedModel1.query().insertGraph(graph),
+        ).catch((err) => err);
+
+        expect(err).to.be.a(ValidationError);
+        // Inserts that run after the rollback can commit their rows on SQLite:
+        expect(numInserted).to.equal(numStarted);
+        expect(await session.knex('Model1')).to.have.length(1);
+      });
 
       it('should validate models upon insertion: references in integer columns should be accepted', () => {
         return transaction(Model1, Model2, (Model1, Model2) => {
