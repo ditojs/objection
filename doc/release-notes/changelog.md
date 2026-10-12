@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.1
+
+### Fixes
+
+- `insertGraph()` and `upsertGraph()` reject only after the queries they already started have finished, so a transaction is rolled back after them. Before, rows of these queries could be committed after the rollback on SQLite [#336](https://github.com/ditojs/objection/pull/336)
+
 ## 3.9.0
 
 ### Fixes
