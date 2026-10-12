@@ -3061,9 +3061,8 @@ describe('QueryBuilder', () => {
     expect(TestModel.query().alias('t').select('foo').hasSelection('Model.foo')).toBe(false);
   });
 
-  it('aggregate selections (#2219)', () => {
-    const aliases = (query) =>
-      query.findOperation(/count|sum/).aggregateSelections.map((selection) => selection.name);
+  it('aggregate selections (#2219, #111)', () => {
+    const aliases = (query) => query.findAllSelections().map((selection) => selection.name);
 
     expect(aliases(TestModel.query().count())).toEqual([]);
     expect(aliases(TestModel.query().count('id'))).toEqual([]);
@@ -3072,12 +3071,13 @@ describe('QueryBuilder', () => {
     expect(aliases(TestModel.query().count('id', { as: 'n' }))).toEqual(['n']);
     expect(aliases(TestModel.query().count({ n: 'id', m: ['a', 'b'] }))).toEqual(['n', 'm']);
     expect(aliases(TestModel.query().sum('x as total'))).toEqual(['total']);
-    expect(TestModel.query().select('id').findOperation('select').aggregateSelections).toBeNull();
 
-    // The columns passed to aggregates still count as selected outside of
-    // `withGraphJoined()`.
-    expect(TestModel.query().count('id').hasSelection('id')).toBe(true);
-    expect(TestModel.query().count('* as n').hasSelection('foo')).toBe(true);
+    // Aggregates don't select the columns they're passed, but they still count
+    // as selections, so that the query doesn't select all columns:
+    expect(TestModel.query().count('id').hasSelection('id')).toBe(false);
+    expect(TestModel.query().count('* as n').hasSelection('foo')).toBe(false);
+    expect(TestModel.query().count().hasSelection('foo')).toBe(false);
+    expect(TestModel.query().select('id').count('* as n').hasSelection('id')).toBe(true);
   });
 
   it('parseRelationExpression', () => {
