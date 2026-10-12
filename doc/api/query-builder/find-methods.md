@@ -1151,6 +1151,8 @@ queryBuilder = queryBuilder.whereJsonSupersetOf(
 
 Where left hand json field reference is a superset of the right hand json value or reference.
 
+On MySQL, this uses `JSON_CONTAINS()`, which also finds objects and values in the elements of arrays, e.g. `[{ "a": 1 }]` is a superset of `{}`. SQLite has no json containment, so this method throws an error there.
+
 ##### Arguments
 
 | Argument                    | Type                                                                                               | Description                                                            |
@@ -1245,7 +1247,7 @@ queryBuilder = queryBuilder.whereJsonSubsetOf(
 );
 ```
 
-Where left hand json field reference is a subset of the right hand json value or reference.
+Where left hand json field reference is a subset of the right hand json value or reference. Like [whereJsonSupersetOf](/api/query-builder/find-methods.html#wherejsonsupersetof), this uses `JSON_CONTAINS()` on MySQL and throws an error on SQLite.
 
 Object and array are always their own subsets.
 
@@ -1349,7 +1351,7 @@ queryBuilder = queryBuilder.whereJsonHasAny(fieldExpression, keys);
 Where any of given strings is found from json object keys.
 
 ::: tip
-This doesn't work for arrays. If you want to check if an array contains an item, see [this](https://github.com/Vincit/objection.js/issues/415) and [this](https://github.com/Vincit/objection.js/issues/1133) issue.
+Like the `?|` and `?&` operators of PostgreSQL, this matches the keys of objects, the string elements of arrays and string values, but not other array elements. On MySQL, it needs MySQL 8.0.17 or newer.
 :::
 
 ##### Arguments
@@ -1378,7 +1380,7 @@ queryBuilder = queryBuilder.whereJsonHasAll(fieldExpression, keys);
 Where all of given strings are found from json object keys.
 
 ::: tip
-This doesn't work for arrays. If you want to check if an array contains an item, see [this](https://github.com/Vincit/objection.js/issues/415) and [this](https://github.com/Vincit/objection.js/issues/1133) issue.
+Like the `?|` and `?&` operators of PostgreSQL, this matches the keys of objects, the string elements of arrays and string values, but not other array elements. On MySQL, it needs MySQL 8.0.17 or newer.
 :::
 
 ##### Arguments

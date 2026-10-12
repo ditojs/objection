@@ -18,7 +18,7 @@ This section lists the breaking changes in objection 4.0.
 - [upsertGraph() keeps the current to-one model for ignored models](#upsertgraph-keeps-the-current-to-one-model-for-ignored-models)
 - [offset() in updates and deletes throws](#offset-in-updates-and-deletes-throws)
 - [JSON field expressions throw on SQL Server and Oracle](#json-field-expressions-throw-on-sql-server-and-oracle)
-- [Casts and json values on MySQL and SQLite](#casts-and-json-values-on-mysql-and-sqlite)
+- [Casts, json values and json methods on MySQL and SQLite](#casts-json-values-and-json-methods-on-mysql-and-sqlite)
 - [Missing and array join properties throw](#missing-and-array-join-properties-throw)
 - [upsertGraph() relates moved rows before it deletes](#upsertgraph-relates-moved-rows-before-it-deletes)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
@@ -146,9 +146,9 @@ In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the curr
 
 JSON field expressions like `ref('column:path')` and `'column:path'` keys in `patch()`, `ref('column').castJson()` and the `whereJson*()` methods of objection throw an error on SQL Server and Oracle. 3.x generated the SQL of PostgreSQL, which these databases reject, and logged a warning. Use the JSON methods of knex instead, like `whereJsonPath()` and `jsonExtract()`. Other databases than PostgreSQL, MySQL and SQLite still get a warning.
 
-On MySQL and SQLite, objection writes the SQL of the database for `ref()` and `'column:path'` keys in `patch()`, where 3.x generated the SQL of PostgreSQL, which they reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. The `whereJson*()` methods throw an error on MySQL and SQLite. On MySQL, `whereJsonSupersetOf(column, value)` and `whereJsonSubsetOf(column, value)` with a plain column and a JSON object or array keep working, as they are passed on to knex.
+On MySQL and SQLite, objection writes the SQL of the database for json field expressions and the `whereJson*()` methods, where 3.x generated the SQL of PostgreSQL, which they reject or, worse, run with other results, e.g. MySQL reads the `#>` operator as the start of a comment. SQLite has no json containment, so `whereJsonSupersetOf()` and `whereJsonSubsetOf()` throw an error there.
 
-## Casts and json values on MySQL and SQLite
+## Casts, json values and json methods on MySQL and SQLite
 
 The casts of `ref()` and `val()` use the types of MySQL there, as `CAST()` on MySQL only accepts a few types. `castText()`, `castInt()`, `castBigInt()` and `castBool()` were rejected by MySQL before and are `CHAR` and `SIGNED` now. These change their results:
 
@@ -157,6 +157,8 @@ The casts of `ref()` and `val()` use the types of MySQL there, as `CAST()` on My
 - Casts of json values in field expressions turn json `null` into `NULL`, like on PostgreSQL and SQLite, instead of `0` or `'null'`.
 
 On MySQL and SQLite, `val()` with an object or array and `val().castJson()` are json values, `CAST(? AS JSON)` on MySQL and `json(?)` on SQLite, so they compare as json. Before, they were json text, which MySQL compared as a string. Pass `JSON.stringify(value)` to compare with json text.
+
+`whereJsonHasAny()` and `whereJsonHasAll()` need MySQL 8.0.17 or newer, as they use `JSON_OVERLAPS()`.
 
 On SQLite, `ref('column').castJson()` throws for a whole column, as SQLite can't tell json columns from text columns. Cast the column first, e.g. `ref('name').castText().castJson()`, or refer to a json path.
 

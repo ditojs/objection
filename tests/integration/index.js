@@ -34,7 +34,6 @@ import toKnexQuery from './toKnexQuery.js';
 import relationOwnerGrouping from './relationOwnerGrouping.js';
 import jsonQueries from './jsonQueries.js';
 import jsonRelations from './jsonRelations.js';
-import jsonQueriesMySql from './jsonQueriesMySql.js';
 
 // DATABASES environment variable can contain a comma separated list
 // of databases to test.
@@ -158,10 +157,6 @@ describe('integration tests', () => {
       if (!session.isMsSql()) {
         jsonQueries(session);
         jsonRelations(session);
-      }
-
-      if (session.isMySql()) {
-        jsonQueriesMySql(session);
       }
     });
 

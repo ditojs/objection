@@ -34,8 +34,10 @@ export default (session) => {
 
     // The mysql driver returns json values as text.
     const jsonValue = (value) => (session.isMySql() ? JSON.stringify(value) : value);
-    // The whereJson*() methods only render the SQL of Postgres so far.
-    const postgresOnly = !session.isPostgres();
+    // SQLite has no json containment for whereJsonSupersetOf() and whereJsonSubsetOf().
+    const hasJsonContainment = !session.isSqlite();
+    // The tests that pass the `@>` and `<@` operators of Postgres to where() only
+    // run there.
 
     beforeAll(() => {
       return session.knex.schema
@@ -418,7 +420,7 @@ export default (session) => {
           expect(result).toEqual([{ id: 2, a: jsonValue(2), xy: jsonValue(2) }]);
         });
 
-        it.skipIf(postgresOnly)(
+        it.skipIf(!hasJsonContainment)(
           'should be able to use empty keys in json where methods',
           async () => {
             const result = await BoundModel.query().whereJsonSupersetOf('jsonObject:[""]', {
@@ -472,19 +474,18 @@ export default (session) => {
             expect(result).toEqual([{ id: 1, a: jsonValue(1) }]);
           });
 
-          it.skipIf(postgresOnly)(
-            `should use a key with ${name} in json where methods`,
-            async () => {
+          it(`should use a key with ${name} in json where methods`, async () => {
+            if (hasJsonContainment) {
               expectIdsEqual(
                 await BoundModel.query().whereJsonSupersetOf(expr(key), { a: 1 }),
                 [1],
               );
-              expectIdsEqual(await BoundModel.query().whereJsonIsObject(expr(key)), [1]);
-              expectIdsEqual(await BoundModel.query().whereJsonNotObject(expr(key)), [2]);
-              expectIdsEqual(await BoundModel.query().whereJsonHasAny(expr(key), ['a', key]), [1]);
-              expectIdsEqual(await BoundModel.query().whereJsonHasAll('jsonObject', [key]), [1]);
-            },
-          );
+            }
+            expectIdsEqual(await BoundModel.query().whereJsonIsObject(expr(key)), [1]);
+            expectIdsEqual(await BoundModel.query().whereJsonNotObject(expr(key)), [2]);
+            expectIdsEqual(await BoundModel.query().whereJsonHasAny(expr(key), ['a', key]), [1]);
+            expectIdsEqual(await BoundModel.query().whereJsonHasAll('jsonObject', [key]), [1]);
+          });
 
           it(`should patch a key with ${name}`, async () => {
             await BoundModel.query()
@@ -664,25 +665,24 @@ export default (session) => {
         });
       });
 
-      describe.skipIf(postgresOnly)(
-        'private function parseFieldExpression(expression, extractAsText)',
-        () => {
-          it('should quote ModelJson.jsonArray column reference properly', () => {
-            expect(
-              BoundModel.query().whereJsonIsArray('ModelJson.jsonArray').toKnexQuery().toString(),
-            ).toContain('"ModelJson"."jsonArray"');
-          });
+      describe('column references in field expressions', () => {
+        const column = () => session.knex.raw('??', ['ModelJson.jsonArray']).toString();
 
-          it('should quote ModelJson.jsonArray:[10] column reference properly', () => {
-            expect(
-              BoundModel.query()
-                .whereJsonIsArray('ModelJson.jsonArray:[50]')
-                .toKnexQuery()
-                .toString(),
-            ).toContain('"ModelJson"."jsonArray"');
-          });
-        },
-      );
+        it('should quote ModelJson.jsonArray column reference properly', () => {
+          expect(
+            BoundModel.query().whereJsonIsArray('ModelJson.jsonArray').toKnexQuery().toString(),
+          ).toContain(column());
+        });
+
+        it('should quote ModelJson.jsonArray:[10] column reference properly', () => {
+          expect(
+            BoundModel.query()
+              .whereJsonIsArray('ModelJson.jsonArray:[50]')
+              .toKnexQuery()
+              .toString(),
+          ).toContain(column());
+        });
+      });
 
       describe('.where(ref(fieldExpr), val(<array|object|string>))', () => {
         it('should find results for jsonArray == []', () => {
@@ -857,7 +857,7 @@ export default (session) => {
         });
       });
 
-      describe.skipIf(postgresOnly)(
+      describe.skipIf(!hasJsonContainment)(
         '.whereJsonSupersetOf(fieldExpr, <array|object|string>)',
         () => {
           it('should find all empty arrays with jsonArray @> []', () => {
@@ -868,13 +868,16 @@ export default (session) => {
               });
           });
 
-          it('should find all empty arrays with jsonArray @> []', () => {
-            return BoundModel.query()
-              .where('jsonArray', '@>', val([]))
-              .then((results) => {
-                expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should find all empty arrays with jsonArray @> []',
+            () => {
+              return BoundModel.query()
+                .where('jsonArray', '@>', val([]))
+                .then((results) => {
+                  expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
+                });
+            },
+          );
 
           it('should find results jsonArray @> [1,2] (set is its own superset)', () => {
             return BoundModel.query()
@@ -884,23 +887,27 @@ export default (session) => {
               });
           });
 
-          it('should find results jsonArray @> [1,2] (set is its own superset)', () => {
-            return BoundModel.query()
-              .where('jsonArray', '@>', val([1, 2]))
-              .then((results) => {
-                expectIdsEqual(results, [4]);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonArray @> [1,2] (set is its own superset)',
+            () => {
+              return BoundModel.query()
+                .where('jsonArray', '@>', val([1, 2]))
+                .then((results) => {
+                  expectIdsEqual(results, [4]);
+                });
+            },
+          );
 
           it('should not find results jsonArray @> {}', () => {
             return BoundModel.query()
               .whereJsonSupersetOf('jsonArray', {})
               .then((results) => {
-                expect(results).toHaveLength(0);
+                // MySQL's JSON_CONTAINS() finds objects in the elements of arrays.
+                expectIdsEqual(results, session.isMySql() ? [1] : []);
               });
           });
 
-          it('should not find results jsonArray @> {}', () => {
+          it.skipIf(!session.isPostgres())('should not find results jsonArray @> {}', () => {
             return BoundModel.query()
               .where('jsonArray', '@>', val({}))
               .then((results) => {
@@ -916,7 +923,7 @@ export default (session) => {
               });
           });
 
-          it('should not find results jsonObject @> []', () => {
+          it.skipIf(!session.isPostgres())('should not find results jsonObject @> []', () => {
             return BoundModel.query()
               .where('jsonObject', '@>', val([]))
               .then((results) => {
@@ -961,19 +968,22 @@ export default (session) => {
             expectIdsEqual(
               await BoundModel.query().orWhereJsonSupersetOf(
                 'jsonObject:objectField',
-                raw('?::jsonb', JSON.stringify(complexJsonObj.jsonObject.objectField)),
+                raw('?', JSON.stringify(complexJsonObj.jsonObject.objectField)),
               ),
               [1],
             );
           });
 
-          it('should find subset where both sides are references', () => {
-            return BoundModel.query()
-              .where(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should find subset where both sides are references',
+            () => {
+              return BoundModel.query()
+                .where(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, [7]);
+                });
+            },
+          );
 
           it('should find results jsonObject @> {}', () => {
             return BoundModel.query()
@@ -983,7 +993,7 @@ export default (session) => {
               });
           });
 
-          it('should find results jsonObject @> {}', () => {
+          it.skipIf(!session.isPostgres())('should find results jsonObject @> {}', () => {
             return BoundModel.query()
               .where('jsonObject', '@>', val({}))
               .then((results) => {
@@ -999,17 +1009,20 @@ export default (session) => {
               });
           });
 
-          it('should find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField', () => {
-            return BoundModel.query()
-              .where(
-                ref('jsonObject:objectField'),
-                '@>',
-                val(complexJsonObj.jsonObject.objectField),
-              )
-              .then((results) => {
-                expectIdsEqual(results, [1]);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField',
+            () => {
+              return BoundModel.query()
+                .where(
+                  ref('jsonObject:objectField'),
+                  '@>',
+                  val(complexJsonObj.jsonObject.objectField),
+                )
+                .then((results) => {
+                  expectIdsEqual(results, [1]);
+                });
+            },
+          );
 
           it('should not find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField that has additional key', () => {
             let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
@@ -1022,16 +1035,19 @@ export default (session) => {
               });
           });
 
-          it('should not find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField that has additional key', () => {
-            let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
-            obj.otherKey = 'Im here too!';
+          it.skipIf(!session.isPostgres())(
+            'should not find results jsonObject.objectField @> complexJsonObj.jsonObject.objectField that has additional key',
+            () => {
+              let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
+              obj.otherKey = 'Im here too!';
 
-            return BoundModel.query()
-              .where(ref('jsonObject:objectField'), '@>', val(obj))
-              .then((results) => {
-                expect(results).toHaveLength(0);
-              });
-          });
+              return BoundModel.query()
+                .where(ref('jsonObject:objectField'), '@>', val(obj))
+                .then((results) => {
+                  expect(results).toHaveLength(0);
+                });
+            },
+          );
 
           it('should not find results jsonObject.objectField @> { object: "other string" }', () => {
             return BoundModel.query()
@@ -1043,19 +1059,22 @@ export default (session) => {
               });
           });
 
-          it('should not find results jsonObject.objectField @> { object: "other string" }', () => {
-            return BoundModel.query()
-              .where(
-                ref('jsonObject:objectField'),
-                '@>',
-                val({
-                  object: 'something else',
-                }),
-              )
-              .then((results) => {
-                expect(results).toHaveLength(0);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should not find results jsonObject.objectField @> { object: "other string" }',
+            () => {
+              return BoundModel.query()
+                .where(
+                  ref('jsonObject:objectField'),
+                  '@>',
+                  val({
+                    object: 'something else',
+                  }),
+                )
+                .then((results) => {
+                  expect(results).toHaveLength(0);
+                });
+            },
+          );
 
           it('should find results jsonObject @> [] OR jsonObject @> {}', () => {
             return BoundModel.query()
@@ -1066,14 +1085,17 @@ export default (session) => {
               });
           });
 
-          it('should find results jsonObject @> [] OR jsonObject @> {}', () => {
-            return BoundModel.query()
-              .where('jsonObject', '@>', val([]))
-              .orWhere('jsonObject', '@>', val({}))
-              .then((results) => {
-                expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject @> [] OR jsonObject @> {}',
+            () => {
+              return BoundModel.query()
+                .where('jsonObject', '@>', val([]))
+                .orWhere('jsonObject', '@>', val({}))
+                .then((results) => {
+                  expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
+                });
+            },
+          );
 
           it('should not find results NOT(jsonObject.objectField @> complexJsonObj.jsonObject.objectField)', () => {
             return BoundModel.query()
@@ -1086,17 +1108,20 @@ export default (session) => {
               });
           });
 
-          it('should not find results NOT(jsonObject.objectField @> complexJsonObj.jsonObject.objectField)', () => {
-            return BoundModel.query()
-              .whereNot(
-                ref('jsonObject:objectField'),
-                '@>',
-                val(complexJsonObj.jsonObject.objectField),
-              )
-              .then((results) => {
-                expectIdsEqual(results, []);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should not find results NOT(jsonObject.objectField @> complexJsonObj.jsonObject.objectField)',
+            () => {
+              return BoundModel.query()
+                .whereNot(
+                  ref('jsonObject:objectField'),
+                  '@>',
+                  val(complexJsonObj.jsonObject.objectField),
+                )
+                .then((results) => {
+                  expectIdsEqual(results, []);
+                });
+            },
+          );
 
           it('should not find results NOT(jsonObject.a @> jsonObject.b)', () => {
             return BoundModel.query()
@@ -1106,13 +1131,16 @@ export default (session) => {
               });
           });
 
-          it('should not find results NOT(jsonObject.a @> jsonObject.b)', () => {
-            return BoundModel.query()
-              .whereNot(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
-              .then((results) => {
-                expectIdsEqual(results, []);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should not find results NOT(jsonObject.a @> jsonObject.b)',
+            () => {
+              return BoundModel.query()
+                .whereNot(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, []);
+                });
+            },
+          );
 
           it('should find results jsonObject.a @> jsonObject.b OR NOT(jsonObject.a @> jsonObject.b)', () => {
             return BoundModel.query()
@@ -1123,14 +1151,17 @@ export default (session) => {
               });
           });
 
-          it('should find results jsonObject.a @> jsonObject.b OR NOT(jsonObject.a @> jsonObject.b)', () => {
-            return BoundModel.query()
-              .where(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
-              .orWhereNot(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject.a @> jsonObject.b OR NOT(jsonObject.a @> jsonObject.b)',
+            () => {
+              return BoundModel.query()
+                .where(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
+                .orWhereNot(ref('jsonObject:a').castJson(), '@>', ref('jsonObject:b').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, [7]);
+                });
+            },
+          );
 
           it('should not find results NOT(jsonObject.x @> jsonObject.y)', () => {
             return BoundModel.query()
@@ -1140,222 +1171,256 @@ export default (session) => {
               });
           });
 
-          it('should not find results NOT(jsonObject.x @> jsonObject.y)', () => {
+          it.skipIf(!session.isPostgres())(
+            'should not find results NOT(jsonObject.x @> jsonObject.y)',
+            () => {
+              return BoundModel.query()
+                .whereNot(ref('jsonObject:x').castJson(), '@>', ref('jsonObject:y').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, []);
+                });
+            },
+          );
+
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonArray = {} or NOT(jsonObject @> jsonArray)',
+            () => {
+              return BoundModel.query()
+                .where('jsonArray', '=', val({}))
+                .orWhereNot('jsonObject', '@>', ref('jsonArray'))
+                .then((results) => {
+                  expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
+                });
+            },
+          );
+        },
+      );
+
+      describe.skipIf(!hasJsonContainment)(
+        '.whereJsonSubsetOf(fieldExpr, <array|object|string>)',
+        () => {
+          it('should find all empty arrays with jsonArray <@ []', () => {
             return BoundModel.query()
-              .whereNot(ref('jsonObject:x').castJson(), '@>', ref('jsonObject:y').castJson())
+              .whereJsonSubsetOf('jsonArray', [])
+              .then((results) => {
+                expectIdsEqual(results, [2, 6, 7]);
+              });
+          });
+
+          it('should find results jsonArray <@ [1,2] (set is its own subset)', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonArray', [1, 2])
+              .then((results) => {
+                expectIdsEqual(results, [2, 4, 6, 7]);
+              });
+          });
+
+          it('should not find results jsonArray <@ {}', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonArray', {})
+              .then((results) => {
+                expect(results).toHaveLength(0);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())('should not find results jsonArray <@ {}', () => {
+            return BoundModel.query()
+              .where('jsonArray', '<@', val({}))
+              .then((results) => {
+                expect(results).toHaveLength(0);
+              });
+          });
+
+          it('should not find results jsonObject <@ []', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject', [])
+              .then((results) => {
+                expect(results).toHaveLength(0);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())('should not find results jsonObject <@ []', () => {
+            return BoundModel.query()
+              .where('jsonObject', '<@', val([]))
+              .then((results) => {
+                expect(results).toHaveLength(0);
+              });
+          });
+
+          it('should find subset where both sides are references', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject:a', 'jsonObject:b')
+              .then((results) => {
+                expectIdsEqual(results, [7]);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())(
+            'should find subset where both sides are references',
+            () => {
+              return BoundModel.query()
+                .where(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, [7]);
+                });
+            },
+          );
+
+          it('should find results jsonObject <@ {}', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject', {})
+              .then((results) => {
+                expectIdsEqual(results, [2, 4, 5]);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())('should find results jsonObject <@ {}', () => {
+            return BoundModel.query()
+              .where('jsonObject', '<@', val({}))
+              .then((results) => {
+                expectIdsEqual(results, [2, 4, 5]);
+              });
+          });
+
+          it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject:objectField', complexJsonObj.jsonObject.objectField)
+              .then((results) => {
+                expectIdsEqual(results, [1]);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField',
+            () => {
+              return BoundModel.query()
+                .where(
+                  ref('jsonObject:objectField'),
+                  '<@',
+                  val(complexJsonObj.jsonObject.objectField),
+                )
+                .then((results) => {
+                  expectIdsEqual(results, [1]);
+                });
+            },
+          );
+
+          it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField that has additional key', () => {
+            let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
+            obj.otherKey = 'Im here too!';
+
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject:objectField', obj)
+              .then((results) => {
+                expectIdsEqual(results, [1]);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField that has additional key',
+            () => {
+              let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
+              obj.otherKey = 'Im here too!';
+
+              return BoundModel.query()
+                .where(ref('jsonObject:objectField'), '<@', val(obj))
+                .then((results) => {
+                  expectIdsEqual(results, [1]);
+                });
+            },
+          );
+
+          it('should not find results jsonObject.objectField <@ { object: "other string" }', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject:objectField', {
+                object: 'something else',
+              })
+              .then((results) => {
+                expect(results).toHaveLength(0);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())(
+            'should not find results jsonObject.objectField <@ { object: "other string" }',
+            () => {
+              return BoundModel.query()
+                .where(
+                  ref('jsonObject:objectField'),
+                  '<@',
+                  val({
+                    object: 'something else',
+                  }),
+                )
+                .then((results) => {
+                  expect(results).toHaveLength(0);
+                });
+            },
+          );
+
+          it('should find results jsonObject <@ {} OR jsonArray <@ []', () => {
+            return BoundModel.query()
+              .whereJsonSubsetOf('jsonObject', {})
+              .orWhereJsonSubsetOf('jsonArray', [])
+              .then((results) => {
+                expectIdsEqual(results, [2, 4, 5, 6, 7]);
+              });
+          });
+
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject <@ {} OR jsonArray <@ []',
+            () => {
+              return BoundModel.query()
+                .where('jsonObject', '<@', val({}))
+                .orWhere('jsonArray', '<@', val([]))
+                .then((results) => {
+                  expectIdsEqual(results, [2, 4, 5, 6, 7]);
+                });
+            },
+          );
+
+          it('should find results NOT(jsonObject.a <@ jsonObject.b)', () => {
+            return BoundModel.query()
+              .whereJsonNotSubsetOf('jsonObject:a', 'jsonObject:b')
               .then((results) => {
                 expectIdsEqual(results, []);
               });
           });
 
-          it('should find results jsonArray = {} or NOT(jsonObject @> jsonArray)', () => {
+          it.skipIf(!session.isPostgres())(
+            'should find results NOT(jsonObject.a <@ jsonObject.b)',
+            () => {
+              return BoundModel.query()
+                .whereNot(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, []);
+                });
+            },
+          );
+
+          it('should find results jsonObject.a <@ jsonObject.b OR NOT(jsonObject.a <@ jsonObject.b)', () => {
             return BoundModel.query()
-              .where('jsonArray', '=', val({}))
-              .orWhereNot('jsonObject', '@>', ref('jsonArray'))
+              .whereJsonSubsetOf('jsonObject:a', 'jsonObject:b')
+              .orWhereJsonNotSubsetOf('jsonObject:a', 'jsonObject:b')
               .then((results) => {
-                expectIdsEqual(results, [1, 2, 4, 5, 6, 7]);
+                expectIdsEqual(results, [7]);
               });
           });
+
+          it.skipIf(!session.isPostgres())(
+            'should find results jsonObject.a <@ jsonObject.b OR NOT(jsonObject.a <@ jsonObject.b)',
+            () => {
+              return BoundModel.query()
+                .where(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
+                .orWhereNot(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
+                .then((results) => {
+                  expectIdsEqual(results, [7]);
+                });
+            },
+          );
         },
       );
 
-      describe.skipIf(postgresOnly)('.whereJsonSubsetOf(fieldExpr, <array|object|string>)', () => {
-        it('should find all empty arrays with jsonArray <@ []', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonArray', [])
-            .then((results) => {
-              expectIdsEqual(results, [2, 6, 7]);
-            });
-        });
-
-        it('should find results jsonArray <@ [1,2] (set is its own subset)', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonArray', [1, 2])
-            .then((results) => {
-              expectIdsEqual(results, [2, 4, 6, 7]);
-            });
-        });
-
-        it('should not find results jsonArray <@ {}', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonArray', {})
-            .then((results) => {
-              expect(results).toHaveLength(0);
-            });
-        });
-
-        it('should not find results jsonArray <@ {}', () => {
-          return BoundModel.query()
-            .where('jsonArray', '<@', val({}))
-            .then((results) => {
-              expect(results).toHaveLength(0);
-            });
-        });
-
-        it('should not find results jsonObject <@ []', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject', [])
-            .then((results) => {
-              expect(results).toHaveLength(0);
-            });
-        });
-
-        it('should not find results jsonObject <@ []', () => {
-          return BoundModel.query()
-            .where('jsonObject', '<@', val([]))
-            .then((results) => {
-              expect(results).toHaveLength(0);
-            });
-        });
-
-        it('should find subset where both sides are references', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject:a', 'jsonObject:b')
-            .then((results) => {
-              expectIdsEqual(results, [7]);
-            });
-        });
-
-        it('should find subset where both sides are references', () => {
-          return BoundModel.query()
-            .where(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
-            .then((results) => {
-              expectIdsEqual(results, [7]);
-            });
-        });
-
-        it('should find results jsonObject <@ {}', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject', {})
-            .then((results) => {
-              expectIdsEqual(results, [2, 4, 5]);
-            });
-        });
-
-        it('should find results jsonObject <@ {}', () => {
-          return BoundModel.query()
-            .where('jsonObject', '<@', val({}))
-            .then((results) => {
-              expectIdsEqual(results, [2, 4, 5]);
-            });
-        });
-
-        it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject:objectField', complexJsonObj.jsonObject.objectField)
-            .then((results) => {
-              expectIdsEqual(results, [1]);
-            });
-        });
-
-        it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField', () => {
-          return BoundModel.query()
-            .where(ref('jsonObject:objectField'), '<@', val(complexJsonObj.jsonObject.objectField))
-            .then((results) => {
-              expectIdsEqual(results, [1]);
-            });
-        });
-
-        it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField that has additional key', () => {
-          let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
-          obj.otherKey = 'Im here too!';
-
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject:objectField', obj)
-            .then((results) => {
-              expectIdsEqual(results, [1]);
-            });
-        });
-
-        it('should find results jsonObject.objectField <@ complexJsonObj.jsonObject.objectField that has additional key', () => {
-          let obj = cloneDeep(complexJsonObj.jsonObject.objectField);
-          obj.otherKey = 'Im here too!';
-
-          return BoundModel.query()
-            .where(ref('jsonObject:objectField'), '<@', val(obj))
-            .then((results) => {
-              expectIdsEqual(results, [1]);
-            });
-        });
-
-        it('should not find results jsonObject.objectField <@ { object: "other string" }', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject:objectField', {
-              object: 'something else',
-            })
-            .then((results) => {
-              expect(results).toHaveLength(0);
-            });
-        });
-
-        it('should not find results jsonObject.objectField <@ { object: "other string" }', () => {
-          return BoundModel.query()
-            .where(
-              ref('jsonObject:objectField'),
-              '<@',
-              val({
-                object: 'something else',
-              }),
-            )
-            .then((results) => {
-              expect(results).toHaveLength(0);
-            });
-        });
-
-        it('should find results jsonObject <@ {} OR jsonArray <@ []', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject', {})
-            .orWhereJsonSubsetOf('jsonArray', [])
-            .then((results) => {
-              expectIdsEqual(results, [2, 4, 5, 6, 7]);
-            });
-        });
-
-        it('should find results jsonObject <@ {} OR jsonArray <@ []', () => {
-          return BoundModel.query()
-            .where('jsonObject', '<@', val({}))
-            .orWhere('jsonArray', '<@', val([]))
-            .then((results) => {
-              expectIdsEqual(results, [2, 4, 5, 6, 7]);
-            });
-        });
-
-        it('should find results NOT(jsonObject.a <@ jsonObject.b)', () => {
-          return BoundModel.query()
-            .whereJsonNotSubsetOf('jsonObject:a', 'jsonObject:b')
-            .then((results) => {
-              expectIdsEqual(results, []);
-            });
-        });
-
-        it('should find results NOT(jsonObject.a <@ jsonObject.b)', () => {
-          return BoundModel.query()
-            .whereNot(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
-            .then((results) => {
-              expectIdsEqual(results, []);
-            });
-        });
-
-        it('should find results jsonObject.a <@ jsonObject.b OR NOT(jsonObject.a <@ jsonObject.b)', () => {
-          return BoundModel.query()
-            .whereJsonSubsetOf('jsonObject:a', 'jsonObject:b')
-            .orWhereJsonNotSubsetOf('jsonObject:a', 'jsonObject:b')
-            .then((results) => {
-              expectIdsEqual(results, [7]);
-            });
-        });
-
-        it('should find results jsonObject.a <@ jsonObject.b OR NOT(jsonObject.a <@ jsonObject.b)', () => {
-          return BoundModel.query()
-            .where(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
-            .orWhereNot(ref('jsonObject:a').castJson(), '<@', ref('jsonObject:b').castJson())
-            .then((results) => {
-              expectIdsEqual(results, [7]);
-            });
-        });
-      });
-
-      describe.skipIf(postgresOnly)('.whereJsonIsArray(fieldExpr)', () => {
+      describe('.whereJsonIsArray(fieldExpr)', () => {
         it('should find all arrays that has an array in index 5', () => {
           return BoundModel.query()
             .whereJsonIsArray('jsonArray:[5]')
@@ -1410,7 +1475,7 @@ export default (session) => {
         });
       });
 
-      describe.skipIf(postgresOnly)('.whereJsonIsObject(fieldExpr)', () => {
+      describe('.whereJsonIsObject(fieldExpr)', () => {
         it('should find first object', () => {
           return BoundModel.query()
             .whereJsonIsObject('jsonObject:objectField')
@@ -1473,113 +1538,115 @@ export default (session) => {
         });
       });
 
-      describe.skipIf(postgresOnly)(
-        '.whereJsonHasAny(fieldExpr, keys) and .whereJsonHasAll(fieldExpr, keys)',
-        () => {
-          it('should throw error if null in input array', () => {
-            return expect(
-              BoundModel.query().whereJsonHasAny('jsonObject', [null]),
-            ).rejects.toThrow();
-          });
+      describe('.whereJsonHasAny(fieldExpr, keys) and .whereJsonHasAll(fieldExpr, keys)', () => {
+        it('should throw error if no keys are given', async () => {
+          await expect(BoundModel.query().whereJsonHasAny('jsonObject', [])).rejects.toThrow(
+            'At least one key to find is required.',
+          );
+          await expect(BoundModel.query().whereJsonHasAll('jsonObject', [])).rejects.toThrow(
+            'At least one key to find is required.',
+          );
+        });
 
-          it('should throw error if number in input array', () => {
-            return expect(BoundModel.query().whereJsonHasAny('jsonObject', 1)).rejects.toThrow();
-          });
+        it('should throw error if null in input array', () => {
+          return expect(BoundModel.query().whereJsonHasAny('jsonObject', [null])).rejects.toThrow();
+        });
 
-          it('should throw error if boolean in input array', () => {
-            return expect(
-              BoundModel.query().whereJsonHasAny('jsonObject', false),
-            ).rejects.toThrow();
-          });
+        it('should throw error if number in input array', () => {
+          return expect(BoundModel.query().whereJsonHasAny('jsonObject', 1)).rejects.toThrow();
+        });
 
-          it('should find results for a', () => {
-            return BoundModel.query()
-              .whereJsonHasAny('jsonObject', 'a')
-              .then((results) => {
-                expectIdsEqual(results, [6, 7]);
-              });
-          });
+        it('should throw error if boolean in input array', () => {
+          return expect(BoundModel.query().whereJsonHasAny('jsonObject', false)).rejects.toThrow();
+        });
 
-          it('should find results for a', () => {
-            // TODO knex doesn't support ?| operator.
-            return BoundModel.query()
-              .where(raw('?? \\?| ?', ['jsonObject', val('a').asArray()]))
-              .then((results) => {
-                expectIdsEqual(results, [6, 7]);
-              });
-          });
+        it('should find results for a', () => {
+          return BoundModel.query()
+            .whereJsonHasAny('jsonObject', 'a')
+            .then((results) => {
+              expectIdsEqual(results, [6, 7]);
+            });
+        });
 
-          it('should find results for a or b', () => {
-            return BoundModel.query()
-              .whereJsonHasAny('jsonObject', 'b')
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+        it.skipIf(!session.isPostgres())('should find results for a', () => {
+          // TODO knex doesn't support ?| operator.
+          return BoundModel.query()
+            .where(raw('?? \\?| ?', ['jsonObject', val('a').asArray()]))
+            .then((results) => {
+              expectIdsEqual(results, [6, 7]);
+            });
+        });
 
-          it('should find results for b or notMe', () => {
-            return BoundModel.query()
-              .whereJsonHasAny('jsonObject', ['b', 'notMe'])
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+        it('should find results for a or b', () => {
+          return BoundModel.query()
+            .whereJsonHasAny('jsonObject', 'b')
+            .then((results) => {
+              expectIdsEqual(results, [7]);
+            });
+        });
 
-          it('should find results for hasAny(notMe) orHasAny(b)', () => {
-            return BoundModel.query()
-              .whereJsonHasAny('jsonObject', 'notMe')
-              .orWhereJsonHasAny('jsonObject', 'b')
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+        it('should find results for b or notMe', () => {
+          return BoundModel.query()
+            .whereJsonHasAny('jsonObject', ['b', 'notMe'])
+            .then((results) => {
+              expectIdsEqual(results, [7]);
+            });
+        });
 
-          it('should find results for a and b', () => {
-            return BoundModel.query()
-              .whereJsonHasAll('jsonObject', ['a', 'b'])
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+        it('should find results for hasAny(notMe) orHasAny(b)', () => {
+          return BoundModel.query()
+            .whereJsonHasAny('jsonObject', 'notMe')
+            .orWhereJsonHasAny('jsonObject', 'b')
+            .then((results) => {
+              expectIdsEqual(results, [7]);
+            });
+        });
 
-          it('should find results for a and b', () => {
-            // TODO knex doesn't support ?& operator.
-            return BoundModel.query()
-              .where(raw('?? \\?& ?', ['jsonObject', val(['a', 'b']).asArray()]))
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+        it('should find results for a and b', () => {
+          return BoundModel.query()
+            .whereJsonHasAll('jsonObject', ['a', 'b'])
+            .then((results) => {
+              expectIdsEqual(results, [7]);
+            });
+        });
 
-          it('should find results for hasAll(notMe) orHasAll([a, b])', () => {
-            return BoundModel.query()
-              .whereJsonHasAll('jsonObject', 'notMe')
-              .orWhereJsonHasAll('jsonObject', ['a', 'b'])
-              .then((results) => {
-                expectIdsEqual(results, [7]);
-              });
-          });
+        it.skipIf(!session.isPostgres())('should find results for a and b', () => {
+          // TODO knex doesn't support ?& operator.
+          return BoundModel.query()
+            .where(raw('?? \\?& ?', ['jsonObject', val(['a', 'b']).asArray()]))
+            .then((results) => {
+              expectIdsEqual(results, [7]);
+            });
+        });
 
-          it('should find results for string in array "string in jsonArray[3]"', () => {
-            return BoundModel.query()
-              .whereJsonHasAny('jsonArray', 'string in jsonArray[3]')
-              .then((results) => {
-                expectIdsEqual(results, [1]);
-              });
-          });
+        it('should find results for hasAll(notMe) orHasAll([a, b])', () => {
+          return BoundModel.query()
+            .whereJsonHasAll('jsonObject', 'notMe')
+            .orWhereJsonHasAll('jsonObject', ['a', 'b'])
+            .then((results) => {
+              expectIdsEqual(results, [7]);
+            });
+        });
 
-          it('should work with range', () => {
-            return BoundModel.query()
-              .range(0, 1)
-              .whereJsonHasAny('jsonObject:b', '2')
-              .then((result) => {
-                expect(result.results).toHaveLength(1);
-                expect(result.total).toBe(1);
-                expect(result.results[0].id).toBe(7);
-              });
-          });
-        },
-      );
+        it('should find results for string in array "string in jsonArray[3]"', () => {
+          return BoundModel.query()
+            .whereJsonHasAny('jsonArray', 'string in jsonArray[3]')
+            .then((results) => {
+              expectIdsEqual(results, [1]);
+            });
+        });
+
+        it('should work with range', () => {
+          return BoundModel.query()
+            .range(0, 1)
+            .whereJsonHasAny('jsonObject:b', '2')
+            .then((result) => {
+              expect(result.results).toHaveLength(1);
+              expect(result.total).toBe(1);
+              expect(result.results[0].id).toBe(7);
+            });
+        });
+      });
 
       describe('.where(fieldExpr, operator, value)', () => {
         it('should cast json null to NULL', async () => {
