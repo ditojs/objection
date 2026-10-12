@@ -2670,7 +2670,7 @@ describe('QueryBuilder', () => {
       `select "Model".* from "Model" where CAST("content"#>>'{""}' AS text) = 'x'`,
     );
     expect(toSql(TestModel.query().patch({ 'content:[""]': 1 }))).to.equal(
-      `update "Model" set "content" = jsonb_set("content", '{""}', '1', true)`,
+      `update "Model" set "content" = jsonb_set("Model"."content", '{""}', '1', true)`,
     );
   });
 
@@ -2708,7 +2708,7 @@ describe('QueryBuilder', () => {
       'jsonCol',
     );
     expect(toSql(TestModel.query().patch({ 'content:a': 1, 'content:b': 2 }))).to.equal(
-      `update "Model" set "content" = jsonb_set(jsonb_set("content", '{a}', '1', true), '{b}', '2', true)`,
+      `update "Model" set "content" = jsonb_set(jsonb_set("Model"."content", '{a}', '1', true), '{b}', '2', true)`,
     );
   });
 
@@ -2938,7 +2938,7 @@ describe('QueryBuilder', () => {
         `select "Model".* from "Model" where "content"#>'{a?b}' ?| array['c?']`,
       );
       expect(toSql(TestModel.query().patch({ "content:x') or 1=1 --": 1 }))).to.equal(
-        `update "Model" set "content" = jsonb_set("content", '{"x'') or 1=1 --"}', '1', true)`,
+        `update "Model" set "content" = jsonb_set("Model"."content", '{"x'') or 1=1 --"}', '1', true)`,
       );
     });
 
@@ -3001,7 +3001,7 @@ describe('QueryBuilder', () => {
         `select "model".* from "model" where "${col}" ?& array['a','b']`,
       );
       expect(toSql(Model.query(knex).patch({ 'jsonCol:[0][innerKey]': 1, otherCol: 2 }))).to.equal(
-        `update "model" set "json_col" = jsonb_set("json_col", '${patchPath}', '1', true), "other_col" = 2`,
+        `update "model" set "json_col" = jsonb_set("model"."json_col", '${patchPath}', '1', true), "other_col" = 2`,
       );
       expect(toSql(Model.query(knex).patch({ jsonCol: { innerKey: 1 } }))).to.equal(
         `update "model" set "json_col" = '{"innerKey":1}'`,

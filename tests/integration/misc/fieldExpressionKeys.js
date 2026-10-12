@@ -2,7 +2,7 @@ const { Model, snakeCaseMappers, raw, ref } = require('../../../');
 const { expect } = require('chai');
 
 module.exports = (session) => {
-  describe('keys with a colon in patch() and update() data', () => {
+  describe('keys with a colon in patch(), update() and merge() data', () => {
     let knex = session.knex;
     let Item;
 
@@ -16,6 +16,7 @@ module.exports = (session) => {
 
           if (session.isPostgres()) {
             table.jsonb('meta');
+            table.jsonb('extra_meta');
           }
         });
     });
@@ -56,7 +57,9 @@ module.exports = (session) => {
       await knex('field_expression_keys').insert({
         id: 1,
         'ns:name': 'a',
-        ...(session.isPostgres() ? { meta: JSON.stringify({ size: 1 }) } : {}),
+        ...(session.isPostgres()
+          ? { meta: JSON.stringify({ size: 1 }), extra_meta: JSON.stringify({ size: 1 }) }
+          : {}),
       });
     });
 
@@ -163,6 +166,37 @@ module.exports = (session) => {
         const item = await Item.query().findById(1);
         expect(item['ns:name']).to.equal('g');
         expect(item.meta).to.eql({ size: 1, color: 'red' });
+      });
+
+      it('merge() should write an undeclared key with a colon to the json path', async () => {
+        await Item.query().insert({ id: 1 }).onConflict('id').merge({ 'meta:color': 'red' });
+        const item = await Item.query().findById(1);
+        expect(item.meta).to.eql({ size: 1, color: 'red' });
+      });
+
+      it('merge() should write a key with a colon to the json path of an aliased table', async () => {
+        await Item.query()
+          .alias('i')
+          .insert({ id: 1 })
+          .onConflict('id')
+          .merge({ 'meta:color': 'red', 'meta:size': 2 });
+        const item = await Item.query().findById(1);
+        expect(item.meta).to.eql({ size: 2, color: 'red' });
+      });
+
+      it('merge() should write a key with a colon mapped by snakeCaseMappers to the json path', async () => {
+        class SnakeCaseItem extends Item {
+          static get columnNameMappers() {
+            return snakeCaseMappers();
+          }
+        }
+
+        await SnakeCaseItem.query()
+          .insert({ id: 1 })
+          .onConflict('id')
+          .merge({ 'extraMeta:color': 'red' });
+        const row = await knex('field_expression_keys').where('id', 1).first();
+        expect(row.extra_meta).to.eql({ size: 1, color: 'red' });
       });
 
       it('patch() should not parse the keys of models without a schema as database json', async () => {
