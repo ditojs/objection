@@ -17,6 +17,7 @@ module.exports = (session) => {
     let Person;
     let Reading;
     let Item;
+    let Folder;
 
     before(() => {
       return knex.schema
@@ -28,6 +29,8 @@ module.exports = (session) => {
         .dropTableIfExists('relation_keys_items_labels')
         .dropTableIfExists('relation_keys_labels')
         .dropTableIfExists('relation_keys_items')
+        .dropTableIfExists('relation_keys_files')
+        .dropTableIfExists('relation_keys_folders')
         .createTable('relation_keys_persons', (table) => {
           table.binary('id', 16).primary();
           table.string('name');
@@ -69,6 +72,15 @@ module.exports = (session) => {
           table.string('a');
           table.string('b');
           table.integer('labelId');
+        })
+        .createTable('relation_keys_folders', (table) => {
+          table.string('id').primary();
+          table.string('name');
+        })
+        .createTable('relation_keys_files', (table) => {
+          table.integer('id').primary();
+          table.string('folderId');
+          table.string('name');
         });
     });
 
@@ -81,7 +93,9 @@ module.exports = (session) => {
         .dropTableIfExists('relation_keys_parts')
         .dropTableIfExists('relation_keys_items_labels')
         .dropTableIfExists('relation_keys_labels')
-        .dropTableIfExists('relation_keys_items');
+        .dropTableIfExists('relation_keys_items')
+        .dropTableIfExists('relation_keys_files')
+        .dropTableIfExists('relation_keys_folders');
     });
 
     before(() => {
@@ -186,9 +200,35 @@ module.exports = (session) => {
         }
       };
 
+      class File extends Model {
+        static get tableName() {
+          return 'relation_keys_files';
+        }
+      }
+
+      Folder = class Folder extends Model {
+        static get tableName() {
+          return 'relation_keys_folders';
+        }
+
+        static get relationMappings() {
+          return {
+            files: {
+              relation: Model.HasManyRelation,
+              modelClass: File,
+              join: {
+                from: 'relation_keys_folders.id',
+                to: 'relation_keys_files.folderId',
+              },
+            },
+          };
+        }
+      };
+
       Person.knex(knex);
       Reading.knex(knex);
       Item.knex(knex);
+      Folder.knex(knex);
     });
 
     before(async () => {
@@ -225,6 +265,13 @@ module.exports = (session) => {
         { a: 'a,b', b: 'c', labelId: 1 },
         { a: 'a', b: 'b,c', labelId: 2 },
       ]);
+      // Folder ids that look like the key paths of file 1:
+      await knex('relation_keys_folders').insert([
+        { id: 'a', name: 'folder1' },
+        { id: 'a/files/k_1', name: 'folder2' },
+        { id: 'a.files.k_1', name: 'folder3' },
+      ]);
+      await knex('relation_keys_files').insert([{ id: 1, folderId: 'a', name: 'file1' }]);
     });
 
     for (const method of ['withGraphJoined', 'withGraphFetched']) {
@@ -268,8 +315,31 @@ module.exports = (session) => {
             [2, ['part2'], ['label2']],
           ]);
         });
+
+        it('string ids with separators', async () => {
+          const folders = await Folder.query()[method]('files');
+          const ids = folders.map(({ id, files }) => [id, files.map(({ id }) => id)]);
+
+          expect(ids.sort()).to.eql([
+            ['a', [1]],
+            ['a.files.k_1', []],
+            ['a/files/k_1', []],
+          ]);
+        });
       });
     }
+
+    it('upsertGraph() with string ids with separators', async () => {
+      await Folder.query().upsertGraph([
+        { id: 'a', files: [{ id: 1 }] },
+        { id: 'a.files.k_1', name: 'changed' },
+      ]);
+
+      expect(await knex('relation_keys_folders').where('id', 'a.files.k_1')).to.eql([
+        { id: 'a.files.k_1', name: 'changed' },
+      ]);
+      expect(await knex('relation_keys_files')).to.eql([{ id: 1, folderId: 'a', name: 'file1' }]);
+    });
 
     it('fetchGraph() with dates in composite ids', async () => {
       // SQLite returns the dates of the related rows as numbers:
