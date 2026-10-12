@@ -22,6 +22,8 @@ export {};
 declare const relationKind: unique symbol;
 // Phantom brand of `Generated` properties.
 declare const generated: unique symbol;
+// Phantom brand of the rows narrowed by `select()`, holding their SQL aliases.
+declare const selected: unique symbol;
 
 export const raw: RawFunction;
 export const val: ValueFunction;
@@ -392,12 +394,31 @@ export type WithGraphTreeQueryBuilder<QB extends AnyQueryBuilder, T> = [keyof T]
       ? QB
       : [FetchedRelations<ModelType<QB>, T>] extends [never]
         ? QB
-        : WithResultKind<QB, WithGraph<ModelType<QB>, T>['QueryBuilderType']>
+        : WithResultKind<
+            QB,
+            WithGraph<ModelType<QB>, T>['QueryBuilderType'],
+            ModelType<QB>,
+            ResultType<QB>,
+            T
+          >
     : never;
 
 /**
+ * Narrows the rows in the result R by the relation tree T, after `select()`
+ * narrowed them in strict mode.
+ */
+type WithGraphResult<R, T> = R extends readonly (infer I)[]
+  ? WithGraph<I, T>[]
+  : R extends Page<infer I>
+    ? Page<WithGraph<I, T>>
+    : R extends object
+      ? WithGraph<R, T>
+      : R;
+
+/**
  * Converts the query builder NQB to the same result kind as QB:
- * array, page, single or maybe-single. Any other result type, e.g. after
+ * array, page, single or maybe-single. Rows that `select()` narrowed in
+ * strict mode get the relations of tree T. Any other result type, e.g. after
  * `castTo()` or `patch()`, falls back to QB, without narrowing.
  * QB's model type M and result type R are separate parameters so that QB
  * only appears in the result, and TypeScript can relate the kinds of two
@@ -410,6 +431,7 @@ export type WithResultKind<
   NQB extends AnyQueryBuilder,
   M extends Model = ModelType<QB>,
   R = ResultType<QB>,
+  T = {},
 > = [R] extends [M[]]
   ? ArrayQueryBuilder<NQB>
   : [R] extends [Page<M>]
@@ -419,8 +441,24 @@ export type WithResultKind<
         ? SingleQueryBuilder<NQB>
         : [R] extends [M | undefined]
           ? MaybeSingleQueryBuilder<NQB>
-          : QB
+          : Rebind<QB, M, WithGraphResult<R, T>>
       : QB;
+
+/**
+ * The item of the result R of a query for model M, which `first()`,
+ * `findById()`, `page()` and the other result kinds keep: in strict mode, the
+ * item of an array or a page, or the single result, e.g. the rows narrowed by
+ * `select()`. M in loose mode, and for other results, e.g. numbers.
+ */
+type ResultItem<R, M> = IfStrict<M, 0 extends 1 & R ? M : ItemOf<Exclude<R, undefined>, M>>;
+
+type ItemOf<R, M> = R extends readonly (infer I)[]
+  ? I
+  : R extends Page<infer I>
+    ? I
+    : R extends object
+      ? R
+      : M;
 
 /**
  * If T is an array, returns the item type, otherwise returns T.
@@ -882,6 +920,15 @@ type RefArg<QB extends AnyQueryBuilder> = IfStrict<
 >;
 
 /**
+ * The columns of `orderBy()`, which also takes the aliases of the selections.
+ * `groupBy()` and `having()` don't: not all databases resolve them there.
+ */
+type StrictOutputColumn<QB extends AnyQueryBuilder, C extends string> = IfStrict<
+  never,
+  C extends OutputColumn<QB> ? C : CheckedColumn<ModelType<QB>, C>
+>;
+
+/**
  * Checks the columns C of a column list. Raw and `ref()` are passed through.
  */
 type StrictColumns<M, C extends readonly unknown[]> = IfStrict<
@@ -939,9 +986,11 @@ type StrictSelections<M, C extends readonly unknown[]> = IfStrict<
       ? CheckedSelection<M, C[I]>
       : C[I] extends number | Raw | ReferenceBuilder | AnyQueryBuilder
         ? C[I]
-        : C[I] extends object
-          ? StrictSelectionObject<M, C[I]>
-          : never;
+        : C[I] extends Function
+          ? CallbackVoid<AnyQueryBuilder>
+          : C[I] extends object
+            ? StrictSelectionObject<M, C[I]>
+            : never;
   }
 >;
 
@@ -954,6 +1003,170 @@ type StrictSelectionObject<M, O> = {
         ? O[K]
         : never;
 };
+
+/**
+ * The query builder QB with its result rows narrowed to the properties P in
+ * strict mode, next to the model's methods and relations, as after `select()`
+ * and the aggregates, marked as Selected. Repeated selections add up. Queries
+ * that aren't checked, e.g. in generic code, aren't narrowed.
+ */
+type NarrowRows<QB extends AnyQueryBuilder, P, All extends boolean = false> = IfStrict<
+  QB,
+  IsConcreteModel<ModelType<QB>> extends true
+    ? Rebind<
+        QB,
+        ModelType<QB>,
+        SelectResult<
+          ResultType<QB>,
+          SelectBase<ResultItem<ResultType<QB>, ModelType<QB>>, ModelType<QB>, All> &
+            P &
+            Selected<{}>
+        >
+      >
+    : QB
+>;
+
+/**
+ * The query builder QB after selecting C. Selections of all columns keep the
+ * columns in the rows.
+ */
+type SelectQueryBuilder<QB extends AnyQueryBuilder, C extends readonly unknown[]> = NarrowRows<
+  QB,
+  SelectedRow<ModelType<QB>, C>,
+  true extends SelectsAll<C[number]> ? true : false
+>;
+
+/**
+ * The query builder QB after the aggregation C. The values of `count()`,
+ * `sum()` and `avg()` are numbers, but some drivers return them as strings,
+ * e.g. Postgres for bigint and numeric. The ones of `min()` and `max()` have
+ * the column's type.
+ */
+type AggregateQueryBuilder<
+  QB extends AnyQueryBuilder,
+  C,
+  V extends AggregateValue,
+  A extends string = never,
+> = NarrowRows<
+  QB,
+  [A] extends [never]
+    ? AggregatedProperties<ModelType<QB>, C, V>
+    : { [K in ResultKey<ModelType<QB>, A>]: number | string } & Selected<{ [K in A]: true }>
+>;
+
+type AggregateValue = 'number' | 'column';
+
+type AggregatedProperties<M, C, V extends AggregateValue> = C extends `${infer Col} ${
+  'as' | 'AS'} ${infer A}`
+  ? { [K in ResultKey<M, A>]: AggregateType<M, Col, V> } & Selected<{ [K in A]: true }>
+  : C extends string
+    ? UnknownSelection
+    : C extends readonly unknown[]
+      ? AggregatedList<M, C, V>
+      : {
+          [K in keyof C & string as ResultKey<M, K>]: C[K] extends string
+            ? AggregateType<M, C[K], V>
+            : unknown;
+        } & Selected<{ [K in keyof C & string]: true }>;
+
+type AggregatedList<
+  M,
+  C extends readonly unknown[],
+  V extends AggregateValue,
+> = C extends readonly [infer X, ...infer Rest]
+  ? AggregatedProperties<M, X, V> & AggregatedList<M, Rest, V>
+  : {};
+
+type AggregateType<M, Col extends string, V extends AggregateValue> = V extends 'number'
+  ? number | string
+  : SelectedType<M, Col>;
+
+/**
+ * The rows narrowed by `select()` carry the SQL aliases A of their selections,
+ * which `orderBy()` takes, see OutputColumn.
+ */
+type Selected<A> = { readonly [selected]: A };
+
+/**
+ * The base of the rows of a selection: the model without its columns for the
+ * first one, the rows selected so far for further ones, and the model's
+ * columns too when selecting all of them.
+ */
+type SelectBase<Item, M, All extends boolean> = All extends true
+  ? M & Item
+  : Item extends Selected<unknown>
+    ? Item
+    : Omit<Item, ColumnName<M>>;
+
+// Selections that can't be resolved, e.g. raw ones, add any properties of
+// unknown types, under any aliases.
+type UnknownSelection = { [key: string]: unknown } & Selected<{ [key: string]: true }>;
+
+type SelectsAll<X> = X extends '*' | `${string}.*` ? true : false;
+
+/**
+ * Replaces the item of the result R with the row.
+ */
+type SelectResult<R, Row> = R extends readonly unknown[]
+  ? Row[]
+  : R extends Page<unknown>
+    ? Page<Row>
+    : R extends undefined
+      ? undefined
+      : R extends object
+        ? Row
+        : R;
+
+/**
+ * The properties of the rows of the selections C.
+ */
+type SelectedRow<M, C extends readonly unknown[]> = C extends readonly [infer X, ...infer Rest]
+  ? SelectedProperties<M, X> & SelectedRow<M, Rest>
+  : {};
+
+type SelectedProperties<M, X> = X extends '*' | `${string}.*`
+  ? {}
+  : X extends `${infer Col} ${'as' | 'AS'} ${infer A}`
+    ? { [K in ResultKey<M, A>]: SelectedType<M, Col> } & Selected<{ [K in A]: true }>
+    : X extends string
+      ? { [K in ResultKey<M, X extends `${string}.${infer Col}` ? Col : X>]: SelectedType<M, X> }
+      : X extends Raw | ReferenceBuilder | AnyQueryBuilder | Function | number
+        ? UnknownSelection
+        : {
+            [K in keyof X & string as ResultKey<M, K>]: X[K] extends string
+              ? SelectedType<M, X[K]>
+              : unknown;
+          } & Selected<{ [K in keyof X & string]: true }>;
+
+// Columns qualified with a name that isn't a relation path, usually the
+// table name, are looked up in the model.
+type SelectedType<M, C extends string> = C extends `${infer Q}.${infer Col}`
+  ? [RelationPathModel<M, Q>] extends [never]
+    ? PropertyType<M, Col>
+    : ColumnType<M, C>
+  : ColumnType<M, C>;
+
+/**
+ * The property of the column or alias C in the result rows: `snakeCaseMappers()`
+ * converts them to camel case, with `upperCase: true` after lowering the case
+ * of names in upper case.
+ */
+type ResultKey<M, C extends string> = M extends { ColumnNameMapping: 'snakeCase' }
+  ? CamelCase<C>
+  : M extends { ColumnNameMapping: 'upperSnakeCase' }
+    ? CamelCase<C extends Uppercase<C> ? Lowercase<C> : C>
+    : C;
+
+type CamelCase<S extends string> = S extends `${infer H}_${infer T}`
+  ? `${H}${CamelCase<Capitalize<T>>}`
+  : S;
+
+/**
+ * The SQL aliases of the selections of QB, which `orderBy()` takes next to the
+ * columns.
+ */
+type OutputColumn<QB extends AnyQueryBuilder> =
+  ResultItem<ResultType<QB>, ModelType<QB>> extends Selected<infer A> ? keyof A & string : never;
 
 /**
  * Checks the keys of a where object as columns, and their values.
@@ -1012,18 +1225,18 @@ export interface SelectMethod<out QB extends AnyQueryBuilder> {
   <QBP extends QB>(...columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
   <QBP extends QB>(columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
 
-  <QBP extends QB>(...columns: IfStrict<Selection<QBP>, Exclude<Selection<QBP>, string>>[]): QB;
-  <QBP extends QB>(columns: IfStrict<Selection<QBP>, Exclude<Selection<QBP>, string>>[]): QB;
+  <QBP extends QB>(...columns: IfStrict<Selection<QBP>, never>[]): QB;
+  <QBP extends QB>(columns: IfStrict<Selection<QBP>, never>[]): QB;
 
   // Allows things like `select(1)`, not sure if we should be more specific here?
   <QBP extends QB>(...args: IfStrict<any, never>[]): QB;
 
   <QBP extends QB, const C extends readonly unknown[] = []>(
     ...columns: StrictSelections<ModelType<QBP>, C>
-  ): QB;
+  ): SelectQueryBuilder<QBP, C>;
   <QBP extends QB, const C extends readonly unknown[] = []>(
     columns: StrictSelections<ModelType<QBP>, C>,
-  ): QB;
+  ): SelectQueryBuilder<QBP, C>;
 }
 
 export interface AsMethod<out QB extends AnyQueryBuilder> {
@@ -1386,31 +1599,34 @@ export interface IncrementDecrementMethod<out QB extends AnyQueryBuilder> {
   ): QB;
 }
 
-export interface AggregateMethod<out QB extends AnyQueryBuilder> {
+export interface AggregateMethod<
+  out QB extends AnyQueryBuilder,
+  V extends AggregateValue = 'column',
+> {
   (column: RefArg<QB>): QB;
   (aliasToColumnDict: IfStrict<{ [alias: string]: ColumnRef }, never>): QB;
   <QBP extends QB, const C extends string = never>(
     column: StrictAggregation<ModelType<QBP>, C>,
-  ): QB;
+  ): AggregateQueryBuilder<QBP, C, V>;
   <QBP extends QB, const O extends object = {}>(
     aliasToColumnDict: O & IfStrict<never, StrictSelectionObject<ModelType<QBP>, O>>,
-  ): QB;
+  ): AggregateQueryBuilder<QBP, O, V>;
 }
 
 export interface CountMethod<out QB extends AnyQueryBuilder> {
-  (column?: RefArg<QB>, options?: { as: string }): QB;
+  (column?: RefArg<QB>, options?: { as: string }): AggregateQueryBuilder<QB, string, 'number'>;
   (aliasToColumnDict: IfStrict<{ [alias: string]: string | string[] }, never>): QB;
-  (...columns: RefArg<QB>[]): QB;
-  <QBP extends QB, const C extends string = never>(
+  (...columns: RefArg<QB>[]): AggregateQueryBuilder<QB, string, 'number'>;
+  <QBP extends QB, const C extends string = never, const A extends string = never>(
     column: StrictAggregation<ModelType<QBP>, C>,
-    options?: { as: string },
-  ): QB;
+    options?: { as: A },
+  ): AggregateQueryBuilder<QBP, C, 'number', A>;
   <QBP extends QB, const O extends object = {}>(
     aliasToColumnDict: O & IfStrict<never, StrictSelectionObject<ModelType<QBP>, O>>,
-  ): QB;
+  ): AggregateQueryBuilder<QBP, O, 'number'>;
   <QBP extends QB, const C extends readonly unknown[] = []>(
     ...columns: StrictSelections<ModelType<QBP>, C>
-  ): QB;
+  ): AggregateQueryBuilder<QBP, C, 'number'>;
 }
 
 /**
@@ -1437,13 +1653,13 @@ export interface OrderByDescriptor {
 
 export type ColumnRefOrOrderByDescriptor = ColumnRef | OrderByDescriptor;
 
-type StrictOrderBy<M, C extends readonly unknown[]> = IfStrict<
+type StrictOrderBy<QB extends AnyQueryBuilder, C extends readonly unknown[]> = IfStrict<
   never,
   {
     [I in keyof C]: C[I] extends string
-      ? StrictColumn<M, C[I]>
+      ? StrictOutputColumn<QB, C[I]>
       : C[I] extends { column: infer D extends string }
-        ? Omit<OrderByDescriptor, 'column'> & { column: StrictColumn<M, D> }
+        ? Omit<OrderByDescriptor, 'column'> & { column: StrictOutputColumn<QB, D> }
         : C[I] extends Raw | ReferenceBuilder | OrderByDescriptor
           ? C[I]
           : never;
@@ -1454,13 +1670,11 @@ export interface OrderByMethod<out QB extends AnyQueryBuilder> {
   (column: RefArg<QB>, order?: OrderByDirection, nulls?: OrderByNulls): QB;
   (columns: IfStrict<ColumnRefOrOrderByDescriptor[], never>): QB;
   <QBP extends QB, const C extends string = never>(
-    column: StrictColumn<ModelType<QBP>, C>,
+    column: StrictOutputColumn<QBP, C>,
     order?: OrderByDirection,
     nulls?: OrderByNulls,
   ): QB;
-  <QBP extends QB, const C extends readonly unknown[] = []>(
-    columns: StrictOrderBy<ModelType<QBP>, C>,
-  ): QB;
+  <QBP extends QB, const C extends readonly unknown[] = []>(columns: StrictOrderBy<QBP, C>): QB;
 }
 
 export interface OrderByRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
@@ -1556,7 +1770,7 @@ export interface TimeoutMethod<out QB extends AnyQueryBuilder> {
   (ms: number, options?: TimeoutOptions): QB;
 }
 
-export interface Page<M extends Model> {
+export interface Page<M> {
   total: number;
   results: M[];
 }
@@ -1889,10 +2103,10 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   countDistinct: CountMethod<this>;
   min: AggregateMethod<this>;
   max: AggregateMethod<this>;
-  sum: AggregateMethod<this>;
-  sumDistinct: AggregateMethod<this>;
-  avg: AggregateMethod<this>;
-  avgDistinct: AggregateMethod<this>;
+  sum: AggregateMethod<this, 'number'>;
+  sumDistinct: AggregateMethod<this, 'number'>;
+  avg: AggregateMethod<this, 'number'>;
+  avgDistinct: AggregateMethod<this, 'number'>;
   increment: IncrementDecrementMethod<this>;
   decrement: IncrementDecrementMethod<this>;
   first: FirstMethod;
@@ -1969,15 +2183,11 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   // With the class's own R, the result kind also resolves where `this` is
   // generic, e.g. in the methods of custom query builders. For `any` results
-  // it's either kind, which query builders with a generic R are assignable to,
-  // e.g. to AnyQueryBuilder.
+  // it's `any`, so that query builders with other results stay assignable to
+  // AnyQueryBuilder and back.
   returning(
     ...args: ReturningArgs
-  ): 0 extends 1 & R
-    ? this | ArrayQueryBuilder<this>
-    : [R] extends [number]
-      ? ArrayQueryBuilder<this>
-      : this;
+  ): 0 extends 1 & R ? any : [R] extends [number] ? ArrayQueryBuilder<this> : this;
   forUpdate: IdentityMethod<this>;
   forShare: IdentityMethod<this>;
   forNoKeyUpdate: IdentityMethod<this>;
@@ -2081,11 +2291,11 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   // `SingleQueryBuilder`. As members, they also resolve where `this` is
   // generic, e.g. in the methods of custom query builders. Of the members
   // starting with `~`, only `~M` and `~R` are API, for `RebindType`.
-  '~single': Rebind<this, M, M>;
-  '~maybeSingle': Rebind<this, M, M | undefined>;
-  '~array': Rebind<this, M, M[]>;
+  '~single': Rebind<this, M, ResultItem<R, M>>;
+  '~maybeSingle': Rebind<this, M, ResultItem<R, M> | undefined>;
+  '~array': Rebind<this, M, ResultItem<R, M>[]>;
   '~number': Rebind<this, M, number>;
-  '~page': Rebind<this, M, Page<M>>;
+  '~page': Rebind<this, M, Page<ResultItem<R, M>>>;
 
   then<R1 = R, R2 = never>(
     onfulfilled?: ((value: R) => R1 | PromiseLike<R1>) | undefined | null,

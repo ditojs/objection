@@ -323,12 +323,29 @@ await Person.query().where('age', 'thirty'); // Error: age is a number
 
 `where()`, `select()`, `orderBy()`, `groupBy()`, `having()`, the aggregates, `whereIn()` and the other column methods are checked this way, and so are the names of relations in relation expressions, e.g. in `withGraphFetched()` and `joinRelated()`. Values are checked against the property types: `null` is accepted for any column, and dates also take strings.
 
-Qualifiers that aren't relation paths, like table names and aliases, are passed through unchecked: `persons.firstName`, or `p.name` after `joinRelated('pets as p')`. Column names that aren't literals, columns of other queries, and aliases of selections are referenced with `ref()`, or passed as `raw()`:
+Qualifiers that aren't relation paths, like table names and aliases, are passed through unchecked: `persons.firstName`, or `p.name` after `joinRelated('pets as p')`. Column names that aren't literals, columns of other queries, and aliases of selections outside of `orderBy()` are referenced with `ref()`, or passed as `raw()`:
 
 ```ts
 await Person.query().orderBy(ref(sortColumn));
 await Animal.query().whereColumn('animals.ownerId', ref('persons.id'));
 ```
+
+`select()` and the aggregates narrow the rows of the result to the selected columns, next to the model's methods and relations. Aliases take the type of their column, `count()`, `sum()` and `avg()` give numbers, but some drivers return them as strings, e.g. Postgres for bigint and numeric, and raw and subquery selections add properties of unknown type. `orderBy()` takes the aliases of the selections next to the columns:
+
+```ts
+const people = await Person.query()
+  .select('persons.id', 'firstName as name')
+  .count('pets.id as petCount')
+  .joinRelated('pets')
+  .groupBy('persons.id', 'firstName')
+  .orderBy('petCount', 'desc');
+
+people[0].name; // string
+people[0].petCount; // number | string
+people[0].lastName; // Error: not selected
+```
+
+`select('*')` and `select('persons.*')` keep all columns, `first()`, `findById()`, `page()` and `withGraphFetched()` keep the narrowed rows, and repeated selections add up.
 
 Models that map their columns with `snakeCaseMappers()` declare it, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html). Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
 

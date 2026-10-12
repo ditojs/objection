@@ -1,4 +1,4 @@
-import { raw, ref, fn, Transaction, Page } from 'objection';
+import { raw, fn, Transaction, Page } from 'objection';
 import { Project, Milestone, Task, Tag, Organization, User } from './models.js';
 import { AppQueryBuilder } from './base.js';
 
@@ -107,7 +107,7 @@ export async function projectsTaskCounts(orgId: number) {
   return Project.query()
     .where('organizationId', orgId)
     .select('projects.id', 'projects.name', Project.relatedQuery('tasks').count().as('taskCount'))
-    .orderBy(ref('taskCount'), 'desc');
+    .orderBy('taskCount', 'desc');
 }
 
 export async function budgetTotals() {
@@ -115,7 +115,7 @@ export async function budgetTotals() {
     .select('organizationId')
     .sum('budget as total')
     .groupBy('organizationId')
-    .orderBy(ref('total'), 'desc');
+    .orderBy('total', 'desc');
 }
 
 export async function copyProject(id: number, trx: Transaction) {
