@@ -33,6 +33,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: Queries are checked against the models](#typescript-queries-are-checked-against-the-models)
 - [typescript: $relatedQuery() of to-one relations may resolve to undefined](#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined)
 - [typescript: toJSON() returns ModelJson](#typescript-tojson-returns-modeljson)
+- [typescript: relate().returning() rows are plain objects](#typescript-relate-returning-rows-are-plain-objects)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -354,6 +355,15 @@ function send(person: ModelJson<Person>) {
 }
 
 send(person.toJSON());
+```
+
+## typescript: relate().returning() rows are plain objects
+
+The rows of `relate().returning()` are typed `Pojo[]` instead of `any[]`: depending on the relation, they are the join rows, the related rows or the owner rows, but not models of the query. Cast them to the rows you expect:
+
+```ts
+const rows = await person.$relatedQuery('movies').relate(50).returning('*');
+const joinRows = rows as { personId: number; movieId: number }[];
 ```
 
 ## `insert` and `update` reject field expression keys

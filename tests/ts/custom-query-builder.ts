@@ -4,6 +4,7 @@ import {
   ModelConstructor,
   NumberQueryBuilder,
   PartialModelRow,
+  Pojo,
   QueryBuilder,
   RelateQueryBuilder,
   RelationExpression,
@@ -153,7 +154,7 @@ const numRelatedPets: CustomQueryBuilder<Animal, number> = Person.relatedQuery('
   .for(1)
   .relate(2)
   .someCustomMethod();
-const relatedPetRows: PromiseLike<any[]> = Person.relatedQuery('pets')
+const relatedPetRows: PromiseLike<Pojo[]> = Person.relatedQuery('pets')
   .for(1)
   .relate(2)
   .someCustomMethod()
@@ -179,7 +180,7 @@ function resultTypes() {
     Equal<typeof relate, RelateQueryBuilder<CustomQueryBuilder<Animal, number>>>
   >;
   const relateReturning = Person.relatedQuery('pets').for(1).relate(2).debug().returning('*');
-  type _relateReturning = Expect<Equal<typeof relateReturning, QueryBuilder<Animal, any[]>>>;
+  type _relateReturning = Expect<Equal<typeof relateReturning, QueryBuilder<Animal, Pojo[]>>>;
   const first = Person.query().someCustomMethod().first();
   type _first = Expect<Equal<typeof first, CustomQueryBuilder<Person, Person | undefined>>>;
   const insertGraph = Person.query().insertGraph({ firstName: 'Jennifer' });

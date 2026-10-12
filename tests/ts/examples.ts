@@ -845,7 +845,7 @@ const rowsPatchReturningColumns: PromiseLike<Person[]> = Person.query()
 // which can be join rows, related rows or owner rows, depending on the relation.
 const numRelated: PromiseLike<number> = Person.relatedQuery('pets').for(1).relate(2);
 
-const rowsRelateReturning: PromiseLike<Animal[]> = Person.relatedQuery('pets')
+const rowsRelateReturning: PromiseLike<objection.Pojo[]> = Person.relatedQuery('pets')
   .for(1)
   .relate(2)
   .returning('*');
