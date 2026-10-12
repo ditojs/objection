@@ -1963,7 +1963,7 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
 
   tableName: string;
   idColumn: null | string | string[] | readonly string[];
-  jsonSchema: JSONSchema;
+  jsonSchema: ReadonlyJSONSchema;
   relationMappings: RelationMappings | RelationMappingsThunk;
   modelPaths: string[];
   jsonAttributes: string[] | readonly string[];
@@ -2075,7 +2075,7 @@ export class Model {
 
   static tableName: string;
   static idColumn: null | string | string[] | readonly string[];
-  static jsonSchema: JSONSchema;
+  static jsonSchema: ReadonlyJSONSchema;
   static relationMappings: RelationMappings | RelationMappingsThunk;
   static modelPaths: string[];
   static jsonAttributes: string[] | readonly string[];
@@ -2361,6 +2361,118 @@ export interface initialize {
   (knex: Knex, modelClasses: AnyModelConstructor[]): Promise<void>;
   (modelClasses: AnyModelConstructor[]): Promise<void>;
 }
+
+/**
+ * The type of the values that a JSON schema declared with `as const`
+ * describes, e.g. the properties of a model from its `jsonSchema`:
+ *
+ *   class Person extends Model {
+ *     static jsonSchema = {
+ *       type: 'object',
+ *       required: ['firstName'],
+ *       properties: {
+ *         id: { type: 'integer' },
+ *         firstName: { type: 'string' },
+ *         age: { type: ['integer', 'null'] },
+ *       },
+ *     } as const;
+ *
+ *     pets?: Animal[];
+ *   }
+ *
+ *   interface Person extends FromSchema<typeof Person.jsonSchema> {}
+ *
+ * Supports `type` (also as an array), `required`, `nullable`, `enum`,
+ * `const`, `items` (also as a tuple), nested `properties`, `anyOf` and
+ * `oneOf`. Formats like 'date-time' stay strings, as in JSON. Properties
+ * that aren't required are optional. Next to `type` or `properties`, `anyOf`
+ * and `oneOf` only add constraints, e.g. alternative `required` lists, and
+ * don't change the type.
+ */
+export type FromSchema<S> = S extends boolean
+  ? unknown
+  : S extends { const: infer C }
+    ? Extract<C, SchemaType<S>>
+    : S extends { enum: readonly (infer E)[] }
+      ? Extract<E, SchemaType<S>>
+      : S extends { type: unknown }
+        ? SchemaType<S>
+        : S extends { properties: object }
+          ? SchemaObject<S>
+          : S extends { anyOf: readonly (infer A)[] } | { oneOf: readonly (infer A)[] }
+            ? FromSchema<A> | SchemaNullable<S>
+            : unknown;
+
+// The type that `type` allows, which `enum` and `const` values are narrowed
+// by, as validation checks both.
+type SchemaType<S> = S extends { type: infer T }
+  ? | (T extends readonly (infer N)[] ? SchemaTypeName<N, S> : SchemaTypeName<T, S>)
+    | SchemaNullable<S>
+  : unknown;
+
+type SchemaNullable<S> = S extends { nullable: true } ? null : never;
+
+type SchemaTypeName<N, S> = N extends 'string'
+  ? string
+  : N extends 'number' | 'integer'
+    ? number
+    : N extends 'boolean'
+      ? boolean
+      : N extends 'null'
+        ? null
+        : N extends 'array'
+          ? SchemaArray<S>
+          : N extends 'object'
+            ? SchemaObject<S>
+            : unknown;
+
+type SchemaArray<S> = S extends { items: infer I }
+  ? I extends readonly unknown[]
+    ? SchemaTuple<I, S>
+    : FromSchema<I>[]
+  : unknown[];
+
+// Tuple `items` only check the items that are present: they are required
+// with a `minItems` of the tuple's length, and more items are allowed unless
+// `additionalItems` restricts them.
+type SchemaTuple<I extends readonly unknown[], S> = [
+  ...(S extends { minItems: I['length'] }
+    ? { -readonly [K in keyof I]: FromSchema<I[K]> }
+    : { -readonly [K in keyof I]?: FromSchema<I[K]> }),
+  ...(S extends { additionalItems: false }
+    ? []
+    : S extends { additionalItems: infer A }
+      ? FromSchema<A>[]
+      : unknown[]),
+];
+
+type SchemaObject<S> = S extends { properties: infer P }
+  ? [keyof P] extends [never]
+    ? { [key: string]: unknown }
+    : SchemaProperties<P, S extends { required: readonly (infer R)[] } ? R : never>
+  : { [key: string]: unknown };
+
+// The intersection is flattened into one object type for readable hovers.
+type SchemaProperties<P, R> = {
+  -readonly [K in keyof P as K extends R ? K : never]: FromSchema<P[K]>;
+} & {
+  -readonly [K in keyof P as K extends R ? never : K]?: FromSchema<P[K]>;
+} extends infer O
+  ? { [K in keyof O]: O[K] }
+  : never;
+
+/**
+ * A JSON schema with readonly arrays, the type of `static jsonSchema`, so that
+ * it takes schemas declared `as const`, for `FromSchema`. A `JSONSchema` is
+ * assignable to it.
+ */
+export type ReadonlyJSONSchema = ReadonlyDeep<JSONSchema>;
+
+type ReadonlyDeep<T> = T extends (infer I)[]
+  ? readonly ReadonlyDeep<I>[]
+  : T extends object
+    ? { readonly [K in keyof T]: ReadonlyDeep<T[K]> }
+    : T;
 
 /**
  * JSON Schema 7

@@ -197,6 +197,76 @@ class Person extends Model {
 }
 ```
 
+## Deriving model properties from the JSON schema in TypeScript
+
+If a model has a `jsonSchema`, its properties don't need to be declared twice. Declare the schema `as const` and merge `FromSchema` of it into the class with an interface of the same name:
+
+```ts
+import { FromSchema, Model } from 'objection';
+
+class Person extends Model {
+  static tableName = 'persons';
+
+  static jsonSchema = {
+    type: 'object',
+    required: ['firstName'],
+    properties: {
+      id: { type: 'integer' },
+      firstName: { type: 'string', minLength: 1 },
+      lastName: { type: ['string', 'null'] },
+      role: { enum: ['admin', 'user'] }
+    }
+  } as const;
+
+  // Relations are declared by hand.
+  pets?: Animal[];
+}
+
+interface Person extends FromSchema<typeof Person.jsonSchema> {}
+
+const person = await Person.query().findById(1).throwIfNotFound();
+person.firstName; // string
+person.lastName; // string | null | undefined
+person.role; // 'admin' | 'user' | undefined
+```
+
+`FromSchema` understands `type` (also as an array like `['string', 'null']`), `required`, `nullable`, `enum`, `const`, `items` (also as a tuple), nested `properties`, `anyOf` and `oneOf`. Properties that aren't `required` are optional, and formats like `'date-time'` stay strings, as in JSON. Without `as const`, TypeScript widens the schema and `FromSchema` can't read it.
+
+`as const` gives `static jsonSchema` the literal type of the schema, so a subclass can't replace it with a schema that requires more properties. For models that subclasses extend, declare the schema as a constant and give the static the general type `ReadonlyJSONSchema`:
+
+```ts
+import { FromSchema, Model, ReadonlyJSONSchema } from 'objection';
+
+const entrySchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'integer' }
+  }
+} as const;
+
+class Entry extends Model {
+  static jsonSchema: ReadonlyJSONSchema = entrySchema;
+}
+
+interface Entry extends FromSchema<typeof entrySchema> {}
+
+const noteSchema = {
+  type: 'object',
+  required: [...entrySchema.required, 'text'],
+  properties: {
+    ...entrySchema.properties,
+    text: { type: 'string' }
+  }
+} as const;
+
+class Note extends Entry {
+  static jsonSchema = noteSchema;
+}
+
+interface Note extends FromSchema<typeof noteSchema> {}
+```
+
 ## Checking relation mappings in TypeScript
 
 The relation properties of a model have to be declared by hand, and TypeScript doesn't check them against `relationMappings` by default. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation` or `ManyToManyRelation` for an array), and that `modelClass` matches the property's model type:
