@@ -554,6 +554,16 @@ export type PartialModelRow<M extends Model> =
   (ModelLike & { [K in InsertablePropertyNames<M>]?: M[K] }) | PartialModelProps<M>;
 
 /**
+ * The data of `patch()` and `merge()`: a row of model M, also with field
+ * expression keys like `'address:street'` that write parts of json columns.
+ */
+export type PartialModelPatch<M extends Model> =
+  | PartialModelRow<M>
+  | (PartialModelProps<M> & {
+      [K in `${InsertablePropertyNames<M> & string}:${string}`]?: unknown;
+    });
+
+/**
  * Additional optional parameters that may be used in graphs.
  */
 export type GraphParameters = {
@@ -2216,11 +2226,11 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   updateAndFetch(update: PartialModelRow<M>): SingleQueryBuilder<this>;
   updateAndFetchById(id: MaybeCompositeId, update: PartialModelRow<M>): SingleQueryBuilder<this>;
 
-  patch(update: PartialModelRow<M>): NumberQueryBuilder<this>;
+  patch(update: PartialModelPatch<M>): NumberQueryBuilder<this>;
   patch(): NumberQueryBuilder<this>;
-  patchById(id: MaybeCompositeId, update: PartialModelRow<M>): NumberQueryBuilder<this>;
-  patchAndFetch(update: PartialModelRow<M>): SingleQueryBuilder<this>;
-  patchAndFetchById(id: MaybeCompositeId, update: PartialModelRow<M>): SingleQueryBuilder<this>;
+  patchById(id: MaybeCompositeId, update: PartialModelPatch<M>): NumberQueryBuilder<this>;
+  patchAndFetch(update: PartialModelPatch<M>): SingleQueryBuilder<this>;
+  patchAndFetchById(id: MaybeCompositeId, update: PartialModelPatch<M>): SingleQueryBuilder<this>;
 
   del(): NumberQueryBuilder<this>;
   delete(): NumberQueryBuilder<this>;
@@ -2232,7 +2242,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   onConflict(column?: ColumnRef | ColumnRef[] | true): this;
   ignore(): this;
-  merge(merge?: PartialModelRow<M> | string[]): this;
+  merge(merge?: PartialModelPatch<M> | string[]): this;
 
   insertAndFetch(insert: PartialModelRow<M>): SingleQueryBuilder<this>;
   insertAndFetch(insert: PartialModelRow<M>[]): ArrayQueryBuilder<this>;
