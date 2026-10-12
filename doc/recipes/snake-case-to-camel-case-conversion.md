@@ -121,3 +121,32 @@ class Person extends Model {
 // Queries need to use the database casing.
 await Person.query().where('first_name', 'Jennifer');
 ```
+
+In TypeScript, the typings check the column names of queries against the model's properties. With `snakeCaseMappers`, declare the mapping on the model, so that queries take the snake case names of the properties, while `insert`, `patch` and the results keep the properties:
+
+```ts
+class BaseModel extends Model {
+  static columnNameMappers = snakeCaseMappers();
+  declare ColumnNameMapping: 'snakeCase';
+}
+
+class Person extends BaseModel {
+  firstName!: string;
+}
+
+await Person.query().where('first_name', 'Jennifer');
+await Person.query().patch({ firstName: 'Jennifer' });
+```
+
+`'snakeCase'` converts the names like `snakeCaseMappers()` with its default options. For `snakeCaseMappers({ upperCase: true })`, declare `'upperSnakeCase'`:
+
+```ts
+class BaseModel extends Model {
+  static columnNameMappers = snakeCaseMappers({ upperCase: true });
+  declare ColumnNameMapping: 'upperSnakeCase';
+}
+
+await Person.query().where('FIRST_NAME', 'Jennifer');
+```
+
+For mappers with other options, e.g. `underscoreBeforeDigits`, or custom mappers, declare `ColumnNameMapping: 'open'`, which doesn't check the column names of the model's queries. With `knexSnakeCaseMappers`, nothing needs to be declared, as queries use the property names.

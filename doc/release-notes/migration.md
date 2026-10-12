@@ -316,6 +316,7 @@ The typings check the column names and values of queries against the models: `wh
 - Columns of other queries, e.g. of an outer query in a subquery, and aliases of selections in `orderBy()` or `having()`: use `ref('persons.id')`.
 - Columns that the model doesn't declare as properties: declare them, or use `ref()` / `raw()`.
 - Column methods after `withGraphFetched()` / `withGraphJoined()` on a generic query builder, e.g. `this.$query().withGraphFetched('pets').where('id', this.id)` in a model method: TypeScript resolves the narrowed query builder to a union there, which only takes `ref()` / `raw()` columns, e.g. `where(ref('id'), this.id)`.
+- Models with `snakeCaseMappers()`: declare `ColumnNameMapping: 'snakeCase'` on the model, so that the snake case names in queries are checked, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html).
 
 `ModelObject`, `PartialModelObject` and the other property types leave out properties starting with `$`, which objection treats as internal, like `toJSON()` does. Properties like `$app` declared on models aren't columns either.
 
