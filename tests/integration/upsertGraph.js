@@ -992,10 +992,29 @@ export default (session) => {
           ],
         };
         return transaction(session.knex, (trx) => {
-          return Model1.query(trx).upsertGraphAndFetch(upsert, { fetchStrategy });
+          return (
+            Model1.query(trx)
+              .upsertGraphAndFetch(upsert, { fetchStrategy })
+              // Order the fetched relations like the fetch below.
+              .context({
+                onBuild(builder) {
+                  if (!builder.isFind()) {
+                    return;
+                  }
+
+                  if (builder.modelClass().getTableName() === 'Model1') {
+                    builder.orderBy('Model1.id');
+                  } else if (builder.modelClass().getTableName() === 'model2') {
+                    builder.orderBy('model2.id_col');
+                  }
+                },
+              })
+          );
         }).then((upserted) => {
           return Model1.query(session.knex)
-            .withGraphFetched('[model1Relation1, model1Relation2.model2Relation1]')
+            .withGraphFetched(
+              '[model1Relation1, model1Relation2(orderById).model2Relation1(orderById)]',
+            )
             .findById(upserted.id)
             .then((fetched) => {
               expect(upserted.$toJson()).toEqual(fetched.$toJson());
