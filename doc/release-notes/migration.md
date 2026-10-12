@@ -109,6 +109,9 @@ Relation expressions that name a relation twice at the same level, like `'[movie
 ## upsertGraph() sets the foreign key to null before deleting a BelongsToOneRelation row
 
 When `upsertGraph()` deletes the related row of a `BelongsToOneRelation` because of `pet: null` or `#delete`, it first sets the owner's foreign key to `null`, like `unrelate()`, whatever the owner's `jsonSchema` says. 3.9 only did this when the schema allowed `null` for the key, and otherwise deleted the row first and left the owner's reference to the database. Now an owner whose schema doesn't allow `null`, like `{ type: 'integer' }`, fails with a `ValidationError`, and a `NOT NULL` column fails with a database error, where `ON DELETE CASCADE` deleted the owner and `ON DELETE SET NULL` cleared the reference. Allow `null` in the schema and the column, or delete the owner itself if it can't exist without the related row.
+## upsertGraph() keeps the current to-one model for ignored models
+
+In a `HasOneRelation` or `HasOneThroughRelation`, `upsertGraph()` keeps the current model when the graph only holds a model that it ignores: a model marked with `#unrelate` or `#delete` that isn't the current one, or a replacement that `noInsert` or `noRelate` skips. The relation is left as if it wasn't in the graph, as for `BelongsToOneRelation` since 3.9. 3.x deleted or unrelated the current model. To remove the current model, mark it with its own id, like `{ pet: { id: 1, '#delete': true } }`, or pass `pet: null`. To-many relations are unchanged: an array is the full list, so `pets: [{ id: 2, '#delete': true }]` still removes the current pets.
 
 ## typescript: The typings are ES module declarations
 
