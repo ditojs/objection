@@ -3500,10 +3500,13 @@ export default (session) => {
         ]);
       });
 
-      it('should not call `afterFind` of the root class in `fetchGraph()`', async () => {
+      it('should not call the find hooks of the root class in `fetchGraph()`', async () => {
+        Person.beforeFind = createHookSpy();
+
         const person = await Person.fetchGraph(jennifer.$clone(), 'pets');
 
         expect(person.pets).toHaveLength(2);
+        expect(Person.beforeFind.calls).toHaveLength(0);
         expect(calls).toEqual([{ hook: 'pets.afterFind', result: person.pets }]);
       });
 
