@@ -58,8 +58,6 @@ Docker only runs the two database servers, PostgreSQL 17 and MySQL 8.4, as defin
 
 `pnpm db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `pnpm db:down` removes the containers together with their data, and the next `pnpm db:up` starts from scratch.
 
-CI also runs the tests on MySQL 5.7. To do that locally, add its override file: `COMPOSE_FILE=docker-compose.yml:docker-compose.mysql57.yml pnpm db:up`.
-
 CI also runs the tests on SQL Server 2022. Its image is large and runs emulated on arm64, so `pnpm db:up` doesn't start it, and `pnpm test` only runs its tests when they are requested:
 
 ```bash

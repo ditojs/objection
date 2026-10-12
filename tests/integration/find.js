@@ -1173,30 +1173,28 @@ export default (session) => {
             });
         });
 
-        if (!session.isMySql()) {
-          it('with', () => {
-            return Model1.query()
-              .with('subquery1', Model1.query().unionAll(Model1.query()))
-              .with('subquery2', Model1.query())
-              .count('* as count')
-              .from('subquery1')
-              .first()
-              .then((result) => {
-                expect(Number(result.count)).toBe(4);
-              });
-          });
+        it('with', () => {
+          return Model1.query()
+            .with('subquery1', Model1.query().unionAll(Model1.query()))
+            .with('subquery2', Model1.query())
+            .count('* as count')
+            .from('subquery1')
+            .first()
+            .then((result) => {
+              expect(Number(result.count)).toBe(4);
+            });
+        });
 
-          it('with column list', () => {
-            return Model1.query()
-              .with('subquery', ['subId'], Model1.query().select('id'))
-              .select('subId')
-              .from('subquery')
-              .orderBy('subId')
-              .then((results) => {
-                expect(results.map((it) => it.subId)).toEqual([1, 2]);
-              });
-          });
-        }
+        it('with column list', () => {
+          return Model1.query()
+            .with('subquery', ['subId'], Model1.query().select('id'))
+            .select('subId')
+            .from('subquery')
+            .orderBy('subId')
+            .then((results) => {
+              expect(results.map((it) => it.subId)).toEqual([1, 2]);
+            });
+        });
 
         if (session.isPostgres()) {
           it('timeout should throw a KnexTimeoutError', () => {

@@ -3,7 +3,6 @@ import { ValidationError, raw, ref } from 'objection';
 import mockKnexFactory from '../../testUtils/mockKnex.js';
 import { map as promiseMap } from '../../lib/utils/promiseUtils/index.js';
 import { pick, range, sortBy } from '../../testUtils/testUtils.js';
-import Knex from 'knex';
 
 export default (session) => {
   const Model1 = session.models.Model1;
@@ -1221,118 +1220,6 @@ export default (session) => {
           [6, []],
         ]);
       });
-
-      if (session.isMySql()) {
-        describe('without window functions', () => {
-          let knex;
-          let queries;
-
-          // Simulate MySQL 5.7, as knex only detects the server's version
-          // if it isn't configured.
-          const createModel = (ModelClass) =>
-            ModelClass.bindKnex(
-              mockKnexFactory(knex, function (mock, oldImpl, args) {
-                queries.push(this.toSQL().sql);
-                return oldImpl.apply(this, args);
-              }),
-            );
-
-          beforeAll(() => {
-            knex = Knex({ ...session.opt.knexConfig, version: '5.7.0' });
-          });
-
-          afterAll(() => {
-            return knex.destroy();
-          });
-
-          beforeEach(() => {
-            queries = [];
-          });
-
-          it('should fetch the related models of each parent separately', async () => {
-            const TestModel = createModel(Model1);
-            const models = await TestModel.query()
-              .withGraphFetched('model1Relation2')
-              .whereExists(TestModel.relatedQuery('model1Relation2'))
-              .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc').first())
-              .orderBy('id');
-
-            expect(relatedIds(models, 'model1Relation2')).toEqual([
-              [1, [2]],
-              [4, [4]],
-              [6, [3]],
-            ]);
-            expect(queries).toHaveLength(4);
-            expect(queries.join()).not.toContain('row_number');
-          });
-
-          it('should fetch the related models of each parent separately for a relation mapping modify', async () => {
-            class Model1Latest extends Model1 {
-              static get relationMappings() {
-                return {
-                  ...super.relationMappings,
-                  latestModel2: {
-                    relation: Model1.HasOneRelation,
-                    modelClass: Model2,
-                    join: { from: 'Model1.id', to: 'model2.model1_id' },
-                    modify: (query) => query.orderBy('id_col', 'desc').limit(1),
-                  },
-                };
-              }
-            }
-
-            const TestModel = createModel(Model1Latest);
-            const models = await TestModel.query()
-              .withGraphFetched('latestModel2')
-              .whereExists(TestModel.relatedQuery('latestModel2'))
-              .orderBy('id');
-
-            expect(relatedIds(models, 'latestModel2')).toEqual([
-              [1, 2],
-              [4, 4],
-              [6, 3],
-            ]);
-            expect(queries).toHaveLength(4);
-          });
-
-          it('should fetch the related models of all parents together without a limit', async () => {
-            const TestModel = createModel(Model1);
-            let modifyCount = 0;
-            const models = await TestModel.query()
-              .withGraphFetched('model1Relation2')
-              .whereExists(TestModel.relatedQuery('model1Relation2'))
-              .modifyGraph('model1Relation2', (query) => {
-                ++modifyCount;
-                query.orderBy('id_col', 'desc');
-              })
-              .orderBy('id');
-
-            expect(relatedIds(models, 'model1Relation2')).toEqual([
-              [1, [2, 1]],
-              [4, [4]],
-              [6, [3]],
-            ]);
-            expect(queries).toHaveLength(2);
-            expect(modifyCount).toBe(1);
-          });
-
-          it('should fetch the related models of all parents together with limitPerParent: false', async () => {
-            const TestModel = createModel(Model1);
-            const models = await TestModel.query()
-              .withGraphFetched('model1Relation2', { limitPerParent: false })
-              .whereExists(TestModel.relatedQuery('model1Relation2'))
-              .modifyGraph('model1Relation2', (query) => query.orderBy('id_col', 'desc').limit(1))
-              .orderBy('id');
-
-            expect(relatedIds(models, 'model1Relation2')).toEqual([
-              [1, []],
-              [4, [4]],
-              [6, []],
-            ]);
-            expect(queries).toHaveLength(2);
-          });
-        });
-      }
     });
 
     it('setting maxBatchSize option to 1 should cause relations to be fetched naively to each parent separately', () => {

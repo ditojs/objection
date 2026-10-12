@@ -437,29 +437,25 @@ export default (session) => {
             });
         });
 
-        // Filters don't work on mysql when the related table and the
-        // owner table are the same.
-        if (!session.isMySql()) {
-          it('should unrelate using multiple ids and a filter', () => {
-            return Model1.relatedQuery('model1Relation1')
-              .for([1, 3])
-              .unrelate()
-              .where('model1Prop1', '!=', 'hello 2')
-              .then((numUpdated) => {
-                expect(numUpdated).toBe(1);
-                return session.knex(Model1.getTableName()).orderBy('id');
-              })
-              .then((rows) => {
-                expect(rows).toHaveLength(4);
-                expect(rows).toContainSubset([
-                  { id: 1, model1Id: 2 },
-                  { id: 2, model1Id: null },
-                  { id: 3, model1Id: null },
-                  { id: 4, model1Id: null },
-                ]);
-              });
-          });
-        }
+        it('should unrelate using multiple ids and a filter', () => {
+          return Model1.relatedQuery('model1Relation1')
+            .for([1, 3])
+            .unrelate()
+            .where('model1Prop1', '!=', 'hello 2')
+            .then((numUpdated) => {
+              expect(numUpdated).toBe(1);
+              return session.knex(Model1.getTableName()).orderBy('id');
+            })
+            .then((rows) => {
+              expect(rows).toHaveLength(4);
+              expect(rows).toContainSubset([
+                { id: 1, model1Id: 2 },
+                { id: 2, model1Id: null },
+                { id: 3, model1Id: null },
+                { id: 4, model1Id: null },
+              ]);
+            });
+        });
 
         it('should fail if arguments are given', () => {
           return Model1.relatedQuery('model1Relation1')

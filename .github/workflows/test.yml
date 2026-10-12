@@ -17,18 +17,15 @@ jobs:
         # require() ES modules without a flag.
         node-version: [20.19.0, 20.x, 22.x, 24.x]
         database: [default]
-        # Also test MySQL 5.7 and SQL Server, each as a separate job.
+        # Also test SQL Server as a separate job.
         include:
-          - node-version: 24.x
-            database: mysql-5.7
           - node-version: 24.x
             database: mssql
 
     env:
-      COMPOSE_FILE: ${{ matrix.database == 'mysql-5.7' && 'docker-compose.yml:docker-compose.mysql57.yml' || 'docker-compose.yml' }}
-      # The MySQL 5.7 and SQL Server jobs only need their database, the default
-      # services start otherwise.
-      SERVICES: ${{ matrix.database == 'mysql-5.7' && 'mysql' || matrix.database == 'mssql' && 'mssql' || '' }}
+      # The SQL Server job only needs its database, the default services start
+      # otherwise.
+      SERVICES: ${{ matrix.database == 'mssql' && 'mssql' || '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -112,10 +109,10 @@ jobs:
         if: matrix.database == 'default'
         run: pnpm test
 
-      # The MySQL 5.7 and SQL Server jobs only run the tests of their database,
-      # the other jobs already lint and check typings.
+      # The SQL Server job only runs the tests of its database, the other jobs
+      # already lint and check typings.
       - name: Run the tests of the database
         if: matrix.database != 'default'
         env:
-          DATABASES: ${{ matrix.database == 'mysql-5.7' && 'mysql' || matrix.database == 'mssql' && 'mssql' || '' }}
+          DATABASES: ${{ matrix.database }}
         run: pnpm vitest run
