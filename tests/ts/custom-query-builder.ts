@@ -3,7 +3,7 @@ import {
   Model,
   ModelConstructor,
   NumberQueryBuilder,
-  PartialModelObject,
+  PartialModelRow,
   QueryBuilder,
   RelateQueryBuilder,
   RelationExpression,
@@ -38,9 +38,7 @@ class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
   }
 
   // relate() can be overridden with an inferred return type...
-  relate(
-    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
-  ) {
+  relate(ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelRow<M> | PartialModelRow<M>[]) {
     return super.relate(ids);
   }
 }
@@ -111,7 +109,7 @@ class DefaultSchemaQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M
 
   // ...and with an explicit one, in a model's `static QueryBuilder`.
   relate(
-    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
+    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelRow<M> | PartialModelRow<M>[],
   ): RelateQueryBuilder<NumberQueryBuilder<this>> {
     return super.relate(ids);
   }

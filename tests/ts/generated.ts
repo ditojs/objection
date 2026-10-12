@@ -5,7 +5,7 @@ import {
   Model,
   ModelObject,
   PartialModelGraph,
-  PartialModelObject,
+  PartialModelRow,
   raw,
 } from 'objection';
 
@@ -76,8 +76,8 @@ async function insertable() {
   // @ts-expect-error relations are left out, use InsertableGraph
   const withRelation: Insertable<Owner> = { firstName: 'Jennifer', pets: [] };
 
-  // Insertable data is accepted by insert() and PartialModelObject.
-  const partial: PartialModelObject<Owner> = full;
+  // Insertable data is accepted by insert(), as PartialModelRow.
+  const partial: PartialModelRow<Owner> = full;
   await Owner.query().insert(minimal);
   await Owner.query().insert([minimal, full]);
   await Owner.query().insertAndFetch({ firstName: 'Jennifer' } satisfies Insertable<Owner>);

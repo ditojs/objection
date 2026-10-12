@@ -1,4 +1,4 @@
-import { transaction, Transaction } from 'objection';
+import { PartialModelRow, transaction, Transaction } from 'objection';
 import { Animal } from '../fixtures/animal.js';
 import { Person } from '../fixtures/person.js';
 import { Knex } from 'knex';
@@ -22,8 +22,8 @@ import { Knex } from 'knex';
   }
 
   async function insertPersonAndPet(
-    personAttrs: Partial<Person>,
-    petAttrs: Partial<Animal>,
+    personAttrs: PartialModelRow<Person>,
+    petAttrs: PartialModelRow<Animal>,
     trxOrKnex?: Transaction | Knex,
   ) {
     const person = await Person.query(trxOrKnex).insert(personAttrs);

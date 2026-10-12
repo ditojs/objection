@@ -306,7 +306,7 @@ class Person extends Model {
 
 ## Typing generated properties in TypeScript
 
-`insert()` and `insertGraph()` accept any subset of the model's properties. To check that the data for a new row is complete, mark the properties the database generates, like auto-incremented ids, timestamps or columns with defaults, as `Generated`, and type the data as `Insertable`:
+`insert()` accepts any subset of the model's properties without the relations, and `insertGraph()` accepts the relations too. To check that the data for a new row is complete, mark the properties the database generates, like auto-incremented ids, timestamps or columns with defaults, as `Generated`, and type the data as `Insertable`:
 
 ```ts
 import { Model, Generated, Insertable, InsertableGraph } from 'objection';
@@ -332,4 +332,4 @@ await Person.query().insertGraph({
 } satisfies InsertableGraph<Person>);
 ```
 
-`Generated<number>` reads and assigns like a `number`. `Insertable<Person>` requires all properties except optional, nullable and `Generated` ones, and leaves out relations. `InsertableGraph<Person>` adds the relations, which hold the insertable graphs of the related models or `#dbRef` / `#ref` references, and the `#id` of the graph. Both are assignable to the argument types of `insert()` and `insertGraph()`, which themselves are unchanged and still treat all properties as optional. `Generated` also works in an [interface merged into the model](#typing-model-properties-with-an-interface-in-typescript).
+`Generated<number>` reads and assigns like a `number`. `Insertable<Person>` requires all properties except optional, nullable and `Generated` ones, and leaves out relations. `InsertableGraph<Person>` adds the relations, which hold the insertable graphs of the related models or `#dbRef` / `#ref` references, and the `#id` of the graph. Both are assignable to the argument types of `insert()` and `insertGraph()`, which still treat all properties as optional. `Generated` also works in an [interface merged into the model](#typing-model-properties-with-an-interface-in-typescript).

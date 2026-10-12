@@ -26,7 +26,7 @@ through [knexQuery](/api/model/static-methods.html#static-knexquery).
 
 `insert` writes whole values, so it rejects [FieldExpressions](/api/types/#type-fieldexpression) like `'meta:a.b'` that write parts of a json column with a [ValidationError](/api/types/#class-validationerror). Use [patch](/api/query-builder/mutate-methods.html#patch) for them. Keys with a `:` that the schema declares in `properties` are normal properties and columns, not field expressions.
 
-Relations in the inserted objects are ignored: `insert` only inserts the columns of the model's own table. Use [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) to insert related objects too. In TypeScript, the data type (`PartialModelObject`) accepts nested relation data, so this isn't reported as a type error.
+Relations in the inserted objects are ignored: `insert` only inserts the columns of the model's own table. Use [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) to insert related objects too. In TypeScript, the data type (`PartialModelRow`) rejects relation properties, unless the data is a model instance.
 
 ##### Arguments
 
@@ -155,7 +155,7 @@ The patch object is validated against the model's [jsonSchema](/api/model/static
 
 If validation fails the Promise is rejected with a [ValidationError](/api/types/#class-validationerror).
 
-Relations in the patch object are ignored, only the columns of the model's own table are updated. Use [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) to update related objects too. In TypeScript, the data type (`PartialModelObject`) accepts nested relation data, so this isn't reported as a type error.
+Relations in the patch object are ignored, only the columns of the model's own table are updated. Use [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) to update related objects too. In TypeScript, the data type (`PartialModelRow`) rejects relation properties, unless the data is a model instance.
 
 The return value of the query will be the number of affected rows. If you want to update a single row and retrieve the updated row as a result, you may want to use the [patchById](/api/query-builder/mutate-methods.html#patchbyid) or [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid) methods or _take a look at [this recipe](/recipes/returning-tricks.html) if you're using Postgres_.
 
