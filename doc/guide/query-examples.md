@@ -1266,6 +1266,8 @@ By giving `relate: true` and/or `unrelate: true` options as the second argument,
 
 A row that is missing in one place but related or updated in another place of the same graph isn't deleted, it's only unrelated from the place where it's missing. This way, rows can be moved between parents in a single `upsertGraph` call.
 
+If a row that the graph relates or updates is gone by the time it's written, `upsertGraph` throws a `NotFoundError`. This happens when an earlier write of the same call deleted it, e.g. a row moved below a new row while its old parent is deleted with `ON DELETE CASCADE`, or when a concurrent query deleted it. Run `upsertGraph` in a transaction so that nothing is written in that case.
+
 ```js
 const options = {
   relate: true,
