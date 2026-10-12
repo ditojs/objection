@@ -90,6 +90,36 @@ export default (session) => {
         ]);
       });
 
+      it('should fetch with the graph and graph modifiers of upsertGraphAndFetch() (Vincit#839)', async () => {
+        const result = await Model1.query(session.knex)
+          .withGraphFetched('model1Relation2')
+          .modifyGraph('model1Relation2', (query) =>
+            query.select('id_col', 'model1_id').orderBy('id_col'),
+          )
+          .upsertGraphAndFetch(
+            { id: 2, model1Relation2: [{ idCol: 1 }, { idCol: 2 }] },
+            { fetchStrategy },
+          );
+
+        expect(result.model1Relation2.map((model) => model.$toJson())).toEqual([
+          { idCol: 1, model1Id: 2 },
+          { idCol: 2, model1Id: 2 },
+        ]);
+      });
+
+      it('should fetch with the named modifiers and aliases of upsertGraphAndFetch() (Vincit#839)', async () => {
+        const result = await Model1.query(session.knex)
+          .withGraphFetched('model1Relation2(onlyFirst) as first')
+          .modifiers({ onlyFirst: (query) => query.where('id_col', 1) })
+          .upsertGraphAndFetch(
+            { id: 2, model1Relation2: [{ idCol: 1 }, { idCol: 2 }] },
+            { fetchStrategy },
+          );
+
+        expect(result.first.map((model) => model.idCol)).toEqual([1]);
+        expect(result.model1Relation2.map((model) => model.idCol).sort()).toEqual([1, 2]);
+      });
+
       for (const passthroughMethodCall of [
         null,
         'forUpdate',
