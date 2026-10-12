@@ -2288,6 +2288,16 @@ describe('Model', () => {
     expect(model.$modelClass === model.constructor).to.equal(true);
   });
 
+  it('$propKey should key dates by their time and tell composite values with commas apart', () => {
+    let Model1 = modelClass('Model1');
+    let key = (json) => Model1.fromJson(json).$propKey(Object.keys(json));
+
+    expect(key({ a: new Date(5) })).to.equal(key({ a: 5 }));
+    expect(key({ a: new Date(5), b: 1 })).to.equal(key({ a: 5, b: '1' }));
+    expect(key({ a: 'a,b', b: 'c' })).to.not.equal(key({ a: 'a', b: 'b,c' }));
+    expect(key({ a: 'a\\', b: ',c' })).to.not.equal(key({ a: 'a\\,', b: 'c' }));
+  });
+
   describe('traverse() and $traverse()', () => {
     let Model1;
     let Model2;
