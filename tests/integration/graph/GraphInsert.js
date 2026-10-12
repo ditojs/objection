@@ -7,6 +7,7 @@ import { GraphInsert } from '../../../lib/queryBuilder/graph/insert/GraphInsert.
 import { GraphOptions } from '../../../lib/queryBuilder/graph/GraphOptions.js';
 import { GraphNodeDbExistence } from '../../../lib/queryBuilder/graph/GraphNodeDbExistence.js';
 import { GraphFetcher } from '../../../lib/queryBuilder/graph/GraphFetcher.js';
+import { GraphData } from '../../../lib/queryBuilder/graph/GraphData.js';
 import { asArray } from '../../../lib/utils/objectUtils.js';
 
 export default (session) => {
@@ -1042,12 +1043,13 @@ export default (session) => {
         .then((currentGraph) => {
           numExecutedQueries = 0;
 
-          const graphInsert = new GraphInsert({
+          const graphData = new GraphData({
             graph,
             currentGraph,
             graphOptions,
             nodeDbExistence,
           });
+          const graphInsert = new GraphInsert(graphData.planActions());
           const actions = graphInsert.createActions();
           let promise = Promise.resolve();
 
