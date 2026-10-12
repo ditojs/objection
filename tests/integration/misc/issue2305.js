@@ -70,8 +70,7 @@ export default (session) => {
       expect(await rows()).toEqual([{ name: 'a', runs: 1 }]);
     });
 
-    // Only Postgres supports batch inserts.
-    it.skipIf(!session.isPostgres())('should insert multiple models', async () => {
+    it('should insert multiple models', async () => {
       const jobs = await JobExecution.query().insert([
         { name: 'a', runs: 1 },
         { name: 'b', runs: 2 },

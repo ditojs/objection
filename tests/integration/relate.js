@@ -345,29 +345,29 @@ export default (session) => {
             });
         });
 
-        if (session.isPostgres()) {
-          it('should relate (multiple values)', () => {
-            return Model2.query()
-              .where('id_col', 1)
-              .first()
-              .then((model) => {
-                return model.$relatedQuery('model2Relation1').relate([5, 6]);
-              })
-              .then((res) => {
-                expect(res).toBe(2);
-                return session.knex('Model1Model2').orderBy('id');
-              })
-              .then((rows) => {
-                expect(rows).toHaveLength(6);
-                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
-                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
-                expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 6)).toHaveLength(1);
-                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).toHaveLength(1);
-                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).toHaveLength(1);
-                expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
-              });
-          });
+        it('should relate (multiple values)', () => {
+          return Model2.query()
+            .where('id_col', 1)
+            .first()
+            .then((model) => {
+              return model.$relatedQuery('model2Relation1').relate([5, 6]);
+            })
+            .then((res) => {
+              expect(res).toBe(2);
+              return session.knex('Model1Model2').orderBy('id');
+            })
+            .then((rows) => {
+              expect(rows).toHaveLength(6);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 3)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 1 && it.model1Id === 6)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 4)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 5)).toHaveLength(1);
+              expect(rows.filter((it) => it.model2Id === 2 && it.model1Id === 6)).toHaveLength(1);
+            });
+        });
 
+        if (session.isPostgres()) {
           it('should relate with onConflict().ignore()', async () => {
             const sql = await Model2.relatedQuery('model2Relation1')
               .for(1)
@@ -381,8 +381,12 @@ export default (session) => {
               'insert into "Model1Model2" ("model1Id", "model2Id") values (?, ?) on conflict ("model1Id") do nothing returning "model1Id"',
             );
           });
+        }
 
-          it('should return the inserted join rows with returning()', async () => {
+        // MySQL has no `returning()`.
+        it.skipIf(session.isMySql())(
+          'should return the inserted join rows with returning()',
+          async () => {
             const model = await Model2.query().findById(1);
             const result = await model
               .$relatedQuery('model2Relation1')
@@ -400,8 +404,8 @@ export default (session) => {
 
             const rows = await session.knex('Model1Model2').orderBy('id');
             expect(rows).toHaveLength(6);
-          });
-        }
+          },
+        );
 
         it('should relate (object value)', () => {
           return Model2.query()

@@ -73,8 +73,8 @@ console.log(sylvester.fullName());
 // --> 'Sylvester Stallone'.
 
 // Batch insert. On MySQL, this only works for models that
-// have their identifiers already, as MySQL doesn't return
-// the identifiers of _all_ inserted rows.
+// have their identifiers already, or have no `idColumn`, as
+// MySQL doesn't return the identifiers of _all_ inserted rows.
 const inserted = await Person.query().insert([
   { firstName: 'Arnold', lastName: 'Schwarzenegger' },
   { firstName: 'Sylvester', lastName: 'Stallone' }
