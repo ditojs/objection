@@ -233,19 +233,33 @@ export default (session) => {
             .then((meinhard) => expect(meinhard.name).toBe('Meinhard'));
         });
 
-        it('unrelate', () => {
-          return findArnold()
-            .then((arnold) => {
-              // The filter should not affect unrelates because the unrelate
-              // query is directed at the owner, not the related model.
-              return arnold
-                .$relatedQuery('parent')
-                .context(modifyBelongsToOne((qb) => qb.where('name', 'Not Gustav')))
-                .unrelate();
-            })
-            .then(findArnold)
-            .then((arnold) => arnold.$relatedQuery('parent'))
-            .then((parent) => expect(parent).toBeUndefined());
+        it('unrelate', async () => {
+          const arnold = await findArnold();
+          const meinhard = await findMeinhard();
+          await meinhard.$relatedQuery('parent').relate(arnold.id);
+
+          // The filter selects the related items to unrelate, even though the
+          // unrelate query is directed at the owners.
+          const numUnrelated = await Person.relatedQuery('parent')
+            .for([arnold.id, meinhard.id])
+            .context(modifyBelongsToOne((qb) => qb.where('name', 'Not Gustav')))
+            .unrelate();
+          expect(numUnrelated).toBe(0);
+          expect(await findParentNames()).toEqual(['Gustav', 'Arnold']);
+
+          await Person.relatedQuery('parent')
+            .for([arnold.id, meinhard.id])
+            .context(modifyBelongsToOne((qb) => qb.where('name', 'Gustav')))
+            .unrelate();
+          expect(await findParentNames()).toEqual([null, 'Arnold']);
+
+          async function findParentNames() {
+            const persons = await Person.query()
+              .whereIn('name', ['Arnold', 'Meinhard'])
+              .withGraphFetched('parent')
+              .orderBy('name');
+            return persons.map((person) => person.parent && person.parent.name);
+          }
         });
       });
 
