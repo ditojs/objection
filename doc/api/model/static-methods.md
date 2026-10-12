@@ -468,7 +468,7 @@ class Person extends Model {
 
 A hook that is executed after update and patch queries.
 
-`args.result` is the number of updated rows, or the updated rows with [returning](/api/query-builder/find-methods.html#returning). With [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid), [patchAndFetch](/api/query-builder/mutate-methods.html#patchandfetch) and their `update*` variants, the hook runs after the row is fetched, and `result` is the fetched model, or `undefined` if nothing was updated.
+`args.result` is the number of updated rows, or the updated rows with [returning](/api/query-builder/find-methods.html#returning), in the shape the query returns them: one model, or `undefined`, for single queries like `findById()`, `first()`, `$query()` and `$relatedQuery()` of a to-one relation, an array otherwise. With [patchAndFetchById](/api/query-builder/mutate-methods.html#patchandfetchbyid), [patchAndFetch](/api/query-builder/mutate-methods.html#patchandfetch) and their `update*` variants, the hook runs after the row is fetched, and `result` is the fetched model, or `undefined` if nothing was updated.
 
 See these sections for more information:
 
@@ -589,7 +589,7 @@ class Person extends Model {
 
 A hook that is executed after delete queries.
 
-`args.result` is the number of deleted rows, or the deleted rows with [returning](/api/query-builder/find-methods.html#returning).
+`args.result` is the number of deleted rows, or the deleted rows with [returning](/api/query-builder/find-methods.html#returning), in the shape the query returns them: one model, or `undefined`, for single queries like `findById()`, `first()`, `$query()` and `$relatedQuery()` of a to-one relation, an array otherwise.
 
 See these sections for more information:
 
