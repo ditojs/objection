@@ -29,7 +29,7 @@
     "docs:preview": "vitepress preview doc"
   },
   "publishConfig": {
-    "tag": "latest"
+    "tag": "next"
   },
   "author": {
     "name": "Sami Koskimäki",

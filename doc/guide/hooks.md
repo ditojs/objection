@@ -60,9 +60,7 @@ await arnold.$query().delete();
 
 // This will NOT execute the delete hooks because we don't have model
 // instance for Arnold.
-await Person.query()
-  .delete()
-  .where('name', 'Arnold');
+await Person.query().delete().where('name', 'Arnold');
 ```
 
 Objection could fetch the items from the database and call the hooks for those model instances, but that would lead to unpredicable performance, and that's something objection tries to avoid. If you need to do something like this, you can do it using [the static query hooks](#static-query-hooks).
@@ -77,9 +75,7 @@ class Person extends Model {
 }
 
 // This will print 'Jennifer'
-await Person.query()
-  .patch({ firstName: 'Jennifer' })
-  .where('id', 1);
+await Person.query().patch({ firstName: 'Jennifer' }).where('id', 1);
 
 const arnold = await Person.query().findOne({ name: 'Arnold' });
 
@@ -248,7 +244,7 @@ class Person extends Model {
   static afterFind({ result }) {
     return {
       result,
-      success: true
+      success: true,
     };
   }
 }
@@ -261,11 +257,12 @@ console.log(result.result.length);
 
 [relate](/api/query-builder/mutate-methods.html#relate) and [unrelate](/api/query-builder/mutate-methods.html#unrelate) have no hooks of their own. They run a query in their place, and the hooks of that query get the `relation` and its owners as `items`:
 
-| Relation                                    | Query                         | Hooks                                                                                                      |
-| ------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `HasManyRelation`, `HasOneRelation`         | Update of the related rows    | `beforeUpdate` and `afterUpdate` of the related model class                                               |
-| `BelongsToOneRelation`                      | Update of the owner rows      | `beforeUpdate` and `afterUpdate` of the owner model class                                                  |
-| `ManyToManyRelation`, `HasOneThroughRelation` | Insert or delete of join rows | `beforeInsert` and `afterInsert`, or `beforeDelete` and `afterDelete` of the join table's `through.modelClass` |
+| Relation                                      | Query                             | Hooks                                                                                                                                                                                                                                           |
+| --------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HasManyRelation`, `HasOneRelation`           | Update of the related rows        | `beforeUpdate` and `afterUpdate` of the related model class                                                                                                                                                                                     |
+| `BelongsToOneRelation`                        | Update of the owner rows          | `beforeUpdate` and `afterUpdate` of the owner model class                                                                                                                                                                                       |
+| `BelongsToManyRelation`                       | Find and update of the owner rows | `beforeFind` and `afterFind` of the owner model class, and `beforeUpdate` and `afterUpdate` of the owner model class for the owners whose keys change. `unrelate()` also runs the `beforeFind` and `afterFind` hooks of the related model class |
+| `ManyToManyRelation`, `HasOneThroughRelation` | Insert or delete of join rows     | `beforeInsert` and `afterInsert`, or `beforeDelete` and `afterDelete` of the join table's `through.modelClass`                                                                                                                                  |
 
 The outer queries of [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) and [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) call no static hooks. The queries that they run for each model class of the graph call them instead.
 
