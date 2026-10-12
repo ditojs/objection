@@ -14,6 +14,7 @@ This section lists the breaking changes in objection 4.0.
 - [Unknown graph options throw](#unknown-graph-options-throw)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
+- [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
 - [`limit`, `offset` and `first` apply per parent in graph modifiers](#limit-offset-and-first-apply-per-parent-in-graph-modifiers)
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
@@ -178,6 +179,10 @@ The static `after*` hooks run as the last step of the query, after `first()`, `p
 The outer queries of `upsertGraph()` and `upsertGraphAndFetch()` no longer call the static `beforeFind` and `afterFind` hooks of the root model class with the input models. The queries that run for the models of the graph and their relations call the hooks as before.
 
 TypeScript: `StaticHookArguments<M, R>` declares `result: R`, with `R = undefined` by default, and the static hooks of `Model` declare the shapes that they get, e.g. `StaticHookArguments<any, Model | Model[] | undefined>` for `afterFind`. Overrides that destructure `result` from `StaticHookArguments<Person>` need the type of the result as second type argument, e.g. `StaticHookArguments<Person, Person | Person[] | undefined>`.
+
+## withGraphFetched() assigns what the relation query returns
+
+`withGraphFetched()` assigns what a relation query returns to the owners, after the static `afterFind` hook of the related model class and the `runAfter()` callbacks of the relation query, e.g. in modifiers or `modifyGraph()`. 3.x assigned the related models before both and ignored their return values. Related models that they filter out are no longer assigned, and the order that they return is kept. They can only return the related models that the query found. Other objects, e.g. copies like `result.map((pet) => ({ ...pet }))` or a count, throw an error. Change the models in place instead, or transform them in `runAfter()` of the root query.
 
 ## `limit`, `offset` and `first` apply per parent in graph modifiers
 

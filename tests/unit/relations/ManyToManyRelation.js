@@ -478,6 +478,9 @@ describe('ManyToManyRelation', () => {
   });
 
   describe('find', () => {
+    // The callers of `find()` assign its result to the owners.
+    let findOperation;
+
     it('should generate a find query', () => {
       let owner = OwnerModel.fromJson({ oid: 666 });
       let expectedResult = [
@@ -491,10 +494,11 @@ describe('ManyToManyRelation', () => {
         .where('name', 'Teppo')
         .orWhere('age', '>', 60)
         .findOperationFactory((builder) => {
-          return relation.find(builder, RelationOwner.create(owner));
+          return (findOperation = relation.find(builder, RelationOwner.create(owner)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owner.nameOfOurRelation).toEqual(expectedResult);
@@ -530,10 +534,11 @@ describe('ManyToManyRelation', () => {
         .where('name', 'Teppo')
         .orWhere('age', '>', 60)
         .findOperationFactory((builder) => {
-          return compositeKeyRelation.find(builder, RelationOwner.create(owner));
+          return (findOperation = compositeKeyRelation.find(builder, RelationOwner.create(owner)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owner.nameOfOurRelation).toEqual(expectedResult);
@@ -572,10 +577,11 @@ describe('ManyToManyRelation', () => {
         .where('name', 'Teppo')
         .orWhere('age', '>', 60)
         .findOperationFactory(function () {
-          return relation.find(this, RelationOwner.create(owners));
+          return (findOperation = relation.find(this, RelationOwner.create(owners)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(4);
         expect(result).toEqual(expectedResult);
         expect(owners[0].nameOfOurRelation).toEqual([{ a: 1 }, { a: 2 }]);
@@ -620,10 +626,11 @@ describe('ManyToManyRelation', () => {
         .where('name', 'Teppo')
         .orWhere('age', '>', 60)
         .findOperationFactory(function () {
-          return compositeKeyRelation.find(this, RelationOwner.create(owners));
+          return (findOperation = compositeKeyRelation.find(this, RelationOwner.create(owners)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(4);
         expect(result).toEqual(expectedResult);
         expect(owners[0].nameOfOurRelation).toEqual([{ a: 1 }, { a: 2 }]);
@@ -663,10 +670,11 @@ describe('ManyToManyRelation', () => {
         .orWhere('age', '>', 60)
         .select('name')
         .findOperationFactory(function () {
-          return relation.find(this, RelationOwner.create(owner));
+          return (findOperation = relation.find(this, RelationOwner.create(owner)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owner.nameOfOurRelation).toEqual(expectedResult);
@@ -705,10 +713,11 @@ describe('ManyToManyRelation', () => {
         .where('name', 'Teppo')
         .orWhere('age', '>', 60)
         .findOperationFactory(function () {
-          return relation.find(this, RelationOwner.create(owner));
+          return (findOperation = relation.find(this, RelationOwner.create(owner)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owner.nameOfOurRelation).toEqual(expectedResult);
@@ -748,10 +757,11 @@ describe('ManyToManyRelation', () => {
         .where('name', 'Teppo')
         .orWhere('age', '>', 60)
         .findOperationFactory(function () {
-          return relation.find(this, RelationOwner.create(owner));
+          return (findOperation = relation.find(this, RelationOwner.create(owner)));
         });
 
       return builder.then((result) => {
+        findOperation.assignResult(builder, result);
         expect(result).toHaveLength(2);
         expect(result).toEqual(expectedResult);
         expect(owner.nameOfOurRelation).toEqual(expectedResult);
@@ -781,7 +791,7 @@ describe('ManyToManyRelation', () => {
       let owner = OwnerModel.fromJson({ oid: 666 });
 
       let builder = QueryBuilder.forClass(RelatedModel).findOperationFactory(function () {
-        return relation.find(this, RelationOwner.create(owner));
+        return (findOperation = relation.find(this, RelationOwner.create(owner)));
       });
 
       return builder.then(() => {
