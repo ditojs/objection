@@ -5,6 +5,7 @@ This section lists the breaking changes in objection 4.0.
 - [objection is an ES module package](#objection-is-an-es-module-package)
 - [Dropped support for node < 20.19](#dropped-support-for-node-20-19)
 - [Dropped support for knex < 3.3](#dropped-support-for-knex-3-3)
+- [Dropped support for MySQL < 8](#dropped-support-for-mysql-8)
 - [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
 - [Model files given as paths](#model-files-given-as-paths)
 - [skipUndefined() is removed](#skipundefined-is-removed)
@@ -54,6 +55,9 @@ Objection 4.0 needs at least knex 3.3.
 ## Dropped support for TypeScript < 5.8
 
 The typings of objection 4.0 need at least TypeScript 5.8, the first version that understands that node can `require()` ES modules. TypeScript 5.8, 6 and 7 are supported.
+## Dropped support for MySQL < 8
+
+Objection 4.0 needs at least MySQL 8.0.14, for window functions and for derived tables that refer to the outer query. MySQL 5.7 reached its end of life in October 2023. 3.x keeps supporting it.
 
 ## Database errors are objection's own classes
 
@@ -141,7 +145,7 @@ const people = await Person.query()
   });
 ```
 
-The relation query becomes a subquery, and its order moves into a `row_number()` window function. The order can only refer to the related table's columns that are selected and to the aliases of the result columns, see [limiting related items per parent](/api/query-builder/eager-methods.html#limiting-related-items-per-parent). MySQL before 8 has no window functions, so objection fetches relations with a limit with one query per parent there, and builds every fetched relation query once more to find its limit, which runs the relation's `modify` and the `onBuild` and `onBuildKnex` hooks twice.
+The relation query becomes a subquery, and its order moves into a `row_number()` window function. The order can only refer to the related table's columns that are selected and to the aliases of the result columns, see [limiting related items per parent](/api/query-builder/eager-methods.html#limiting-related-items-per-parent).
 
 To keep the behaviour of 3.x, set `limitPerParent: false` in the graph options, or in [defaultGraphOptions](/api/model/static-properties.html#static-defaultgraphoptions) for all queries of a model.
 

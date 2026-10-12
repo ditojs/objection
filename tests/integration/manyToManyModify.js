@@ -212,15 +212,7 @@ export default (session) => {
           expect(await joinRows()).toEqual(withoutRows(2, 4));
         });
 
-        it('should apply a filter on an aliased join table', async ({ skip }) => {
-          // MySQL supports aliases in deletes since 8.0.16.
-          if (session.isMySql()) {
-            const [[{ version }]] = await session.knex.raw('select version() as version');
-            if (version.startsWith('5.')) {
-              skip();
-            }
-          }
-
+        it('should apply a filter on an aliased join table', async () => {
           const model = await owner(1);
           const numDeleted = await model
             .$relatedQuery('model1Relation3')
