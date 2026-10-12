@@ -153,6 +153,31 @@ module.exports = (session) => {
         expect(dbRef.idCol).to.equal(1);
       });
 
+      it('should not return the reference markers of skipped models (#221)', async () => {
+        const inserted = await Model1.query().insertGraph(
+          {
+            model1Prop1: 'root',
+            model1Relation1: { model1Prop1: 'skipped', model1Relation3: [{ '#dbRef': 1 }] },
+          },
+          { allowRefs: true, noInsert: ['model1Relation1'] },
+        );
+
+        expect(inserted.model1Relation1.model1Relation3[0]).to.not.have.property('#dbRef');
+      });
+
+      it('should not return the reference markers below related models (#221)', async () => {
+        const inserted = await Model1.query().insertGraph(
+          {
+            model1Prop1: 'root',
+            model1Relation1: { '#dbRef': 1, model1Relation3: [{ '#dbRef': 1 }] },
+          },
+          { allowRefs: true },
+        );
+
+        expect(inserted.model1Relation1).to.not.have.property('#dbRef');
+        expect(inserted.model1Relation1.model1Relation3[0]).to.not.have.property('#dbRef');
+      });
+
       describe('jsonSchema: additionalProperties = false', () => {
         let origSchema;
 
