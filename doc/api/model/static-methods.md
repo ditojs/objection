@@ -72,11 +72,9 @@ const sylvester = await Person.query().insert({
 console.log(sylvester.fullName());
 // --> 'Sylvester Stallone'.
 
-// Batch insert. This only works on Postgresql as it is
-// the only database that returns the identifiers of
-// _all_ inserted rows. If you need to do batch inserts
-// on other databases useknex* directly.
-// (See .knexQuery() method).
+// Batch insert. On MySQL, this only works for models that
+// have their identifiers already, as MySQL doesn't return
+// the identifiers of _all_ inserted rows.
 const inserted = await Person.query().insert([
   { firstName: 'Arnold', lastName: 'Schwarzenegger' },
   { firstName: 'Sylvester', lastName: 'Stallone' }
