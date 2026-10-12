@@ -13,6 +13,7 @@ module.exports = (session) => {
           table.integer('id').primary();
           table.string('ns:name');
           table.string('ns:foo_bar');
+          table.string('ns:');
 
           if (session.isPostgres()) {
             table.jsonb('meta');
@@ -115,6 +116,32 @@ module.exports = (session) => {
       await StrictItem.query().patch({ 'ns:name': 'b' }).where('id', 1);
       const item = await Item.query().findById(1);
       expect(item['ns:name']).to.equal('b');
+    });
+
+    describe('without a schema', () => {
+      class SchemalessItem extends Model {
+        static get tableName() {
+          return 'field_expression_keys';
+        }
+      }
+
+      const fetchValue = async (id) =>
+        (await knex('field_expression_keys').where('id', id).first())['ns:'];
+
+      it('insert() should write a key with a colon that is not a field expression given as a query property of an instance', async () => {
+        await SchemalessItem.query(knex).insert(
+          SchemalessItem.fromJson({ id: 2, 'ns:': raw('?', 'x') }),
+        );
+        expect(await fetchValue(2)).to.equal('x');
+      });
+
+      it('upsertGraph() should fetch a key with a colon that is not a field expression', async () => {
+        await SchemalessItem.query(knex).upsertGraph(
+          { id: 2, 'ns:': 'x' },
+          { insertMissing: true, fetchStrategy: 'OnlyNeeded' },
+        );
+        expect(await fetchValue(2)).to.equal('x');
+      });
     });
 
     if (session.isPostgres()) {
