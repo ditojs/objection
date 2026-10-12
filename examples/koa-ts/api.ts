@@ -1,5 +1,5 @@
 import type Router from '@koa/router'
-import type { PartialModelGraph, PartialModelObject } from 'objection'
+import type { PartialModelGraph, PartialModelRow } from 'objection'
 import Animal from './models/Animal.js'
 import Movie from './models/Movie.js'
 import Person from './models/Person.js'
@@ -98,7 +98,7 @@ export default (router: Router) => {
   router.patch('/persons/:id', async (ctx) => {
     const numUpdated = await Person.query()
       .findById(ctx.params.id)
-      .patch(ctx.request.body as PartialModelObject<Person>)
+      .patch(ctx.request.body as PartialModelRow<Person>)
 
     ctx.body = {
       success: numUpdated == 1,
@@ -124,7 +124,7 @@ export default (router: Router) => {
 
     const child = await Person.relatedQuery('children')
       .for(personId)
-      .insert(ctx.request.body as PartialModelObject<Person>)
+      .insert(ctx.request.body as PartialModelRow<Person>)
 
     ctx.body = child
   })
@@ -175,7 +175,7 @@ export default (router: Router) => {
 
     const pet = await Person.relatedQuery('pets')
       .for(personId)
-      .insert(ctx.request.body as PartialModelObject<Animal>)
+      .insert(ctx.request.body as PartialModelRow<Animal>)
 
     ctx.body = pet
   })
@@ -207,7 +207,7 @@ export default (router: Router) => {
    * Insert a new movie.
    */
   router.post('/movies', async (ctx) => {
-    const movie = await Movie.query().insert(ctx.request.body as PartialModelObject<Movie>)
+    const movie = await Movie.query().insert(ctx.request.body as PartialModelRow<Movie>)
     ctx.body = movie
   })
 

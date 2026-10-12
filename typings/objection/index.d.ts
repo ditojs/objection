@@ -471,8 +471,18 @@ export type PartialModelObject<T extends Model> = {
  * assignable to the query builders for the plain models.
  */
 export type PartialModelProps<T extends Model> = {
-  [K in DataPropertyNames<T>]?: Defined<T[K]> extends Model | Model[] ? never : Expression<T[K]>;
+  [K in DataPropertyNames<T>]?: K extends RelationPropertyNames<T> ? never : Expression<T[K]>;
 };
+
+/**
+ * The data of a row of model M, as `insert()`, `patch()`, `update()` and
+ * `relate()` take it: a model instance, or some of its properties without
+ * relations, as these methods don't write relations. Only the columns of
+ * instances are checked, so that instances can also be passed to the query
+ * builders of narrowed models, e.g. after `withGraphFetched()`.
+ */
+export type PartialModelRow<M extends Model> =
+  (Model & { [K in InsertablePropertyNames<M>]?: M[K] }) | PartialModelProps<M>;
 
 /**
  * Additional optional parameters that may be used in graphs.
@@ -1432,36 +1442,36 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   castTo<MC extends Model>(modelClass: ModelConstructor<MC>): QueryBuilderType<MC>;
   castTo<R>(): QueryBuilder<M, R>;
 
-  update(update: PartialModelObject<M>): NumberQueryBuilder<this>;
+  update(update: PartialModelRow<M>): NumberQueryBuilder<this>;
   update(): NumberQueryBuilder<this>;
-  updateById(id: MaybeCompositeId, update: PartialModelObject<M>): NumberQueryBuilder<this>;
-  updateAndFetch(update: PartialModelObject<M>): SingleQueryBuilder<this>;
-  updateAndFetchById(id: MaybeCompositeId, update: PartialModelObject<M>): SingleQueryBuilder<this>;
+  updateById(id: MaybeCompositeId, update: PartialModelRow<M>): NumberQueryBuilder<this>;
+  updateAndFetch(update: PartialModelRow<M>): SingleQueryBuilder<this>;
+  updateAndFetchById(id: MaybeCompositeId, update: PartialModelRow<M>): SingleQueryBuilder<this>;
 
-  patch(update: PartialModelObject<M>): NumberQueryBuilder<this>;
+  patch(update: PartialModelRow<M>): NumberQueryBuilder<this>;
   patch(): NumberQueryBuilder<this>;
-  patchById(id: MaybeCompositeId, update: PartialModelObject<M>): NumberQueryBuilder<this>;
-  patchAndFetch(update: PartialModelObject<M>): SingleQueryBuilder<this>;
-  patchAndFetchById(id: MaybeCompositeId, update: PartialModelObject<M>): SingleQueryBuilder<this>;
+  patchById(id: MaybeCompositeId, update: PartialModelRow<M>): NumberQueryBuilder<this>;
+  patchAndFetch(update: PartialModelRow<M>): SingleQueryBuilder<this>;
+  patchAndFetchById(id: MaybeCompositeId, update: PartialModelRow<M>): SingleQueryBuilder<this>;
 
   del(): NumberQueryBuilder<this>;
   delete(): NumberQueryBuilder<this>;
   deleteById(id: MaybeCompositeId): NumberQueryBuilder<this>;
 
-  insert(insert: PartialModelObject<M>): SingleQueryBuilder<this>;
-  insert(insert: PartialModelObject<M>[]): ArrayQueryBuilder<this>;
+  insert(insert: PartialModelRow<M>): SingleQueryBuilder<this>;
+  insert(insert: PartialModelRow<M>[]): ArrayQueryBuilder<this>;
   insert(): SingleQueryBuilder<this>;
 
   onConflict(column?: ColumnRef | ColumnRef[] | true): this;
   ignore(): this;
-  merge(merge?: PartialModelObject<M> | string[]): this;
+  merge(merge?: PartialModelRow<M> | string[]): this;
 
-  insertAndFetch(insert: PartialModelObject<M>): SingleQueryBuilder<this>;
-  insertAndFetch(insert: PartialModelObject<M>[]): ArrayQueryBuilder<this>;
+  insertAndFetch(insert: PartialModelRow<M>): SingleQueryBuilder<this>;
+  insertAndFetch(insert: PartialModelRow<M>[]): ArrayQueryBuilder<this>;
   insertAndFetch(): SingleQueryBuilder<this>;
 
   relate(
-    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelObject<M> | PartialModelObject<M>[],
+    ids: MaybeCompositeId | MaybeCompositeId[] | PartialModelRow<M> | PartialModelRow<M>[],
   ): RelateQueryBuilder<NumberQueryBuilder<this>>;
 
   unrelate(): NumberQueryBuilder<this>;
@@ -1712,11 +1722,20 @@ export interface HasOneThroughRelationType extends RelationType {
 }
 
 /**
- * Names of the properties of M that hold related models.
+ * Names of the properties of M that hold related models. Models are detected
+ * by their `$modelClass`, as structural checks against `Model` would circle
+ * back through the query builder types of the related models. Properties
+ * typed `any` are columns.
  */
 export type RelationPropertyNames<M> = {
-  [K in keyof M]-?: NonNullable<M[K]> extends Model | Model[] ? K : never;
+  [K in keyof M]-?: 0 extends 1 & M[K]
+    ? never
+    : NonNullable<M[K]> extends ModelLike | readonly ModelLike[]
+      ? K
+      : never;
 }[keyof M];
+
+type ModelLike = { $modelClass: unknown };
 
 export type TypedModelClassSpecifier<M extends Model> =
   string | ModelConstructor<M> | (() => ModelConstructor<M>);

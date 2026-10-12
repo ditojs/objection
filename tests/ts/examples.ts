@@ -1016,7 +1016,7 @@ objection.transaction.start(Person).then((trx) => {
 
 const p: Promise<string> = qb.then(() => 'done');
 
-// Verify we can call `.insert` with a Partial<Person>:
+// Verify we can call `.insert` with partial data:
 
 Person.query().insert({ firstName: 'Chuck' });
 

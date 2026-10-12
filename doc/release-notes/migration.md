@@ -28,6 +28,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
 - [typescript: Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype)
 - [typescript: Model.jsonSchema is a readonly schema](#typescript-model-jsonschema-is-a-readonly-schema)
+- [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -269,6 +270,25 @@ describeSchema(Person.jsonSchema);
 ```
 
 Code that reads the schema of any model class, e.g. `modelClass.jsonSchema` in plugins or helpers, takes it as `ReadonlyJSONSchema`.
+
+## typescript: insert(), patch() and update() reject relation data
+
+`insert()`, `patch()`, `update()` and their variants, `merge()` and `relate()` only write the columns of the model's own table and ignore relation properties. Their argument type is `PartialModelRow<M>`: a model instance, or the model's properties without relations. Objects with relation data are type errors, and so are values whose type includes the relation properties, even if they hold no relation data: `Partial<Person>`, `ModelObject<Person>` (e.g. the result of `toJSON()`) and `PartialModelObject<Person>`, which these methods took in 3.x. Type such values as `PartialModelRow<Person>`, or pass the model instance:
+
+```ts
+// 3.x: accepted, and `pets` silently ignored
+await Person.query().insert({ firstName: 'Jennifer', pets: [{ name: 'Fluffy' }] });
+
+// 4.0: insertGraph() inserts the relations
+await Person.query().insertGraph({ firstName: 'Jennifer', pets: [{ name: 'Fluffy' }] });
+
+// 4.0: type data without relations as PartialModelRow
+function insertPerson(data: PartialModelRow<Person>) {
+  return Person.query().insert(data);
+}
+```
+
+Custom query builders that override these methods use `PartialModelRow<M>` for the data instead of `PartialModelObject<M>`.
 
 ## `insert` and `update` reject field expression keys
 
