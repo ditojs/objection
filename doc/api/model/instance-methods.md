@@ -599,6 +599,8 @@ See [this section](/api/model/overview.html#model-data-lifecycle) for more infor
 | ------ | ----------------------- |
 | Object | Model as a JSON object. |
 
+In TypeScript, the JSON object is typed `ModelJson<M>`: the model's properties without methods, with the related models as `ModelJson` too. Values like dates aren't converted.
+
 ##### Examples
 
 ```js

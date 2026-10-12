@@ -32,6 +32,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
 - [typescript: Queries are checked against the models](#typescript-queries-are-checked-against-the-models)
 - [typescript: $relatedQuery() of to-one relations may resolve to undefined](#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined)
+- [typescript: toJSON() returns ModelJson](#typescript-tojson-returns-modeljson)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
 - [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
@@ -341,6 +342,18 @@ const parent = await person.$relatedQuery('parent'); // Person | undefined
 
 // Throw instead, if the row has to exist:
 const parent = await person.$relatedQuery('parent').throwIfNotFound(); // Person
+```
+
+## typescript: toJSON() returns ModelJson
+
+`toJSON()` and `$toJson()` return `ModelJson<M>`, which describes the plain object they produce: the model's properties without methods, and the related models as `ModelJson` too. They returned `ModelObject<M>`, whose relations claimed model instances. Type the values that hold the result of `toJSON()` as `ModelJson<M>` instead of `ModelObject<M>`:
+
+```ts
+function send(person: ModelJson<Person>) {
+  // ...
+}
+
+send(person.toJSON());
 ```
 
 ## `insert` and `update` reject field expression keys

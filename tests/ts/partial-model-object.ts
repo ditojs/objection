@@ -8,6 +8,7 @@ class Pet extends Model {
   id!: number;
   name!: string;
   meta?: any;
+  tags?: any[];
   owner?: Owner;
 }
 
@@ -83,6 +84,7 @@ async function queries() {
   // Columns typed `any`, e.g. json columns, take any value.
   await Pet.query().insert({ name: 'Doggo', meta: { a: 1 } });
   await Pet.query().patch({ meta: [1, 2] });
+  await Pet.query().insert({ name: 'Doggo', tags: ['a', 1] });
 
   // Instances are also accepted after withGraphFetched().
   await Owner.query().withGraphFetched('pets').insert(new Owner());
