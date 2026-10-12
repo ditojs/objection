@@ -22,6 +22,7 @@
 - Relation expressions that name a relation twice, like `'[movies.reviews, movies.actors]'`, throw an error instead of using only the last one with a warning: in `withGraphFetched()`, `withGraphJoined()`, `allowGraph()`, `joinRelated()` and other relation expressions, and in the graph options of `insertGraph()` and `upsertGraph()`. See [migration](/release-notes/migration.md#relation-expressions-that-name-a-relation-twice-throw) [#131](https://github.com/ditojs/objection/issues/131)
 - `insertGraph()`, `upsertGraph()` and their `*AndFetch()` variants throw an error for unknown graph options like `noInset` instead of ignoring them with a warning, and `insertGraph()` also for the options of `upsertGraph()` that have no effect on an insert, like `noDelete` or `allowMarkers`. See [migration](/release-notes/migration.md#unknown-graph-options-throw) [#84](https://github.com/ditojs/objection/issues/84)
 - The type parameter of `RelateQueryBuilder` is the number query builder, e.g. `RelateQueryBuilder<NumberQueryBuilder<this>>` in custom query builders that override `relate()`. See [migration](/release-notes/migration.md#typescript-relatequerybuilder-takes-the-number-query-builder)
+- `insertGraph()` throws a `ValidationError` of type `InvalidGraph` for new models below related models, instead of ignoring them with a warning. Models with ids below related models are still ignored. See [migration](/release-notes/migration.md#insertgraph-throws-for-new-models-below-related-models) [#217](https://github.com/ditojs/objection/issues/217)
 
 ### Types
 
