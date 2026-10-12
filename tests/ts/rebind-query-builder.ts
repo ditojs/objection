@@ -100,8 +100,9 @@ async function resultKinds() {
     .someCustomMethod();
   type _m = Expect<Equal<typeof m, MyQueryBuilder<Person, Person[]>>>;
 
-  const n = Person.query().deleteById(1).someCustomMethod();
-  type _n = Expect<Equal<typeof n, MyQueryBuilder<Person, number>>>;
+  const n: number = await Person.query().deleteById(1).someCustomMethod();
+  const nr = Person.query().deleteById(1).someCustomMethod().returning('*');
+  type _nr = Expect<Equal<typeof nr, MyQueryBuilder<Person, Person | undefined>>>;
 
   const o: Person | undefined = await Person.query().first().someCustomMethod();
   const p: number = await Person.query().patch({ name: 'Jennifer' });
@@ -338,10 +339,12 @@ class GenericThisQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, 
     const c: number = this.findById(1);
     const d: Page<M> = await this.page(0, 10);
     const e: M = await this.insert({});
-    const f: M[] = await this.patch({}).returning('*');
-    const g: M[] = await this.delete().returning('*');
-    const h: M[] = await this.update({}).returning('id');
-    const i: M[] = await this.deleteById(1).returning('*').custom();
-    const j: M[] = await this.findById(1).patch({}).returning('*');
+    // The result kind of writes with returning() depends on R, which
+    // TypeScript can't resolve here.
+    const f: M[] | M | undefined = await this.patch({}).returning('*');
+    const g: M[] | M | undefined = await this.delete().returning('*');
+    const h: M[] | M | undefined = await this.update({}).returning('id');
+    const i: M[] | M | undefined = await this.deleteById(1).returning('*').custom();
+    const j: M[] | M | undefined = await this.findById(1).patch({}).returning('*');
   }
 }

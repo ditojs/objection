@@ -104,7 +104,7 @@ await Person.query().where('id', 1).myCustomMethod(1).where('foo', 'bar');
 await Person.query().findById(1).myCustomMethod(1);
 ```
 
-Methods that override query builder methods can use the helper types for their return types, e.g. `MaybeSingleQueryBuilder<this>` for `findById()`, `NumberQueryBuilder<this>` for `patch()` and `WithGraphQueryBuilder<this, E>` for `withGraphFetched()`.
+Methods that override query builder methods can use the helper types for their return types, e.g. `MaybeSingleQueryBuilder<this>` for `findById()`, `NumberQueryBuilder<this>` for `patch()`, `NumberQueryBuilder<MaybeSingleQueryBuilder<this>>` for `patchById()` and `WithGraphQueryBuilder<this, E>` for `withGraphFetched()`.
 
 ::: tip
 TIP: Consider using [modifiers](/recipes/modifiers.html#usage-in-a-query) instead of extending the query builder. You can often achieve the same flexibility with both.

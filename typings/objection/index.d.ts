@@ -1851,6 +1851,34 @@ export interface RelateReturningMethod<M extends Model> {
   (...args: ReturningArgs): QueryBuilder<M, Pojo[]>;
 }
 
+/**
+ * The query builder QB with result R after `patch()`, `update()` or `delete()`.
+ * With `returning()` it resolves to the written rows in the result kind of QB:
+ * one row for single and maybe-single query builders, e.g. after `findById()`,
+ * `first()`, `$query()` or `$relatedQuery()` of a to-one relation, an array
+ * otherwise.
+ */
+type WriteQueryBuilder<QB extends AnyQueryBuilder, M extends Model, R> = [R] extends [
+  readonly unknown[] | Page<unknown> | number,
+]
+  ? Rebind<QB, M, number>
+  : { returning(...args: ReturningArgs): Rebind<QB, M, WrittenRows<M, R>> } & Rebind<QB, M, number>;
+
+/**
+ * The writes after `returning()` on single and maybe-single query builders,
+ * which resolve to one row.
+ */
+interface ReturningWrites<QB extends AnyQueryBuilder, M extends Model, W> {
+  update(update: PartialModelRow<M>): Rebind<QB, M, W>;
+  update(): Rebind<QB, M, W>;
+  patch(update: PartialModelPatch<M>): Rebind<QB, M, W>;
+  patch(): Rebind<QB, M, W>;
+  del(): Rebind<QB, M, W>;
+  delete(): Rebind<QB, M, W>;
+}
+
+type WrittenRows<M, R> = undefined extends R ? M | undefined : M;
+
 export type RelateQueryBuilder<NQB extends AnyQueryBuilder> = {
   returning: RelateReturningMethod<ModelType<NQB>>;
 } & NQB;
@@ -2222,19 +2250,25 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   update(update: PartialModelRow<M>): NumberQueryBuilder<this>;
   update(): NumberQueryBuilder<this>;
-  updateById(id: MaybeCompositeId, update: PartialModelRow<M>): NumberQueryBuilder<this>;
+  updateById(
+    id: MaybeCompositeId,
+    update: PartialModelRow<M>,
+  ): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
   updateAndFetch(update: PartialModelRow<M>): SingleQueryBuilder<this>;
   updateAndFetchById(id: MaybeCompositeId, update: PartialModelRow<M>): SingleQueryBuilder<this>;
 
   patch(update: PartialModelPatch<M>): NumberQueryBuilder<this>;
   patch(): NumberQueryBuilder<this>;
-  patchById(id: MaybeCompositeId, update: PartialModelPatch<M>): NumberQueryBuilder<this>;
+  patchById(
+    id: MaybeCompositeId,
+    update: PartialModelPatch<M>,
+  ): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
   patchAndFetch(update: PartialModelPatch<M>): SingleQueryBuilder<this>;
   patchAndFetchById(id: MaybeCompositeId, update: PartialModelPatch<M>): SingleQueryBuilder<this>;
 
   del(): NumberQueryBuilder<this>;
   delete(): NumberQueryBuilder<this>;
-  deleteById(id: MaybeCompositeId): NumberQueryBuilder<this>;
+  deleteById(id: MaybeCompositeId): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
 
   insert(insert: PartialModelRow<M>): SingleQueryBuilder<this>;
   insert(insert: PartialModelRow<M>[]): ArrayQueryBuilder<this>;
@@ -2281,7 +2315,13 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   // AnyQueryBuilder and back.
   returning(
     ...args: ReturningArgs
-  ): 0 extends 1 & R ? any : [R] extends [number] ? ArrayQueryBuilder<this> : this;
+  ): 0 extends 1 & R
+    ? any
+    : [R] extends [number]
+      ? ArrayQueryBuilder<this>
+      : [R] extends [readonly unknown[] | Page<unknown>]
+        ? this
+        : ReturningWrites<this, M, WrittenRows<M, R>> & this;
   forUpdate: IdentityMethod<this>;
   forShare: IdentityMethod<this>;
   forNoKeyUpdate: IdentityMethod<this>;
@@ -2388,7 +2428,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   '~single': Rebind<this, M, ResultItem<R, M>>;
   '~maybeSingle': Rebind<this, M, ResultItem<R, M> | undefined>;
   '~array': Rebind<this, M, ResultItem<R, M>[]>;
-  '~number': Rebind<this, M, number>;
+  '~number': WriteQueryBuilder<this, M, R>;
   '~page': Rebind<this, M, Page<ResultItem<R, M>>>;
 
   then<R1 = R, R2 = never>(

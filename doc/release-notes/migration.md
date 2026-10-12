@@ -34,6 +34,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
 - [typescript: Queries are checked against the models](#typescript-queries-are-checked-against-the-models)
 - [typescript: $relatedQuery() of to-one relations may resolve to undefined](#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined)
+- [Writes of to-one relation queries with returning() resolve to one model](#writes-of-to-one-relation-queries-with-returning-resolve-to-one-model)
 - [typescript: toJSON() returns ModelJson](#typescript-tojson-returns-modeljson)
 - [typescript: relate().returning() rows are plain objects](#typescript-relate-returning-rows-are-plain-objects)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
@@ -278,7 +279,7 @@ class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
 }
 ```
 
-The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBuilder`, `NumberQueryBuilder` and `PageQueryBuilder` take any query builder, e.g. `MaybeSingleQueryBuilder<this>` as the return type of an overridden `findById()`. `WithGraphModelQueryBuilder<M, E>` is removed. Use `QueryBuilderType<WithGraphModel<M, E>>` instead. The `ReturningMethod` interface is removed too, `returning()` is a method of `QueryBuilder`. On query builders with an `any` result, e.g. `AnyQueryBuilder`, it returns `QueryBuilder<any, any> | QueryBuilder<any, any[]>` instead of `QueryBuilder<any, any[]>`.
+The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBuilder`, `NumberQueryBuilder` and `PageQueryBuilder` take any query builder, e.g. `MaybeSingleQueryBuilder<this>` as the return type of an overridden `findById()`, and `NumberQueryBuilder<MaybeSingleQueryBuilder<this>>` for `patchById()`, `updateById()` and `deleteById()`, the writes of `findById()`. `WithGraphModelQueryBuilder<M, E>` is removed. Use `QueryBuilderType<WithGraphModel<M, E>>` instead. The `ReturningMethod` interface is removed too, `returning()` is a method of `QueryBuilder`. On query builders with an `any` result, e.g. `AnyQueryBuilder`, it returns `QueryBuilder<any, any> | QueryBuilder<any, any[]>` instead of `QueryBuilder<any, any[]>`.
 
 ## typescript: Model.jsonSchema is a readonly schema
 
@@ -356,6 +357,20 @@ const parent = await person.$relatedQuery('parent'); // Person | undefined
 // Throw instead, if the row has to exist:
 const parent = await person.$relatedQuery('parent').throwIfNotFound(); // Person
 ```
+
+## Writes of to-one relation queries with returning() resolve to one model
+
+`patch()`, `update()` and `delete()` with [returning](/api/query-builder/find-methods.html#returning) through `$relatedQuery()` of a `BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` resolve to the written model, or `undefined` if there is no related row, like the find query does: only several written rows, which a has-one relation can have, stay an array. 3.x resolved to an array. The `result` of the static `afterUpdate()` and `afterDelete()` hooks of these writes is the model too. `relatedQuery()` with `for()` still resolves to an array:
+
+```js
+// Before:
+const [parent] = await person.$relatedQuery('parent').patch({ age: 50 }).returning('*');
+
+// After:
+const parent = await person.$relatedQuery('parent').patch({ age: 50 }).returning('*');
+```
+
+The typings give writes with `returning()` the result kind of their query everywhere: one model, or `undefined`, after `$query()`, `findById()`, `first()`, the `*ById()` methods and `$relatedQuery()` of to-one relations, also with `returning()` before the write, and an array otherwise. They typed writes of `findById()`, `first()` and the `*ById()` methods as arrays, although they resolve to one model too. Custom query builders that override `patchById()`, `updateById()` or `deleteById()` declare `NumberQueryBuilder<MaybeSingleQueryBuilder<this>>` as their return type, see [Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype).
 
 ## typescript: toJSON() returns ModelJson
 
