@@ -56,6 +56,12 @@ describe('GraphOptions', () => {
       ['a.[b, ^]', '"^" is only supported at the end of a relation path'],
       ['a.[b, ^2]', '"^2" is only supported at the end of a relation path'],
       ['[a, *]', '"*" is only supported at the end of a relation path'],
+      ['*.a', '"*" is only supported at the end of a relation path'],
+      ['a.*.b', '"*" is only supported at the end of a relation path'],
+      ['a.^.b', '"^" is only supported at the end of a relation path'],
+      ['a.^2 .b', '"^2" is only supported at the end of a relation path'],
+      ['[a.^.[b, c], d]', '"^" is only supported at the end of a relation path'],
+      ['a.*(f)', '"*" is only supported at the end of a relation path'],
     ]) {
       it(`should throw for '${expression}'`, () => {
         expect(() => new GraphOptions({ noInsert: expression })).to.throwException((err) => {
@@ -63,6 +69,12 @@ describe('GraphOptions', () => {
             `invalid relation expression "${expression}" in noInsert option: ${message}`,
           );
         });
+      });
+    }
+
+    for (const expression of ['*', 'a.^ ', '[a.^3 , b.*]', 'a.[b.*, c.^2]', 'a.^b.c', 'a.*b.c']) {
+      it(`should accept '${expression}'`, () => {
+        expect(() => new GraphOptions({ noInsert: expression })).to.not.throwException();
       });
     }
   });
