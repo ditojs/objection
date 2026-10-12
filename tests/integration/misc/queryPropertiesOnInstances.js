@@ -177,6 +177,34 @@ module.exports = (session) => {
       expect(await fetchViews(id)).to.equal(10);
     });
 
+    it('should not write the values set in insert hooks over query properties in later writes', async () => {
+      class HookPost extends TestPost {
+        $beforeInsert() {
+          this.views ??= 0;
+        }
+      }
+
+      const post = await HookPost.query().insert({ id: 1, name: 'a', views: raw('10') });
+      post.name = 'b';
+      await post.$query().patch();
+      expect(await fetchViews(post.id)).to.equal(10);
+    });
+
+    it('should not write the values set in update hooks over query properties in later writes', async () => {
+      class HookPost extends TestPost {
+        $beforeUpdate() {
+          this.views ??= 0;
+        }
+      }
+
+      await TestPost.query().insert({ id: 1, name: 'a', views: 5 });
+      const post = HookPost.fromJson({ id: 1, name: 'a', views: raw('10') });
+      await post.$query().patch();
+      post.name = 'b';
+      await post.$query().patch();
+      expect(await fetchViews(post.id)).to.equal(10);
+    });
+
     it('should run the query properties each time the same builder runs', async () => {
       const { id } = await TestPost.query().insert({ id: 1, name: 'a', views: 0 });
       const builder = TestPost.query()
