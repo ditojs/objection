@@ -218,13 +218,16 @@ export type RelationExpression<M extends Model> = string | object;
  *
  * Anything that isn't a literal expression (e.g. a `string` variable) yields
  * `{}`, and so do nodes the parser doesn't understand (aliases, `*`,
- * recursion with `^`), so these simply don't narrow.
+ * recursion with `^`), so these simply don't narrow. So does `never`, which
+ * TypeScript substitutes for E when it checks the intersections of `Rebind`.
  */
-export type ParseRelationExpression<E> = string extends E
+export type ParseRelationExpression<E> = [E] extends [never]
   ? {}
-  : E extends string
-    ? ParseRelationString<E>
-    : ParseRelationObject<E>;
+  : string extends E
+    ? {}
+    : E extends string
+      ? ParseRelationString<E>
+      : ParseRelationObject<E>;
 
 export type Whitespace = ' ' | '\n' | '\r' | '\t';
 
@@ -368,23 +371,14 @@ export type WithGraphProperty<P, T> = [keyof T] extends [never]
 export type WithGraphModel<M, E> = WithGraph<M, ParseRelationExpression<E>>;
 
 /**
- * The query builder type for model M after fetching relation expression E.
- * `M extends unknown` makes this distributive, so that in generic code (e.g.
- * `this` in model methods), TypeScript can resolve it through the constraint
- * of M.
- */
-export type WithGraphModelQueryBuilder<M extends Model, E> = M extends unknown
-  ? WithGraphModel<M, E>['QueryBuilderType']
-  : never;
-
-/**
  * The query builder type after `withGraphFetched(E)` / `withGraphJoined(E)`
  * on QB. The model type is narrowed, and the query builder for the narrowed
  * model is looked up through its `QueryBuilderType`, so custom query
  * builders are kept. Falls back to QB if nothing can be narrowed, or if the
  * model type is `any` (`0 extends 1 & M`), e.g. for AnyQueryBuilder.
- * `QB extends unknown` below serves the same purpose as in
- * WithGraphModelQueryBuilder.
+ * `QB extends unknown` makes this distributive, so that in generic code (e.g.
+ * `this` in model methods), TypeScript can resolve it through the constraint
+ * of QB.
  */
 export type WithGraphQueryBuilder<QB extends AnyQueryBuilder, E> = WithGraphTreeQueryBuilder<
   QB,
@@ -644,33 +638,40 @@ export type ModelType<T extends { ModelType: any }> = T['ModelType'];
 export type ResultType<T extends { ResultType: any }> = T['ResultType'];
 
 /**
+ * Re-instantiates the query builder QB with the model type M and the result
+ * type R, through its `RebindType`. The `~rebind` slot is `unknown`, so the
+ * intersection resolves it to exactly `[M, R]`. Rebinding QB's own
+ * `RebindType` instead of QB keeps the intersection small, which TypeScript
+ * checks much faster.
+ */
+type Rebind<QB extends AnyQueryBuilder, M extends Model, R> = (QB['RebindType'] & {
+  '~rebind': [M, R];
+})['RebindType'];
+
+/**
  * Gets the single item query builder type for a query builder.
  */
-export type SingleQueryBuilder<T extends { SingleQueryBuilderType: any }> =
-  T['SingleQueryBuilderType'];
+export type SingleQueryBuilder<QB extends AnyQueryBuilder> = QB['~single'];
 
 /**
  * Gets the single or undefined item query builder type for a query builder.
  */
-export type MaybeSingleQueryBuilder<T extends { MaybeSingleQueryBuilderType: any }> =
-  T['MaybeSingleQueryBuilderType'];
+export type MaybeSingleQueryBuilder<QB extends AnyQueryBuilder> = QB['~maybeSingle'];
 
 /**
  * Gets the multi-item query builder type for a query builder.
  */
-export type ArrayQueryBuilder<T extends { ArrayQueryBuilderType: any }> =
-  T['ArrayQueryBuilderType'];
+export type ArrayQueryBuilder<QB extends AnyQueryBuilder> = QB['~array'];
 
 /**
  * Gets the number query builder type for a query builder.
  */
-export type NumberQueryBuilder<T extends { NumberQueryBuilderType: any }> =
-  T['NumberQueryBuilderType'];
+export type NumberQueryBuilder<QB extends AnyQueryBuilder> = QB['~number'];
 
 /**
  * Gets the page query builder type for a query builder.
  */
-export type PageQueryBuilder<T extends { PageQueryBuilderType: any }> = T['PageQueryBuilderType'];
+export type PageQueryBuilder<QB extends AnyQueryBuilder> = QB['~page'];
 
 export interface ForClassMethod {
   <M extends Model>(modelClass: ModelConstructor<M>): QueryBuilderType<M>;
@@ -985,7 +986,7 @@ export interface OrderByMethod<out QB extends AnyQueryBuilder> {
 export interface OrderByRawMethod<out QB extends AnyQueryBuilder> extends RawInterface<QB> {}
 
 export interface FirstMethod {
-  <QB extends { ResultType: any; MaybeSingleQueryBuilderType: any }>(
+  <QB extends AnyQueryBuilder>(
     this: QB,
   ): [ResultType<QB>] extends [any[]] ? MaybeSingleQueryBuilder<QB> : QB;
 }
@@ -1049,13 +1050,6 @@ export type ReturningColumn = string | Raw | readonly (string | Raw)[];
  */
 export type ReturningArgs =
   ReturningColumn[] | [ReturningColumn, ...ReturningColumn[], ReturningOptions | undefined];
-
-export interface ReturningMethod {
-  <QB extends { NumberQueryBuilderType: any; ArrayQueryBuilderType: any }>(
-    this: QB,
-    ...args: ReturningArgs
-  ): QB extends NumberQueryBuilder<QB> ? ArrayQueryBuilder<QB> : QB;
-}
 
 /**
  * With `returning()`, `relate()` returns the inserted join rows for
@@ -1131,13 +1125,13 @@ export interface InsertGraphOptions {
 }
 
 export interface InsertGraphMethod<M extends Model> {
-  <QB extends { SingleQueryBuilderType: any }>(
+  <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>,
     options?: InsertGraphOptions,
   ): SingleQueryBuilder<QB>;
 
-  <QB extends { ArrayQueryBuilderType: any }>(
+  <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>[],
     options?: InsertGraphOptions,
@@ -1159,13 +1153,13 @@ export interface UpsertGraphOptions {
 }
 
 export interface UpsertGraphMethod<M extends Model> {
-  <QB extends { ArrayQueryBuilderType: any }>(
+  <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>[],
     options?: UpsertGraphOptions,
   ): ArrayQueryBuilder<QB>;
 
-  <QB extends { SingleQueryBuilderType: any }>(
+  <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>,
     options?: UpsertGraphOptions,
@@ -1493,7 +1487,17 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   throwIfNotFound: (arg?: any) => R extends Model | undefined ? SingleQueryBuilder<this> : this;
 
-  returning: ReturningMethod;
+  // With the class's own R, the result kind also resolves where `this` is
+  // generic, e.g. in the methods of custom query builders. For `any` results
+  // it's either kind, which query builders with a generic R are assignable to,
+  // e.g. to AnyQueryBuilder.
+  returning(
+    ...args: ReturningArgs
+  ): 0 extends 1 & R
+    ? this | ArrayQueryBuilder<this>
+    : [R] extends [number]
+      ? ArrayQueryBuilder<this>
+      : this;
   forUpdate: IdentityMethod<this>;
   forShare: IdentityMethod<this>;
   forNoKeyUpdate: IdentityMethod<this>;
@@ -1577,11 +1581,31 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   ModelType: M;
   ResultType: R;
 
-  ArrayQueryBuilderType: QueryBuilder<M, M[]>;
-  SingleQueryBuilderType: QueryBuilder<M, M>;
-  MaybeSingleQueryBuilderType: QueryBuilder<M, M | undefined>;
-  NumberQueryBuilderType: QueryBuilder<M, number>;
-  PageQueryBuilderType: QueryBuilder<M, Page<M>>;
+  // The model and result types that `RebindType` is instantiated with. They
+  // are `any` where `this` isn't rebound, e.g. when TypeScript checks the
+  // members of a custom query builder against this class.
+  '~rebind': unknown;
+  '~M': this['~rebind'] extends [any, any] ? this['~rebind'][0] : any;
+  '~R': this['~rebind'] extends [any, any] ? this['~rebind'][1] : any;
+
+  /**
+   * This query builder, re-instantiated with other model and result types,
+   * e.g. by `first()` or `page()`. Custom query builders redeclare it to keep
+   * their own type:
+   *
+   *   declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+   */
+  RebindType: QueryBuilder<this['~M'], this['~R']>;
+
+  // The query builder rebound to the result kinds of the helper types, e.g.
+  // `SingleQueryBuilder`. As members, they also resolve where `this` is
+  // generic, e.g. in the methods of custom query builders. Of the members
+  // starting with `~`, only `~M` and `~R` are API, for `RebindType`.
+  '~single': Rebind<this, M, M>;
+  '~maybeSingle': Rebind<this, M, M | undefined>;
+  '~array': Rebind<this, M, M[]>;
+  '~number': Rebind<this, M, number>;
+  '~page': Rebind<this, M, Page<M>>;
 
   then<R1 = R, R2 = never>(
     onfulfilled?: ((value: R) => R1 | PromiseLike<R1>) | undefined | null,
@@ -2003,13 +2027,13 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
     modelOrObject: PartialModelObject<M>,
     expression: E,
     options?: FetchGraphOptions,
-  ): SingleQueryBuilder<WithGraphModelQueryBuilder<M, E>>;
+  ): Rebind<QueryBuilderType<M>, WithGraphModel<M, E>, WithGraphModel<M, E>>;
 
   fetchGraph<const E extends RelationExpression<M>>(
     modelOrObject: PartialModelObject<M>[],
     expression: E,
     options?: FetchGraphOptions,
-  ): WithGraphModelQueryBuilder<M, E>;
+  ): Rebind<QueryBuilderType<M>, WithGraphModel<M, E>, WithGraphModel<M, E>[]>;
 
   getRelations(): Relations;
   getRelation(name: string): Relation;
@@ -2121,14 +2145,14 @@ export class Model {
     modelOrObject: PartialModelObject<M>,
     expression: E,
     options?: FetchGraphOptions,
-  ): SingleQueryBuilder<WithGraphModelQueryBuilder<M, E>>;
+  ): Rebind<QueryBuilderType<M>, WithGraphModel<M, E>, WithGraphModel<M, E>>;
 
   static fetchGraph<M extends Model, const E extends RelationExpression<M> = string>(
     this: ConstructorType<M>,
     modelOrObject: PartialModelObject<M>[],
     expression: E,
     options?: FetchGraphOptions,
-  ): WithGraphModelQueryBuilder<M, E>;
+  ): Rebind<QueryBuilderType<M>, WithGraphModel<M, E>, WithGraphModel<M, E>[]>;
 
   static getRelations(): Relations;
   static getRelation(name: string): Relation;
@@ -2175,7 +2199,7 @@ export class Model {
   $fetchGraph<const E extends RelationExpression<this>>(
     expression: E,
     options?: FetchGraphOptions,
-  ): SingleQueryBuilder<WithGraphModelQueryBuilder<this, E>>;
+  ): Rebind<QueryBuilderType<this>, WithGraphModel<this, E>, WithGraphModel<this, E>>;
 
   $formatDatabaseJson(json: Pojo): Pojo;
   $parseDatabaseJson(json: Pojo): Pojo;
