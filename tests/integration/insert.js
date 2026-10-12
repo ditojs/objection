@@ -209,7 +209,8 @@ export default (session) => {
           });
       });
 
-      if (session.isPostgres()) {
+      // MySQL doesn't return the ids of several inserted rows.
+      if (!session.isMySql()) {
         it('should accept an array', () => {
           let models = [
             Model1.fromJson({ model1Prop1: 'hello 3' }),
@@ -280,6 +281,42 @@ export default (session) => {
               13,
             );
           });
+      });
+
+      it('should accept a json array of models that get their ids in $beforeInsert', async () => {
+        let nextId = 200;
+
+        class IdModel extends Model1 {
+          $beforeInsert(context) {
+            super.$beforeInsert(context);
+            this.id = nextId++;
+          }
+        }
+
+        const inserted = await IdModel.query().insert([
+          { model1Prop1: 'hello 200' },
+          { model1Prop1: 'hello 201' },
+        ]);
+
+        expect(inserted.map((it) => it.id)).toEqual([200, 201]);
+        expect(await session.knex(Model1.getTableName()).whereIn('id', [200, 201])).toHaveLength(2);
+      });
+
+      it('should accept a json array of models whose insert a hook cancels', async () => {
+        class CancelModel extends Model1 {
+          static beforeInsert({ cancelQuery }) {
+            cancelQuery([]);
+          }
+        }
+
+        await CancelModel.query().insert([
+          { model1Prop1: 'cancelled 1' },
+          { model1Prop1: 'cancelled 2' },
+        ]);
+
+        expect(
+          await session.knex(Model1.getTableName()).where('model1Prop1', 'like', 'cancelled%'),
+        ).toEqual([]);
       });
 
       it('should accept a json array of models with ids', async () => {
@@ -906,7 +943,8 @@ export default (session) => {
             });
         });
 
-        if (session.isPostgres()) {
+        // MySQL doesn't return the ids of several inserted rows.
+        if (!session.isMySql()) {
           it('should accept an array', () => {
             let inserted = null;
 
@@ -1134,7 +1172,8 @@ export default (session) => {
             });
         });
 
-        if (session.isPostgres()) {
+        // MySQL doesn't return the ids of several inserted rows.
+        if (!session.isMySql()) {
           it('should accept an array', () => {
             let inserted = null;
 
@@ -1557,7 +1596,8 @@ export default (session) => {
             });
         });
 
-        if (session.isPostgres()) {
+        // MySQL doesn't return the ids of several inserted rows.
+        if (!session.isMySql()) {
           it('should accept an array', () => {
             return Model1.relatedQuery('model1Relation2')
               .for(1)

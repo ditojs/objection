@@ -60,7 +60,7 @@ export default (session) => {
       return knex('issue205Item').delete();
     });
 
-    // Not all databases support batch inserts:
+    // MySQL doesn't return the ids of several inserted rows:
     const insertItems = async (items) => {
       for (const item of items) {
         await Item.query().insert(item);
