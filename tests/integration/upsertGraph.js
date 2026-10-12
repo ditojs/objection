@@ -2862,6 +2862,22 @@ export default (session) => {
           });
       });
 
+      it('should only write the foreign key when hasManyRelation and hasOneRelation models are related with noUpdate: true', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            model1Relation1Inverse: { id: 4, model1Prop1: 'this should not be written to db' },
+            model1Relation2: [{ idCol: 1, model2Prop1: 'this should not be written to db' }],
+          },
+          { fetchStrategy, relate: true, noUpdate: true, noDelete: true },
+        );
+
+        const model1 = await Model1.query(session.knex).findById(4);
+        expect(model1).toMatchObject({ id: 4, model1Id: 1, model1Prop1: 'manyToMany 1' });
+        const model2 = await Model2.query(session.knex).findById(1);
+        expect(model2).toMatchObject({ idCol: 1, model1Id: 1, model2Prop1: 'hasMany 1' });
+      });
+
       it('should not update other than the relation properties when belongsToOneRelation is unrelated but the parent has noUpdate: true', () => {
         const upsert1 = {
           id: 2,
