@@ -495,6 +495,25 @@ export type Defined<T> = Exclude<T, undefined>;
 export type ModelObject<T extends Model> = Pick<T, DataPropertyNames<T>>;
 
 /**
+ * The JSON of model M, as `toJSON()` returns it: its properties without
+ * methods, and the related models as JSON too. Values aren't converted, e.g.
+ * dates stay dates.
+ */
+export type ModelJson<M> = {
+  [K in keyof Pick<M, DataPropertyNames<M> & keyof M>]: K extends RelationPropertyNames<M>
+    ? RelationJson<M[K]>
+    : M[K];
+};
+
+type RelationJson<P> = P extends (infer I)[]
+  ? ModelJson<I>[]
+  : P extends readonly (infer I)[]
+    ? readonly ModelJson<I>[]
+    : P extends ModelLike
+      ? ModelJson<P>
+      : P;
+
+/**
  * Any object that has some of the properties of model class T match this type.
  */
 export type PartialModelObject<T extends Model> = {
@@ -527,7 +546,7 @@ export type PartialModelProps<T extends Model> = {
  * builders of narrowed models, e.g. after `withGraphFetched()`.
  */
 export type PartialModelRow<M extends Model> =
-  (Model & { [K in InsertablePropertyNames<M>]?: M[K] }) | PartialModelProps<M>;
+  (ModelLike & { [K in InsertablePropertyNames<M>]?: M[K] }) | PartialModelProps<M>;
 
 /**
  * Additional optional parameters that may be used in graphs.
@@ -2403,20 +2422,21 @@ export interface HasOneThroughRelationType extends RelationType {
 }
 
 /**
- * Names of the properties of M that hold related models. Models are detected
- * by their `$modelClass`, as structural checks against `Model` would circle
- * back through the query builder types of the related models. Properties
- * typed `any` are columns.
+ * Names of the properties of M that hold related models. Properties typed
+ * `any` or `any[]` are columns.
  */
 export type RelationPropertyNames<M> = {
-  [K in keyof M]-?: 0 extends 1 & M[K]
-    ? never
-    : NonNullable<M[K]> extends ModelLike | readonly ModelLike[]
-      ? K
-      : never;
+  [K in keyof M]-?: HoldsModels<NonNullable<M[K]>> extends true ? K : never;
 }[keyof M];
 
-type ModelLike = { $modelClass: unknown };
+type HoldsModels<P> = [P] extends [readonly (infer I)[]] ? IsModelLike<I> : IsModelLike<P>;
+
+type IsModelLike<P> = 0 extends 1 & P ? false : [P] extends [ModelLike] ? true : false;
+
+// Model instances, recognized by a method, as structural checks against
+// `Model` circle back through the query builder types of the related models.
+// Spreads of instances and their JSON don't have it.
+type ModelLike = { $clone(opt?: CloneOptions): unknown };
 
 export type TypedModelClassSpecifier<M extends Model> =
   string | ModelConstructor<M> | (() => ModelConstructor<M>);
@@ -2934,8 +2954,8 @@ export class Model {
   $afterDelete(queryContext: QueryContext): Promise<any> | void;
 
   $toDatabaseJson(): Pojo;
-  $toJson(opt?: ToJsonOptions): ModelObject<this>;
-  toJSON(opt?: ToJsonOptions): ModelObject<this>;
+  $toJson(opt?: ToJsonOptions): ModelJson<this>;
+  toJSON(opt?: ToJsonOptions): ModelJson<this>;
 
   $setJson(json: object, opt?: ModelOptions): this;
   $setDatabaseJson(json: object, options?: DatabaseJsonOptions): this;
