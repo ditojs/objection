@@ -19,6 +19,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
 - [`insert` and `update` reject field expression keys](#insert-and-update-reject-field-expression-keys)
 - [`snakeCaseMappers` keeps the JSON keys of field expressions](#snakecasemappers-keeps-the-json-keys-of-field-expressions)
+- [Aggregates don't select the columns they're passed](#aggregates-don-t-select-the-columns-they-re-passed)
 
 ## objection is an ES module package
 
@@ -192,6 +193,18 @@ class Person extends Model {
 ```
 
 Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#static-jsonschema) declares in its `properties` are columns, not field expressions, and are converted as a whole. A column like `ns:foo_bar` is read as `ns:fooBar` and only written back to `ns:foo_bar` if the schema declares `ns:fooBar`. Declare such columns in the schema. [knexSnakeCaseMappers](/api/objection/#knexsnakecasemappers) never converted the JSON keys and is unchanged.
+
+## Aggregates don't select the columns they're passed
+
+Aggregates like `count()` and `sum()` select their aliases, not the columns they're passed, but they still replace the select all of a query. When a query with aggregates loads relations with `withGraphFetched()` or `withGraphJoined()`, objection selects the columns it needs to assign the related models. 3.x treated `count('* as n')` as selecting all columns and `count('ownerId')` as selecting `ownerId`, so these columns were missing and the relations came back empty:
+
+```js
+// 4.0: select count(*) as "n", "pets"."ownerId" from "pets" group by "ownerId"
+// 3.x: select count(*) as "n" from "pets" group by "ownerId", and every owner is null
+await Pet.query().count('* as n').groupBy('ownerId').withGraphFetched('owner');
+```
+
+Grouped queries need to group by the added columns too, or the database rejects them. Add the join columns to `groupBy()`, like `groupBy('ownerId')` above. In `withGraphJoined()`, the root query selects only its id columns next to the aggregates instead of all its columns. Select the columns you need explicitly.
 
 # Migration from objection 2.x to 3.0
 

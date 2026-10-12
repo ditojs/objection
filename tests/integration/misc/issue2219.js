@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Model, raw } from 'objection';
 
 export default (session) => {
-  describe('Aggregates in withGraphJoined modifiers #2219', () => {
+  describe('Aggregates in graph queries #2219 #111', () => {
     let knex = session.knex;
     let Owner;
     let Pet;
@@ -55,6 +55,16 @@ export default (session) => {
       Pet = class Pet extends Model {
         static get tableName() {
           return 'Pet';
+        }
+
+        static get relationMappings() {
+          return {
+            owner: {
+              relation: Model.BelongsToOneRelation,
+              modelClass: Owner,
+              join: { from: 'Pet.ownerId', to: 'Owner.id' },
+            },
+          };
         }
       };
 
@@ -177,6 +187,24 @@ export default (session) => {
       expect(pets).toEqual([{ name: 'Fluffy' }, { name: 'Doggo' }]);
     });
 
+    it.skipIf(session.isMsSql())(
+      'selects only the ids with aggregates without an alias only',
+      async () => {
+        // SQL Server requires a name for every column of the joined subquery.
+        const pets = await Owner.query()
+          .findById(1)
+          .withGraphJoined('pets(withToys)')
+          .modifiers({
+            withToys: (query) =>
+              query.count('Toy.id').join('Toy', 'Toy.petId', 'Pet.id').groupBy('Pet.id'),
+          })
+          .orderBy('pets.id')
+          .then((owner) => owner.pets);
+
+        expect(pets).toEqual([{}, {}]);
+      },
+    );
+
     it("raw('count(*) as n')", async () => {
       const pets = await fetchPets((query) => query.select(raw('count(*) as n')));
 
@@ -186,17 +214,15 @@ export default (session) => {
       ]);
     });
 
-    it("keeps selecting all root columns with count('* as n')", async () => {
+    it("selects only the id of the root with count('* as n')", async () => {
       const owners = await Owner.query()
         .withGraphJoined('pets')
         .count('* as n')
-        .groupBy('Owner.id', 'Owner.name', 'pets.id', 'pets.ownerId', 'pets.name')
+        .groupBy('Owner.id', 'pets.id', 'pets.ownerId', 'pets.name')
         .orderBy('pets.id');
 
       expect(owners.map((owner) => ({ ...owner, n: Number(owner.n) }))).toEqual([
         {
-          id: 1,
-          name: 'Jennifer',
           n: 1,
           pets: [
             { id: 1, ownerId: 1, name: 'Fluffy' },
@@ -204,6 +230,27 @@ export default (session) => {
           ],
         },
       ]);
+    });
+
+    it("withGraphFetched() selects the join column of the root with count('* as n')", async () => {
+      const pets = await Pet.query().count('* as n').groupBy('ownerId').withGraphFetched('owner');
+
+      expect(toNumbers(pets, 'n')).toEqual([{ n: 2, owner: { id: 1, name: 'Jennifer' } }]);
+    });
+
+    it("withGraphFetched() selects the join column of the root with count('ownerId')", async () => {
+      const pets = await Pet.query().count('ownerId').groupBy('ownerId').withGraphFetched('owner');
+
+      expect(pets.map((pet) => pet.owner)).toEqual([{ id: 1, name: 'Jennifer' }]);
+    });
+
+    it("withGraphFetched() selects the join column of a relation with count('* as n')", async () => {
+      const owner = await Owner.query()
+        .findById(1)
+        .withGraphFetched('pets(counted)')
+        .modifiers({ counted: (query) => query.count('* as n').groupBy('ownerId') });
+
+      expect(toNumbers(owner.pets, 'n')).toEqual([{ n: 2 }]);
     });
   });
 };
