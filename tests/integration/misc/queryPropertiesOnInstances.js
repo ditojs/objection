@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { Model, raw } = require('../../../');
+const { Model, ValidationError, raw } = require('../../../');
 
 module.exports = (session) => {
   const { knex } = session;
@@ -62,6 +62,36 @@ module.exports = (session) => {
         post.data = { a: 3 };
         await post.$query().patch();
         expect((await TestPost.query().findById(id)).data).to.eql({ a: 3 });
+      });
+
+      const expectJsonColumnError = async (promise) => {
+        let error;
+
+        try {
+          await promise;
+        } catch (err) {
+          error = err;
+        }
+
+        expect(error).to.be.an.instanceOf(ValidationError);
+        expect(error.message).to.equal(
+          "data:b: can't be combined with a value for the json column 'data'",
+        );
+      };
+
+      it('should fail to write a field expression given together with a value for its json column', async () => {
+        await TestPost.query().insert({ id: 1, name: 'a', data: { a: 1 } });
+        const post = TestPost.fromJson({ id: 1, data: { a: 2 }, 'data:b': raw('2') });
+        await expectJsonColumnError(TestPost.query().patch(post).where('id', 1));
+        expect((await TestPost.query().findById(1)).data).to.eql({ a: 1 });
+      });
+
+      it('should fail to write a field expression given to an instance with a value for its json column', async () => {
+        await TestPost.query().insert({ id: 1, name: 'a', data: { a: 1 } });
+        const post = await TestPost.query().findById(1);
+        post.$setJson({ 'data:b': raw('2') });
+        await expectJsonColumnError(post.$query().patch());
+        expect((await TestPost.query().findById(1)).data).to.eql({ a: 1 });
       });
     }
 
