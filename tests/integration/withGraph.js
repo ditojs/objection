@@ -1146,20 +1146,22 @@ module.exports = (session) => {
             }
           }
 
-          // The order can still refer to the table without its schema.
-          const model1s = await SchemaModel1.query()
-            .withGraphFetched('model1Relation2', { limitPerParent: true })
-            .whereExists(SchemaModel1.relatedQuery('model1Relation2'))
-            .modifyGraph('model1Relation2', (query) =>
-              query.orderBy('model2.id_col', 'desc').limit(1),
-            )
-            .orderBy('id');
+          // The order can refer to the table with and without its schema.
+          for (const table of [`${schema}.model2`, 'model2']) {
+            const model1s = await SchemaModel1.query()
+              .withGraphFetched('model1Relation2', { limitPerParent: true })
+              .whereExists(SchemaModel1.relatedQuery('model1Relation2'))
+              .modifyGraph('model1Relation2', (query) =>
+                query.orderBy(`${table}.id_col`, 'desc').limit(1),
+              )
+              .orderBy('id');
 
-          expect(relatedIds(model1s, 'model1Relation2')).to.eql([
-            [1, [2]],
-            [4, [4]],
-            [6, [3]],
-          ]);
+            expect(relatedIds(model1s, 'model1Relation2')).to.eql([
+              [1, [2]],
+              [4, [4]],
+              [6, [3]],
+            ]);
+          }
 
           const model2s = await SchemaModel2.query()
             .whereIn('id_col', [1, 2, 3])
