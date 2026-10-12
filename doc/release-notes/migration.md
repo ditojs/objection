@@ -184,6 +184,8 @@ TypeScript: `StaticHookArguments<M, R>` declares `result: R`, with `R = undefine
 
 `withGraphFetched()` assigns what a relation query returns to the owners, after the static `afterFind` hook of the related model class and the `runAfter()` callbacks of the relation query, e.g. in modifiers or `modifyGraph()`. 3.x assigned the related models before both and ignored their return values. Related models that they filter out are no longer assigned, and the order that they return is kept. They can only return the related models that the query found. Other objects, e.g. copies like `result.map((pet) => ({ ...pet }))` or a count, throw an error. Change the models in place instead, or transform them in `runAfter()` of the root query.
 
+`withGraphJoined()` now calls the static `afterFind` hooks of the joined related model classes too, and assigns what they return in the same way. The relations have no query of their own, so `asFindQuery()` and `cancelQuery()` throw an error in these hooks. `afterFind` hooks that call them fail for joined relations. `beforeFind` isn't called for joined relations.
+
 ## `limit`, `offset` and `first` apply per parent in graph modifiers
 
 The `limitPerParent` [graph option](/api/types/#type-graphoptions) of `withGraphFetched` defaults to `true`, so `limit`, `offset` and `first` in graph modifiers and in the `modify` of relation mappings apply to the related items of each parent instead of to the whole query that fetches the relation for all parents:

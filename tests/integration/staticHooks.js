@@ -3584,6 +3584,78 @@ export default (session) => {
         });
       });
 
+      describe('withGraphJoined()', () => {
+        it('should call `afterFind()` of the joined relations bottom-up', async () => {
+          const people = await Person.query()
+            .withGraphJoined('[pets.owner, movies]')
+            .orderBy('people.name', 'desc');
+
+          const [jennifer, brad] = people;
+          const pets = jennifer.pets;
+          const owners = pets.map((pet) => pet.owner);
+
+          expect(calls.map(({ hook }) => hook)).toEqual([
+            'movies.afterFind',
+            'people.afterFind',
+            'pets.afterFind',
+            'people.afterFind',
+          ]);
+          expect(calls[0].result).toEqual(jennifer.movies);
+          expect(calls[1].result).toEqual(owners);
+          expect(calls[2].result).toEqual(pets);
+          expect(calls[3].result).toEqual(people);
+          expect(brad.pets).toEqual([]);
+        });
+
+        it('should pass the relation and the owners', async () => {
+          Pet.afterFind = createHookSpy();
+
+          const people = await Person.query().withGraphJoined('pets');
+          const { args } = Pet.afterFind.calls[0];
+
+          expect(Pet.afterFind.calls).toHaveLength(1);
+          expect(args.relation).toBe(Person.getRelation('pets'));
+          expect(args.items).toEqual(people);
+          expect(args.inputItems).toEqual([]);
+          expect(() => args.asFindQuery()).toThrow(
+            'asFindQuery() is not available for relations fetched with withGraphJoined().',
+          );
+          expect(() => args.cancelQuery()).toThrow(
+            'cancelQuery() is not available for relations fetched with withGraphJoined().',
+          );
+        });
+
+        it('should assign the related models that `afterFind()` returns', async () => {
+          Pet.afterFind = ({ result }) => result.filter((pet) => pet.species === 'dog');
+          Person.afterFind = ({ relation }) => (relation ? [] : undefined);
+
+          const person = await Person.query().findById(jennifer.id).withGraphJoined('pets.owner');
+
+          expect(person.pets.map((pet) => pet.name)).toEqual(['Doggo']);
+          expect(person.pets[0].owner).toBeNull();
+        });
+
+        it('should keep the order of the related models that `afterFind()` returns', async () => {
+          Pet.afterFind = ({ result }) => [...result].sort((a, b) => a.name.localeCompare(b.name));
+
+          const person = await Person.query()
+            .findById(jennifer.id)
+            .withGraphJoined('pets')
+            .orderBy('pets.name', 'desc');
+
+          expect(person.pets.map((pet) => pet.name)).toEqual(['Cato', 'Doggo']);
+        });
+
+        it('should throw if `afterFind()` returns other objects than the related models', async () => {
+          Pet.afterFind = ({ result }) => result.map((pet) => ({ ...pet }));
+
+          await expect(Person.query().withGraphJoined('pets')).rejects.toThrow(
+            'Unable to assign the result of Pet.afterFind() to the relation "pets" of Person: ' +
+              'return the models you got, filtered or reordered.',
+          );
+        });
+      });
+
       describe('relate() and unrelate()', () => {
         let ActorMovie;
         let Actor;
