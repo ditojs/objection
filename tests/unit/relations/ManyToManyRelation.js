@@ -2029,9 +2029,10 @@ describe('ManyToManyRelation', () => {
         .offset(1)
         .then((result) => {
           expect(result).toBe(2);
-          // The limit picks the related rows instead of limiting the update.
+          // The limit picks the related rows by their first join row instead of
+          // limiting the update.
           expect(executedQueries).toEqual([
-            'select `RelatedModel`.`id` from `RelatedModel` where `RelatedModel`.`id` in (select `RelatedModel`.`id` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) order by `a` asc limit 2 offset 1',
+            'select `id` from (select `RelatedModel`.`id`, row_number() over (order by `RelatedModel`.`a` asc) as `objectiontmprownum` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) as `objectiontmprownum` group by `id` order by min(`objectiontmprownum`) limit 2 offset 1',
             'select `JoinModel`.`ownerId`, `JoinModel`.`relatedId` from `JoinModel` where `JoinModel`.`ownerId` in (666) and `JoinModel`.`relatedId` in (5, 6) and exists (select 1 from `RelatedModel` where `RelatedModel`.`rid` = `JoinModel`.`relatedId` and `code` = 55)',
             "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`ownerId` in (666) and (`JoinModel`.`ownerId`, `JoinModel`.`relatedId`) in ((666, 5), (666, 6)) and `JoinModel`.`relatedId` in (5, 6)",
             "update `RelatedModel` set `a` = 'str1' where (`RelatedModel`.`id` in (5, 6))",

@@ -569,6 +569,58 @@ export default (session) => {
       });
 
       it.skipIf(!session.isMySql() && !session.isMsSql())(
+        'should pick the related rows by a join table column with limit()',
+        async () => {
+          // Only MySQL and SQL Server support a limit in updates.
+          const model = await owner(1);
+          const numUpdated = await model
+            .$relatedQuery('model1Relation3')
+            .patch({ model2Prop2: 10, extra2: 'z' })
+            .orderBy('Model1Model2.extra1', 'desc')
+            .limit(2);
+
+          expect(numUpdated).toBe(2);
+          expect(await model2Rows()).toEqual([
+            [1, 1],
+            [2, 10],
+            [3, 10],
+          ]);
+
+          const expected = allJoinRows.slice();
+          expected[2] = [1, 2, 'x2', 'z'];
+          expected[3] = [1, 3, 'x3', 'z'];
+          expect(await joinRows()).toEqual(expected);
+        },
+      );
+
+      it.skipIf(!session.isMySql() && !session.isMsSql())(
+        'should order by a related column that the join table shares with limit()',
+        async () => {
+          // Only MySQL and SQL Server support a limit in updates. Both Model1
+          // and the join table have `id` and `model1Id` columns.
+          const model = await Model2.query().findById(2);
+          const numUpdated = await model
+            .$relatedQuery('model2Relation1')
+            .patch({ model1Prop2: 10, aliasedExtra: 'z' })
+            .orderBy('model1Id')
+            .orderBy('id', 'desc')
+            .limit(1);
+
+          expect(numUpdated).toBe(1);
+          expect(
+            await session.knex('Model1').whereIn('id', [1, 2]).orderBy('id').pluck('model1Prop2'),
+          ).toEqual([null, 10]);
+          expect(
+            await session
+              .knex('Model1Model2')
+              .where('extra3', 'z')
+              .select('model1Id', 'model2Id')
+              .then((rows) => rows.map((row) => [row.model1Id, row.model2Id])),
+          ).toEqual([[2, 2]]);
+        },
+      );
+
+      it.skipIf(!session.isMySql() && !session.isMsSql())(
         'should only patch the join table extras of the related rows that limit() and offset() pick',
         async () => {
           // Only MySQL and SQL Server support a limit in updates.
