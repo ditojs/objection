@@ -387,4 +387,81 @@ export default (session) => {
       });
     }
   });
+
+  describe.skipIf(session.isMsSql())('upsertGraph() with keys in json paths', () => {
+    const { knex } = session;
+
+    class Pet extends Model {
+      static get tableName() {
+        return 'json_key_pet';
+      }
+
+      static get jsonAttributes() {
+        return ['data'];
+      }
+    }
+
+    class Person extends Model {
+      static get tableName() {
+        return 'json_key_person';
+      }
+
+      static get relationMappings() {
+        return {
+          pets: {
+            relation: Model.HasManyRelation,
+            modelClass: Pet,
+            join: { from: 'json_key_person.id', to: 'json_key_pet.data:ownerId' },
+          },
+          sitted: {
+            relation: Model.HasManyRelation,
+            modelClass: Pet,
+            join: { from: 'json_key_person.id', to: 'json_key_pet.data:sitterId' },
+          },
+        };
+      }
+    }
+
+    beforeAll(async () => {
+      await knex.schema
+        .dropTableIfExists('json_key_pet')
+        .dropTableIfExists('json_key_person')
+        .createTable('json_key_person', (table) => {
+          table.integer('id').primary();
+        })
+        .createTable('json_key_pet', (table) => {
+          table.integer('id').primary();
+          table.jsonb('data');
+        });
+    });
+
+    afterAll(() =>
+      knex.schema.dropTableIfExists('json_key_pet').dropTableIfExists('json_key_person'),
+    );
+
+    // The places use different json paths of one column. The relate writes the
+    // whole json column, so the unrelate shows in its query:
+    it('should unrelate a row that another relation on another key keeps', async () => {
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({ id: 3, data: JSON.stringify({ ownerId: 1 }) });
+
+      const queries = [];
+      const onQuery = ({ sql }) => queries.push(sql);
+      knex.on('query', onQuery);
+
+      try {
+        await Person.query(knex).upsertGraph(
+          [
+            { id: 1, pets: [] },
+            { id: 2, sitted: [{ id: 3 }] },
+          ],
+          { relate: true },
+        );
+      } finally {
+        knex.removeListener('query', onQuery);
+      }
+
+      expect(queries.filter((sql) => /^update .*ownerId/i.test(sql))).toHaveLength(1);
+    });
+  });
 };
