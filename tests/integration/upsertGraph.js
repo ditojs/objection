@@ -401,6 +401,90 @@ export default (session) => {
         });
       });
 
+      for (const hasHook of [true, false]) {
+        for (const noUpdate of [false, true]) {
+          it(`should only patch join rows with the extras that change (${hasHook ? 'with' : 'without'} beforeUpdate hook${noUpdate ? ', noUpdate' : ''})`, async () => {
+            await session
+              .knex('Model1Model2')
+              .where({ model1Id: 4, model2Id: 1 })
+              .update({ extra1: 'a', extra2: 'b' });
+
+            const queries = [];
+            const onQuery = ({ sql }) => queries.push(sql);
+            const { $beforeUpdate } = Model2.prototype;
+            session.knex.on('query', onQuery);
+
+            // The models of all tests have update hooks, which only removing
+            // them leaves out:
+            if (!hasHook) {
+              delete Model2.prototype.$beforeUpdate;
+            }
+
+            try {
+              await Model1.query(session.knex).upsertGraph(
+                {
+                  id: 4,
+                  model1Relation3: [{ idCol: 1, model2Prop1: 'changed', extra1: 'a', extra2: 'c' }],
+                },
+                { noDelete: true, noUpdate, fetchStrategy },
+              );
+            } finally {
+              session.knex.removeListener('query', onQuery);
+              Model2.prototype.$beforeUpdate = $beforeUpdate;
+            }
+
+            const joinRowUpdates = queries.filter((sql) => /update\W+Model1Model2/i.test(sql));
+            const [joinRow] = await session
+              .knex('Model1Model2')
+              .where({ model1Id: 4, model2Id: 1 });
+            const [row] = await session.knex('model2').where('id_col', 1);
+
+            if (noUpdate) {
+              expect(joinRowUpdates).toEqual([]);
+              expect(joinRow).toMatchObject({ extra1: 'a', extra2: 'b' });
+              expect(row.model2_prop1).not.toBe('changed');
+            } else {
+              expect(joinRowUpdates).toHaveLength(1);
+              // Without the current extras, the graph can't know that they
+              // don't change:
+              expect(joinRowUpdates[0].includes('extra1')).toBe(
+                fetchStrategy === FetchStrategy.OnlyIdentifiers,
+              );
+              expect(joinRow).toMatchObject({ extra1: 'a', extra2: 'c' });
+              expect(row.model2_prop1).toBe('changed');
+            }
+          });
+        }
+      }
+
+      it('should patch the keys of a many-to-many model without its extras under noUpdate', async () => {
+        await session
+          .knex('Model1Model2')
+          .where({ model1Id: 4, model2Id: 1 })
+          .update({ extra3: 'a' });
+
+        await Model2.query(session.knex).upsertGraph(
+          {
+            idCol: 1,
+            // The new related model changes the key of model 4, which is written
+            // even with `noUpdate`, but its extra isn't:
+            model2Relation1: [
+              { id: 4, aliasedExtra: 'b', model1Relation1: { model1Prop1: 'new' } },
+              { id: 5 },
+            ],
+          },
+          { noUpdate: true, noDelete: true, fetchStrategy },
+        );
+
+        const { id } = await session.knex('Model1').where('model1Prop1', 'new').first();
+        expect(await session.knex('Model1').where('id', 4).first()).toMatchObject({
+          model1Id: id,
+        });
+        expect(
+          await session.knex('Model1Model2').where({ model1Id: 4, model2Id: 1 }).first(),
+        ).toMatchObject({ extra3: 'a' });
+      });
+
       it('should relate a #ref to an existing model in a branch that the graph does not write', async () => {
         await Model1.query(session.knex).upsertGraph(
           {
