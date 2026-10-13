@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Model, UniqueViolationError } from 'objection';
 
 export default (session) => {
@@ -47,6 +47,11 @@ export default (session) => {
             relation: Model.BelongsToOneRelation,
             modelClass: Person,
             join: { from: 'graph_order_pet.ownerId', to: 'graph_order_person.id' },
+          },
+          siblings: {
+            relation: Model.HasManyRelation,
+            modelClass: Pet,
+            join: { from: 'graph_order_pet.ownerId', to: 'graph_order_pet.ownerId' },
           },
           fans: {
             relation: Model.HasManyRelation,
@@ -501,6 +506,55 @@ export default (session) => {
         { id: 1, name: 'a', ownerId: null },
         { id: 2, name: 'b', ownerId: 1 },
       ]);
+    });
+
+    describe('rows that read keys that the graph fills in', () => {
+      // Person 3 likes pet 10, which belongs to person 1. Pet 11 belongs to
+      // person 3.
+      beforeEach(async () => {
+        await createTables();
+        await knex('graph_order_org').insert({ id: 1 });
+        await knex('graph_order_person').insert([
+          { id: 1, orgId: 1 },
+          { id: 2, orgId: 1 },
+          { id: 3, orgId: 1, favoritePetId: 10 },
+        ]);
+        await knex('graph_order_pet').insert([
+          { id: 10, name: 'a', ownerId: 1 },
+          { id: 11, name: 'b', ownerId: 3 },
+        ]);
+      });
+
+      // The siblings move first with the key of the owner of pet 10, before
+      // the removed fan and replaced owner cascade to their pets:
+      for (const ownerId of [1, 2]) {
+        it(`should move siblings first with the key of the owner ${ownerId === 1 ? 'that pet 10 keeps' : 'that replaces the owner of pet 10'}`, async () => {
+          await Pet.query().upsertGraph(
+            { id: 10, owner: { id: ownerId }, fans: [], siblings: [{ id: 10 }, { id: 11 }] },
+            { relate: true },
+          );
+
+          expect((await selectPets()).map(({ id, ownerId }) => ({ id, ownerId }))).toEqual([
+            { id: 10, ownerId },
+            { id: 11, ownerId },
+          ]);
+        });
+      }
+
+      it('should resolve a #ref{} to a key that the graph fills in before moving', async () => {
+        await Person.query().upsertGraph(
+          [
+            { id: 3, favoritePet: { id: 10, '#id': 'p', owner: { id: 2 } } },
+            { id: 1, pets: [{ id: 11, name: '#ref{p.ownerId}' }] },
+          ],
+          { relate: true, noDelete: true, allowRefs: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'a', ownerId: 2 },
+          { id: 11, name: '2', ownerId: 1 },
+        ]);
+      });
     });
 
     describe('unique foreign key of a HasOneRelation', () => {
