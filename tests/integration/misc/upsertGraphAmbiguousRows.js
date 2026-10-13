@@ -550,21 +550,21 @@ export default (session) => {
             { id: 1, pets: [{ id: 3, '#delete': true }] },
             { id: 1, pets: [{ id: 3, label: 'x' }] },
           ],
-          "the graph gives #delete of one Pet two values, at 'pets[0]' and at 'pets[0]'",
+          "the graph gives #delete of one Pet two values, at '[0].pets[0]' and at '[1].pets[0]'",
         ],
         [
           [
             { id: 1, pets: [{ id: 3, '#delete': true }] },
             { id: 2, pets: [{ id: 3 }] },
           ],
-          "the graph gives #delete of one Pet two values, at 'pets[0]' and at 'pets[0]'",
+          "the graph gives #delete of one Pet two values, at '[0].pets[0]' and at '[1].pets[0]'",
         ],
         [
           [
             { id: 1, pets: [{ id: 3, '#unrelate': true }] },
             { id: 2, pets: [{ id: 3 }] },
           ],
-          "the graph gives ownerId of one Pet two values, at 'pets[0]' and at 'pets[0]'",
+          "the graph gives ownerId of one Pet two values, at '[0].pets[0]' and at '[1].pets[0]'",
         ],
       ]) {
         await expect(
@@ -702,7 +702,7 @@ export default (session) => {
           { id: 3, pets: [{ id: 2, label: 'b' }] },
         ]),
       ).rejects.toThrow(
-        "the graph gives label of one Pet two values, at 'pets[0].label' and at 'pets[0].label'",
+        "the graph gives label of one Pet two values, at '[0].pets[0].label' and at '[1].pets[0].label'",
       );
     });
 
@@ -752,7 +752,7 @@ export default (session) => {
           { relate: true },
         ),
       ).rejects.toThrow(
-        "the graph gives ownerId of one Pet two values, at 'pets[0]' and at 'pets[0]'",
+        "the graph gives ownerId of one Pet two values, at '[0].pets[0]' and at '[1].pets[0]'",
       );
     });
 

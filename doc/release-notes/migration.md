@@ -25,6 +25,7 @@ This section lists the breaking changes in objection 4.0.
 - [insertGraph() and upsertGraph() write in fewer queries](#insertgraph-and-upsertgraph-write-in-fewer-queries)
 - [insertGraph() and upsertGraph() reject rows placed in conflicting ways](#insertgraph-and-upsertgraph-reject-rows-placed-in-conflicting-ways)
 - [upsertGraph() checks that related models exist](#upsertgraph-checks-that-related-models-exist)
+- [insertGraph() and upsertGraph() errors name the index of array input](#insertgraph-and-upsertgraph-errors-name-the-index-of-array-input)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
@@ -224,6 +225,18 @@ await Person.query().upsertGraph({ id: 1, pets: [{ id: 1 }, { id: 99 }] }, { rel
 ```
 
 3.x only checked the related models that the graph gave relations of their own. For the others, it patched no row for a `HasManyRelation` or `HasOneRelation`, and wrote the foreign key or the join row of the missing model for a `BelongsToOneRelation` or `ManyToManyRelation`. Code that relied on these keys to missing rows, e.g. without foreign key constraints, needs to insert the rows first, or use `insertMissing`. `#ref` models are the models they refer to, and are only fetched when they have relations.
+
+## insertGraph() and upsertGraph() errors name the index of array input
+
+The data paths of models in array input start with their index in the array. This applies to the keys of the `data` of a `ValidationError`, the `dataPath` of a `NotFoundError`, and the `dataPath` option that a custom `Validator` gets. In 3.x, all models of the array had the same paths, so the path didn't tell which one failed:
+
+```js
+await Person.query().insertGraph([{ firstName: 'Jennifer' }, { pets: [{ name: 1 }] }]);
+// 3.x: err.data['pets[0].name']
+// 4.0: err.data['[1].pets[0].name']
+```
+
+`NotFoundError`s give `dataPath: [1, 'pets', 0]` instead of `['pets', 0]`, and validators get `'[1].pets[0]'` instead of `'.pets[0]'`. Graphs of a single object keep their paths.
 
 ## insertGraph() and upsertGraph() write in fewer queries
 
