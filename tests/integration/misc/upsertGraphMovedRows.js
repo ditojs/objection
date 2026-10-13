@@ -67,5 +67,17 @@ export default (session) => {
 
       expect(await knex('moved_rows_pet')).toEqual([{ id: 1, ownerId: 2 }]);
     });
+
+    it('should move the row to a new owner without unrelating it first', async () => {
+      await Owner.query().upsertGraph(
+        [
+          { id: 1, pets: [] },
+          { id: 3, pets: [{ id: 1 }] },
+        ],
+        { relate: true, unrelate: true, insertMissing: true },
+      );
+
+      expect(await knex('moved_rows_pet')).toEqual([{ id: 1, ownerId: 3 }]);
+    });
   });
 };

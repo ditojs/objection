@@ -413,7 +413,7 @@ export default (session) => {
       });
     });
 
-    it('should give the hooks of moved rows that wait for inserts their ids', async () => {
+    it('should run the hooks of moved rows that wait for inserts once, with their ids', async () => {
       const parsedNames = [];
       const updatedIds = [];
 
@@ -440,7 +440,7 @@ export default (session) => {
         { relate: true },
       );
 
-      expect(updatedIds).toEqual([1, 1]);
+      expect(updatedIds).toEqual([1]);
       // The input is parsed once:
       expect(parsedNames).toEqual([undefined, 'z']);
     });

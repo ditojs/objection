@@ -187,7 +187,7 @@ Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or
 
 ## upsertGraph() relates moved rows before it deletes
 
-`upsertGraph()` relates the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation` first, before it deletes or unrelates the rows that the graph removes. 3.x deleted first, so a row that moved out of a deleted parent was deleted with it by `ON DELETE CASCADE`, and failed with a foreign key without `ON DELETE` action. The update hooks of these relates now run before the delete hooks of the same call. Rows that wait for the keys or references of models that the graph inserts are moved without them, and patched again once these are known, which runs their update hooks a second time, as the nested `upsertGraph()` calls of 3.x did. Their first write keeps the old values of the props that wait, e.g. a name from a `#ref{}` to an inserted model, so a unique key at the new owner that only the new value satisfies fails with a `UniqueViolationError`.
+`upsertGraph()` relates the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation` first, before it deletes or unrelates the rows that the graph removes. 3.x deleted first, so a row that moved out of a deleted parent was deleted with it by `ON DELETE CASCADE`, and failed with a foreign key without `ON DELETE` action. The update hooks of these relates now run before the delete hooks of the same call. Rows that wait for the keys or references of models that the graph inserts, e.g. a name from a `#ref{}` to an inserted model, are related after the inserts, as in 3.x, so the relate throws a `NotFoundError` when `ON DELETE CASCADE` deleted the row with its old parent.
 
 A row related from another owner can no longer take the unique key of a row that the graph removes in its new place, e.g. with `unique(ownerId, name)`: the relate fails with a `UniqueViolationError`. Delete the conflicting row with a separate query in the same transaction first. Replacing such a row by a new one, or renaming a kept row to its key, still works, as do relates into a `HasOneRelation` with a unique foreign key.
 
@@ -199,7 +199,7 @@ A related model with relations whose row doesn't exist throws a `NotFoundError` 
 
 ## insertGraph() and upsertGraph() write in fewer queries
 
-Rows that the graph removes are deleted or unrelated with one query per relation instead of one per owner, so the static `beforeDelete` and `afterDelete` hooks (or `beforeUpdate` and `afterUpdate` for has-many unrelates) run once with all owners as `items`. Join rows are still removed per owner.
+Rows that the graph deletes are deleted with one query per relation instead of one per owner, so the static `beforeDelete` and `afterDelete` hooks run once with all owners as `items`. Join rows and unrelated rows are still removed per owner.
 
 The changed rows of a model class without `beforeUpdate`, `afterUpdate`, `$beforeUpdate` and `$afterUpdate` hooks are patched with one `UPDATE` per table that picks the values of each row with `CASE`, unless the upsert uses `returning('*')`, the values include json or raw values, or the rows are patched through a many-to-many or belongs-to-one relation. Custom query builders see that one patch query instead of one per row. Models with update hooks are patched one by one, as before.
 
