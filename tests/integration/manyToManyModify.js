@@ -962,6 +962,55 @@ module.exports = (session) => {
       });
     });
 
+    describe('with a relation through a related column other than the id', () => {
+      class Prop2Model1 extends Model1 {
+        static get relationMappings() {
+          return {
+            prop2Relation: {
+              relation: Model.ManyToManyRelation,
+              modelClass: Model2,
+              join: {
+                from: 'Model1.id',
+                through: {
+                  from: 'Model1Model2.model1Id',
+                  to: 'Model1Model2.model2Id',
+                  extra: ['extra2'],
+                },
+                to: 'model2.model2_prop2',
+              },
+            },
+          };
+        }
+      }
+
+      beforeEach(async () => {
+        // Swap the `model2Prop2` values of model2 1 and 3, so that the join
+        // rows of model2 1 relate model2 3 and the other way around.
+        await session.knex('model2').where('id_col', 1).update({ model2_prop2: 3 });
+        await session.knex('model2').where('id_col', 3).update({ model2_prop2: 1 });
+      });
+
+      it('should only patch the join rows of the related rows that limit() picks (#360)', async function () {
+        // Only MySQL and SQL Server support a limit in updates.
+        if (!session.isMySql() && !session.isMsSql()) {
+          this.skip();
+        }
+
+        const numUpdated = await Prop2Model1.fromJson({ id: 1 })
+          .$relatedQuery('prop2Relation')
+          .patch({ model2Prop1: 'z', extra2: 'z' })
+          .orderBy('model2.id_col')
+          .limit(1);
+
+        expect(numUpdated).to.equal(1);
+        expect(await session.knex('model2').where('model2_prop1', 'z').pluck('id_col')).to.eql([1]);
+
+        const expected = allJoinRows.slice();
+        expected[3] = [1, 3, 'x3', 'z'];
+        expect(await joinRows()).to.eql(expected);
+      });
+    });
+
     function describeItemTags(title, { joinTable, isSupported = () => true }) {
       describe(title, () => {
         const { knex } = session;
