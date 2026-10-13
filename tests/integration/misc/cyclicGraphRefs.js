@@ -563,6 +563,7 @@ export default (session) => {
             table.increments('id').primary();
             table.string('name');
             table.integer('ownerId').unsigned();
+            table.integer('walkerId').unsigned();
           });
       });
 
@@ -588,6 +589,12 @@ export default (session) => {
                 relation: Model.BelongsToOneRelation,
                 modelClass: Item,
                 join: { from: 'cyclic_owner.requiredItemId', to: 'cyclic_item.id' },
+              },
+
+              walkedItems: {
+                relation: Model.HasManyRelation,
+                modelClass: Item,
+                join: { from: 'cyclic_owner.id', to: 'cyclic_item.walkerId' },
               },
             };
           }
@@ -634,6 +641,40 @@ export default (session) => {
           expect(await Item.query().resultSize()).toBe(0);
         },
       );
+
+      it('should insert a #ref row whose other place reads the id of a row that reads its own id', async () => {
+        await Owner.query().upsertGraph(
+          [
+            {
+              '#id': 'q',
+              name: 'Q',
+              requiredItem: { '#ref': 'pt' },
+              walkedItems: [{ '#ref': 'pt' }],
+            },
+            { name: 'R', requiredItem: { name: 'X' }, items: [{ '#id': 'pt', name: 'Pt' }] },
+          ],
+          { relate: true, allowRefs: true },
+        );
+
+        // The ids depend on the tests before, so compare by name:
+        const owners = await Owner.query().orderBy('name');
+        const items = await Item.query().orderBy('name');
+        const nameOf = (rows, id) => rows.find((row) => row.id === id)?.name ?? null;
+        expect(owners.map((owner) => [owner.name, nameOf(items, owner.requiredItemId)])).toEqual([
+          ['Q', 'Pt'],
+          ['R', 'X'],
+        ]);
+        expect(
+          items.map((item) => [
+            item.name,
+            nameOf(owners, item.ownerId),
+            nameOf(owners, item.walkerId),
+          ]),
+        ).toEqual([
+          ['Pt', 'R', 'Q'],
+          ['X', null, null],
+        ]);
+      });
     });
 
     describe('composite keys', () => {

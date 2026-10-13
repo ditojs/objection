@@ -62,6 +62,34 @@ export function createRejectionReflection(err) {
   };
 }
 
+// Insert rows with their ids into a table with an identity column. SQL Server
+// only takes them with IDENTITY_INSERT, and Postgres needs its sequence moved
+// past them, so that the next inserts get new ids.
+export async function insertRowsWithIds(knex, table, rows) {
+  const { dialect } = knex.client;
+
+  if (rows.length > 0) {
+    if (dialect === 'mssql') {
+      // The setting only lasts for one batch:
+      const { sql, bindings } = knex(table).insert(rows).toSQL();
+      await knex.raw(`SET IDENTITY_INSERT ?? ON; ${sql}; SET IDENTITY_INSERT ?? OFF`, [
+        table,
+        ...bindings,
+        table,
+      ]);
+    } else {
+      await knex(table).insert(rows);
+    }
+  }
+
+  if (dialect === 'postgresql') {
+    await knex.raw(
+      "select setval(pg_get_serial_sequence(?, 'id'), coalesce(max(id), 0) + 1, false) from ??",
+      [table, table],
+    );
+  }
+}
+
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

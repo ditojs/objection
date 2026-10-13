@@ -1,3 +1,5 @@
+import { insertRowsWithIds } from './testUtils.js';
+
 // Generated graphs for `upsertGraph()` and `insertGraph()`: a schema with all
 // kinds of relations, rows to seed it with, and a graph and options to write,
 // all derived from a seed.
@@ -275,12 +277,8 @@ export function createGraphModels(Model) {
   return { Person, Pet, Toy, Profile, Movie, Badge, License };
 }
 
-// Seed the tables with the rows of a case, with their ids. SQL Server only
-// takes them for identity columns with IDENTITY_INSERT, and Postgres needs its
-// sequences moved past them.
+// Seed the tables with the rows of a case, with their ids:
 export async function seedGraphTables(knex, rows) {
-  const { dialect } = knex.client;
-
   await knex.transaction(async (trx) => {
     for (const table of Object.keys(graphTables).reverse()) {
       await trx(graphTableName(table)).delete();
@@ -290,25 +288,10 @@ export async function seedGraphTables(knex, rows) {
       const name = graphTableName(table);
       const hasIdentity = graphTables[table].includes('id');
 
-      if (tableRows.length > 0) {
-        if (hasIdentity && dialect === 'mssql') {
-          // The setting only lasts for one batch:
-          const { sql, bindings } = trx(name).insert(tableRows).toSQL();
-          await trx.raw(`SET IDENTITY_INSERT ?? ON; ${sql}; SET IDENTITY_INSERT ?? OFF`, [
-            name,
-            ...bindings,
-            name,
-          ]);
-        } else {
-          await trx(name).insert(tableRows);
-        }
-      }
-
-      if (hasIdentity && dialect === 'postgresql') {
-        await trx.raw(
-          "select setval(pg_get_serial_sequence(?, 'id'), coalesce(max(id), 0) + 1, false) from ??",
-          [name, name],
-        );
+      if (hasIdentity) {
+        await insertRowsWithIds(trx, name, tableRows);
+      } else if (tableRows.length > 0) {
+        await trx(name).insert(tableRows);
       }
     }
   });

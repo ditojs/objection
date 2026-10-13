@@ -196,6 +196,8 @@ Fetching relations with `withGraphFetched()`, `$fetchGraph()`, `fetchGraph()` or
 
 A row related from another owner can no longer take the unique key of a row that the graph removes in its new place, e.g. with `unique(ownerId, name)`: the relate fails with a `UniqueViolationError`. Delete the conflicting row with a separate query in the same transaction first. Replacing such a row by a new one, or renaming a kept row to its key, still works, as do relates into a `HasOneRelation` with a unique foreign key.
 
+A new row can't take the unique key of a row that moves to a new owner either: the move waits for the insert of the new owner, so the row still holds its key when the new row is inserted. 3.x cleared the moved row's foreign key first, which fails for `NOT NULL` keys. Insert the new owner with a separate call first, or make the unique constraint deferred and run `upsertGraph()` in a transaction.
+
 ## upsertGraph() upserts below related models in the same graph
 
 3.x upserted the models below a related model with a nested `upsertGraph()` call for each owner and relation, after all other writes of the graph. 4.0 fetches the rows of the related models with their relations together with the rest of the graph, and writes them in the same steps, so their deletes, inserts and patches run with the others of their kind instead of last. The options keep matching the full relation paths.
