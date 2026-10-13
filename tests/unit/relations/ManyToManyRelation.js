@@ -1988,10 +1988,13 @@ describe('ManyToManyRelation', () => {
 
     it('patch with extras should pick the related rows with the limit and only patch their join rows', () => {
       mockKnexQueryResults = [
-        [{ id: 5 }, { id: 6 }],
         [
-          { ownerId: 666, relatedId: 5 },
-          { ownerId: 666, relatedId: 6 },
+          { id: 5, objectiontmprelated0: 15 },
+          { id: 6, objectiontmprelated0: 16 },
+        ],
+        [
+          { ownerId: 666, relatedId: 15 },
+          { ownerId: 666, relatedId: 16 },
         ],
         2,
         2,
@@ -2010,11 +2013,11 @@ describe('ManyToManyRelation', () => {
         .then((result) => {
           expect(result).toBe(2);
           // The limit picks the related rows by their first join row instead of
-          // limiting the update.
+          // limiting the update, and the join rows by their `rid` (#360).
           expect(executedQueries).toEqual([
-            'select `id` from (select `RelatedModel`.`id`, row_number() over (order by `RelatedModel`.`a` asc) as `objectiontmprownum` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) as `objectiontmprownum` group by `id` order by min(`objectiontmprownum`) limit 2 offset 1',
-            'select `JoinModel`.`ownerId`, `JoinModel`.`relatedId` from `JoinModel` where `JoinModel`.`ownerId` in (666) and `JoinModel`.`relatedId` in (5, 6) and exists (select 1 from `RelatedModel` where `RelatedModel`.`rid` = `JoinModel`.`relatedId` and `code` = 55)',
-            "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`ownerId` in (666) and (`JoinModel`.`ownerId`, `JoinModel`.`relatedId`) in ((666, 5), (666, 6)) and `JoinModel`.`relatedId` in (5, 6)",
+            'select `id`, `objectiontmprelated0` from (select `RelatedModel`.`id`, `RelatedModel`.`rid` as `objectiontmprelated0`, row_number() over (order by `RelatedModel`.`a` asc) as `objectiontmprownum` from `RelatedModel` inner join `JoinModel` on `RelatedModel`.`rid` = `JoinModel`.`relatedId` where `JoinModel`.`ownerId` in (666) and `code` = 55) as `objectiontmprownum` group by `id`, `objectiontmprelated0` order by min(`objectiontmprownum`) limit 2 offset 1',
+            'select `JoinModel`.`ownerId`, `JoinModel`.`relatedId` from `JoinModel` where `JoinModel`.`ownerId` in (666) and `JoinModel`.`relatedId` in (15, 16) and exists (select 1 from `RelatedModel` where `RelatedModel`.`rid` = `JoinModel`.`relatedId` and `code` = 55)',
+            "update `JoinModel` set `extra2` = 'extraVal' where `JoinModel`.`ownerId` in (666) and (`JoinModel`.`ownerId`, `JoinModel`.`relatedId`) in ((666, 15), (666, 16)) and `JoinModel`.`relatedId` in (15, 16)",
             "update `RelatedModel` set `a` = 'str1' where (`RelatedModel`.`id` in (5, 6))",
           ]);
         });
