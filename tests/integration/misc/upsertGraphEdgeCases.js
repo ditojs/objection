@@ -614,7 +614,11 @@ export default (session) => {
       'should insert more models than a call takes arguments',
       async () => {
         const count = 200000;
-        await Toy.query(knex).insertGraph(Array.from({ length: count }, () => ({ name: 'toy' })));
+        // One transaction instead of a commit per insert, which is slow on
+        // the SQLite file of the tests:
+        await Toy.transaction(knex, (trx) =>
+          Toy.query(trx).insertGraph(Array.from({ length: count }, () => ({ name: 'toy' }))),
+        );
 
         expect(await knex('graph_edge_toy').where('name', 'toy').count('* as count')).toEqual([
           { count },
