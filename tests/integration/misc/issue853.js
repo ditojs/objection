@@ -21,6 +21,11 @@ export default (session) => {
               to: 'issue853_person.uid',
             },
           },
+          children: {
+            relation: Model.HasManyRelation,
+            modelClass: Person,
+            join: { from: 'issue853_person.id', to: 'issue853_person.parentId' },
+          },
         };
       }
     }
@@ -43,6 +48,7 @@ export default (session) => {
         .createTable('issue853_person', (table) => {
           table.increments('id');
           table.string('name');
+          table.integer('parentId');
           table.string('uid', 36).defaultTo(generateUid());
         })
         .createTable('issue853_friend', (table) => {
@@ -65,6 +71,22 @@ export default (session) => {
         .modifiers({ orderByName: (query) => query.orderBy('name') });
 
       expect(fetched.friends.map((friend) => friend.name)).toEqual(['b', 'c']);
+      expect(person.uid).toBe(fetched.uid);
+    });
+
+    it('should fetch the generated key next to a relation through the id', async () => {
+      const person = await Person.query(knex).insertGraph({
+        name: 'd',
+        friends: [{ name: 'e' }],
+        children: [{ name: 'f' }],
+      });
+
+      const fetched = await Person.query(knex)
+        .findById(person.id)
+        .withGraphFetched('[friends, children]');
+
+      expect(fetched.friends.map((friend) => friend.name)).toEqual(['e']);
+      expect(fetched.children.map((child) => child.name)).toEqual(['f']);
       expect(person.uid).toBe(fetched.uid);
     });
   });
