@@ -31,12 +31,27 @@ export default (session) => {
         return 'graph_order_pet';
       }
 
+      // Tests delay the updates of these rows, so that writes that run
+      // concurrently would run out of order:
+      static delayedIds = [];
+
+      async $beforeUpdate() {
+        if (Pet.delayedIds.includes(this.id)) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      }
+
       static get relationMappings() {
         return {
           owner: {
             relation: Model.BelongsToOneRelation,
             modelClass: Person,
             join: { from: 'graph_order_pet.ownerId', to: 'graph_order_person.id' },
+          },
+          fans: {
+            relation: Model.HasManyRelation,
+            modelClass: Person,
+            join: { from: 'graph_order_pet.id', to: 'graph_order_person.favoritePetId' },
           },
         };
       }
@@ -580,6 +595,84 @@ export default (session) => {
         }
       });
 
+      it('should insert a row into a slot after its current row moves to a new owner', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
+
+          // Pet 1 moves to the new person 3, and the new pet 3 into its slot:
+          const people = [
+            { id: 1, onePet: { id: 3, name: 'c' } },
+            { id: 3, onePet: { id: 1 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+            insertMissing: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 3 },
+            { id: 3, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should insert a row into a slot after a chain of rows moves to a new owner', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+          ]);
+
+          // Pet 2 moves to the new person 3, pet 1 into its slot, and the new
+          // pet 3 into pet 1's:
+          const people = [
+            { id: 1, onePet: { id: 3, name: 'c' } },
+            { id: 2, onePet: { id: 1 } },
+            { id: 3, onePet: { id: 2 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+            insertMissing: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            { id: 2, name: 'b', ownerId: 3 },
+            { id: 3, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should relate a #ref into a slot after its current row moves to a new owner', async () => {
+        await createTables({ uniqueOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: null },
+        ]);
+        Pet.delayedIds = [1];
+
+        try {
+          // Pet 1 moves to the new person 3, and pet 2 into its slot:
+          await Person.query().upsertGraph(
+            [
+              { id: 1, onePet: { '#ref': 'b' } },
+              { id: 3, onePet: { id: 1 } },
+              { id: 2, likedPets: [{ '#id': 'b', id: 2 }] },
+            ],
+            { relate: true, insertMissing: true, allowRefs: true },
+          );
+        } finally {
+          Pet.delayedIds = [];
+        }
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 3 },
+          { id: 2, name: 'b', ownerId: 1 },
+        ]);
+      });
+
       it('should move a chain of rows between the slots of owners', async () => {
         for (const reversed of [false, true]) {
           await createTables({ uniqueOwner: true });
@@ -607,6 +700,26 @@ export default (session) => {
             { id: 3, name: 'c', ownerId: 1 },
           ]);
         }
+      });
+    });
+
+    // A row that moves out of the slot that a new row goes into, below that
+    // new row, can't move first. Without a unique key, both are written:
+    it('should insert a row into a slot that its current row moves out of below it', async () => {
+      await createTables();
+      await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
+
+      await Person.query().upsertGraph(
+        { id: 1, onePet: { id: 3, name: 'c', fans: [{ id: 3, onePet: { id: 1 } }] } },
+        { relate: true, insertMissing: true },
+      );
+
+      expect(await selectPets()).toEqual([
+        { id: 1, name: 'a', ownerId: 3 },
+        { id: 3, name: 'c', ownerId: 1 },
+      ]);
+      expect(await knex('graph_order_person').where('id', 3).first()).toMatchObject({
+        favoritePetId: 3,
       });
     });
 
