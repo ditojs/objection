@@ -96,6 +96,7 @@
 - `upsertGraph()` with `relate` and `noUpdate` writes the foreign keys of models that it relates through a `HasManyRelation` or `HasOneRelation`, like it does for `BelongsToOneRelation` and `ManyToManyRelation`, instead of leaving them unrelated without an error, as it did since 1.5.0 [#53](https://github.com/ditojs/objection/issues/53)
 - `upsertGraph()` resolves a `#ref{}` to a value of an existing model, e.g. a foreign key that an inserted related model gives it, once the graph has filled it in, instead of reading its old value [#356](https://github.com/ditojs/objection/issues/356)
 - `upsertGraph()` with the `unrelate` option moves a has-many row that the graph relates to another owner through the same relation without unrelating it first, which failed on a NOT NULL foreign key when the new owner is inserted [#214](https://github.com/ditojs/objection/issues/214)
+- `insertGraph()` and `upsertGraph()` throw a `ValidationError` of type `InvalidGraph` before anything is written for a `#ref` to a new model, or a `#ref{}`, that points into a branch that the graph doesn't write, e.g. below a model that `noRelate` ignores or that is marked with `#delete`, instead of failing with a `TypeError` [#53](https://github.com/ditojs/objection/issues/53)
 
 ### Types
 

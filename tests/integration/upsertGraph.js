@@ -104,6 +104,61 @@ export default (session) => {
         expect(fetched.$afterFindCalled).toBe(1);
       });
 
+      it('should throw for a #ref into a branch that the graph does not write', async () => {
+        const err = await Model1.query(session.knex)
+          .upsertGraph(
+            {
+              id: 1,
+              // Ignored with its branch because of `noRelate`:
+              model1Relation1: { id: 3, model1Relation3: [{ '#id': 'm', model2Prop1: 'm' }] },
+              model1Relation3: [{ '#ref': 'm' }],
+            },
+            { relate: true, noRelate: ['model1Relation1'], allowRefs: true, fetchStrategy },
+          )
+          .catch((err) => err);
+
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.message).toBe(
+          "the reference at 'model1Relation3[0]' points to a model in a branch that the graph doesn't write",
+        );
+        expect(await session.knex('Model1Model2').where('model1Id', 1)).toEqual([]);
+      });
+
+      it('should throw for a #ref{} into a branch that the graph does not write', async () => {
+        const err = await Model1.query(session.knex)
+          .upsertGraph(
+            {
+              id: 1,
+              // Ignored with its branch because of `noRelate`:
+              model1Relation1: { id: 3, model1Relation3: [{ '#id': 'm', idCol: 1 }] },
+              model1Relation2: [{ model2Prop1: '#ref{m.model2Prop1}' }],
+            },
+            { relate: true, noRelate: ['model1Relation1'], allowRefs: true, fetchStrategy },
+          )
+          .catch((err) => err);
+
+        expect(err).toBeInstanceOf(ValidationError);
+        expect(err.message).toBe(
+          "the reference at 'model1Relation2[0]' points to a model in a branch that the graph doesn't write",
+        );
+      });
+
+      it('should relate a #ref to an existing model in a branch that the graph does not write', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            // Ignored with its branch because of `noRelate`:
+            model1Relation1: { id: 3, model1Relation3: [{ '#id': 'm', idCol: 1 }] },
+            model1Relation3: [{ '#ref': 'm' }],
+          },
+          { relate: true, noRelate: ['model1Relation1'], allowRefs: true, fetchStrategy },
+        );
+
+        expect(await session.knex('Model1Model2').where('model1Id', 1).select('model2Id')).toEqual([
+          { model2Id: 1 },
+        ]);
+      });
+
       it('should fetch with the graph and graph modifiers of upsertGraphAndFetch() (Vincit#839)', async () => {
         const result = await Model1.query(session.knex)
           .withGraphFetched('model1Relation2')
