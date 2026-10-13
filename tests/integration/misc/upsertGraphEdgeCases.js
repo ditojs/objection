@@ -67,6 +67,11 @@ export default (session) => {
             modelClass: Person,
             join: { from: 'graph_edge_person.id', to: 'graph_edge_person.parentId' },
           },
+          parent: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: Person,
+            join: { from: 'graph_edge_person.parentId', to: 'graph_edge_person.id' },
+          },
           boss: {
             relation: Model.BelongsToOneRelation,
             modelClass: Person,
@@ -261,6 +266,30 @@ export default (session) => {
             favoriteToyId: null,
           },
         ]);
+      });
+
+      describe('a #ref to a new model through the BelongsToOneRelation of a related model below it', () => {
+        it('should keep the model when the relation is the inverse of the parent relation', async () => {
+          const [root] = await Person.query(knex).upsertGraph(
+            [{ '#id': 'new', name: 'new', children: [{ id: 3, parent: { '#ref': 'new' } }] }],
+            { relate: true, allowRefs: true },
+          );
+
+          expect(await knex('graph_edge_person').where('id', root.id)).toHaveLength(1);
+          expect(await knex('graph_edge_person').where('id', 3)).toMatchObject([
+            { parentId: root.id },
+          ]);
+        });
+
+        it('should keep the model when the relation leads back to it from another table', async () => {
+          const [root] = await Person.query(knex).upsertGraph(
+            [{ '#id': 'new', name: 'new', pets: [{ id: 3, owner: { '#ref': 'new' } }] }],
+            { relate: true, allowRefs: true },
+          );
+
+          expect(await knex('graph_edge_person').where('id', root.id)).toHaveLength(1);
+          expect(await knex('graph_edge_pet').where('id', 3)).toMatchObject([{ ownerId: root.id }]);
+        });
       });
 
       it('should upsert the models below a #ref to an existing model', async () => {
