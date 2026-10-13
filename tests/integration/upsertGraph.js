@@ -747,6 +747,35 @@ export default (session) => {
         expect(model2Rows).toHaveLength(2);
       });
 
+      it('should insert a referenced model below a skipped model without its join row (#369)', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            model1Relation1: { '#ref': 'a' },
+            model1Relation2: [
+              {
+                // Not inserted because of `noInsert`:
+                model2Prop1: 'skipped',
+                model2Relation1: [{ '#id': 'a', model1Prop1: 'a' }],
+              },
+            ],
+          },
+          {
+            fetchStrategy,
+            allowRefs: true,
+            relate: true,
+            noDelete: true,
+            noInsert: ['model1Relation2'],
+          },
+        );
+
+        const row = await session.knex('Model1').where('model1Prop1', 'a').first();
+        expect(await session.knex('Model1').where('id', 1).first()).toMatchObject({
+          model1Id: row.id,
+        });
+        expect(await session.knex('Model1Model2').where('model1Id', row.id)).toEqual([]);
+      });
+
       for (const [title, model1Relation1, options] of [
         ['noInsert', { model1Prop1: 'skipped' }, { noInsert: ['model1Relation1'] }],
         [
