@@ -673,6 +673,39 @@ export default (session) => {
         ]);
       });
 
+      it('should insert a row into a slot after its current row moves in a later pass', async () => {
+        for (const people of [
+          // Pet 1 moves to person 2, which moves to org 2 first:
+          [{ id: 2, onePet: { id: 1 } }],
+          // The same, and pet 2 moves from person 2 to the new person 3:
+          [
+            { id: 2, onePet: { id: 1 } },
+            { id: 3, onePet: { id: 2 } },
+          ],
+        ]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            ...(people.length > 1 ? [{ id: 2, name: 'b', ownerId: 2 }] : []),
+          ]);
+          await knex('graph_order_org').insert({ id: 2 });
+
+          await Org.query().upsertGraph(
+            [
+              { id: 1, people: [{ id: 1, onePet: { id: 3, name: 'c' } }] },
+              { id: 2, people },
+            ],
+            { relate: true, insertMissing: true, noDelete: true },
+          );
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            ...(people.length > 1 ? [{ id: 2, name: 'b', ownerId: 3 }] : []),
+            { id: 3, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
+
       it('should move a chain of rows between the slots of owners', async () => {
         for (const reversed of [false, true]) {
           await createTables({ uniqueOwner: true });
