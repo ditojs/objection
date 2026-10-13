@@ -1284,7 +1284,7 @@ const graph = await Person.query().upsertGraph({
 5. Delete the removed rows of `BelongsToOneRelation`s.
 6. Upsert the models below the rows that moved into a `HasManyRelation` or `HasOneRelation` from another owner, in a pass of their own with the same steps, against their rows as they are after the move.
 
-Rows that move to another parent are moved before their old parent is deleted, so they survive `ON DELETE CASCADE` and foreign keys without `ON DELETE` action. New and changed rows can take the unique keys of the rows they replace. A relate into a `HasOneRelation` waits for the removal of the current related model, or for the relate that moves it to another owner, also a new one or one whose slot is freed first, but not into the models below a moved row, which are upserted last, so it can take its unique foreign key too.
+Rows that move to another parent are moved before their old parent is deleted, so they survive `ON DELETE CASCADE` and foreign keys without `ON DELETE` action. New and changed rows can take the unique keys of the rows they replace, except the key of a row that moves to a new owner, see below. A relate into a `HasOneRelation` waits for the removal of the current related model, or for the relate that moves it to another owner, also a new one or one whose slot is freed first, but not into the models below a moved row, which are upserted last, so it can take its unique foreign key too.
 
 When the model of a `BelongsToOneRelation` like `parent` is deleted because of `parent: null` or `#delete`, its owner's foreign key is set to `null` before the delete, like [unrelate](/api/query-builder/mutate-methods.html#unrelate) does. The owner is patched, so its update hooks and its [jsonSchema](/api/model/static-properties.html#static-jsonschema) validation run, and a `NOT NULL` column makes the patch fail with a database error. Delete the owner itself if it can't exist without the related model.
 
@@ -1299,6 +1299,8 @@ await Person.transaction(async (trx) => {
   );
 });
 ```
+
+A new row can't take the unique key of a row that the graph moves to a new owner either. That move waits for the insert of its new owner, so the row still holds its key when the new row is inserted. With `unique(ownerId, name)`, moving person 1's `'Fluffy'` to a new person while inserting a new `'Fluffy'` for person 1 fails with a `UniqueViolationError`. The foreign key isn't cleared first, as it may be `NOT NULL`. Insert the new owner with a separate call first, or make the unique constraint deferred and run `upsertGraph` in a transaction.
 
 By giving `relate: true` and/or `unrelate: true` options as the second argument, you can change the behaviour so that instead of inserting and deleting rows, they are related and/or unrelated. Rows with no id still get inserted, but rows that have an id and are not currently related, get related.
 
