@@ -8,7 +8,7 @@ const prefix = 'graph_gen_';
 
 // The columns of each table, in the order of creation:
 export const graphTables = {
-  person: ['id', 'label', 'name', 'age', 'parentId', 'bossId', 'stamp'],
+  person: ['id', 'label', 'name', 'age', 'parentId', 'bossId', 'favoritePetId', 'stamp'],
   pet: ['id', 'label', 'name', 'ownerId', 'stamp'],
   toy: ['id', 'label', 'name', 'petId'],
   profile: ['id', 'label', 'bio', 'personId'],
@@ -17,6 +17,7 @@ export const graphTables = {
   badge: ['kind', 'num', 'label', 'title', 'personId'],
   license: ['id', 'label', 'code'],
   person_license: ['personId', 'licenseId'],
+  friendship: ['personId', 'friendId'],
 };
 
 // The foreign keys and the tables they point to:
@@ -28,6 +29,8 @@ const foreignKeys = {
   personId: 'person',
   movieId: 'movie',
   licenseId: 'license',
+  favoritePetId: 'pet',
+  friendId: 'person',
 };
 
 // The relations that keep their key in the related row:
@@ -44,6 +47,10 @@ const relationTypes = {
   movies: 'movie',
   badges: 'badge',
   license: 'license',
+  favoritePet: 'pet',
+  siblings: 'pet',
+  activeOwner: 'person',
+  ownerFriends: 'person',
 };
 
 function graphTableName(table) {
@@ -69,6 +76,7 @@ export async function createGraphTables(knex) {
       table.integer('age');
       table.integer('parentId');
       table.integer('bossId');
+      table.integer('favoritePetId');
       table.string('stamp');
     })
     .createTable(t('pet'), (table) => {
@@ -136,6 +144,17 @@ export async function createGraphTables(knex) {
         .references('id')
         .inTable(t('license'))
         .onDelete('CASCADE');
+    })
+    // The friends of a pet's owner, through a join table keyed on the owner.
+    // SQL Server allows one cascade path per table:
+    .createTable(t('friendship'), (table) => {
+      table
+        .integer('personId')
+        .unsigned()
+        .references('id')
+        .inTable(t('person'))
+        .onDelete('CASCADE');
+      table.integer('friendId');
     });
 }
 
@@ -202,6 +221,11 @@ export function createGraphModels(Model) {
             to: `${t('license')}.id`,
           },
         },
+        favoritePet: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: Pet,
+          join: { from: `${t('person')}.favoritePetId`, to: `${t('pet')}.id` },
+        },
         movies: {
           relation: Model.ManyToManyRelation,
           modelClass: Movie,
@@ -235,6 +259,30 @@ export function createGraphModels(Model) {
           relation: Model.HasManyRelation,
           modelClass: Toy,
           join: { from: `${t('pet')}.id`, to: `${t('toy')}.petId` },
+        },
+        // Relations keyed on the owner's key, which a move of the pet changes:
+        activeOwner: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: Person,
+          modify: (query) => query.where(`${t('person')}.age`, '>=', 30),
+          join: { from: `${t('pet')}.ownerId`, to: `${t('person')}.id` },
+        },
+        siblings: {
+          relation: Model.HasManyRelation,
+          modelClass: Pet,
+          join: { from: `${t('pet')}.ownerId`, to: `${t('pet')}.ownerId` },
+        },
+        ownerFriends: {
+          relation: Model.ManyToManyRelation,
+          modelClass: Person,
+          join: {
+            from: `${t('pet')}.ownerId`,
+            through: {
+              from: `${t('friendship')}.personId`,
+              to: `${t('friendship')}.friendId`,
+            },
+            to: `${t('person')}.id`,
+          },
         },
       };
     }
@@ -387,6 +435,8 @@ export function createGraphCase(seed) {
   let uidCount = 0;
   let hasMarkers = false;
   let isConflicting = false;
+  // The pets that list the pets of their owner as `siblings`:
+  const siblingsPlaces = [];
   // Values that rows have to get from the graph, by table and label:
   const expectedValues = [];
   // Graphs that move rows or insert badges, which have their ids, mostly come
@@ -485,6 +535,28 @@ export function createGraphCase(seed) {
         }
         if (random.chance(0.4)) {
           obj.pets = createArray('pet', rows.pet, depth, at('pets'), ownRows('pet', 'ownerId'));
+          // Relations of one pet that are keyed on its owner, which change when
+          // the pet moves here:
+          const pet = random.chance(0.3) && random.pick(obj.pets.filter((pet) => !isMarked(pet)));
+          if (pet) {
+            // `insertGraph()` can't relate the pets of `siblings`:
+            if (!isInsert && random.chance(0.6)) {
+              siblingsPlaces.push({ owner: obj, pet });
+            }
+            if (random.chance(0.4)) {
+              const ownFriends = ownRows('friendship', 'personId').map((row) => ({
+                id: row.friendId,
+              }));
+              pet.ownerFriends = createArray(
+                'person',
+                rows.person,
+                depth + 1,
+                { container: pet, key: 'ownerFriends' },
+                ownFriends,
+                true,
+              );
+            }
+          }
         }
         if (random.chance(0.25)) {
           obj.boss = random.chance(0.2)
@@ -541,6 +613,11 @@ export function createGraphCase(seed) {
             },
           );
         }
+        // A pet that the graph may leave out of its owner's `pets`, which
+        // then keeps it here:
+        if (random.chance(0.1)) {
+          obj.favoritePet = createModel('pet', rows.pet, depth + 1, at('favoritePet'), [], true);
+        }
         // Below `children`, the parent is the model that lists the child:
         if (random.chance(0.1) && !isMarked(obj) && !place?.container['#delete']) {
           obj.parent =
@@ -558,8 +635,13 @@ export function createGraphCase(seed) {
         if (random.chance(0.3)) {
           obj.toys = createArray('toy', rows.toy, depth, at('toys'), ownRows('toy', 'petId'));
         }
-        if (random.chance(0.1) && !isMarked(obj) && !place.container['#delete']) {
-          obj.owner = createContainerRef(place);
+        // Below `pets`, the owner is the model that lists the pet:
+        const isInPets = place.key === 'pets';
+        if (random.chance(0.1) && !isMarked(obj) && !(isInPets && place.container['#delete'])) {
+          const ownerKey = random.chance(0.7) ? 'owner' : 'activeOwner';
+          obj[ownerKey] = isInPets
+            ? createContainerRef(place)
+            : createModel('person', rows.person, depth + 1, at(ownerKey), [], true);
         }
       }
     } else if (type === 'toy') {
@@ -603,7 +685,7 @@ export function createGraphCase(seed) {
             (!isRowKeyPlace(place) ||
               (!isMarked(model) &&
                 !(key === 'children' && 'parent' in model) &&
-                !(key === 'pets' && 'owner' in model) &&
+                !(key === 'pets' && ('owner' in model || 'activeOwner' in model)) &&
                 (!keyPlace || (keyPlace.container === obj && keyPlace.key === key))))
           );
         });
@@ -614,12 +696,14 @@ export function createGraphCase(seed) {
           // models has one join row, which conflicts with a second role:
           const role = key === 'movies' && random.chance(0.5) && `role ${random.int(1, 9)}`;
           if (role) {
-            const otherRole = value.includes(model) ? model.role : rolesHere.get(model);
+            const otherRole =
+              rolesHere.get(model) ?? (value.includes(model) ? model.role : undefined);
             isConflicting ||= otherRole !== undefined && otherRole !== role;
-            rolesHere.set(model, role);
+            rolesHere.set(model, otherRole ?? role);
           }
           // A pair that its model's place unrelates and the `#ref` keeps conflicts:
-          isConflicting ||= key === 'movies' && isMarked(model) && value.includes(model);
+          isConflicting ||=
+            ['movies', 'ownerFriends'].includes(key) && isMarked(model) && value.includes(model);
           if (isRowKeyPlace(place)) keyPlaces.set(model, place);
           return { '#ref': model['#id'], ...(role && { role }) };
         } else {
@@ -638,6 +722,14 @@ export function createGraphCase(seed) {
 
   for (const root of roots) {
     replaceWithRefs(root);
+  }
+
+  // `siblings` describe the same pets as the final `pets` of their owner, so
+  // they list them all:
+  for (const { owner, pet } of siblingsPlaces) {
+    pet.siblings = owner.pets
+      .filter((sibling) => !isMarked(sibling))
+      .map((sibling) => ({ '#ref': sibling['#ref'] ?? sibling['#id'] ?? setUid(sibling, 'pet') }));
   }
 
   // Point some names to the names of other models with `#ref{}`:
@@ -803,6 +895,16 @@ function createRows(random) {
 
     if (random.chance(0.4)) {
       rows.person_license.push({ personId: person.id, licenseId: random.int(1, 3) });
+    }
+
+    if (rows.pet.length > 0 && random.chance(0.3)) {
+      person.favoritePetId = random.pick(rows.pet).id;
+    }
+
+    for (const friend of rows.person) {
+      if (friend !== person && random.chance(0.2)) {
+        rows.friendship.push({ personId: person.id, friendId: friend.id });
+      }
     }
 
     for (const movie of rows.movie) {
