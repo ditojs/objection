@@ -998,7 +998,7 @@ Jennifer can't be inserted before Felix because of `favoritePetId`, and Felix ca
 
 This only works if the foreign key column is nullable (or the constraint is deferrable). If it isn't, the database rejects the insert of Jennifer, possibly after other models of the graph have already been inserted. Use a [transaction](/guide/transactions.html) to roll those back in that case.
 
-Cycles that can't be resolved this way are rejected with a clear error message before anything is inserted. This is the case for cycles created using only `#ref{}` property references, cycles where the deferred foreign key is itself read by a `#ref{}` property reference, and cycles where one of the models isn't inserted, for example because of the `noInsert` option.
+Cycles that can't be resolved this way are rejected with a clear error message before anything is inserted. This is the case for cycles created using only `#ref{}` property references, and cycles where the deferred foreign key is itself read by a `#ref{}` property reference.
 
 You can refer to the properties of other models anywhere in the graph using expressions of format `#ref{<id>.<property>}` as long as the reference doesn't create a circular dependency. For example:
 
@@ -1023,6 +1023,10 @@ await Person
 Again, make sure you set the `allowRefs` option to `true`.
 
 The query above will insert a pet named `I am the dog of Jennifer whose id is 523` for Jennifer. If `#ref{}` is used within a string, the references are replaced with the referred values inside the string. If the reference string contains nothing but the reference, the referred value is copied to its place preserving its type.
+
+A `#ref` to a new model (a model without an id), or a `#ref{}` to the id of a new model, needs the id that the database gives the model when the graph inserts it. If the graph doesn't write that model, e.g. because the `noInsert` option skips it, or because it sits below a model that `upsertGraph` ignores because of the `noRelate` option or removes because of `#delete` or `#unrelate`, such a reference throws a `ValidationError` of type `InvalidGraph` before anything is written. A plain `#ref` to a model with an id relates the existing row, and a `#ref{}` to any other property reads the model as the graph gives it, so neither needs the model to be written. Below a model that `noInsert` skips, only the branches that references of written models point into are written, without the skipped model.
+
+`upsertGraph` writes the models below rows that it relates into a `HasManyRelation` or `HasOneRelation` from another owner after the rest of the graph (see [graph upserts](#graph-upserts)), so the rest of the graph can't `#ref` new models below them, nor read their ids with `#ref{}`. The references of these models are checked once the rest of the graph is written, before they are written themselves.
 
 Existing rows can be related to newly inserted rows by using the `relate` option. `relate` can be `true` in which case all models in the graph that have an identifier get related. `relate` can also be an array of relation paths like `['children', 'children.movies.actors']` in which case only objects in those paths get related even if they have an idetifier.
 
@@ -1278,9 +1282,9 @@ const graph = await Person.query().upsertGraph({
 3. Insert the new rows, and the join rows of many-to-many inserts and relates.
 4. Patch or update the changed rows, relate the remaining rows, and point the owners of `BelongsToOneRelation`s to their new related rows or to `null`.
 5. Delete the removed rows of `BelongsToOneRelation`s.
-6. Upsert the relations of related models, in nested `upsertGraph` calls.
+6. Upsert the models below the rows that moved into a `HasManyRelation` or `HasOneRelation` from another owner, in a pass of their own with the same steps, against their rows as they are after the move.
 
-Rows that move to another parent are moved before their old parent is deleted, so they survive `ON DELETE CASCADE` and foreign keys without `ON DELETE` action. New and changed rows can take the unique keys of the rows they replace. A relate into a `HasOneRelation` waits for the removal of the current related model, or for the relate that moves it to another owner, also a new one or one whose slot is freed first, but not into the subgraph of a related model, which is upserted last, so it can take its unique foreign key too.
+Rows that move to another parent are moved before their old parent is deleted, so they survive `ON DELETE CASCADE` and foreign keys without `ON DELETE` action. New and changed rows can take the unique keys of the rows they replace. A relate into a `HasOneRelation` waits for the removal of the current related model, or for the relate that moves it to another owner, also a new one or one whose slot is freed first, but not into the models below a moved row, which are upserted last, so it can take its unique foreign key too.
 
 When the model of a `BelongsToOneRelation` like `parent` is deleted because of `parent: null` or `#delete`, its owner's foreign key is set to `null` before the delete, like [unrelate](/api/query-builder/mutate-methods.html#unrelate) does. The owner is patched, so its update hooks and its [jsonSchema](/api/model/static-properties.html#static-jsonschema) validation run, and a `NOT NULL` column makes the patch fail with a database error. Delete the owner itself if it can't exist without the related model.
 
@@ -1299,6 +1303,8 @@ await Person.transaction(async (trx) => {
 By giving `relate: true` and/or `unrelate: true` options as the second argument, you can change the behaviour so that instead of inserting and deleting rows, they are related and/or unrelated. Rows with no id still get inserted, but rows that have an id and are not currently related, get related.
 
 A row that is missing in one place but related or updated in another place of the same graph isn't deleted, it's only unrelated from the place where it's missing. This way, rows can be moved between parents in a single `upsertGraph` call.
+
+A graph can't place one row in conflicting ways. [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) and [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) throw a `ValidationError` of type `InvalidGraph` that names both data paths before anything is written when the graph gives one row two different values for the same column, or the slot of a `HasOneRelation` two different rows, e.g. a pet in the `pets` of two people, a pet under one person whose own `owner` names another one, or a row marked with `#delete` in one place and kept in another. Placing a row the same way more than once is fine, e.g. `{ id: 1, pets: [{ id: 4, owner: { id: 1 } }] }`, and so is a row in places that write different columns, e.g. as a `child` and as a `boss`. A row that one place of an owner lists and another place of the same owner leaves out is kept, as the graph keeps it in the first place. The data paths of models in array input start with their index, e.g. `[1].pets[0]`.
 
 If a row that the graph relates or updates is gone by the time it's written, `upsertGraph` throws a `NotFoundError`. This happens when an earlier write of the same call deleted it, e.g. a row moved below a new row while its old parent is deleted with `ON DELETE CASCADE`, or when a concurrent query deleted it. Run `upsertGraph` in a transaction so that nothing is written in that case.
 
