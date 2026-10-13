@@ -385,6 +385,25 @@ export default (session) => {
         ]);
       });
 
+      it('should keep a row below a moved row that the graph keeps elsewhere', async () => {
+        await createTables();
+        await knex('graph_order_node').insert([
+          { id: 1, parentId: null },
+          { id: 4, parentId: 1 },
+        ]);
+
+        await Node.query().upsertGraph(
+          [{ id: 4 }, { id: 9, children: [{ id: 1, children: [] }] }],
+          { relate: true, insertMissing: true },
+        );
+
+        expect(await selectNodes()).toEqual([
+          { id: 1, parentId: 9 },
+          { id: 4, parentId: null },
+          { id: 9, parentId: null },
+        ]);
+      });
+
       it('should keep the old owner of a row moved into a HasOneRelation', async () => {
         await createTables();
         await insertPeople([{ id: 2, name: 'b', ownerId: 2 }]);
