@@ -6177,13 +6177,38 @@ export default (session) => {
             });
         });
 
-        it('relate the same model twice with different extras (Vincit#1268)', async () => {
+        it('reject a model placed twice with other extras', async () => {
+          const joinRows = await session.knex('Model1Model2').orderBy('id');
+
+          await expect(
+            Model2.query(session.knex).upsertGraph(
+              {
+                idCol: 2,
+                model2Relation1: [
+                  { id: 5, aliasedExtra: 'foo' },
+                  { id: 5, aliasedExtra: 'bar' },
+                ],
+              },
+              { relate: true, fetchStrategy },
+            ),
+          ).rejects.toThrow(
+            "the graph gives aliasedExtra of one join row of model2Relation1 two values, at 'model2Relation1[0].aliasedExtra' and at 'model2Relation1[1].aliasedExtra'",
+          );
+          expect(await session.knex('Model1Model2').orderBy('id')).toEqual(joinRows);
+        });
+
+        it('relate a model placed twice with one join row', async () => {
+          const model = await Model2.query(session.knex)
+            .findById(2)
+            .withGraphFetched('model2Relation1(orderById)');
+
           await Model2.query(session.knex).upsertGraph(
             {
               idCol: 2,
               model2Relation1: [
+                ...model.model2Relation1.map(({ id }) => ({ id })),
                 { id: 5, aliasedExtra: 'foo' },
-                { id: 5, model1Prop1: 'changed', aliasedExtra: 'bar' },
+                { id: 5, model1Prop1: 'changed' },
               ],
             },
             { relate: true, fetchStrategy },
@@ -6191,18 +6216,35 @@ export default (session) => {
 
           const rows = await session
             .knex('Model1Model2')
-            .select('model1Id', 'extra3')
-            .where('model2Id', 2)
-            .orderBy('extra3');
-
-          expect(rows).toEqual([
-            { model1Id: 5, extra3: 'bar' },
-            { model1Id: 5, extra3: 'foo' },
-          ]);
+            .select('extra3')
+            .where({ model2Id: 2, model1Id: 5 });
+          expect(rows).toEqual([{ extra3: 'foo' }]);
           expect((await Model1.query(session.knex).findById(5)).model1Prop1).toBe('changed');
         });
 
-        it('update the extras of models that an earlier upsert patched (Vincit#1268)', async () => {
+        it('relate a model placed with a string and a number id with one join row', async () => {
+          const model = await Model2.query(session.knex)
+            .findById(2)
+            .withGraphFetched('model2Relation1(orderById)');
+
+          await Model2.query(session.knex).upsertGraph(
+            {
+              idCol: 2,
+              model2Relation1: [
+                ...model.model2Relation1.map(({ id }) => ({ id })),
+                { id: 5, aliasedExtra: 'foo' },
+                { id: '5' },
+              ],
+            },
+            { relate: true, fetchStrategy },
+          );
+
+          expect(
+            await session.knex('Model1Model2').select('extra3').where({ model2Id: 2, model1Id: 5 }),
+          ).toEqual([{ extra3: 'foo' }]);
+        });
+
+        it('update the extras of models that an earlier upsert patched', async () => {
           const model = await Model2.query(session.knex)
             .findById(2)
             .withGraphFetched('model2Relation1(orderById)');
@@ -6216,6 +6258,31 @@ export default (session) => {
             .where({ model2Id: 2, model1Id: model.model2Relation1[0].id })
             .first();
           expect(row.extra3).toBe('changed extra');
+        });
+
+        it('update the extras of all join rows of a pair', async () => {
+          const { id } = (
+            await Model2.query(session.knex)
+              .findById(2)
+              .withGraphFetched('model2Relation1(orderById)')
+          ).model2Relation1[0];
+          // A second join row of the pair, written by something else than the graph:
+          const [joinRow] = await session.knex('Model1Model2').where({ model2Id: 2, model1Id: id });
+          await session.knex('Model1Model2').insert({ ...joinRow, id: undefined });
+
+          const model = await Model2.query(session.knex)
+            .findById(2)
+            .withGraphFetched('model2Relation1(orderById)');
+          for (const related of model.model2Relation1.filter((related) => related.id === id)) {
+            related.aliasedExtra = 'changed extra';
+          }
+          await Model2.query(session.knex).upsertGraph(model, { fetchStrategy });
+
+          const rows = await session
+            .knex('Model1Model2')
+            .select('extra3')
+            .where({ model2Id: 2, model1Id: id });
+          expect(rows).toEqual([{ extra3: 'changed extra' }, { extra3: 'changed extra' }]);
         });
 
         it('update', () => {
