@@ -2846,7 +2846,7 @@ export default (session) => {
             .upsertGraph(upsert, options)
             .then(() => {
               if (fetchStrategy === FetchStrategy.OnlyIdentifiers) {
-                expect(sql.length).toBe(3);
+                expect(sql.length).toBe(4);
               }
 
               if (session.isPostgres()) {
@@ -2854,6 +2854,8 @@ export default (session) => {
                   expect(sql).toContainSubset([
                     'select "Model1"."id", "Model1"."model1Id" from "Model1" where "Model1"."id" in (2)',
                     'select "Model1"."id" from "Model1" where "Model1"."id" in (3)',
+                    // The related model is checked to exist:
+                    'select "Model1"."id" from "Model1" where "Model1"."id" in (4)',
                     // There should only be one `model1Id` update here. If you see two, something is broken.
                     'update "Model1" set "model1Id" = 4 where "Model1"."id" = 2',
                   ]);
@@ -4443,6 +4445,64 @@ export default (session) => {
             'model (id=1000) does not exist. If you want to insert it with an id, use the insertMissing option',
           );
           expect(err.data.dataPath).toEqual(['model1Relation3', 0]);
+          expect(await session.knex('Model1').where('model1Prop1', 'updated root 2')).toEqual([]);
+        });
+
+        for (const [relationName, related, dataPath] of [
+          ['model1Relation1', { id: NONEXISTENT_ID }, ['model1Relation1']],
+          ['model1Relation1Inverse', { id: NONEXISTENT_ID }, ['model1Relation1Inverse']],
+          ['model1Relation2', [{ idCol: 1 }, { idCol: NONEXISTENT_ID }], ['model1Relation2', 1]],
+          ['model1Relation3', [{ idCol: NONEXISTENT_ID }], ['model1Relation3', 0]],
+        ]) {
+          it(`should throw before writing anything if a model related through ${relationName} does not exist (#372)`, async () => {
+            const err = await Model1.query(session.knex)
+              .upsertGraph(
+                { id: 2, model1Prop1: 'updated root 2', [relationName]: related },
+                { relate: true, noDelete: true, fetchStrategy },
+              )
+              .catch((err) => err);
+
+            expect(err).toBeInstanceOf(Model1.NotFoundError);
+            expect(err.message).toBe(
+              'model (id=1000) does not exist. If you want to insert it with an id, use the insertMissing option',
+            );
+            expect(err.data.dataPath).toEqual(dataPath);
+            expect(await session.knex('Model1').where('model1Prop1', 'updated root 2')).toEqual([]);
+          });
+        }
+
+        it('should relate a model that the graph inserts elsewhere with insertMissing (#372)', async () => {
+          await Model1.query(session.knex).upsertGraph(
+            {
+              id: 2,
+              model1Relation2: [{ idCol: NONEXISTENT_ID }],
+              model1Relation3: [{ idCol: NONEXISTENT_ID, model2Prop1: 'inserted' }],
+            },
+            { relate: true, insertMissing: ['model1Relation3'], noDelete: true, fetchStrategy },
+          );
+
+          expect(await session.knex('model2').where('id_col', NONEXISTENT_ID)).toMatchObject([
+            { model1_id: 2, model2_prop1: 'inserted' },
+          ]);
+          expect(
+            await session.knex('Model1Model2').where('model2Id', NONEXISTENT_ID).select('model1Id'),
+          ).toEqual([{ model1Id: 2 }]);
+        });
+
+        it('should throw before writing anything for a #dbRef to a model that does not exist (#372)', async () => {
+          const err = await Model1.query(session.knex)
+            .upsertGraph(
+              {
+                id: 2,
+                model1Prop1: 'updated root 2',
+                model1Relation1: { '#dbRef': NONEXISTENT_ID },
+              },
+              { allowRefs: true, fetchStrategy },
+            )
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(Model1.NotFoundError);
+          expect(err.message).toMatch(/model \(id=1000\) does not exist/);
           expect(await session.knex('Model1').where('model1Prop1', 'updated root 2')).toEqual([]);
         });
 
