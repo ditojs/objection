@@ -102,6 +102,7 @@
 - `upsertGraph()` keeps the join table extras of an existing join row when a `#ref` relates the many-to-many model again, where 3.x set them to `null`
 - `upsertGraph()` inserts a new row into a `HasOneRelation` after the current row moves out of it to a new owner, and after the rows that move along with it from slot to slot, instead of failing with a `UniqueViolationError` on a unique foreign key [#368](https://github.com/ditojs/objection/issues/368)
 - The models that `upsertGraph()` returns write all their props in later patches, e.g. with `$query().patch()`, instead of leaving out the props that the upsert found unchanged, as they did since 3.9.0 [#371](https://github.com/ditojs/objection/issues/371)
+- `insertGraph()` and `upsertGraph()` keep only the branches below a model that `noInsert` skips that a `#ref` or `#ref{}` of a written model points into, directly or through other kept branches, and write no join rows for the skipped model. In 3.9.0, one reference kept the whole branch, so the referenced model's siblings were inserted without foreign keys, and its many-to-many relations got join rows without the skipped model's key, which failed on NOT NULL join columns. An existing row that the graph only places in such a pruned branch is now removed where its owner elsewhere leaves it out, like below a skipped model that nothing references, where 3.9.0 kept it whenever a reference kept the branch [#369](https://github.com/ditojs/objection/issues/369)
 
 ### Types
 

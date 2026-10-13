@@ -656,6 +656,57 @@ export default (session) => {
         expect(model.model1Prop2).toBe(row.id_col);
       });
 
+      describe('branches below models skipped by noInsert (#369)', () => {
+        const insertSkipped = (skippedChildren, root = {}) =>
+          Model1.query().insertGraph(
+            {
+              model1Prop1: 'root',
+              ...root,
+              // Not inserted because of `noInsert`:
+              model1Relation2: [{ model2Prop1: 'skipped', model2Relation1: skippedChildren }],
+            },
+            { allowRefs: true, noInsert: ['model1Relation2'] },
+          );
+
+        const selectInserted = () =>
+          session.knex('Model1').whereIn('model1Prop1', ['a', 'b']).orderBy('model1Prop1');
+
+        it('should insert a referenced model without the join row of its skipped parent', async () => {
+          const model = await insertSkipped([{ '#id': 'a', model1Prop1: 'a' }], {
+            model1Relation1: { '#ref': 'a' },
+          });
+
+          const [row] = await selectInserted();
+          expect(row).toMatchObject({ model1Prop1: 'a' });
+          expect(model.model1Id).toBe(row.id);
+          expect(await session.knex('Model1Model2').where('model1Id', row.id)).toEqual([]);
+        });
+
+        it('should not insert the siblings of a referenced model', async () => {
+          await insertSkipped([{ '#id': 'a', model1Prop1: 'a' }, { model1Prop1: 'b' }], {
+            model1Relation1: { '#ref': 'a' },
+          });
+
+          expect((await selectInserted()).map((row) => row.model1Prop1)).toEqual(['a']);
+        });
+
+        it('should not insert models that only pruned siblings reference', async () => {
+          for (const skippedChildren of [
+            [
+              { '#id': 'a', model1Prop1: 'a' },
+              { model1Prop1: 'b', model1Relation1: { '#ref': 'a' } },
+            ],
+            [
+              { '#id': 'a', model1Prop1: 'a', model1Relation1: { '#ref': 'b' } },
+              { '#id': 'b', model1Prop1: 'b', model1Relation1: { '#ref': 'a' } },
+            ],
+          ]) {
+            await insertSkipped(skippedChildren);
+            expect(await selectInserted()).toEqual([]);
+          }
+        });
+      });
+
       it('trying to relate a HasManyRelation should throw', () => {
         return Model1.query()
           .insertGraph(
