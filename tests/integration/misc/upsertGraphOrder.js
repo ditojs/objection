@@ -39,6 +39,12 @@ export default (session) => {
             modelClass: Pet,
             join: { from: 'graph_order_person.id', to: 'graph_order_pet.ownerId' },
           },
+          petsNamedA: {
+            relation: Model.HasManyRelation,
+            modelClass: Pet,
+            filter: (query) => query.where('name', 'a'),
+            join: { from: 'graph_order_person.id', to: 'graph_order_pet.ownerId' },
+          },
           onePet: {
             relation: Model.HasOneRelation,
             modelClass: Pet,
@@ -240,6 +246,49 @@ export default (session) => {
       );
 
       expect(await selectPets()).toEqual([{ id: 3, name: 'c', ownerId: 1 }]);
+    });
+
+    it('should unrelate the rows of each owner without the rows moved between them', async () => {
+      await createTables();
+      await insertPeople([
+        { id: 1, name: 'a', ownerId: 1 },
+        { id: 2, name: 'b', ownerId: 2 },
+      ]);
+
+      // Pet 1 moves from person 1 to 2 through another relation:
+      await Person.query().upsertGraph(
+        [
+          { id: 1, pets: [] },
+          { id: 2, pets: [], petsNamedA: [{ id: 1 }] },
+        ],
+        { relate: true, unrelate: true },
+      );
+
+      expect(await selectPets()).toEqual([
+        { id: 1, name: 'a', ownerId: 2 },
+        { id: 2, name: 'b', ownerId: null },
+      ]);
+    });
+
+    it('should not unrelate a row that moves between owners with the unrelate option', async () => {
+      await createTables();
+      await insertPeople([
+        { id: 1, name: 'a', ownerId: 1 },
+        { id: 2, name: 'b', ownerId: 2 },
+      ]);
+
+      await Person.query().upsertGraph(
+        [
+          { id: 1, pets: [{ id: 2 }] },
+          { id: 2, pets: [] },
+        ],
+        { relate: true, unrelate: true },
+      );
+
+      expect(await selectPets()).toEqual([
+        { id: 1, name: 'a', ownerId: null },
+        { id: 2, name: 'b', ownerId: 1 },
+      ]);
     });
 
     describe('unique foreign key of a HasOneRelation', () => {
