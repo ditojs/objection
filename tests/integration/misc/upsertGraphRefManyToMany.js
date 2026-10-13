@@ -94,6 +94,53 @@ export default (session) => {
       expect(await knex('graph_ref_m2m_pet')).toEqual([{ id: 10, ownerId: 2 }]);
     });
 
+    it('should write the extras of a join row that a #ref relates again with them', async () => {
+      await knex('graph_ref_m2m_friend').insert({ aId: 2, bId: 3, role: 'best' });
+
+      await Person.query(knex).upsertGraph(
+        {
+          id: 1,
+          children: [{ id: 2, friends: [{ '#ref': 'friend', role: 'worst' }] }],
+          friends: [{ id: 3, '#id': 'friend' }],
+        },
+        { relate: true, allowRefs: true },
+      );
+
+      expect(await knex('graph_ref_m2m_friend').where('aId', 2)).toEqual([
+        { aId: 2, bId: 3, role: 'worst' },
+      ]);
+    });
+
+    it('should keep the extras of the join row of a model out of its #ref in another relation', async () => {
+      await Person.query(knex).upsertGraph(
+        {
+          id: 1,
+          friends: [{ id: 3, '#id': 'friend', role: 'x' }],
+          children: [{ '#ref': 'friend' }],
+        },
+        { relate: true, allowRefs: true },
+      );
+
+      expect(await knex('graph_ref_m2m_friend')).toEqual([{ aId: 1, bId: 3, role: 'x' }]);
+      expect((await knex('graph_ref_m2m_person').where('id', 3).first()).parentId).toBe(1);
+    });
+
+    it('should keep the extras of the join row of a model out of the join row of its #ref', async () => {
+      await Person.query(knex).upsertGraph(
+        {
+          id: 1,
+          friends: [{ id: 3, '#id': 'friend', role: 'x' }],
+          children: [{ id: 2, friends: [{ '#ref': 'friend' }] }],
+        },
+        { relate: true, allowRefs: true },
+      );
+
+      expect(await knex('graph_ref_m2m_friend').orderBy('aId')).toEqual([
+        { aId: 1, bId: 3, role: 'x' },
+        { aId: 2, bId: 3, role: null },
+      ]);
+    });
+
     it('should keep the extras of a join row that a #ref relates again', async () => {
       await knex('graph_ref_m2m_friend').insert({ aId: 2, bId: 3, role: 'best' });
 
