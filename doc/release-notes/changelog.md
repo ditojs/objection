@@ -109,6 +109,7 @@
 - `upsertGraph()` writes the props of a model marked with `#unrelate` through a `#ref` to it in another place, e.g. `{ id: 1, boss: { name: 'new', movies: [{ id: 3, '#id': 'm', title: 't', '#unrelate': true }] }, movies: [{ '#ref': 'm' }] }` writes the title, where 3.9.0 dropped the props, also those of the `#ref`
 - `insertGraph()` and `upsertGraph()` write only the join table extras that a many-to-many `#ref` gives itself to its join row, and never write the extras of the join row of the model it refers to into other rows, e.g. `[{ name: 'a', movies: [{ '#ref': 'm' }] }, { name: 'b', movies: [{ '#id': 'm', title: 't', role: 'lead' }] }]` gives the join row of `a` no role, where 3.x copied `role: 'lead'` to it, and a `#ref` in a HasMany relation no longer fails with a missing `role` column
 - `upsertGraph()` on SQLite throws for `BigInt` ids, which the SQLite driver binds as `NULL`, where 3.x wrote `NULL` keys or patched nothing
+- `upsertGraph()` throws a `ValidationError` of type `InvalidGraph` before anything is written for a graph that changes a key that is part of a row's id, e.g. with `idColumn = ['ownerId', 'name']`, by relating the row to another owner, or by pointing its own `BelongsToOneRelation` to another row or clearing it with `null`, `#unrelate` or `#delete`. 3.9.0 wrote nothing and returned the model as changed, or threw a `NotFoundError` for its relations
 
 ### Types
 
