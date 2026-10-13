@@ -1298,6 +1298,45 @@ export default (session) => {
             expect(await session.knex('A').where('aval', 'XX')).toEqual([]);
             expect(await extras()).toEqual(['x', 'y']);
           });
+
+          it('should patch and find more related rows than one statement binds values for (#287)', async () => {
+            // Two values per id, more than SQL Server accepts in one statement:
+            const ids = Array.from({ length: 1100 }, (_, index) => [100 + index, `${index}`]);
+            await session.knex.batchInsert(
+              'A',
+              ids.map(([id1, id2]) => ({ id1, id2, aval: 'many' })),
+              300,
+            );
+            await session.knex.batchInsert(
+              'A_B_extra',
+              ids.map(([aid1, aid2]) => ({ aid1, aid2, bid3: 1, bid4: '2', abval: 'many' })),
+              300,
+            );
+
+            const sortIds = (rows) =>
+              rows.map(({ id1, id2 }) => [id1, id2]).sort(([a], [b]) => a - b);
+            let foundIds = null;
+            A.afterUpdate = async ({ asFindQuery }) => {
+              foundIds = sortIds(await asFindQuery().select('A.id1', 'A.id2'));
+            };
+
+            try {
+              const b2 = await B.query().findById([1, '2']);
+              const numUpdated = await b2
+                .$relatedQuery('abWithExtra')
+                .patch({ aval: 'XX', abval: 'z' })
+                .where('A_B_extra.abval', 'many');
+
+              expect(numUpdated).toBe(ids.length);
+              expect(foundIds).toEqual(ids);
+              expect(sortIds(await session.knex('A').where('aval', 'XX'))).toEqual(ids);
+              expect(
+                await session.knex('A_B_extra').where('abval', 'z').pluck('aid1'),
+              ).toHaveLength(ids.length);
+            } finally {
+              delete A.afterUpdate;
+            }
+          });
         });
 
         it('delete', () => {
