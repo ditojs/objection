@@ -508,6 +508,23 @@ export default (session) => {
       ]);
     });
 
+    // Pet 4 lists no siblings, which leaves both pets out of its siblings, but
+    // the pets of person 2 keep them through the same key column:
+    it('should keep the rows that another relation on the same key leaves out', async () => {
+      await createTables();
+      await insertPeople([
+        { id: 3, name: 'c', ownerId: 2 },
+        { id: 4, name: 'd', ownerId: 2 },
+      ]);
+
+      await Person.query().upsertGraph({ id: 2, pets: [{ id: 3 }, { id: 4, siblings: [] }] });
+
+      expect(await selectPets()).toEqual([
+        { id: 3, name: 'c', ownerId: 2 },
+        { id: 4, name: 'd', ownerId: 2 },
+      ]);
+    });
+
     describe('rows that read keys that the graph fills in', () => {
       // Person 3 likes pet 10, which belongs to person 1. Pet 11 belongs to
       // person 3.
