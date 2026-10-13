@@ -57,6 +57,24 @@ export default (session) => {
       static get tableName() {
         return 'ambiguous_movie';
       }
+
+      static get relationMappings() {
+        return {
+          actors: {
+            relation: Model.ManyToManyRelation,
+            modelClass: Person,
+            join: {
+              from: 'ambiguous_movie.id',
+              through: {
+                from: 'ambiguous_person_movie.movieId',
+                to: 'ambiguous_person_movie.personId',
+                extra: ['role'],
+              },
+              to: 'ambiguous_person.id',
+            },
+          },
+        };
+      }
     }
 
     class Person extends Model {
@@ -572,6 +590,40 @@ export default (session) => {
         ).rejects.toThrow(message);
         expect(await knex(tables.pet).select('id', 'ownerId')).toEqual([{ id: 3, ownerId: 1 }]);
       }
+    });
+
+    it('should reject a many-to-many pair that one place unrelates and another one keeps (#405)', async () => {
+      await insertRows({
+        person: [{ id: 1 }],
+        movie: [{ id: 3 }],
+        person_movie: [{ personId: 1, movieId: 3, role: 'x' }],
+      });
+
+      const unrelated = { id: 3, '#id': 'm', '#unrelate': true, role: 'a' };
+      for (const graph of [
+        { id: 1, movies: [unrelated, { '#ref': 'm', role: 'b' }] },
+        { id: 1, movies: [{ '#ref': 'm', role: 'b' }, unrelated] },
+        [
+          { id: 1, movies: [{ id: 3, '#unrelate': true }] },
+          { id: 1, movies: [{ id: 3 }] },
+        ],
+        [
+          { id: 1, movies: [{ id: 3 }] },
+          { id: 1, movies: [{ id: 3, '#unrelate': true }] },
+        ],
+        // The inverse relation places the same pair:
+        { id: 1, movies: [{ id: 3, '#unrelate': true, actors: [{ id: 1 }] }] },
+      ]) {
+        await expect(
+          Person.query().upsertGraph(graph, { relate: true, allowRefs: true, allowMarkers: true }),
+        ).rejects.toThrow(
+          /the graph gives #unrelate of one join row of (movies|actors) two values/,
+        );
+      }
+
+      expect(await knex(tables.person_movie).select('personId', 'movieId', 'role')).toEqual([
+        { personId: 1, movieId: 3, role: 'x' },
+      ]);
     });
 
     it('should reject a row that insertGraph() places in conflicting ways', async () => {
