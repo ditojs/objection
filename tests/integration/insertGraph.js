@@ -291,8 +291,9 @@ export default (session) => {
 
       const testValidation = (modifyGraph, expectedProperty) => {
         return () => {
+          // `modifyGraph()` can return other input that contains the graph:
           const graph = cloneDeep(insertion);
-          modifyGraph(graph);
+          const input = modifyGraph(graph) ?? graph;
 
           return transaction(Model1, Model2, (Model1, Model2) => {
             // We can modify Model1 and Model2 here since it is a subclass of the actual
@@ -323,7 +324,7 @@ export default (session) => {
             expect(Model1.getJsonSchema()).toBe(Model1.jsonSchema);
             expect(Model2.getJsonSchema()).toBe(Model2.jsonSchema);
 
-            return Model1.query().insertGraph(graph, { allowRefs: true });
+            return Model1.query().insertGraph(input, { allowRefs: true });
           })
             .then(() => {
               throw new Error('should not get here');
@@ -360,6 +361,14 @@ export default (session) => {
         testValidation((graph) => {
           graph.model1Relation1.model1Relation3[1].model2Prop1 = 666;
         }, 'model1Relation1.model1Relation3[1].model2Prop1'),
+      );
+
+      it(
+        'should return validation paths with the index of array input',
+        testValidation((graph) => {
+          graph.model1Relation2[0].model2Prop1 = 666;
+          return [{ model1Prop1: 'first' }, graph];
+        }, '[1].model1Relation2[0].model2Prop1'),
       );
 
       it('should roll back after the inserts that already started when a model fails validation', async () => {

@@ -210,6 +210,24 @@ export default (session) => {
         );
       });
 
+      it('should name the root as the place of a reference', async () => {
+        const err = await Model1.query(session.knex)
+          .upsertGraph(
+            {
+              id: 1,
+              model1Prop1: '#ref{m.idCol}',
+              // Ignored with its branch because of `noRelate`:
+              model1Relation1: { id: 3, model1Relation3: [{ '#id': 'm', model2Prop1: 'm' }] },
+            },
+            { relate: true, noRelate: ['model1Relation1'], allowRefs: true, fetchStrategy },
+          )
+          .catch((err) => err);
+
+        expect(err.message).toBe(
+          "the reference at the root points to a model that the graph doesn't write before it",
+        );
+      });
+
       it('should relate a #ref to an existing model in a branch that the graph does not write', async () => {
         await Model1.query(session.knex).upsertGraph(
           {
@@ -3460,6 +3478,17 @@ export default (session) => {
           });
       });
 
+      it('should include the index of array input in the data path of errors', async () => {
+        const err = await Model1.query(session.knex)
+          .upsertGraph([{ id: 1 }, { id: 2, model1Relation1: { id: NONEXISTENT_ID } }], {
+            fetchStrategy,
+          })
+          .catch((err) => err);
+
+        expect(err).toBeInstanceOf(Model1.NotFoundError);
+        expect(err.data.dataPath).toEqual([1, 'model1Relation1']);
+      });
+
       it('allowGraph should limit the relations that can be upserted', () => {
         const errors = [];
 
@@ -5405,7 +5434,7 @@ export default (session) => {
               throw new Error('should not get here');
             })
             .catch((err) => {
-              expect(err.data['model1Relation2[0].model2Prop1'][0].message).toBe(
+              expect(err.data['[0].model1Relation2[0].model2Prop1'][0].message).toBe(
                 'must be string,null',
               );
             });
