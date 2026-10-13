@@ -97,8 +97,15 @@ export default (session) => {
         const { error, rows } = result;
 
         expect(result.lateQueries, context).toEqual([]);
-        // Graphs built to conflict have to be rejected:
-        if (testCase.isConflicting) expect(error, context).toBeTruthy();
+        // Graphs built to conflict have to be rejected as such. `insertGraph()`
+        // rejects relates into HasMany relations before it compares places:
+        if (testCase.isConflicting) {
+          const isRejected =
+            error?.type === 'InvalidGraph' ||
+            (testCase.method === 'insertGraph' &&
+              /cannot relate HasManyRelation/.test(error?.message));
+          expect(isRejected, `${error?.message}, ${context}`).toBe(true);
+        }
 
         if (error) {
           const isExpected = expectedErrors.some(
@@ -120,6 +127,13 @@ export default (session) => {
               rows[table].every((row) => JSON.parse(row).label !== label),
             );
             expect(deletedRows, context).toEqual([]);
+          }
+
+          for (const [table, label, values] of testCase.expectedValues) {
+            const row = rows[table]
+              .map((row) => JSON.parse(row))
+              .find((row) => row.label === label);
+            expect(row, context).toMatchObject(values);
           }
         }
 

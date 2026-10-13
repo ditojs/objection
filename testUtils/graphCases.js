@@ -404,6 +404,8 @@ export function createGraphCase(seed) {
   let uidCount = 0;
   let hasMarkers = false;
   let isConflicting = false;
+  // Values that rows have to get from the graph, by table and label:
+  const expectedValues = [];
   // Graphs that move rows or insert badges, which have their ids, mostly come
   // with the options that they need:
   let hasMovedRows = false;
@@ -615,9 +617,6 @@ export function createGraphCase(seed) {
             type === relationTypes[key] &&
             !model['#delete'] &&
             !contains(item, model) &&
-            // TODO: Remove once a pair that one place unrelates and another
-            // relates is rejected (#405):
-            !(isMarked(model) && Array.isArray(value) && value.includes(model)) &&
             (!isRowKeyPlace(place) ||
               (!isMarked(model) &&
                 !(key === 'children' && 'parent' in model) &&
@@ -636,6 +635,8 @@ export function createGraphCase(seed) {
             isConflicting ||= otherRole !== undefined && otherRole !== role;
             rolesHere.set(model, role);
           }
+          // A pair that its model's place unrelates and the `#ref` keeps conflicts:
+          isConflicting ||= key === 'movies' && isMarked(model) && value.includes(model);
           if (isRowKeyPlace(place)) keyPlaces.set(model, place);
           return { '#ref': model['#id'], ...(role && { role }) };
         } else {
@@ -689,11 +690,12 @@ export function createGraphCase(seed) {
       isConflicting ||= otherBossId !== bossId;
       roots.push({ id: person.id, boss: { id: bossId } }, { id: person.id, bossId: otherBossId });
     } else if (shape === 1 && pets.length > 0) {
-      // A foreign key prop next to the relation that sets it:
-      roots.push({
-        id: person.id,
-        pets: [{ ...use('pet', { id: random.pick(pets).id }), ownerId: person.id }],
-      });
+      // A foreign key prop next to the relation that sets it, which follows
+      // the relation, e.g. the old key of a fetched model:
+      const pet = random.pick(pets);
+      roots.push({ id: person.id, pets: [{ ...use('pet', { id: pet.id }), ownerId: other() }] });
+      const { label } = rows.person.find((row) => row.id === person.id);
+      expectedValues.push(['pet', pet.label, { ownerId: label }]);
     } else {
       // Two rows for one HasOneRelation slot:
       const profile = () =>
@@ -762,6 +764,8 @@ export function createGraphCase(seed) {
     graph: roots.length === 1 ? roots[0] : roots,
     options,
     isConflicting,
+    // `noRelate` leaves the rows where they are:
+    expectedValues: options.noRelate ? [] : expectedValues,
   };
 }
 
