@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { raw, transaction, ValidationError } from 'objection';
-import { createRejectionReflection } from '../../testUtils/testUtils.js';
+import { createRejectionReflection, delay } from '../../testUtils/testUtils.js';
 import { FetchStrategy } from '../../lib/queryBuilder/graph/GraphOptions.js';
 import mockKnexFactory from '../../testUtils/mockKnex.js';
 import { map as promiseMap } from '../../lib/utils/promiseUtils/index.js';
@@ -5658,6 +5658,105 @@ export default (session) => {
           const [row] = await session.knex('Model1').where('model1Prop1', 'referenced');
           expect(row.model1Id).toBe(1);
           expect(result.model1Id).toBe(row.id);
+        });
+      });
+
+      describe('rows that reference each other (#385)', () => {
+        // Upsert the graph and count the updates that run at the same time,
+        // giving each one time to overlap with the others, and the updates
+        // that still run or start once the upsert rejects:
+        async function upsertCountingUpdates(
+          upsert,
+          { shouldFail = () => false, ...options } = {},
+        ) {
+          const counts = { running: 0, maxRunning: 0, runningOnError: null, startedOnError: 0 };
+
+          await Model1.query(session.knex)
+            .upsertGraph(upsert, { fetchStrategy, allowRefs: true, ...options })
+            .context({
+              async runBefore(result, builder) {
+                if (builder.isUpdate()) {
+                  if (counts.runningOnError !== null) {
+                    counts.startedOnError++;
+                  }
+                  if (shouldFail(builder)) {
+                    throw new Error('failed update');
+                  }
+                  counts.maxRunning = Math.max(counts.maxRunning, ++counts.running);
+                  await delay(10);
+                }
+                return result;
+              },
+              runAfter(result, builder) {
+                if (builder.isUpdate()) {
+                  counts.running--;
+                }
+                return result;
+              },
+            })
+            .catch(async () => {
+              counts.runningOnError = counts.running;
+              await delay(50);
+            });
+
+          return counts;
+        }
+
+        // Root 1 and the model inserted as its BelongsToOneRelation model,
+        // related into its HasOneRelation, and root 2 with other updates:
+        const upsertWithOtherUpdates = [
+          {
+            id: 1,
+            model1Relation1: { '#id': 'referenced', model1Prop1: 'referenced' },
+            model1Relation1Inverse: { '#ref': 'referenced' },
+          },
+          {
+            id: 2,
+            model1Prop1: 'updated',
+            model1Relation1: { id: 3, model1Prop1: 'updated' },
+            model1Relation2: [
+              { idCol: 1, model2Prop1: 'updated' },
+              { idCol: 2, model2Prop1: 'updated' },
+            ],
+          },
+        ];
+
+        it('should patch them one after the other', async () => {
+          const { maxRunning } = await upsertCountingUpdates({
+            id: 1,
+            model1Relation1: { '#id': 'referenced', model1Prop1: 'referenced' },
+            model1Relation1Inverse: { '#ref': 'referenced' },
+          });
+
+          expect(maxRunning).toBe(1);
+        });
+
+        it('should patch them one after the other when a #ref{} writes the key', async () => {
+          const { maxRunning } = await upsertCountingUpdates(
+            { id: 1, '#id': 'root', model1Relation1: { id: 3, model1Id: '#ref{root.id}' } },
+            { relate: true },
+          );
+
+          expect(maxRunning).toBe(1);
+          const rows = await session.knex('Model1').whereIn('id', [1, 3]).orderBy('id');
+          expect(rows.map((row) => row.model1Id)).toEqual([3, 1]);
+        });
+
+        it('should keep the concurrency of the other patches', async () => {
+          const { maxRunning } = await upsertCountingUpdates(upsertWithOtherUpdates);
+          expect(maxRunning).toBe(Math.min(Model1.getConcurrency(session.knex), 4));
+        });
+
+        it('should wait for the started patches before it rejects', async () => {
+          const counts = await upsertCountingUpdates(
+            [
+              upsertWithOtherUpdates[0],
+              { id: 2, model1Relation2: [{ idCol: 1, model2Prop1: 'updated' }] },
+            ],
+            { shouldFail: (builder) => builder.modelClass().getTableName() === 'model2' },
+          );
+
+          expect(counts).toMatchObject({ runningOnError: 0, startedOnError: 0 });
         });
       });
 
