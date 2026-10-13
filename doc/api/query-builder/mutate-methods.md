@@ -25,10 +25,14 @@ inserted row. If you need batch inserts of new rows on MySQL, you can use knex
 directly through [knexQuery](/api/model/static-methods.html#static-knexquery).
 
 On SQLite, batch inserts of new rows need SQLite 3.35 or newer for `returning`, and
-fail with a syntax error near "returning" on older versions. Columns that some rows
-of a batch leave out get NULL instead of their defaults with knex's
-`useNullAsDefault` option, and make knex throw without it. Batches of more than 500
-rows or 32766 values fail.
+fail with a syntax error near "returning" on older versions.
+
+Rows that don't fit into one query, e.g. more than 500 rows on SQLite or 1000 on SQL Server, and rows that
+leave out columns that other rows have on SQLite, where knex would write NULL instead of
+the column defaults, are inserted in several queries. These run in the transaction of the
+query, if there is one. Without one, a failure leaves the rows of the earlier queries
+inserted, so use a [transaction](/guide/transactions.html) where all rows must be
+inserted or none.
 
 `insert` writes whole values, so it rejects [FieldExpressions](/api/types/#type-fieldexpression) like `'meta:a.b'` that write parts of a json column with a [ValidationError](/api/types/#class-validationerror). Use [patch](/api/query-builder/mutate-methods.html#patch) for them. Keys with a `:` that the schema declares in `properties` are normal properties and columns, not field expressions.
 

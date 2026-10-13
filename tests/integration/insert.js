@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { inheritModel } from '../../lib/model/inheritModel.js';
-import { ValidationError, UniqueViolationError } from 'objection';
+import { Model, ValidationError, UniqueViolationError } from 'objection';
 import { delay } from '../../testUtils/testUtils.js';
 
 export default (session) => {
@@ -1866,6 +1866,124 @@ export default (session) => {
           });
         }
       });
+    });
+
+    // MySQL doesn't return the ids of all rows inserted by one query.
+    describe.skipIf(session.isMySql())('.query().insert() of many models', () => {
+      class Item extends Model {
+        static get tableName() {
+          return 'insert_batch_item';
+        }
+      }
+
+      beforeAll(async () => {
+        await session.knex.schema.dropTableIfExists('insert_batch_item');
+        await session.knex.schema.createTable('insert_batch_item', (table) => {
+          table.increments('id').primary();
+          table.string('name');
+          table.integer('stars').notNullable().defaultTo(5);
+          table.integer('level').notNullable().defaultTo(1);
+        });
+        Item.knex(session.knex);
+      });
+
+      beforeEach(() => Item.query().delete());
+
+      afterAll(() => session.knex.schema.dropTableIfExists('insert_batch_item'));
+
+      it('should write the defaults of columns that some models leave out', async () => {
+        const inserted = await Item.query().insert([
+          { name: 'a', stars: 1 },
+          { name: 'b', level: 3 },
+          { name: 'c' },
+          { name: 'd', stars: 2 },
+        ]);
+
+        expect(inserted.map((it) => it.name)).toEqual(['a', 'b', 'c', 'd']);
+        expect(new Set(inserted.map((it) => it.id)).size).toBe(4);
+
+        const rows = await Item.query().orderBy('name');
+        expect(rows.map((it) => [it.name, it.stars, it.level])).toEqual([
+          ['a', 1, 1],
+          ['b', 5, 3],
+          ['c', 5, 1],
+          ['d', 2, 1],
+        ]);
+
+        // The ids belong to the models, whatever the order of the queries:
+        for (const model of inserted) {
+          expect((await Item.query().findById(model.id)).name).toBe(model.name);
+        }
+      });
+
+      it('should insert more rows than fit into one query', async () => {
+        const names = Array.from({ length: 1200 }, (_, index) => `item ${index}`);
+        const inserted = await Item.query().insert(names.map((name) => ({ name })));
+
+        expect(inserted.map((it) => it.name)).toEqual(names);
+        expect(new Set(inserted.map((it) => it.id)).size).toBe(1200);
+        expect(await Item.query().resultSize()).toBe(1200);
+
+        for (const model of [inserted[0], inserted[600], inserted[1199]]) {
+          expect((await Item.query().findById(model.id)).name).toBe(model.name);
+        }
+      });
+
+      it('should insert many columns of many rows', async () => {
+        const inserted = await Item.query().insert(
+          Array.from({ length: 700 }, (_, index) => ({
+            name: `item ${index}`,
+            stars: 1,
+            level: 2,
+          })),
+        );
+
+        expect(inserted).toHaveLength(700);
+        expect(await Item.query().where({ stars: 1, level: 2 }).resultSize()).toBe(700);
+      });
+
+      async function countInsertQueries(insert) {
+        let count = 0;
+        const listener = (query) => /^insert/i.test(query.sql) && count++;
+        session.knex.on('query', listener);
+        try {
+          await insert();
+        } finally {
+          session.knex.removeListener('query', listener);
+        }
+        return count;
+      }
+
+      it('should insert models that all have no columns one by one', async () => {
+        let inserted;
+        const count = await countInsertQueries(async () => {
+          inserted = await Item.query().insert([{}, {}, {}]);
+        });
+
+        expect(count).toBe(3);
+        expect(new Set(inserted.map((it) => it.id)).size).toBe(3);
+        expect(await Item.query().resultSize()).toBe(3);
+      });
+
+      // SQLite inserts the models without columns separately, as it groups the
+      // models by their columns.
+      it.skipIf(session.isSqlite())(
+        'should insert models without columns with the others in one query',
+        async () => {
+          let inserted;
+          const count = await countInsertQueries(async () => {
+            inserted = await Item.query().insert([{}, { name: 'a' }, {}]);
+          });
+
+          expect(count).toBe(1);
+          expect(inserted.map((it) => it.id)).toEqual(
+            [...inserted.map((it) => it.id)].sort((a, b) => a - b),
+          );
+          const rows = await Item.query().orderBy('id');
+          expect(rows.map((it) => it.name)).toEqual([null, 'a', null]);
+          expect(rows.map((it) => it.id)).toEqual(inserted.map((it) => it.id));
+        },
+      );
     });
 
     function subClassWithSchema(Model, schema) {
