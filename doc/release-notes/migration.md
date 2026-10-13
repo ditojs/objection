@@ -201,8 +201,6 @@ A related model with relations whose row doesn't exist throws a `NotFoundError` 
 
 Rows that the graph deletes are deleted with one query per relation instead of one per owner, so the static `beforeDelete` and `afterDelete` hooks run once with all owners as `items`. Join rows and unrelated rows are still removed per owner.
 
-The changed rows of a model class without `beforeUpdate`, `afterUpdate`, `$beforeUpdate` and `$afterUpdate` hooks are patched with one `UPDATE` per table that picks the values of each row with `CASE`, unless the upsert uses `returning('*')`, the values include json or raw values, or the rows are patched through a many-to-many or belongs-to-one relation. Custom query builders see that one patch query instead of one per row. Models with update hooks are patched one by one, as before.
-
 ## typescript: The typings are ES module declarations
 
 The typings no longer use `export =`. They declare the named exports of the ES module they describe. Apart from the default import, ES module and bundler projects need no changes.

@@ -90,6 +90,20 @@ export default (session) => {
         ]);
       });
 
+      it('should call $afterFind only on the fetched roots', async () => {
+        const upserted = await Model1.query(session.knex).upsertGraph(
+          { id: 2, model1Prop1: 'x' },
+          { fetchStrategy },
+        );
+        const fetched = await Model1.query(session.knex).upsertGraphAndFetch(
+          { id: 2, model1Prop1: 'y' },
+          { fetchStrategy },
+        );
+
+        expect(upserted.$afterFindCalled).toBeUndefined();
+        expect(fetched.$afterFindCalled).toBe(1);
+      });
+
       it('should fetch with the graph and graph modifiers of upsertGraphAndFetch() (Vincit#839)', async () => {
         const result = await Model1.query(session.knex)
           .withGraphFetched('model1Relation2')
@@ -5546,7 +5560,7 @@ export default (session) => {
               idCol: 2,
               model2Relation1: [
                 { id: 5, aliasedExtra: 'foo' },
-                { id: 5, aliasedExtra: 'bar' },
+                { id: 5, model1Prop1: 'changed', aliasedExtra: 'bar' },
               ],
             },
             { relate: true, fetchStrategy },
@@ -5562,6 +5576,23 @@ export default (session) => {
             { model1Id: 5, extra3: 'bar' },
             { model1Id: 5, extra3: 'foo' },
           ]);
+          expect((await Model1.query(session.knex).findById(5)).model1Prop1).toBe('changed');
+        });
+
+        it('update the extras of models that an earlier upsert patched (Vincit#1268)', async () => {
+          const model = await Model2.query(session.knex)
+            .findById(2)
+            .withGraphFetched('model2Relation1(orderById)');
+          model.model2Relation1[0].model1Prop1 = 'changed';
+          await Model2.query(session.knex).upsertGraph(model, { fetchStrategy });
+          model.model2Relation1[0].aliasedExtra = 'changed extra';
+          await Model2.query(session.knex).upsertGraph(model, { fetchStrategy });
+
+          const row = await session
+            .knex('Model1Model2')
+            .where({ model2Id: 2, model1Id: model.model2Relation1[0].id })
+            .first();
+          expect(row.extra3).toBe('changed extra');
         });
 
         it('update', () => {
