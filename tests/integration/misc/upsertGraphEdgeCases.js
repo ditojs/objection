@@ -413,7 +413,7 @@ export default (session) => {
       });
     });
 
-    it('should run the hooks of moved rows that wait for inserts once, with their ids', async () => {
+    describe('hooks of moved rows', () => {
       const parsedNames = [];
       const updatedIds = [];
 
@@ -435,14 +435,35 @@ export default (session) => {
         }
       }
 
-      await HookedPerson.query(knex).upsertGraph(
-        { id: 3, pets: [{ id: 3 }, { id: 1, name: 'z', favoriteToy: { name: 'new toy' } }] },
-        { relate: true },
-      );
+      beforeEach(() => {
+        parsedNames.length = 0;
+        updatedIds.length = 0;
+      });
 
-      expect(updatedIds).toEqual([1]);
-      // The input is parsed once:
-      expect(parsedNames).toEqual([undefined, 'z']);
+      it('should run them once for rows that wait for inserts', async () => {
+        await HookedPerson.query(knex).upsertGraph(
+          {
+            id: 3,
+            pets: [{ id: 3 }, { id: 1, name: 'for #ref{n.name}' }, { '#id': 'n', name: 'new' }],
+          },
+          { relate: true, allowRefs: true },
+        );
+
+        expect(updatedIds).toEqual([1]);
+      });
+
+      // The relations of moved rows are upserted after the move, so the row is
+      // written once for the move, and once more for the key of its new toy:
+      it('should run them for the move and for the relations of the row, with their ids', async () => {
+        await HookedPerson.query(knex).upsertGraph(
+          { id: 3, pets: [{ id: 3 }, { id: 1, name: 'z', favoriteToy: { name: 'new toy' } }] },
+          { relate: true },
+        );
+
+        expect(updatedIds).toEqual([1, 1]);
+        // The input is parsed once:
+        expect(parsedNames).toEqual([undefined, 'z']);
+      });
     });
 
     it('should resolve the references of moved rows to models that are not inserted', async () => {

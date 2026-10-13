@@ -119,7 +119,7 @@ export default (session) => {
 
         expect(err).toBeInstanceOf(ValidationError);
         expect(err.message).toBe(
-          "the reference at 'model1Relation3[0]' points to a model in a branch that the graph doesn't write",
+          "the reference at 'model1Relation3[0]' points to a model that the graph doesn't write before it",
         );
         expect(await session.knex('Model1Model2').where('model1Id', 1)).toEqual([]);
       });
@@ -139,7 +139,7 @@ export default (session) => {
 
         expect(err).toBeInstanceOf(ValidationError);
         expect(err.message).toBe(
-          "the reference at 'model1Relation2[0]' points to a model in a branch that the graph doesn't write",
+          "the reference at 'model1Relation2[0]' points to a model that the graph doesn't write before it",
         );
       });
 
