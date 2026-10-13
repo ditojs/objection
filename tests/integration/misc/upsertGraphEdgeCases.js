@@ -598,6 +598,91 @@ export default (session) => {
         expect((await knex('graph_edge_person').where('id', 1).first()).bossId).toBe(boss.id);
       });
 
+      it('should keep the keys of BelongsToOne rows that the graph ignores', async () => {
+        class RequiredBossPerson extends Person {
+          static get jsonSchema() {
+            return { type: 'object', required: ['bossId'] };
+          }
+        }
+
+        await knex('graph_edge_person').where('id', 2).update({ bossId: 1 });
+
+        for (const [boss, options] of [
+          [{ id: 3 }, { relate: true, noRelate: true }],
+          [{ name: 'new' }, { noInsert: true }],
+        ]) {
+          const result = await RequiredBossPerson.query(knex).upsertGraph(
+            { id: 2, name: 'renamed', boss },
+            { update: true, ...options },
+          );
+
+          expect(result.bossId).toBe(1);
+          expect((await knex('graph_edge_person').where('id', 2).first()).bossId).toBe(1);
+        }
+      });
+
+      it('should relate a moved model to itself through a #ref', async () => {
+        await Person.query(knex).upsertGraph(
+          [
+            {
+              name: 'new',
+              children: [{ id: 3, children: [{ id: 2, '#id': 'a', boss: { '#ref': 'a' } }] }],
+            },
+          ],
+          { allowRefs: true, relate: true },
+        );
+
+        const newPerson = await knex('graph_edge_person').where('name', 'new').first();
+        expect(await knex('graph_edge_person').whereIn('id', [2, 3]).orderBy('id')).toMatchObject([
+          { id: 2, parentId: 3, bossId: 2 },
+          { id: 3, parentId: newPerson.id },
+        ]);
+      });
+
+      it('should point an existing model to a new model below it through a #ref', async () => {
+        await Person.query(knex).upsertGraph(
+          {
+            id: 3,
+            boss: {
+              id: 1,
+              boss: { id: 2, children: [{ name: 'new', '#id': 'a' }], boss: { '#ref': 'a' } },
+            },
+          },
+          { allowRefs: true, relate: true },
+        );
+
+        const newPerson = await knex('graph_edge_person').where('name', 'new').first();
+        expect(newPerson.parentId).toBe(2);
+        expect(
+          await knex('graph_edge_person').whereIn('id', [1, 2, 3]).orderBy('id'),
+        ).toMatchObject([
+          { id: 1, bossId: 2 },
+          { id: 2, bossId: newPerson.id },
+          { id: 3, bossId: 1 },
+        ]);
+      });
+
+      it('should write nothing for a cycle that it rejects', async () => {
+        await expect(
+          Person.query(knex).upsertGraph(
+            {
+              id: 2,
+              pets: [],
+              children: [
+                { '#id': 'a', name: 'a of #ref{b.name}' },
+                { '#id': 'b', name: 'b of #ref{a.name}' },
+              ],
+            },
+            { allowRefs: true },
+          ),
+        ).rejects.toThrow('the object graph contains cyclic references');
+
+        expect(await knex('graph_edge_pet').where('ownerId', 2).pluck('name')).toEqual([
+          'p1',
+          'p2',
+        ]);
+      });
+
       it('should read them in moved rows', async () => {
         await Person.query(knex).upsertGraph(
           [
