@@ -27,6 +27,7 @@ This section lists the breaking changes in objection 4.0.
 - [upsertGraph() checks that related models exist](#upsertgraph-checks-that-related-models-exist)
 - [insertGraph() and upsertGraph() errors name the index of array input](#insertgraph-and-upsertgraph-errors-name-the-index-of-array-input)
 - [`#ref` to new models that the graph doesn't write throws](#ref-to-new-models-that-the-graph-doesn-t-write-throws)
+- [insertGraph() and upsertGraph() keep only the referenced branches below noInsert models](#insertgraph-and-upsertgraph-keep-only-the-referenced-branches-below-noinsert-models)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
@@ -242,6 +243,32 @@ await Person.query().insertGraph([{ firstName: 'Jennifer' }, { pets: [{ name: 1 
 ## `#ref` to new models that the graph doesn't write throws
 
 A `#ref` to a new model, or a `#ref{}` to the id of a new model, that the graph doesn't write throws a `ValidationError` of type `InvalidGraph` before anything is written, e.g. for a model that `noInsert` skips, or below a model that `noRelate` ignores or that is marked with `#delete` or `#unrelate`. For references of models below rows that `upsertGraph()` moves into a `HasManyRelation` or `HasOneRelation`, it's thrown once the rest of the graph is written, before these models are. Point the reference to a model that the graph writes, or give the referenced model its id. Other `#ref{}` read the models as the graph gives them, also in branches that the graph doesn't write. In 3.x, a `#ref` into a branch that `noRelate`, `#delete` or `#unrelate` leave out failed with an error, sometimes after writing, and a `#ref{}` into such a branch wrote the `#ref{}` text itself, also for ids. A plain `#ref` to a model that `noInsert` skipped silently wrote `null`, and a `#ref{}` to its id wrote `null`, or failed after writing in a key that the relation sets too. See [the guide](/guide/query-examples.md#graph-inserts) for the rule.
+
+## insertGraph() and upsertGraph() keep only the referenced branches below noInsert models
+
+Below a model that `noInsert` skips, nothing is written, except for the branches that a `#ref` or `#ref{}` of a written model points into, directly or through other kept branches. In 3.9.0, one such reference kept the whole branch of the skipped model, with all its other related models.
+
+An existing row that the graph only places below a skipped model, in a branch that no reference keeps, isn't kept there anymore. If its owner elsewhere in the graph leaves it out, it's removed there, like any row that the graph doesn't keep:
+
+```js
+// Person 1 has pet 2.
+await Org.query().upsertGraph(
+  {
+    id: 1,
+    people: [
+      { id: 1, pets: [] },
+      { id: 2, favoritePet: { '#ref': 'cat' } },
+      // Skipped by `noInsert`, but `cat` is referenced:
+      { name: 'new', pets: [{ id: 2 }, { '#id': 'cat', name: 'Cat' }] },
+    ],
+  },
+  { relate: true, noInsert: ['people'], allowRefs: true },
+);
+// 3.9.0: pet 2 is kept, as the reference to `cat` kept the whole branch.
+// 4.0: pet 2 is deleted, as only the branch of `cat` is kept.
+```
+
+To keep such a row, place it where the graph writes it, or use `noDelete` for its owner's relation.
 
 ## insertGraph() and upsertGraph() write in fewer queries
 
