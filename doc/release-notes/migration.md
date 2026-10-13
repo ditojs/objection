@@ -84,6 +84,16 @@ The typings of objection 4.0 need at least TypeScript 5.8, the first version tha
 
 Objection 4.0 needs at least MySQL 8.0.17, for window functions, for derived tables that refer to the outer query, and for `JSON_OVERLAPS()` in `whereJsonHasAny()` and `whereJsonHasAll()` and the `MEMBER OF` operator of `BelongsToManyRelation`. MySQL 5.7 reached its end of life in October 2023. 3.x keeps supporting it.
 
+## Many-to-many patches with join table extras run in one query
+
+A many-to-many `patch()` / `update()` with join table extras updates the related rows by their ids in one query, instead of in batches of 500 values as in 3.8.0 and 3.9.0. The ids are bound as one value where the database allows it:
+
+- SQL Server reads them as one JSON value with `openjson`, which needs SQL Server 2016 or newer and a database compatibility level of 130 or higher. SQL Server 2014 reached its end of life in July 2024.
+- Binary ids, e.g. `binary(16)` UUIDs, can't be represented in JSON and bind one value per row. On SQL Server, such a patch fails above about 2100 related rows, and on SQLite before 3.32 above 999.
+- Composite ids on PostgreSQL bind one value per column, which fails above 65535 values, about 32,000 related rows with two-column ids.
+
+Run such patches on fewer related rows at once, e.g. by filtering them in several queries in a transaction. 3.x keeps the batches.
+
 ## Database errors are objection's own classes
 
 The database error classes (`DBError`, `UniqueViolationError`, `NotNullViolationError`, `ForeignKeyViolationError`, `ConstraintViolationError`, `CheckViolationError` and `DataError`) are no longer imported from the [db-errors](https://github.com/Vincit/db-errors) library. objection includes its own copy of it, and doesn't depend on the `db-errors` package anymore.

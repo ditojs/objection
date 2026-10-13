@@ -751,9 +751,8 @@ export default (session) => {
         }
       });
 
-      describe('with more related rows than one statement can filter by (#161)', () => {
-        // More ids than SQL Server accepts as bound values in one statement,
-        // patched in several batches:
+      describe('with more related rows than one statement binds values for (#161, #287)', () => {
+        // More ids than SQL Server accepts as bound values in one statement:
         const ids = Array.from({ length: 2101 }, (_, index) => 101 + index);
 
         async function insertRows(ids) {
@@ -817,10 +816,10 @@ export default (session) => {
         );
 
         it.skipIf(!session.isMySql() && !session.isMsSql())(
-          'should patch the related rows that limit() picks and their join rows in batches',
+          'should patch the related rows that limit() picks and their join rows',
           async () => {
             // Only MySQL and SQL Server support a limit in updates.
-            const someIds = ids.slice(0, 600);
+            const someIds = ids.slice(0, -1);
             const model = await owner(1);
             const numUpdated = await model
               .$relatedQuery('model1Relation3')
@@ -836,7 +835,7 @@ export default (session) => {
         );
 
         it.skipIf(!session.isPostgres() && !session.isMsSql())(
-          'should return the patched rows of all batches with returning()',
+          'should return all patched rows with returning()',
           async () => {
             const model = await owner(1);
             const models = await model
@@ -852,8 +851,6 @@ export default (session) => {
         );
 
         it('should find the patched rows with asFindQuery() in a static afterUpdate hook', async () => {
-          // Two batches, but few enough ids for the single find statement.
-          const someIds = ids.slice(0, 600);
           let foundIds = null;
 
           Model2.afterUpdate = async ({ asFindQuery }) => {
@@ -865,12 +862,11 @@ export default (session) => {
           const numUpdated = await model
             .$relatedQuery('model1Relation3')
             .patch({ model2Prop2: 10, extra2: 'z' })
-            .where('Model1Model2.extra1', 'many')
-            .where('model2.id_col', '<=', someIds[someIds.length - 1]);
+            .where('Model1Model2.extra1', 'many');
 
-          expect(numUpdated).toBe(someIds.length);
-          expect(foundIds).toEqual(someIds);
-          expect(await patchedIds()).toEqual(someIds);
+          expect(numUpdated).toBe(ids.length);
+          expect(foundIds).toEqual(ids);
+          expect(await patchedIds()).toEqual(ids);
         });
       });
     });
