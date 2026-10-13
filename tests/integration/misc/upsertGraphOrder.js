@@ -17,6 +17,11 @@ export default (session) => {
             modelClass: Node,
             join: { from: 'graph_order_node.id', to: 'graph_order_node.parentId' },
           },
+          parent: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: Node,
+            join: { from: 'graph_order_node.parentId', to: 'graph_order_node.id' },
+          },
         };
       }
     }
@@ -24,6 +29,16 @@ export default (session) => {
     class Pet extends Model {
       static get tableName() {
         return 'graph_order_pet';
+      }
+
+      static get relationMappings() {
+        return {
+          owner: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: Person,
+            join: { from: 'graph_order_pet.ownerId', to: 'graph_order_person.id' },
+          },
+        };
       }
     }
 
@@ -55,6 +70,15 @@ export default (session) => {
             modelClass: Pet,
             join: { from: 'graph_order_person.favoritePetId', to: 'graph_order_pet.id' },
           },
+          likedPets: {
+            relation: Model.ManyToManyRelation,
+            modelClass: Pet,
+            join: {
+              from: 'graph_order_person.id',
+              through: { from: 'graph_order_like.personId', to: 'graph_order_like.petId' },
+              to: 'graph_order_pet.id',
+            },
+          },
         };
       }
     }
@@ -76,6 +100,7 @@ export default (session) => {
     }
 
     const tableNames = [
+      'graph_order_like',
       'graph_order_node',
       'graph_order_pet',
       'graph_order_person',
@@ -108,6 +133,10 @@ export default (session) => {
           table.integer('id').primary();
           table.integer('orgId').references('graph_order_org.id').onDelete('CASCADE');
           table.integer('favoritePetId');
+        })
+        .createTable('graph_order_like', (table) => {
+          table.integer('personId');
+          table.integer('petId');
         })
         .createTable('graph_order_pet', (table) => {
           table.integer('id').primary();
@@ -246,6 +275,148 @@ export default (session) => {
       );
 
       expect(await selectPets()).toEqual([{ id: 3, name: 'c', ownerId: 1 }]);
+    });
+
+    describe('rows that move with the relation back to their new owner', () => {
+      it('should keep the old owner of a row moved into a HasManyRelation', async () => {
+        for (const relate of [true, ['pets']]) {
+          await createTables();
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+          ]);
+
+          await Person.query().upsertGraph(
+            { id: 1, pets: [{ id: 1 }, { id: 2, owner: { id: 1, orgId: null } }] },
+            { relate },
+          );
+
+          expect(await knex('graph_order_person').orderBy('id')).toEqual([
+            { id: 1, orgId: null, favoritePetId: null },
+            { id: 2, orgId: 1, favoritePetId: null },
+          ]);
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should upsert the relations that the graph gives the new owner there', async () => {
+        for (const relate of [true, ['pets']]) {
+          await createTables();
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+          ]);
+          await knex('graph_order_person').where('id', 1).update({ favoritePetId: 1 });
+          await knex('graph_order_like').insert({ personId: 1, petId: 1 });
+
+          await Person.query().upsertGraph(
+            {
+              id: 1,
+              pets: [
+                { id: 1 },
+                { id: 2, owner: { id: 1, favoritePet: { id: 1 }, likedPets: [{ id: 1 }] } },
+              ],
+            },
+            { relate },
+          );
+
+          expect(await knex('graph_order_person').orderBy('id')).toEqual([
+            { id: 1, orgId: 1, favoritePetId: 1 },
+            { id: 2, orgId: 1, favoritePetId: null },
+          ]);
+          expect(await knex('graph_order_like')).toEqual([{ personId: 1, petId: 1 }]);
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should find the moved row below its new owner there', async () => {
+        for (const relate of [true, ['pets']]) {
+          await createTables();
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+          ]);
+
+          await Person.query().upsertGraph(
+            {
+              id: 1,
+              pets: [
+                { id: 1 },
+                { id: 2, owner: { id: 1, pets: [{ id: 1 }, { id: 2, name: 'c' }] } },
+              ],
+            },
+            { relate },
+          );
+
+          expect(await knex('graph_order_person').orderBy('id').pluck('id')).toEqual([1, 2]);
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should keep a row that the graph relates below a moved row', async () => {
+        await createTables();
+        await knex('graph_order_node').insert([
+          { id: 1, parentId: null },
+          { id: 2, parentId: null },
+          { id: 3, parentId: 1 },
+          { id: 4, parentId: 1 },
+          { id: 5, parentId: 2 },
+        ]);
+
+        await Node.query().upsertGraph(
+          { id: 1, children: [{ id: 5, children: [{ id: 3 }] }] },
+          { relate: true },
+        );
+
+        expect(await selectNodes()).toEqual([
+          { id: 1, parentId: null },
+          { id: 2, parentId: null },
+          { id: 3, parentId: 5 },
+          { id: 5, parentId: 1 },
+        ]);
+      });
+
+      it('should keep the old owner of a row moved into a HasOneRelation', async () => {
+        await createTables();
+        await insertPeople([{ id: 2, name: 'b', ownerId: 2 }]);
+
+        await Person.query().upsertGraph(
+          { id: 1, onePet: { id: 2, owner: { id: 1 } } },
+          { relate: true },
+        );
+
+        expect(await knex('graph_order_person').orderBy('id').pluck('id')).toEqual([1, 2]);
+        expect(await selectPets()).toEqual([{ id: 2, name: 'b', ownerId: 1 }]);
+      });
+
+      it('should keep the old parent of a row moved in a tree', async () => {
+        await createTables();
+        await knex('graph_order_node').insert([
+          { id: 1, parentId: null },
+          { id: 2, parentId: null },
+          { id: 3, parentId: 2 },
+        ]);
+
+        await Node.query().upsertGraph(
+          { id: 1, children: [{ id: 3, parent: { id: 1 } }] },
+          { relate: true },
+        );
+
+        expect(await selectNodes()).toEqual([
+          { id: 1, parentId: null },
+          { id: 2, parentId: null },
+          { id: 3, parentId: 1 },
+        ]);
+      });
     });
 
     it('should unrelate the rows of each owner without the rows moved between them', async () => {

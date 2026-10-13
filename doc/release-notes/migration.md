@@ -197,6 +197,8 @@ A row related from another owner can no longer take the unique key of a row that
 
 A related model with relations whose row doesn't exist throws a `NotFoundError` saying that the model doesn't exist, before anything is written. 3.x wrote the rest of the graph first and then failed in the nested call, or with a foreign key error.
 
+Rows that the graph relates into a `HasManyRelation` or `HasOneRelation` from another owner are the exception: their relations change with the move, e.g. the `owner` of a pet that moves to another person, so the models below them are upserted in a pass of their own, after the rest of the graph, against their rows as they are after the move, like 3.x did. Errors about the models below them, like a model that isn't a child and isn't related, are thrown after the rest of the graph is written, so without a transaction the rest of the graph stays written: run `upsertGraph()` in a transaction. A row is written once for the move and once more if the models below it change its keys. A `#ref` from the rest of the graph can point to such models only if they have ids, and a `#ref{}` not at all, as they're written after it.
+
 ## insertGraph() and upsertGraph() write in fewer queries
 
 Rows that the graph deletes are deleted with one query per relation instead of one per owner, so the static `beforeDelete` and `afterDelete` hooks run once with all owners as `items`. Join rows and unrelated rows are still removed per owner.
