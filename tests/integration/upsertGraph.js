@@ -191,14 +191,14 @@ export default (session) => {
         expect(await session.knex('Model1Model2').where('model1Id', 1)).toEqual([]);
       });
 
-      it('should throw for a #ref{} into a branch that the graph does not write', async () => {
+      it('should throw for a #ref{} to the id of a new model in a branch that the graph does not write', async () => {
         const err = await Model1.query(session.knex)
           .upsertGraph(
             {
               id: 1,
               // Ignored with its branch because of `noRelate`:
-              model1Relation1: { id: 3, model1Relation3: [{ '#id': 'm', idCol: 1 }] },
-              model1Relation2: [{ model2Prop1: '#ref{m.model2Prop1}' }],
+              model1Relation1: { id: 3, model1Relation3: [{ '#id': 'm', model2Prop1: 'm' }] },
+              model1Relation2: [{ model2Prop1: '#ref{m.idCol}' }],
             },
             { relate: true, noRelate: ['model1Relation1'], allowRefs: true, fetchStrategy },
           )
@@ -226,6 +226,156 @@ export default (session) => {
         expect(err.message).toBe(
           "the reference at the root points to a model that the graph doesn't write before it",
         );
+      });
+
+      it('should throw for references to the ids of new models that the graph skips', async () => {
+        for (const graph of [
+          {
+            id: 1,
+            model1Relation2: [{ '#id': 'c', model2Prop1: 'skipped' }],
+            model1Relation1: { model1Prop1: 'of #ref{c.idCol}' },
+          },
+          {
+            id: 1,
+            model1Relation2: [{ '#id': 'c', model2Prop1: 'skipped' }],
+            model1Relation3: [{ '#ref': 'c' }],
+          },
+        ]) {
+          const err = await Model1.query(session.knex)
+            .upsertGraph(graph, { allowRefs: true, noInsert: ['model1Relation2'], fetchStrategy })
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.message).toMatch(/points to a model that the graph doesn't write before it/);
+        }
+      });
+
+      it('should read the values that the graph gives models that it ignores', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            model1Relation1: { '#id': 'c', id: 3, model1Prop1: 'ignored' },
+            model1Relation2: [{ model2Prop1: 'of #ref{c.id} #ref{c.model1Prop1}' }],
+          },
+          { allowRefs: true, relate: true, noRelate: ['model1Relation1'], fetchStrategy },
+        );
+
+        const model = await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            model1Relation2: [{ '#id': 'd', model2Prop1: 'skipped' }],
+            model1Relation1: { model1Prop1: 'of #ref{d.model2Prop1}' },
+          },
+          { allowRefs: true, noInsert: ['model1Relation2'], noDelete: true, fetchStrategy },
+        );
+
+        const rows = await session.knex('model2').where('model1_id', 1);
+        expect(rows.map((row) => row.model2_prop1)).toEqual(['of 3 ignored']);
+        expect(model.model1Relation1.model1Prop1).toBe('of skipped');
+      });
+
+      it('should read the props that the graph leaves out like for written models', async () => {
+        for (const options of [{ noRelate: ['model1Relation1'] }, {}]) {
+          await Model1.query(session.knex).upsertGraph(
+            {
+              id: 1,
+              model1Prop1: '#ref{c.model1Prop1}',
+              model1Relation1: { '#id': 'c', id: 3 },
+            },
+            { allowRefs: true, relate: true, noDelete: true, fetchStrategy, ...options },
+          );
+
+          expect(await session.knex('Model1').where('id', 1).first()).toMatchObject({
+            model1Prop1: 'root 1',
+          });
+        }
+      });
+
+      it('should accept references between models that the graph ignores', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            model1Relation2: [
+              { '#id': 'a', model2Prop1: 'x' },
+              { model2Prop1: '#ref{a.model2Prop1} sibling' },
+            ],
+          },
+          { allowRefs: true, noInsert: ['model1Relation2'], fetchStrategy },
+        );
+
+        expect(await session.knex('model2').where('model1_id', 1)).toEqual([]);
+      });
+
+      it('should read a #ref{} to a model marked with #unrelate', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 2,
+            model1Relation2: [
+              { idCol: 1, '#id': 'u', '#unrelate': true, model2Prop1: 'unrelated' },
+              { idCol: 2 },
+              { model2Prop1: 'after #ref{u.model2Prop1}' },
+            ],
+          },
+          { allowRefs: true, allowMarkers: true, fetchStrategy },
+        );
+
+        const rows = await session.knex('model2').where('model1_id', 2).orderBy('id_col');
+        expect(rows.map((row) => row.model2_prop1)).toEqual(['hasMany 2', 'after unrelated']);
+      });
+
+      it('should read a #ref{} to a model marked with #delete', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 2,
+            model1Relation2: [
+              { idCol: 1, '#id': 'd', '#delete': true, model2Prop1: 'gone' },
+              { idCol: 2 },
+              { model2Prop1: 'after #ref{d.model2Prop1}' },
+            ],
+          },
+          { allowRefs: true, allowMarkers: true, fetchStrategy },
+        );
+
+        const rows = await session.knex('model2').where('model1_id', 2).orderBy('id_col');
+        expect(rows.map((row) => row.model2_prop1)).toEqual(['hasMany 2', 'after gone']);
+      });
+
+      it('should read a #ref{} into a branch that the graph does not write', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 1,
+            // Ignored with its branch because of `noRelate`:
+            model1Relation1: {
+              id: 3,
+              model1Relation3: [{ '#id': 'm', idCol: 1, model2Prop1: 'ignored' }],
+            },
+            model1Relation2: [{ model2Prop1: 'of #ref{m.model2Prop1}' }],
+          },
+          { relate: true, noRelate: ['model1Relation1'], allowRefs: true, fetchStrategy },
+        );
+
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 2,
+            model1Prop1: 'of #ref{d.model1Prop1}',
+            model1Relation2: [
+              {
+                idCol: 1,
+                // Deleted without its branch:
+                '#delete': true,
+                model2Relation1: [{ '#id': 'd', id: 4, model1Prop1: 'deleted' }],
+              },
+              { idCol: 2 },
+            ],
+          },
+          { allowRefs: true, allowMarkers: true, fetchStrategy },
+        );
+
+        const rows = await session.knex('model2').where('model1_id', 1);
+        expect(rows.map((row) => row.model2_prop1)).toEqual(['of ignored']);
+        expect(await session.knex('Model1').where('id', 2).first()).toMatchObject({
+          model1Prop1: 'of deleted',
+        });
       });
 
       it('should relate a #ref to an existing model in a branch that the graph does not write', async () => {
