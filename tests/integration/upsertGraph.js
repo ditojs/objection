@@ -104,6 +104,73 @@ export default (session) => {
         expect(fetched.$afterFindCalled).toBe(1);
       });
 
+      it('should return models that write their unchanged props in later patches (#371)', async () => {
+        const result = await Model1.query(session.knex).upsertGraph(
+          { id: 2, model1Relation2: [{ idCol: 1, model2Prop1: 'changed' }] },
+          { fetchStrategy },
+        );
+
+        // The upsert leaves out the unchanged foreign key:
+        const [related] = result.model1Relation2;
+        related.model1Id = null;
+        await related.$query(session.knex).patch();
+
+        const [row] = await session.knex('model2').where('id_col', 1);
+        expect(row).toMatchObject({ model1_id: null, model2_prop1: 'changed' });
+      });
+
+      it('should give back the unchanged props when a patch fails (#371)', async () => {
+        const upsert = Model1.fromJson({
+          id: 2,
+          model1Relation2: [
+            {
+              idCol: 1,
+              model2Prop1: 'changed',
+              model2Relation1: [
+                { id: 4, model1Prop1: 'changed' },
+                { id: 5, model1Prop1: 'changed' },
+              ],
+            },
+            {
+              idCol: 2,
+              model2Prop1: 'changed',
+              model2Relation1: [
+                { id: 6, model1Prop1: 'changed' },
+                { id: 7, model1Prop1: 'changed' },
+              ],
+            },
+          ],
+        });
+        let hasFailed = false;
+
+        // Fail the first patch, before all others have started:
+        await Model1.query(session.knex)
+          .upsertGraph(upsert, { fetchStrategy })
+          .context({
+            runBefore(result, builder) {
+              if (builder.isUpdate() && !hasFailed) {
+                hasFailed = true;
+                throw new Error('failed patch');
+              }
+              return result;
+            },
+          })
+          .catch(() => {});
+
+        const models = upsert.model1Relation2.flatMap((model) => [model, ...model.model2Relation1]);
+        expect(hasFailed).toBe(true);
+        // Only the join table extras stay left out, as they aren't columns:
+        const extras = ['aliasedExtra'];
+        expect(models.map((model) => model.$omitFromDatabaseJson())).toEqual([
+          undefined,
+          extras,
+          extras,
+          undefined,
+          extras,
+          extras,
+        ]);
+      });
+
       it('should throw for a #ref into a branch that the graph does not write', async () => {
         const err = await Model1.query(session.knex)
           .upsertGraph(

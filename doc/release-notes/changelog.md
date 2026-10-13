@@ -100,6 +100,7 @@
 - `upsertGraph()` keeps a row that the graph keeps elsewhere when it replaces the row as the `BelongsToOneRelation` model of another one, e.g. a root whose new boss is the model it was the boss of: `{ id: 2, boss: { id: 1, boss: { id: 3 } } }` with 2 as the boss of 1, where 3.x deleted the root
 - `upsertGraph()` keeps the join table extras of an existing join row when a `#ref` relates the many-to-many model again, where 3.x set them to `null`
 - `upsertGraph()` inserts a new row into a `HasOneRelation` after the current row moves out of it to a new owner, and after the rows that move along with it from slot to slot, instead of failing with a `UniqueViolationError` on a unique foreign key [#368](https://github.com/ditojs/objection/issues/368)
+- The models that `upsertGraph()` returns write all their props in later patches, e.g. with `$query().patch()`, instead of leaving out the props that the upsert found unchanged, as they did since 3.9.0 [#371](https://github.com/ditojs/objection/issues/371)
 
 ### Types
 
