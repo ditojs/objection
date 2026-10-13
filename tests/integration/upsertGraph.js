@@ -712,6 +712,33 @@ export default (session) => {
         });
       }
 
+      for (const [title, model2Relation2, options] of [
+        ['noInsert', { model1Prop1: 'skipped' }, { noInsert: ['model2Relation2'] }],
+        [
+          'noInsert and insertMissing',
+          { id: 100 },
+          { insertMissing: true, noInsert: ['model2Relation2'] },
+        ],
+        ['noRelate', { id: 5 }, { relate: true, noRelate: ['model2Relation2'] }],
+      ]) {
+        it(`should keep the current HasOneThroughRelation model when ${title} skips its replacement`, async () => {
+          // Row 1 of model2 has one row 4 through the join table.
+          await session.knex('Model1Model2One').insert({ model2Id: 1, model1Id: 4 });
+
+          await Model2.query(session.knex).upsertGraph(
+            { idCol: 1, model2Relation2 },
+            { fetchStrategy, ...options },
+          );
+
+          const root = await Model2.query(session.knex)
+            .findById(1)
+            .withGraphFetched('model2Relation2');
+
+          expect(root.model2Relation2.id).toBe(4);
+          expect(await session.knex('Model1')).toHaveLength(7);
+        });
+      }
+
       it('should keep a BelongsToOneRelation model that the graph patches elsewhere when noRelate is set', async () => {
         await session.knex('Model1').where('id', 1).update({ model1Id: 3 });
 
@@ -5775,6 +5802,23 @@ export default (session) => {
           await transaction(session.knex, (trx) => {
             return Model1.query(trx)
               .upsertGraph(upsert, { relate: true, fetchStrategy })
+              .then((result) => {
+                expect(result.$beforeUpdateCalled).toBeUndefined();
+                expect(result.model1Relation1.$beforeUpdateCalled).toBeUndefined();
+              });
+          });
+        });
+
+        it('should not call $beforeUpdate() on models that only have a #id', async () => {
+          const upsert = {
+            id: 2,
+            '#id': 'root',
+            model1Relation1: { id: 3, '#id': 'related' },
+          };
+
+          await transaction(session.knex, (trx) => {
+            return Model1.query(trx)
+              .upsertGraph(upsert, { relate: true, allowRefs: true, fetchStrategy })
               .then((result) => {
                 expect(result.$beforeUpdateCalled).toBeUndefined();
                 expect(result.model1Relation1.$beforeUpdateCalled).toBeUndefined();

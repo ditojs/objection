@@ -345,6 +345,21 @@ export default (session) => {
       expect(await toyIds()).toEqual([1, 2, 3]);
     });
 
+    it('should keep a root whose new boss is the model it was the boss of', async () => {
+      await knex('graph_edge_person').where('id', 1).update({ bossId: 2 });
+
+      await Person.query(knex).upsertGraph(
+        { id: 2, boss: { id: 1, boss: { id: 3 } } },
+        { relate: true },
+      );
+
+      expect(await knex('graph_edge_person').orderBy('id').select('id', 'bossId')).toEqual([
+        { id: 1, bossId: 3 },
+        { id: 2, bossId: 1 },
+        { id: 3, bossId: null },
+      ]);
+    });
+
     it('should read the markers of a model in every place it appears', async () => {
       const friend = Person.fromJson({ '#dbRef': 2 });
 
