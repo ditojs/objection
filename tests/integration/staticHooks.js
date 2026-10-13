@@ -2218,6 +2218,24 @@ export default (session) => {
               });
           });
 
+          it('should not expose the owner join aliases of many-to-many relations in `items` of upsertGraph', async () => {
+            const person = await Person.query().findOne({ name: 'Jennifer' });
+            const silver = await Movie.query().findOne({ name: 'Silver Linings Playbook' });
+
+            Movie.beforeDelete = createHookSpy(({ items }) => {
+              expect(items.length).toBe(1);
+              expect(items[0].movies.length).toBe(2);
+
+              for (const movie of items[0].movies) {
+                expect(movie).not.toHaveProperty('objectiontmpjoin0');
+              }
+            });
+
+            await Person.query().upsertGraph({ id: person.id, movies: [{ id: silver.id }] });
+
+            expect(Movie.beforeDelete.calls.length).toBe(1);
+          });
+
           it.skipIf(session.isMsSql())(
             'should be able to fetch the rows about to be deleted`',
             () => {

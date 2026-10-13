@@ -1490,12 +1490,10 @@ export default (session) => {
                   {
                     id: 5,
                     $afterFindCalled: 1,
-                    objectiontmpjoin0: 2,
                   },
                   {
                     id: 6,
                     $afterFindCalled: 1,
-                    objectiontmpjoin0: 2,
                   },
                 ],
               },
