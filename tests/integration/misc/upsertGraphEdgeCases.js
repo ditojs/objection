@@ -429,6 +429,19 @@ export default (session) => {
         expect(await knex('graph_edge_pet').where('name', 'new')).toHaveLength(1);
       });
 
+      it('should keep a new model that a moved row refers to as its BelongsToOne model', async () => {
+        await Person.query(knex).upsertGraph(
+          { name: 'new', '#id': 'a', pets: [{ id: 3, owner: { '#ref': 'a' } }] },
+          { allowRefs: true, relate: true },
+        );
+
+        const newPerson = await knex('graph_edge_person').where('name', 'new').first();
+        expect(newPerson).toBeDefined();
+        expect(await knex('graph_edge_pet').where('id', 3).first()).toMatchObject({
+          ownerId: newPerson.id,
+        });
+      });
+
       it('should break a cycle through a BelongsToOne key instead of an array of keys', async () => {
         const [a, b] = await Person.query(knex).upsertGraph(
           [
