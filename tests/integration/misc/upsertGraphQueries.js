@@ -9,6 +9,15 @@ export default (session) => {
       static get tableName() {
         return 'graph_queries_pet';
       }
+
+      // Convert the tags without guarding against null, like the docs do:
+      $formatDatabaseJson(json) {
+        json = super.$formatDatabaseJson(json);
+        if ('tags' in json) {
+          json.tags = json.tags.join(',');
+        }
+        return json;
+      }
     }
 
     class Person extends Model {
@@ -40,6 +49,8 @@ export default (session) => {
           table.integer('id').primary();
           table.string('name');
           table.integer('age');
+          table.decimal('weight', 38, 4);
+          table.string('tags');
           table.integer('ownerId');
         });
     });
@@ -74,58 +85,42 @@ export default (session) => {
 
     const selectPets = () => knex('graph_queries_pet').select('id', 'name', 'age').orderBy('id');
 
-    it('should patch the rows of a table in one query', async () => {
-      const queries = await collectQueries(() =>
-        Person.query(knex).upsertGraph([
-          {
-            id: 1,
-            pets: [
-              { id: 1, name: 'x' },
-              { id: 2, age: 20 },
-            ],
-          },
-          { id: 2, pets: [{ id: 3, name: 'y', age: 30 }, { id: 4 }] },
-        ]),
-      );
+    // A statement that picks the values of several rows converts them to one
+    // type on MySQL and SQL Server. SQLite stores decimals as floats.
+    it.skipIf(session.isSqlite())(
+      'should leave the columns that a patch does not change untouched',
+      async () => {
+        const weight = '12345678901234567.1234';
+        await knex('graph_queries_pet').whereIn('id', [1, 2]).update({ weight });
 
-      expect(queries.filter((sql) => sql.startsWith('update'))).toHaveLength(1);
-      expect(await selectPets()).toEqual([
-        { id: 1, name: 'x', age: 1 },
-        { id: 2, name: 'b', age: 20 },
-        { id: 3, name: 'y', age: 30 },
-        { id: 4, name: 'd', age: 4 },
-      ]);
-    });
-
-    it('should patch the rows of models with update hooks one by one', async () => {
-      class HookedPet extends Pet {
-        $beforeUpdate() {
-          this.age = 99;
-        }
-      }
-
-      class HookedPerson extends Person {
-        static get relationMappings() {
-          return { pets: { ...super.relationMappings.pets, modelClass: HookedPet } };
-        }
-      }
-
-      const queries = await collectQueries(() =>
-        HookedPerson.query(knex).upsertGraph({
+        await Person.query(knex).upsertGraph({
           id: 1,
           pets: [
-            { id: 1, name: 'x' },
-            { id: 2, name: 'y' },
+            { id: 1, weight: 1e-7 },
+            { id: 2, name: 'x' },
           ],
-        }),
-      );
+        });
 
-      expect(queries.filter((sql) => sql.startsWith('update'))).toHaveLength(2);
-      expect(await selectPets()).toEqual([
-        { id: 1, name: 'x', age: 99 },
-        { id: 2, name: 'y', age: 99 },
-        { id: 3, name: 'c', age: 3 },
-        { id: 4, name: 'd', age: 4 },
+        const rows = knex('graph_queries_pet').where(
+          'weight',
+          knex.raw('cast(? as decimal(38, 4))', [weight]),
+        );
+        expect(await rows.pluck('id')).toEqual([2]);
+      },
+    );
+
+    it('should format the values of each row on its own', async () => {
+      await Person.query(knex).upsertGraph({
+        id: 1,
+        pets: [
+          { id: 1, tags: ['x', 'y'] },
+          { id: 2, name: 'x' },
+        ],
+      });
+
+      expect(await knex('graph_queries_pet').whereIn('id', [1, 2]).pluck('tags')).toEqual([
+        'x,y',
+        null,
       ]);
     });
 

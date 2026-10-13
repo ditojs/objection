@@ -1235,6 +1235,33 @@ export default (session) => {
           expect(current.map((pet) => pet.name)).toEqual(['Cato', 'Doggo']);
         });
 
+        it('should be able to cancel the queries of upsertGraph through relations', async () => {
+          Movie.beforeUpdate = createHookSpy(({ cancelQuery }) => {
+            cancelQuery();
+          });
+          Person.beforeUpdate = createHookSpy(({ cancelQuery }) => {
+            cancelQuery();
+          });
+
+          const person = await Person.query()
+            .findOne({ name: 'Jennifer' })
+            .withGraphFetched('[movies, pets]');
+          const [pet] = person.pets;
+          const movies = person.movies.map(({ id, name }) => ({ id, name: `${name} 2` }));
+
+          await Person.query().upsertGraph({ id: person.id, movies });
+          await Pet.query().upsertGraph({ id: pet.id, owner: { id: person.id, name: 'Jen' } });
+
+          expect(Movie.beforeUpdate.calls.length).toBe(2);
+          expect(Person.beforeUpdate.calls.length).toBe(1);
+          const current = await person.$relatedQuery('movies').orderBy('name');
+          expect(current.map((movie) => movie.name)).toEqual([
+            'Hungergames',
+            'Silver Linings Playbook',
+          ]);
+          expect((await person.$query()).name).toBe('Jennifer');
+        });
+
         it('should be able to cancel the query with a value', () => {
           Movie.beforeUpdate = createHookSpy(({ cancelQuery }) => {
             cancelQuery(['lol']);

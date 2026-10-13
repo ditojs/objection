@@ -43,6 +43,12 @@ export default (session) => {
       static async beforeUpdate() {
         await onBeforeUpdateMovie?.();
       }
+
+      // A property that isn't written to the database:
+      $formatDatabaseJson(json) {
+        const { nickname, ...rest } = super.$formatDatabaseJson(json);
+        return rest;
+      }
     }
 
     class Person extends Model {
@@ -198,6 +204,21 @@ export default (session) => {
 
       expect(person.pets[0].nickname).toBe('Rex');
       await expectNothingWritten();
+    });
+
+    it('should not throw for a patch through a relation that writes no column', async () => {
+      await knex('deleted_rows_movie').insert({ id: 1 });
+      await knex('deleted_rows_person_movie').insert({ personId: 1, movieId: 1, role: 'a' });
+
+      const person = await Person.query().upsertGraph({
+        id: 1,
+        movies: [{ id: 1, nickname: 'M' }],
+      });
+
+      expect(person.movies[0].nickname).toBe('M');
+      expect(await knex('deleted_rows_person_movie')).toEqual([
+        { personId: 1, movieId: 1, role: 'a' },
+      ]);
     });
 
     it.skipIf(!session.isPostgres())('should throw with returning(*)', async () => {
