@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Model } from 'objection';
 
 export default (session) => {
@@ -33,7 +33,11 @@ export default (session) => {
             modelClass: Person,
             join: {
               from: 'graph_ref_m2m_person.id',
-              through: { from: 'graph_ref_m2m_friend.aId', to: 'graph_ref_m2m_friend.bId' },
+              through: {
+                from: 'graph_ref_m2m_friend.aId',
+                to: 'graph_ref_m2m_friend.bId',
+                extra: ['role'],
+              },
               to: 'graph_ref_m2m_person.id',
             },
           },
@@ -61,9 +65,16 @@ export default (session) => {
         .createTable('graph_ref_m2m_friend', (table) => {
           table.integer('aId');
           table.integer('bId');
+          table.string('role');
         });
+    });
 
-      await knex('graph_ref_m2m_person').insert([{ id: 1 }, { id: 2, parentId: 1 }]);
+    beforeEach(async () => {
+      for (const table of ['graph_ref_m2m_friend', 'graph_ref_m2m_pet', 'graph_ref_m2m_person']) {
+        await knex(table).delete();
+      }
+
+      await knex('graph_ref_m2m_person').insert([{ id: 1 }, { id: 2, parentId: 1 }, { id: 3 }]);
       await knex('graph_ref_m2m_pet').insert([{ id: 10, ownerId: 2 }]);
     });
 
@@ -81,6 +92,24 @@ export default (session) => {
 
       expect(await knex('graph_ref_m2m_friend').select('aId', 'bId')).toEqual([{ aId: 1, bId: 2 }]);
       expect(await knex('graph_ref_m2m_pet')).toEqual([{ id: 10, ownerId: 2 }]);
+    });
+
+    it('should keep the extras of a join row that a #ref relates again', async () => {
+      await knex('graph_ref_m2m_friend').insert({ aId: 2, bId: 3, role: 'best' });
+
+      await Person.query(knex).upsertGraph(
+        {
+          id: 1,
+          children: [{ id: 2, friends: [{ '#ref': 'friend' }] }],
+          friends: [{ id: 3, '#id': 'friend' }],
+        },
+        { relate: true, allowRefs: true },
+      );
+
+      expect(await knex('graph_ref_m2m_friend').orderBy('aId')).toEqual([
+        { aId: 1, bId: 3, role: null },
+        { aId: 2, bId: 3, role: 'best' },
+      ]);
     });
   });
 };
