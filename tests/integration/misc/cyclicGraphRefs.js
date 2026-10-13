@@ -429,7 +429,7 @@ export default (session) => {
 
     describe('upsertGraph() cycles that must not be broken', () => {
       it('should throw if the #ref target is not inserted because of noInsert', async () => {
-        await expectCyclicError(
+        await expect(
           Person.query().upsertGraph(
             {
               name: 'Jennifer',
@@ -438,6 +438,8 @@ export default (session) => {
             },
             { allowRefs: true, noInsert: ['pets'] },
           ),
+        ).rejects.toThrow(
+          "the reference at 'favoritePet' points to a model that the graph doesn't write before it",
         );
 
         await expectNoRows();
