@@ -1,7 +1,7 @@
 const expect = require('expect.js');
 const chai = require('chai');
 const { raw, transaction, ValidationError } = require('../../');
-const { createRejectionReflection } = require('../../testUtils/testUtils');
+const { createRejectionReflection, delay } = require('../../testUtils/testUtils');
 const { FetchStrategy } = require('../../lib/queryBuilder/graph/GraphOptions');
 const mockKnexFactory = require('../../testUtils/mockKnex');
 const { map: promiseMap } = require('../../lib/utils/promiseUtils');
@@ -5287,6 +5287,23 @@ module.exports = (session) => {
           expect(fetched.model1Relation1.model1Prop1).to.equal('self reference');
           expect(fetched.model1Relation1.model1Id).to.equal(inserted.id);
           expect(fetched.model1Relation1.model1Relation1.id).to.equal(inserted.id);
+        });
+
+        it('should not delete anything when the graph contains cyclic references', async () => {
+          const upsert = [
+            { id: 2, model1Relation2: [] },
+            { '#id': 'a', model1Prop1: '#ref{b.model1Prop1}' },
+            { '#id': 'b', model1Prop1: '#ref{a.model1Prop1}' },
+          ];
+
+          const err = await Model1.query(session.knex)
+            .upsertGraph(upsert, { fetchStrategy, allowRefs: true })
+            .catch((err) => err);
+
+          expect(err.message).to.equal('the object graph contains cyclic references');
+          // Give queries that would run after the rejection the time to do so.
+          await delay(50);
+          expect(await session.knex('model2').where('model1_id', 2)).to.have.length(2);
         });
 
         it('cycle detection should consider already inserted nodes', () => {
