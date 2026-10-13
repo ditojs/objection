@@ -7,6 +7,7 @@
 - `insertGraph()` and `upsertGraph()` reject only after the queries they already started have finished, so a transaction is rolled back after them. Before, rows of these queries could be committed after the rollback on SQLite [#336](https://github.com/ditojs/objection/pull/336)
 - `upsertGraph()` sets the foreign key of a model that a `#ref` relates into a `HasManyRelation` or `HasOneRelation`. Before, the row was left without it, and the id of the owner could be cleared [#311](https://github.com/ditojs/objection/issues/311)
 - `upsertGraph()` with `relate` and `noUpdate` writes the foreign keys of models that it relates through a `HasManyRelation` or `HasOneRelation`, like it does for `BelongsToOneRelation` and `ManyToManyRelation`, instead of leaving them unrelated without an error, as it did since 1.5.0 [#355](https://github.com/ditojs/objection/pull/355)
+- `upsertGraph()` resolves a `#ref{}` to a value of an existing model, e.g. a foreign key that an inserted related model gives it, once the graph has filled it in. Before, it read the old value, e.g. `undefined` [#356](https://github.com/ditojs/objection/issues/356)
 
 ## 3.9.0
 
