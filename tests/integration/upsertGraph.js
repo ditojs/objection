@@ -323,6 +323,29 @@ export default (session) => {
         expect(rows.map((row) => row.model2_prop1)).toEqual(['hasMany 2', 'after unrelated']);
       });
 
+      it('should write the props of a model marked with #unrelate through a #ref to it', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          {
+            id: 2,
+            model1Relation1: {
+              model1Prop1: 'new',
+              model1Relation3: [
+                { idCol: 1, '#id': 'm', '#unrelate': true, model2Prop1: 'written' },
+              ],
+            },
+            model1Relation3: [{ '#ref': 'm' }],
+          },
+          { allowRefs: true, allowMarkers: true, relate: true, fetchStrategy },
+        );
+
+        expect(await session.knex('model2').where('id_col', 1).first()).toMatchObject({
+          model2_prop1: 'written',
+        });
+        expect(await session.knex('Model1Model2').where({ model1Id: 2, model2Id: 1 })).toHaveLength(
+          1,
+        );
+      });
+
       it('should read a #ref{} to a model marked with #delete', async () => {
         await Model1.query(session.knex).upsertGraph(
           {
