@@ -304,7 +304,7 @@ export default (session) => {
       it('should give a #ref related into a HasManyRelation the key of a parent inserted later (#311)', async () => {
         const [, b] = await Person.query(knex).upsertGraph(
           [
-            { name: 'A', children: [{ '#id': 'n', name: 'N' }] },
+            { name: 'A', boss: { '#id': 'n', name: 'N' } },
             {
               name: 'B',
               boss: { name: 'Q', boss: { name: 'Q2' } },

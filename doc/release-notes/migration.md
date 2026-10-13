@@ -23,6 +23,7 @@ This section lists the breaking changes in objection 4.0.
 - [upsertGraph() relates moved rows before it deletes](#upsertgraph-relates-moved-rows-before-it-deletes)
 - [upsertGraph() upserts below related models in the same graph](#upsertgraph-upserts-below-related-models-in-the-same-graph)
 - [insertGraph() and upsertGraph() write in fewer queries](#insertgraph-and-upsertgraph-write-in-fewer-queries)
+- [insertGraph() and upsertGraph() reject rows placed in conflicting ways](#insertgraph-and-upsertgraph-reject-rows-placed-in-conflicting-ways)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
@@ -198,6 +199,19 @@ A row related from another owner can no longer take the unique key of a row that
 A related model with relations whose row doesn't exist throws a `NotFoundError` saying that the model doesn't exist, before anything is written. 3.x wrote the rest of the graph first and then failed in the nested call, or with a foreign key error.
 
 Rows that the graph relates into a `HasManyRelation` or `HasOneRelation` from another owner are the exception: their relations change with the move, e.g. the `owner` of a pet that moves to another person, so the models below them are upserted in a pass of their own, after the rest of the graph, against their rows as they are after the move, like 3.x did. Errors about the models below them, like a model that isn't a child and isn't related, are thrown after the rest of the graph is written, so without a transaction the rest of the graph stays written: run `upsertGraph()` in a transaction. A row is written once for the move and once more if the models below it change its keys. A `#ref` from the rest of the graph can point to such models only if they have ids, and a `#ref{}` not at all, as they're written after it.
+
+## insertGraph() and upsertGraph() reject rows placed in conflicting ways
+
+A graph that gives one row two different values for the same column, or the slot of a `HasOneRelation` two different rows, throws a `ValidationError` of type `InvalidGraph` that names both data paths, before anything is written. A row is identified by its table and id, and a `#ref` or `#dbRef` model is a place of the row that it refers to. For example:
+
+- the row is placed under two owners through the same foreign key, e.g. a pet in the `pets` of two people, also through `#ref`;
+- the row is placed under an owner through a `HasManyRelation` or `HasOneRelation`, and its own `BelongsToOneRelation` names another model, e.g. `{ id: 1, pets: [{ id: 4, owner: { name: 'new' } }] }` or a child with another `parent`;
+- one place gives the row a foreign key prop that another place sets through a relation, e.g. `[{ id: 1, children: [{ id: 2 }] }, { id: 2, parentId: 5 }]`;
+- the row appears twice with different values for the same prop;
+- two places give the same `HasOneRelation` of an owner two different rows, or one row and `null`, also when one of the rows gets the owner's key through a foreign key prop or its own `BelongsToOneRelation`, e.g. `{ id: 1, profile: null }` next to `{ id: 6, person: { id: 1 } }`. A `HasOneRelation` with a `filter` only counts the rows placed through it;
+- the row is marked with `#delete` in one place and kept in another, or marked with `#unrelate`, which clears its key, while another place puts it under an owner.
+
+3.x wrote these graphs in an order that the graph doesn't define, and often deleted rows that the graph names, like the root. A graph that places a row the same way more than once stays valid, e.g. `{ id: 1, pets: [{ id: 4, owner: { id: 1 } }] }`, and so does a row in places that write different columns, e.g. as a `child` and as a `boss`. A foreign key prop that a model gives next to its own relation, e.g. an old `parentId` next to a new `parent`, still follows the relation. A row that one place of an owner lists and another place of the same owner leaves out is kept, as the graph keeps it in the first place.
 
 ## insertGraph() and upsertGraph() write in fewer queries
 
