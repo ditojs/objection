@@ -548,6 +548,52 @@ export default (session) => {
       });
     });
 
+    describe('#ref{} to existing models (#356)', () => {
+      it('should read the values that the graph gives them', async () => {
+        await Person.query(knex).upsertGraph(
+          [
+            { '#id': 'a', id: 1, boss: { name: 'new boss' } },
+            { id: 2, name: 'boss of a: #ref{a.bossId}' },
+          ],
+          { allowRefs: true },
+        );
+
+        const boss = await knex('graph_edge_person').where('name', 'new boss').first();
+        expect((await knex('graph_edge_person').where('id', 2).first()).name).toBe(
+          `boss of a: ${boss.id}`,
+        );
+      });
+
+      it('should not wait for the values that the graph leaves alone', async () => {
+        await Person.query(knex).upsertGraph(
+          [
+            { '#id': 'a', id: 1, name: 'root', boss: { '#ref': 'new' } },
+            { '#id': 'new', name: 'new boss of #ref{a.name}' },
+          ],
+          { allowRefs: true },
+        );
+
+        const boss = await knex('graph_edge_person').where('name', 'new boss of root').first();
+        expect((await knex('graph_edge_person').where('id', 1).first()).bossId).toBe(boss.id);
+      });
+
+      it('should read them in moved rows', async () => {
+        await Person.query(knex).upsertGraph(
+          [
+            { '#id': 'a', id: 2, boss: { name: 'new boss' } },
+            { id: 1, children: [{ id: 3, name: 'boss of a: #ref{a.bossId}' }] },
+          ],
+          { allowRefs: true, relate: true, noDelete: true },
+        );
+
+        const boss = await knex('graph_edge_person').where('name', 'new boss').first();
+        expect(await knex('graph_edge_person').where('id', 3).first()).toMatchObject({
+          parentId: 1,
+          name: `boss of a: ${boss.id}`,
+        });
+      });
+    });
+
     it('should give new models the keys of related parents that the graph leaves out', async () => {
       await Person.query(knex).upsertGraph(
         { id: 1, children: [{ id: 2, petsByCode: [{ name: 'new' }] }] },

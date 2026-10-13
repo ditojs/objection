@@ -91,6 +91,7 @@
 - `upsertGraph()` sets the foreign key of a model that a `#ref` relates into a `HasManyRelation` or `HasOneRelation`. Before, the row was left without it, and the id of the owner could be cleared [#311](https://github.com/ditojs/objection/issues/311)
 - `patch()` and `merge()` with field expression keys like `'meta:color'` keep writing them when the query is built more than once, e.g. with `toKnexQuery()` before running it, or through a `clone()`, instead of resolving to 0 without a write. Building the query no longer changes the data of `patch()` and `merge()`: the patched model keeps these keys until the write has run, so `$afterUpdate()` sees them, and then loses them, also with `snakeCaseMappers()`, so the models that `$query().patch()`, `patchAndFetch*()` and `upsertGraph()` return don't have them [#53](https://github.com/ditojs/objection/issues/53)
 - `upsertGraph()` with `relate` and `noUpdate` writes the foreign keys of models that it relates through a `HasManyRelation` or `HasOneRelation`, like it does for `BelongsToOneRelation` and `ManyToManyRelation`, instead of leaving them unrelated without an error, as it did since 1.5.0 [#53](https://github.com/ditojs/objection/issues/53)
+- `upsertGraph()` resolves a `#ref{}` to a value of an existing model, e.g. a foreign key that an inserted related model gives it, once the graph has filled it in, instead of reading its old value [#356](https://github.com/ditojs/objection/issues/356)
 
 ### Types
 
