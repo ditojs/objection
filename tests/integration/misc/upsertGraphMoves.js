@@ -21,6 +21,12 @@ export default (session) => {
         }
       }
 
+      class Tag extends Model {
+        static get tableName() {
+          return 'graph_move_tag';
+        }
+      }
+
       class Pet extends Model {
         static get tableName() {
           return 'graph_move_pet';
@@ -33,9 +39,21 @@ export default (session) => {
               modelClass: Person,
               join: { from: 'graph_move_pet.ownerId', to: 'graph_move_person.id' },
             },
+            activeOwner: {
+              relation: Model.BelongsToOneRelation,
+              modelClass: Person,
+              filter: (query) => query.where('graph_move_person.name', 'like', 'active%'),
+              join: { from: 'graph_move_pet.ownerId', to: 'graph_move_person.id' },
+            },
             siblings: {
               relation: Model.HasManyRelation,
               modelClass: Pet,
+              join: { from: 'graph_move_pet.ownerId', to: 'graph_move_pet.ownerId' },
+            },
+            dogSiblings: {
+              relation: Model.HasManyRelation,
+              modelClass: Pet,
+              filter: (query) => query.where('graph_move_pet.kind', 'dog'),
               join: { from: 'graph_move_pet.ownerId', to: 'graph_move_pet.ownerId' },
             },
             ownerFriends: {
@@ -54,6 +72,11 @@ export default (session) => {
               relation: Model.HasManyRelation,
               modelClass: Toy,
               join: { from: 'graph_move_pet.id', to: 'graph_move_toy.petId' },
+            },
+            tags: {
+              relation: Model.HasManyRelation,
+              modelClass: Tag,
+              join: { from: 'graph_move_pet.code', to: 'graph_move_tag.petCode' },
             },
             category: {
               relation: Model.BelongsToOneRelation,
@@ -75,6 +98,17 @@ export default (session) => {
               relation: Model.HasManyRelation,
               modelClass: Pet,
               join: { from: 'graph_move_person.id', to: 'graph_move_pet.ownerId' },
+            },
+            dogs: {
+              relation: Model.HasManyRelation,
+              modelClass: Pet,
+              filter: (query) => query.where('graph_move_pet.kind', 'dog'),
+              join: { from: 'graph_move_person.id', to: 'graph_move_pet.ownerId' },
+            },
+            sittedPets: {
+              relation: Model.HasManyRelation,
+              modelClass: Pet,
+              join: { from: 'graph_move_person.id', to: 'graph_move_pet.sitterId' },
             },
             children: {
               relation: Model.HasManyRelation,
@@ -129,6 +163,7 @@ export default (session) => {
       const tables = [
         'graph_move_like',
         'graph_move_friendship',
+        'graph_move_tag',
         'graph_move_toy',
         'graph_move_pet',
         'graph_move_person',
@@ -159,6 +194,9 @@ export default (session) => {
           .createTable('graph_move_pet', (table) => {
             table.increments('id');
             table.string('name');
+            table.string('kind');
+            table.string('code');
+            table.integer('sitterId');
             const ownerId = table.integer('ownerId').unsigned();
             if (ownerOnDelete) {
               ownerId.references('graph_move_person.id').onDelete(ownerOnDelete);
@@ -174,6 +212,11 @@ export default (session) => {
             table.string('name');
             table.integer('petId').unsigned().references('graph_move_pet.id').onDelete('CASCADE');
           })
+          .createTable('graph_move_tag', (table) => {
+            table.increments('id');
+            table.string('name');
+            table.string('petCode');
+          })
           .createTable('graph_move_friendship', (table) => {
             table.integer('personId');
             table.integer('friendId');
@@ -186,7 +229,8 @@ export default (session) => {
       }
 
       // Person 1, a child of person 99, owns pets 10 and 12, person 2 pet 11
-      // and person 3 pet 13. The graphs insert person 100 and pet 14.
+      // and person 3 pet 13. Pet 11 is the only cat, and pet 10 has a tag. The
+      // graphs insert person 100 and pet 14.
       async function insertRows() {
         await insertRowsWithIds(knex, 'graph_move_category', [
           { id: 5, name: 'cats' },
@@ -199,12 +243,13 @@ export default (session) => {
           { id: 99, name: 'root' },
         ]);
         await insertRowsWithIds(knex, 'graph_move_pet', [
-          { id: 10, name: 'Fluffy', ownerId: 1, categoryId: 5 },
-          { id: 11, name: 'Rex', ownerId: 2 },
-          { id: 12, name: 'Tom', ownerId: 1 },
-          { id: 13, name: 'Kit', ownerId: 3 },
+          { id: 10, name: 'Fluffy', kind: 'dog', code: 'f', ownerId: 1, categoryId: 5 },
+          { id: 11, name: 'Rex', kind: 'cat', ownerId: 2 },
+          { id: 12, name: 'Tom', kind: 'dog', ownerId: 1 },
+          { id: 13, name: 'Kit', kind: 'dog', ownerId: 3 },
         ]);
         await insertRowsWithIds(knex, 'graph_move_toy', [{ id: 100, name: 'ball', petId: 10 }]);
+        await insertRowsWithIds(knex, 'graph_move_tag', [{ id: 1, name: 'fluffy', petCode: 'f' }]);
         await knex('graph_move_friendship').insert([
           { personId: 1, friendId: 3 },
           { personId: 2, friendId: 99 },
@@ -219,8 +264,12 @@ export default (session) => {
         return knex('graph_move_pet').select('id', 'name', 'ownerId').orderBy('id');
       }
 
+      function selectPetKeys() {
+        return knex('graph_move_pet').select('id', 'ownerId', 'sitterId').orderBy('id');
+      }
+
       beforeAll(() => {
-        for (const modelClass of [Category, Toy, Pet, Person]) {
+        for (const modelClass of [Category, Toy, Tag, Pet, Person]) {
           modelClass.knex(knex);
         }
       });
@@ -659,6 +708,640 @@ export default (session) => {
           { id: 13, name: 'Kit', ownerId: 3 },
         ]);
       });
+
+      it('should fail on a missing row below a moved row before writing anything', async () => {
+        await createTables();
+        await insertRows();
+
+        const err = await Person.query()
+          .upsertGraph(
+            { id: 2, pets: [{ id: 11 }, { id: 10, toys: [{ id: 100 }, { id: 101 }] }] },
+            { relate: ['pets'] },
+          )
+          .catch((err) => err);
+
+        expect(err).toBeInstanceOf(NotFoundError);
+        expect(err.message).toMatch(/^model \(id=101\) is not a child of model \(id=10\)/);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 1 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+        expect(await knex('graph_move_toy')).toEqual([{ id: 100, name: 'ball', petId: 10 }]);
+      });
+
+      it('should relate a #ref to a row below a moved row', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 2, pets: [{ id: 11 }, { id: 10, category: { '#id': 'c', name: 'birds' } }] },
+            { id: 3, pets: [{ id: 13, category: { '#ref': 'c' } }] },
+          ],
+          { relate: true, allowRefs: true },
+        );
+
+        expect(
+          await knex('graph_move_pet').select('id', 'ownerId', 'categoryId').orderBy('id'),
+        ).toEqual([
+          { id: 10, ownerId: 2, categoryId: 7 },
+          { id: 11, ownerId: 2, categoryId: null },
+          { id: 12, ownerId: 1, categoryId: null },
+          { id: 13, ownerId: 3, categoryId: 7 },
+        ]);
+        expect(await knex('graph_move_category').orderBy('id')).toEqual([
+          { id: 6, name: 'dogs' },
+          { id: 7, name: 'birds' },
+        ]);
+      });
+
+      it('should write the #ref{} props that read into and out of the rows below a moved row', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            {
+              id: 2,
+              pets: [
+                { id: 11 },
+                { id: 10, toys: [{ id: 100 }, { '#id': 't', name: '#ref{o.name}' }] },
+              ],
+            },
+            { '#id': 'o', name: 'newOwner' },
+            { id: 3, name: 'p3 #ref{t.id}' },
+          ],
+          { relate: true, allowRefs: true },
+        );
+
+        expect((await selectPeople()).map(({ id, name }) => ({ id, name }))).toEqual([
+          { id: 1, name: 'p1' },
+          { id: 2, name: 'p2' },
+          { id: 3, name: 'p3 101' },
+          { id: 99, name: 'root' },
+          { id: 100, name: 'newOwner' },
+        ]);
+        expect((await selectPets()).find(({ id }) => id === 10).ownerId).toBe(2);
+        expect(await knex('graph_move_toy').orderBy('id')).toEqual([
+          { id: 100, name: 'ball', petId: 10 },
+          { id: 101, name: 'newOwner', petId: 10 },
+        ]);
+      });
+
+      // The filter reads person 2 before the graph renames it, so it doesn't match yet.
+      it('should read a filtered relation of a moved row before the graph renames its owner', async () => {
+        await createTables();
+        await insertRows();
+
+        const err = await Person.query()
+          .upsertGraph(
+            { id: 2, name: 'active2', pets: [{ id: 11 }, { id: 10, activeOwner: { id: 2 } }] },
+            { relate: ['pets'] },
+          )
+          .catch((err) => err);
+
+        expect(err).toBeInstanceOf(NotFoundError);
+        expect(err.message).toMatch(/^model \(id=2\) is not a child of model \(id=10\)/);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 1 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+      });
+
+      it('should keep a row that another place keeps out of a to-many relation of a moved row', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          { id: 2, pets: [{ id: 11 }, { id: 10, siblings: [{ id: 10 }] }] },
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 2 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+      });
+
+      it('should delete the replaced category of a moved row', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          { id: 2, pets: [{ id: 11 }, { id: 10, categoryId: 6, category: { id: 6 } }] },
+          { relate: true },
+        );
+
+        expect(
+          await knex('graph_move_pet').select('id', 'ownerId', 'categoryId').where('id', 10),
+        ).toEqual([{ id: 10, ownerId: 2, categoryId: 6 }]);
+        expect(await knex('graph_move_category').orderBy('id')).toEqual([{ id: 6, name: 'dogs' }]);
+      });
+
+      // The siblings of pet 12 are the pets of its owner, so listing them keeps
+      // pet 12 and pet 14 with person 1, which `pets` leaves them out of:
+      it('should keep a row left out of its owner that another place lists with its siblings', async () => {
+        await createTables();
+        await insertRows();
+        await insertRowsWithIds(knex, 'graph_move_pet', [{ id: 14, name: 'Bo', ownerId: 1 }]);
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, pets: [{ id: 10 }] },
+            { id: 3, favoritePet: { id: 12, siblings: [{ id: 12 }, { id: 14, name: 'Bo2' }] } },
+          ],
+          { relate: true },
+        );
+
+        expect((await selectPeople()).find(({ id }) => id === 3).favoritePetId).toBe(12);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 1 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+          { id: 14, name: 'Bo2', ownerId: 1 },
+        ]);
+      });
+
+      // Both `siblings` describe the pets of person 3. Pet 10's leaves out pet
+      // 13, which pet 13's own lists, so both pets end with person 3:
+      it('should keep the rows that one of two siblings lists', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          {
+            id: 2,
+            favoritePet: { id: 13, siblings: [{ id: 13 }, { id: 10, siblings: [{ id: 10 }] }] },
+          },
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 3 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+      });
+
+      // Person 2 names its parent, which keeps it in the `children` that leave
+      // it out:
+      it('should keep a row with the parent that it names and that leaves it out', async () => {
+        await createTables();
+        await insertRows();
+        await knex('graph_move_person').where('id', 2).update({ parentId: 1 });
+
+        await Person.query().upsertGraph(
+          {
+            id: 2,
+            parent: { id: 1, children: [], pets: [{ id: 10 }, { id: 12 }, { name: 'new' }] },
+          },
+          { relate: true },
+        );
+
+        expect(await knex('graph_move_person').select('id', 'parentId').orderBy('id')).toEqual([
+          { id: 1, parentId: 99 },
+          { id: 2, parentId: 1 },
+          { id: 3, parentId: null },
+          { id: 99, parentId: null },
+        ]);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 1 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+          { id: 14, name: 'new', ownerId: 1 },
+        ]);
+      });
+
+      // `noInsert` ignores the new parent of person 2, so it doesn't keep the row:
+      it('should clear the key of a row left out of its owner whose own parent is ignored', async () => {
+        await createTables();
+        await insertRows();
+        await knex('graph_move_person').where('id', 2).update({ parentId: 1 });
+
+        await Person.query().upsertGraph(
+          [
+            { id: 2, parent: { name: 'skipped' } },
+            { id: 1, children: [] },
+          ],
+          { relate: true, noInsert: ['parent'] },
+        );
+
+        expect(await knex('graph_move_person').select('id', 'parentId').orderBy('id')).toEqual([
+          { id: 1, parentId: 99 },
+          { id: 2, parentId: null },
+          { id: 3, parentId: null },
+          { id: 99, parentId: null },
+        ]);
+      });
+
+      it('should keep a #ref row moved into a new owner whose other moved row lists only itself as sibling', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { name: 'newOwner', pets: [{ id: 10, siblings: [{ id: 10 }] }, { '#ref': 'r' }] },
+            { id: 3, favoritePet: { '#id': 'r', id: 11 } },
+          ],
+          { relate: true, allowRefs: true },
+        );
+
+        expect((await selectPeople()).find(({ id }) => id === 3).favoritePetId).toBe(11);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 100 },
+          { id: 11, name: 'Rex', ownerId: 100 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+      });
+
+      it('should keep a row inserted in one place out of the siblings of a moved row in another', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 3, pets: [{ id: 13 }, { id: 10, siblings: [{ id: 10 }, { id: 13 }] }] },
+            { id: 2, favoritePet: { id: 13, siblings: [{ id: 13 }, { name: 'new' }] } },
+          ],
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 3 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+          { id: 14, name: 'new', ownerId: 3 },
+        ]);
+      });
+
+      it('should reject a #ref{} cycle through a moved row before writing anything', async () => {
+        await createTables();
+        await insertRows();
+
+        const err = await Person.query()
+          .upsertGraph(
+            [
+              {
+                id: 2,
+                pets: [
+                  { id: 11 },
+                  { id: 10, category: { id: 5, '#id': 'c', name: 'ref #ref{o.name}' } },
+                ],
+              },
+              { '#id': 'o', name: 'ref #ref{c.name}' },
+            ],
+            { relate: true, allowRefs: true },
+          )
+          .catch((err) => err);
+
+        expect(err.message).toBe('the object graph contains cyclic references');
+        expect(await selectPeople()).toHaveLength(4);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 1 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+      });
+
+      // With `insertMissing`, the moved row is fetched without its `categoryId`.
+      it('should read a relation of a moved row through a column that the graph leaves out', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            {
+              name: 'newOwner',
+              pets: [{ '#id': 'r', id: 10, category: { id: 5, name: 'kittens' } }],
+            },
+            { id: 3, favoritePet: { '#ref': 'r' } },
+          ],
+          { relate: ['pets', 'favoritePet'], insertMissing: true, allowRefs: true },
+        );
+
+        expect(
+          await knex('graph_move_pet').select('id', 'ownerId', 'categoryId').where('id', 10),
+        ).toEqual([{ id: 10, ownerId: 100, categoryId: 5 }]);
+        expect(await knex('graph_move_category').orderBy('id')).toEqual([
+          { id: 5, name: 'kittens' },
+          { id: 6, name: 'dogs' },
+        ]);
+      });
+
+      // The relate of pet 10 waits for the insert that its name reads, but the
+      // removals below it still run at its new owner:
+      it('should remove the rows left out of a relation of a moved row whose relate waits for an insert', async () => {
+        for (const unrelate of [false, true]) {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph(
+            [
+              { id: 2, dogs: [{ id: 10, name: 'Fluffy #ref{n.name}', siblings: [{ id: 10 }] }] },
+              { '#id': 'n', name: 'x' },
+            ],
+            { relate: true, unrelate, allowRefs: true },
+          );
+
+          expect(await selectPets()).toEqual([
+            { id: 10, name: 'Fluffy x', ownerId: 2 },
+            ...(unrelate ? [{ id: 11, name: 'Rex', ownerId: null }] : []),
+            { id: 12, name: 'Tom', ownerId: 1 },
+            { id: 13, name: 'Kit', ownerId: 3 },
+          ]);
+        }
+      });
+
+      it('should unrelate the rows left out of a many-to-many relation of a moved row whose relate waits for an insert', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 2, dogs: [{ id: 10, name: 'Fluffy #ref{n.name}', ownerFriends: [] }] },
+            { '#id': 'n', name: 'x' },
+          ],
+          { relate: true, unrelate: true, allowRefs: true },
+        );
+
+        expect((await selectPets()).find(({ id }) => id === 10).ownerId).toBe(2);
+        expect(await knex('graph_move_friendship')).toEqual([{ personId: 1, friendId: 3 }]);
+      });
+
+      // Pet 10's siblings in its other place are the pets of its new owner, so
+      // pet 12 moves there with it and loses its toys:
+      it('should write the to-many relation of a moved row in its other place at its new key', async () => {
+        await createTables();
+        await insertRows();
+        await insertRowsWithIds(knex, 'graph_move_toy', [{ id: 120, name: 'bone', petId: 12 }]);
+
+        await Person.query().upsertGraph(
+          [
+            { id: 2, pets: [{ id: 11 }, { id: 10 }] },
+            {
+              id: 3,
+              favoritePet: { id: 10, siblings: [{ id: 10 }, { id: 11 }, { id: 12, toys: [] }] },
+            },
+          ],
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 2 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 2 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+        expect(await knex('graph_move_toy')).toEqual([{ id: 100, name: 'ball', petId: 10 }]);
+      });
+
+      // A second write would run its update hooks twice.
+      it('should write a moved row that lists itself in a relation keyed on its moved column once', async () => {
+        await createTables();
+        await insertRows();
+        const queries = [];
+        const onQuery = ({ sql }) => queries.push(sql);
+        knex.on('query', onQuery);
+
+        try {
+          await Person.query().upsertGraph(
+            { id: 2, dogs: [{ id: 10, siblings: [{ id: 10 }, { id: 11 }] }] },
+            { relate: true },
+          );
+        } finally {
+          knex.removeListener('query', onQuery);
+        }
+
+        expect(queries.filter((sql) => /^update/i.test(sql))).toHaveLength(1);
+        expect((await selectPets()).find(({ id }) => id === 10).ownerId).toBe(2);
+      });
+
+      // Person 2's pets and pet 10's siblings both leave out pet 11, which one
+      // query unrelates:
+      it('should unrelate a row that several places leave out once', async () => {
+        await createTables();
+        await insertRows();
+        const queries = [];
+        const onQuery = ({ sql }) => queries.push(sql);
+        knex.on('query', onQuery);
+
+        try {
+          await Person.query().upsertGraph(
+            { id: 2, pets: [{ id: 10, siblings: [{ id: 10 }, { id: 13 }] }] },
+            { relate: true, unrelate: true },
+          );
+        } finally {
+          knex.removeListener('query', onQuery);
+        }
+
+        expect(queries.filter((sql) => /^update/i.test(sql))).toHaveLength(3);
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 2 },
+          { id: 11, name: 'Rex', ownerId: null },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 2 },
+        ]);
+      });
+
+      // The place in `sittedPets` writes the sitter, as it sets another key than
+      // the place that moves the row:
+      it('should move a row with siblings on two key columns in two places', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, pets: [{ id: 10 }, { id: 12 }, { id: 11, siblings: [] }] },
+            { id: 3, sittedPets: [{ id: 11 }] },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect((await selectPetKeys()).find(({ id }) => id === 11)).toEqual({
+          id: 11,
+          ownerId: 1,
+          sitterId: 3,
+        });
+      });
+
+      // Person 1 is deleted without the rows below it, so pet 12 is only left
+      // out of its own siblings, which `sittedPets` reads at its current owner:
+      it('should read the relations of a row at the key of an owner that the graph removes', async () => {
+        await createTables({ ownerOnDelete: null });
+        await insertRows();
+        await knex('graph_move_pet').where('id', 12).update({ sitterId: 99 });
+
+        await Person.query().upsertGraph({
+          id: 99,
+          children: [{ name: 'new', pets: [] }],
+          sittedPets: [{ id: 12, siblings: [] }],
+        });
+
+        expect(await selectPetKeys()).toEqual([
+          { id: 11, ownerId: 2, sitterId: null },
+          { id: 12, ownerId: null, sitterId: 99 },
+          { id: 13, ownerId: 3, sitterId: null },
+        ]);
+      });
+
+      // Pet 10 moves to a new person, whose key is unknown while the graph is
+      // loaded. Its other place reads its siblings at no key, and leaves the
+      // key out, so pet 12 isn't related to the new person, as documented:
+      it('should move a row to a new owner that its other place gives siblings', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { name: 'new', pets: [{ id: 10 }] },
+            { id: 3, favoritePet: { id: 10, siblings: [{ id: 12, name: 'Tom2' }] } },
+          ],
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 100 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom2', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+        ]);
+      });
+
+      // The `#ref` in the siblings of the new pet gives pet 12 a key that is
+      // unknown until the new pet is inserted, and its own place the known one,
+      // which its relations are read at:
+      it('should read the relations of a row at the key that it is known to keep', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          {
+            id: 1,
+            pets: [
+              { name: 'new', siblings: [{ '#ref': 't' }] },
+              { id: 10 },
+              { '#id': 't', id: 12, ownerFriends: [{ id: 3 }] },
+            ],
+          },
+          { relate: true, allowRefs: true },
+        );
+
+        expect(await knex('graph_move_friendship').orderBy('personId')).toEqual([
+          { personId: 1, friendId: 3 },
+          { personId: 2, friendId: 99 },
+        ]);
+      });
+
+      it('should move a row on two key columns in two places', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 2, pets: [{ id: 11 }, { id: 10 }] },
+            { id: 3, sittedPets: [{ id: 10, siblings: [{ id: 10 }, { id: 13 }] }] },
+          ],
+          { relate: true },
+        );
+
+        expect(await selectPetKeys()).toEqual([
+          { id: 10, ownerId: 2, sitterId: 3 },
+          { id: 11, ownerId: 2, sitterId: null },
+          { id: 12, ownerId: 1, sitterId: null },
+          { id: 13, ownerId: 2, sitterId: null },
+        ]);
+      });
+
+      // Pet 10's siblings are the pets without owner once `pets` unrelates it:
+      it('should relate a row to a moved row at the key that another place clears', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, pets: [{ id: 12 }] },
+            { id: 3, sittedPets: [{ id: 10, siblings: [{ id: 13 }] }] },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect(await selectPetKeys()).toEqual([
+          { id: 10, ownerId: null, sitterId: 3 },
+          { id: 11, ownerId: 2, sitterId: null },
+          { id: 12, ownerId: 1, sitterId: null },
+          { id: 13, ownerId: null, sitterId: null },
+        ]);
+      });
+
+      it('should unrelate a row that a moved row lists at the key that another place clears', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, pets: [] },
+            { id: 3, sittedPets: [{ id: 10, siblings: [{ id: 12, name: 'Tim' }] }] },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect(await selectPetKeys()).toEqual([
+          { id: 10, ownerId: null, sitterId: 3 },
+          { id: 11, ownerId: 2, sitterId: null },
+          { id: 12, ownerId: null, sitterId: null },
+          { id: 13, ownerId: 3, sitterId: null },
+        ]);
+      });
+
+      // Pet 13 moves with pet 10 through its filtered `dogSiblings`, so its own
+      // siblings are the pets of person 2, which leave out cat 11:
+      it('should read the relations of a row moved by a moved row at the final key of both', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          {
+            id: 2,
+            dogs: [{ id: 10, dogSiblings: [{ id: 13, siblings: [{ id: 13 }, { id: 10 }] }] }],
+          },
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 2 },
+        ]);
+      });
+
+      it('should remove the rows below a moved row through a column that the graph leaves out', async () => {
+        for (const unrelate of [false, true]) {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph(
+            { id: 2, pets: [{ id: 11 }, { id: 10, tags: [] }] },
+            { relate: true, unrelate },
+          );
+
+          expect((await selectPets()).find(({ id }) => id === 10).ownerId).toBe(2);
+          expect(await knex('graph_move_tag')).toEqual(
+            unrelate ? [{ id: 1, name: 'fluffy', petCode: null }] : [],
+          );
+        }
+      });
     });
 
     describe('rows of HasOneRelation slots', () => {
@@ -757,6 +1440,32 @@ export default (session) => {
       });
 
       afterAll(dropTables);
+
+      // Both places empty the slot, so both move the passport in after it:
+      it('should move a row into a slot that two places give it', async () => {
+        await createTables();
+        await insertRowsWithIds(knex, 'graph_move_holder', [
+          { id: 1, name: 'P' },
+          { id: 2, name: 'O' },
+        ]);
+        await insertRowsWithIds(knex, 'graph_move_passport', [
+          { id: 10, no: 'S', personId: 1 },
+          { id: 20, no: 'R', personId: 2 },
+        ]);
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, passport: { id: 20 } },
+            { id: 1, passport: { id: 20 } },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect(await selectPassports()).toEqual([
+          { id: 10, no: 'S', personId: null },
+          { id: 20, no: 'R', personId: 1 },
+        ]);
+      });
 
       describe('swapped between a person and a new one', () => {
         // Person 2, a child of person 9, has passport 20 (R), which moves into

@@ -9,7 +9,7 @@ const prefix = 'graph_gen_';
 // The columns of each table, in the order of creation:
 export const graphTables = {
   person: ['id', 'label', 'name', 'age', 'parentId', 'bossId', 'favoritePetId', 'stamp'],
-  pet: ['id', 'label', 'name', 'ownerId', 'stamp'],
+  pet: ['id', 'label', 'name', 'kind', 'code', 'ownerId', 'sitterId', 'stamp'],
   toy: ['id', 'label', 'name', 'petId'],
   profile: ['id', 'label', 'bio', 'personId'],
   movie: ['id', 'label', 'title'],
@@ -18,6 +18,7 @@ export const graphTables = {
   license: ['id', 'label', 'code'],
   person_license: ['personId', 'licenseId'],
   friendship: ['personId', 'friendId'],
+  tag: ['id', 'label', 'name', 'petCode'],
 };
 
 // The foreign keys and the tables they point to:
@@ -25,6 +26,7 @@ const foreignKeys = {
   parentId: 'person',
   bossId: 'person',
   ownerId: 'person',
+  sitterId: 'person',
   petId: 'pet',
   personId: 'person',
   movieId: 'movie',
@@ -33,8 +35,23 @@ const foreignKeys = {
   friendId: 'person',
 };
 
-// The relations that keep their key in the related row:
-const rowKeyRelations = new Set(['children', 'pets', 'toys', 'profile', 'badges']);
+// The relations that keep their key in the related row, with the column of the
+// row and the column of the model that it points to:
+const rowKeyRelations = {
+  children: ['parentId', 'id'],
+  pets: ['ownerId', 'id'],
+  dogs: ['ownerId', 'id'],
+  sittedPets: ['sitterId', 'id'],
+  toys: ['petId', 'id'],
+  profile: ['personId', 'id'],
+  badges: ['personId', 'id'],
+  siblings: ['ownerId', 'ownerId'],
+  dogSiblings: ['ownerId', 'ownerId'],
+  tags: ['petCode', 'code'],
+};
+
+// The relations that only contain dogs:
+const dogRelations = new Set(['dogs', 'dogSiblings']);
 
 const relationTypes = {
   children: 'person',
@@ -42,6 +59,8 @@ const relationTypes = {
   boss: 'person',
   owner: 'person',
   pets: 'pet',
+  dogs: 'pet',
+  sittedPets: 'pet',
   toys: 'toy',
   profile: 'profile',
   movies: 'movie',
@@ -49,8 +68,10 @@ const relationTypes = {
   license: 'license',
   favoritePet: 'pet',
   siblings: 'pet',
+  dogSiblings: 'pet',
   activeOwner: 'person',
   ownerFriends: 'person',
+  tags: 'tag',
 };
 
 function graphTableName(table) {
@@ -83,7 +104,10 @@ export async function createGraphTables(knex) {
       table.increments('id');
       table.string('label');
       table.string('name');
+      table.string('kind');
+      table.string('code');
       table.integer('ownerId');
+      table.integer('sitterId');
       table.string('stamp');
     })
     .createTable(t('toy'), (table) => {
@@ -155,6 +179,13 @@ export async function createGraphTables(knex) {
         .inTable(t('person'))
         .onDelete('CASCADE');
       table.integer('friendId');
+    })
+    // Keyed on a column of the pet that isn't its id:
+    .createTable(t('tag'), (table) => {
+      table.increments('id');
+      table.string('label');
+      table.string('name');
+      table.string('petCode');
     });
 }
 
@@ -198,6 +229,18 @@ export function createGraphModels(Model) {
           relation: Model.HasManyRelation,
           modelClass: Pet,
           join: { from: `${t('person')}.id`, to: `${t('pet')}.ownerId` },
+        },
+        dogs: {
+          relation: Model.HasManyRelation,
+          modelClass: Pet,
+          filter: (query) => query.where(`${t('pet')}.kind`, 'dog'),
+          join: { from: `${t('person')}.id`, to: `${t('pet')}.ownerId` },
+        },
+        // Places pets on a second column next to their owner's:
+        sittedPets: {
+          relation: Model.HasManyRelation,
+          modelClass: Pet,
+          join: { from: `${t('person')}.id`, to: `${t('pet')}.sitterId` },
         },
         profile: {
           relation: Model.HasOneRelation,
@@ -272,6 +315,12 @@ export function createGraphModels(Model) {
           modelClass: Pet,
           join: { from: `${t('pet')}.ownerId`, to: `${t('pet')}.ownerId` },
         },
+        dogSiblings: {
+          relation: Model.HasManyRelation,
+          modelClass: Pet,
+          filter: (query) => query.where(`${t('pet')}.kind`, 'dog'),
+          join: { from: `${t('pet')}.ownerId`, to: `${t('pet')}.ownerId` },
+        },
         ownerFriends: {
           relation: Model.ManyToManyRelation,
           modelClass: Person,
@@ -283,6 +332,12 @@ export function createGraphModels(Model) {
             },
             to: `${t('person')}.id`,
           },
+        },
+        // Keyed on a column that graphs often leave out of the pet:
+        tags: {
+          relation: Model.HasManyRelation,
+          modelClass: Tag,
+          join: { from: `${t('pet')}.code`, to: `${t('tag')}.petCode` },
         },
       };
     }
@@ -322,7 +377,13 @@ export function createGraphModels(Model) {
     }
   }
 
-  return { Person, Pet, Toy, Profile, Movie, Badge, License };
+  class Tag extends Model {
+    static get tableName() {
+      return t('tag');
+    }
+  }
+
+  return { Person, Pet, Toy, Profile, Movie, Badge, License, Tag };
 }
 
 // Seed the tables with the rows of a case, with their ids:
@@ -421,17 +482,90 @@ export function findKeptGraphRows(testCase) {
   return kept;
 }
 
+// The rows that end up in a relation that the graph gives as a list, but that
+// the graph doesn't mention anywhere, as `[relation, model label, row label]`.
+// The graph leaves them out, so they have to be removed from the relation,
+// also when the model moves to them.
+export function findStrayGraphRows(testCase, rows) {
+  const parsed = Object.fromEntries(
+    Object.entries(rows).map(([table, rows]) => [table, rows.map((row) => JSON.parse(row))]),
+  );
+  const mentioned = new Set();
+  const stray = [];
+
+  const findLabel = (value, table) => {
+    const id = value.id ?? value['#dbRef'];
+    const row =
+      table === 'badge'
+        ? testCase.rows.badge.find((badge) => badge.kind === value.kind && badge.num === value.num)
+        : id !== undefined && testCase.rows[table].find((row) => row.id === id);
+    return row ? row.label : value.label;
+  };
+
+  const visit = (value, table) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, table));
+    } else if (value && typeof value === 'object') {
+      mentioned.add(`${table}:${findLabel(value, table)}`);
+      for (const [key, child] of Object.entries(value)) {
+        if (relationTypes[key]) {
+          visit(child, relationTypes[key]);
+        }
+      }
+    }
+  };
+
+  visit(testCase.graph, 'person');
+
+  const roots = [testCase.graph].flat();
+  const models = [
+    ...roots.map((root) => ({ value: root, table: 'person' })),
+    ...findPlaces(roots).map(({ obj, key }) => ({ value: obj, table: relationTypes[key] })),
+  ];
+
+  for (const { value, table } of models) {
+    const label = findLabel(value, table);
+    const model = parsed[table].find((row) => row.label === label);
+    if (!model || isMarked(value)) continue;
+
+    for (const [key, items] of Object.entries(value)) {
+      if (Object.hasOwn(rowKeyRelations, key) && Array.isArray(items)) {
+        const [column, modelColumn] = rowKeyRelations[key];
+        const relatedTable = relationTypes[key];
+        const modelKey = modelColumn === 'id' ? label : model[modelColumn];
+
+        for (const row of parsed[relatedTable]) {
+          if (
+            modelKey !== null &&
+            row[column] === modelKey &&
+            (!dogRelations.has(key) || isDog(row)) &&
+            !mentioned.has(`${relatedTable}:${row.label}`)
+          ) {
+            stray.push([key, label, row.label]);
+          }
+        }
+      }
+    }
+  }
+
+  return stray;
+}
+
 // Create the rows of the database and the call that writes a graph from
 // `seed`. Each existing row appears once in the graph, apart from rows that get
 // a second place, which agrees with the first one unless the case is built to
 // conflict (`isConflicting`).
 export function createGraphCase(seed) {
   const random = createRandom(seed);
-  const rows = createRows(random);
+  // The shapes added later draw from their own generator, so that they leave
+  // the cases of the others as they were, unless they appear in them:
+  const extra = createRandom(seed + 0x5bd1e995);
+  const rows = createRows(random, extra);
   const isInsert = random.chance(0.2);
   const uidNodes = [];
   const usedIds = new Set();
   let labelCount = 0;
+  let codeCount = 0;
   let uidCount = 0;
   let hasMarkers = false;
   let isConflicting = false;
@@ -454,7 +588,7 @@ export function createGraphCase(seed) {
   // The place of each model whose relation keeps a key in its row, which other
   // places of its row have to share:
   const keyPlaces = new Map();
-  const isRowKeyPlace = (place) => rowKeyRelations.has(place?.key);
+  const isRowKeyPlace = (place) => Object.hasOwn(rowKeyRelations, place?.key ?? '');
 
   // Give models a `#id`, which `#ref` and `#ref{}` point to later:
   const setUid = (obj, type) => {
@@ -534,14 +668,22 @@ export function createGraphCase(seed) {
           );
         }
         if (random.chance(0.4)) {
-          obj.pets = createArray('pet', rows.pet, depth, at('pets'), ownRows('pet', 'ownerId'));
+          // The pets or, filtered on their kind, the dogs of the person:
+          const key = extra.chance(0.2) ? 'dogs' : 'pets';
+          const ownPets = ownRows('pet', 'ownerId');
+          obj[key] =
+            key === 'dogs'
+              ? createArray('pet', rows.pet.filter(isDog), depth, at(key), ownPets.filter(isDog))
+              : createArray('pet', rows.pet, depth, at(key), ownPets);
           // Relations of one pet that are keyed on its owner, which change when
           // the pet moves here:
-          const pet = random.chance(0.3) && random.pick(obj.pets.filter((pet) => !isMarked(pet)));
+          const pet = random.chance(0.3) && random.pick(obj[key].filter((pet) => !isMarked(pet)));
           if (pet) {
-            // `insertGraph()` can't relate the pets of `siblings`:
-            if (!isInsert && random.chance(0.6)) {
-              siblingsPlaces.push({ owner: obj, pet });
+            // `insertGraph()` can't relate the pets of `siblings`. Siblings
+            // that the pet already lists may contain models that `#ref`
+            // models point to:
+            if (!isInsert && random.chance(0.6) && !pet.siblings && !pet.dogSiblings) {
+              siblingsPlaces.push({ owner: obj, key, pet });
             }
             if (random.chance(0.4)) {
               const ownFriends = ownRows('friendship', 'personId').map((row) => ({
@@ -557,6 +699,16 @@ export function createGraphCase(seed) {
               );
             }
           }
+        }
+        // Pets placed on a second column, next to their owner's:
+        if (extra.chance(0.15)) {
+          obj.sittedPets = createArray(
+            'pet',
+            rows.pet,
+            depth,
+            at('sittedPets'),
+            ownRows('pet', 'sitterId'),
+          );
         }
         if (random.chance(0.25)) {
           obj.boss = random.chance(0.2)
@@ -630,18 +782,59 @@ export function createGraphCase(seed) {
       }
     } else if (type === 'pet') {
       if (random.chance(0.5)) obj.name = `name ${random.int(1, 99)}`;
+      const row = obj.id && rows.pet.find((row) => row.id === obj.id);
+      if (!row) {
+        if (dogRelations.has(place?.key)) {
+          obj.kind = 'dog';
+        } else if (extra.chance(0.5)) {
+          obj.kind = extra.chance(0.5) ? 'dog' : 'cat';
+        }
+      }
+      // Graphs mostly leave out the code of existing pets, on which `tags`
+      // are keyed:
+      if (extra.chance(row ? 0.2 : 0.7)) obj.code = row ? row.code : `c-new${++codeCount}`;
 
       if (depth < 3) {
         if (random.chance(0.3)) {
           obj.toys = createArray('toy', rows.toy, depth, at('toys'), ownRows('toy', 'petId'));
         }
-        // Below `pets`, the owner is the model that lists the pet:
-        const isInPets = place.key === 'pets';
-        if (random.chance(0.1) && !isMarked(obj) && !(isInPets && place.container['#delete'])) {
+        // Below `pets`, the owner is the model that lists the pet. Below
+        // `siblings`, the owner of the pet that lists it, which is left out:
+        const isInPets = ['pets', 'dogs'].includes(place.key);
+        if (
+          random.chance(0.1) &&
+          !['siblings', 'dogSiblings'].includes(place.key) &&
+          !isMarked(obj) &&
+          !(isInPets && place.container['#delete'])
+        ) {
           const ownerKey = random.chance(0.7) ? 'owner' : 'activeOwner';
           obj[ownerKey] = isInPets
             ? createContainerRef(place)
             : createModel('person', rows.person, depth + 1, at(ownerKey), [], true);
+        }
+        // Siblings that leave out or add pets of the owner, which a move of the
+        // pet reads at its new owner:
+        if (!isInsert && random.chance(0.1)) {
+          const { ownerId } = row || {};
+          const ownSiblings = ownerId ? rows.pet.filter((row) => row.ownerId === ownerId) : [];
+          // Siblings filtered on their kind, which a chain of moved dogs reads
+          // without the read of the unfiltered siblings:
+          if (extra.chance(0.3)) {
+            obj.dogSiblings = createArray(
+              'pet',
+              rows.pet.filter(isDog),
+              depth,
+              at('dogSiblings'),
+              ownSiblings.filter(isDog),
+            );
+          } else {
+            obj.siblings = createArray('pet', rows.pet, depth, at('siblings'), ownSiblings);
+          }
+        }
+        const code = obj.code ?? row?.code;
+        if (code && extra.chance(0.15)) {
+          const ownTags = rows.tag.filter((tag) => tag.petCode === code);
+          obj.tags = createArray('tag', rows.tag, depth, at('tags'), ownTags);
         }
       }
     } else if (type === 'toy') {
@@ -652,6 +845,8 @@ export function createGraphCase(seed) {
       if (random.chance(0.3)) obj.title = `title ${random.int(1, 99)}`;
     } else if (type === 'license') {
       if (random.chance(0.3)) obj.code = `code ${random.int(1, 99)}`;
+    } else if (type === 'tag') {
+      if (random.chance(0.5)) obj.name = `name ${random.int(1, 99)}`;
     }
 
     return obj;
@@ -685,7 +880,10 @@ export function createGraphCase(seed) {
             (!isRowKeyPlace(place) ||
               (!isMarked(model) &&
                 !(key === 'children' && 'parent' in model) &&
-                !(key === 'pets' && ('owner' in model || 'activeOwner' in model)) &&
+                !(
+                  ['pets', 'dogs', 'siblings', 'dogSiblings'].includes(key) &&
+                  ('owner' in model || 'activeOwner' in model)
+                ) &&
                 (!keyPlace || (keyPlace.container === obj && keyPlace.key === key))))
           );
         });
@@ -726,8 +924,8 @@ export function createGraphCase(seed) {
 
   // `siblings` describe the same pets as the final `pets` of their owner, so
   // they list them all:
-  for (const { owner, pet } of siblingsPlaces) {
-    pet.siblings = owner.pets
+  for (const { owner, key, pet } of siblingsPlaces) {
+    pet[key === 'dogs' ? 'dogSiblings' : 'siblings'] = owner[key]
       .filter((sibling) => !isMarked(sibling))
       .map((sibling) => ({ '#ref': sibling['#ref'] ?? sibling['#id'] ?? setUid(sibling, 'pet') }));
   }
@@ -784,6 +982,63 @@ export function createGraphCase(seed) {
     }
   }
 
+  // Give a pet that the graph places in its owner's pets a second place on
+  // another column, below which relations keyed on the owner read the pet at
+  // its new owner:
+  const persons = unused('person', rows.person);
+  const ownerPlace =
+    !isInsert &&
+    persons.length > 0 &&
+    extra.chance(0.4) &&
+    extra.pick(
+      findPlaces(roots).filter(
+        ({ obj, key, container }) =>
+          ['pets', 'dogs'].includes(key) &&
+          obj.id &&
+          container.id &&
+          !isMarked(obj) &&
+          !('owner' in obj) &&
+          !('activeOwner' in obj),
+      ),
+    );
+
+  if (ownerPlace) {
+    const { obj: pet, key, container } = ownerPlace;
+    const person = use('person', { id: extra.pick(persons).id });
+    const place = { id: pet.id };
+    const siblingsKey = key === 'dogs' ? 'dogSiblings' : 'siblings';
+    const others = unused('pet', key === 'dogs' ? rows.pet.filter(isDog) : rows.pet);
+    const owner = rows.person.find((row) => row.id === container.id).label;
+    const label = (id) => rows.pet.find((row) => row.id === id).label;
+
+    // The final pets of the owner, and maybe a pet that moves there, unless
+    // the first place lists them already:
+    if (extra.chance(0.6) && !pet.siblings && !pet.dogSiblings) {
+      place[siblingsKey] = container[key]
+        .filter((sibling) => !isMarked(sibling))
+        .map((sibling) => ({
+          '#ref': sibling['#ref'] ?? sibling['#id'] ?? setUid(sibling, 'pet'),
+        }));
+      if (others.length > 0 && extra.chance(0.5)) {
+        const other = use('pet', { id: extra.pick(others).id });
+        place[siblingsKey].push(other);
+        expectedValues.push(['pet', label(other.id), { ownerId: owner }]);
+      }
+    }
+
+    // The sitted pets that the person keeps:
+    const sittedPets = unused('pet', rows.pet).filter((row) => row.sitterId === person.id);
+    roots.push({
+      id: person.id,
+      sittedPets: [
+        place,
+        ...sittedPets.filter(() => extra.chance(0.5)).map(({ id }) => use('pet', { id })),
+      ],
+    });
+    const sitter = rows.person.find((row) => row.id === person.id).label;
+    expectedValues.push(['pet', label(pet.id), { ownerId: owner, sitterId: sitter }]);
+  }
+
   const options = { allowRefs: true, ...(hasMarkers && { allowMarkers: true }) };
   const optionNames = isInsert
     ? ['relate']
@@ -820,7 +1075,9 @@ export function createGraphCase(seed) {
     }
   }
 
-  if ((hasMovedRows && random.chance(0.85)) || hasSecondPlace) options.relate = true;
+  if ((hasMovedRows && random.chance(0.85)) || hasSecondPlace || ownerPlace) {
+    options.relate = true;
+  }
   // `#ref` models and their models may be written through paths that allow
   // different writes:
   if (!isInsert && /"#ref"/.test(JSON.stringify(roots)) && random.chance(0.3)) {
@@ -844,7 +1101,7 @@ export function createGraphCase(seed) {
   };
 }
 
-function createRows(random) {
+function createRows(random, extra) {
   const rows = Object.fromEntries(Object.keys(graphTables).map((table) => [table, []]));
   const personCount = random.int(2, 5);
 
@@ -862,7 +1119,7 @@ function createRows(random) {
   for (const person of rows.person) {
     for (let i = random.int(0, 2); i > 0; i--) {
       const id = rows.pet.length + 1;
-      rows.pet.push({ id, label: `pet${id}`, name: `pet ${id}`, ownerId: person.id });
+      rows.pet.push(createPetRow(extra, id, person.id, personCount));
 
       for (let j = random.int(0, 1); j > 0; j--) {
         const toyId = rows.toy.length + 1;
@@ -918,7 +1175,34 @@ function createRows(random) {
     }
   }
 
+  // Occasionally many pets of one person, which graphs mostly leave out:
+  if (extra.chance(0.05)) {
+    const { id: ownerId } = extra.pick(rows.person);
+    for (let i = extra.int(10, 30); i > 0; i--) {
+      rows.pet.push(createPetRow(extra, rows.pet.length + 1, ownerId, personCount));
+    }
+  }
+
+  for (const pet of rows.pet) {
+    if (extra.chance(0.4)) {
+      const id = rows.tag.length + 1;
+      rows.tag.push({ id, label: `tag${id}`, name: `tag ${id}`, petCode: pet.code });
+    }
+  }
+
   return rows;
+}
+
+function createPetRow(random, id, ownerId, personCount) {
+  return {
+    id,
+    label: `pet${id}`,
+    name: `pet ${id}`,
+    kind: random.chance(0.5) ? 'dog' : 'cat',
+    code: `c${id}`,
+    ownerId,
+    sitterId: random.chance(0.3) ? random.int(1, personCount) : null,
+  };
 }
 
 // mulberry32, a small seeded generator:
@@ -947,6 +1231,32 @@ function contains(value, target) {
       typeof value === 'object' &&
       Object.values(value).some((child) => contains(child, target)))
   );
+}
+
+function isDog(pet) {
+  return pet.kind === 'dog';
+}
+
+// The models below `roots` with their places, apart from the ones that the
+// graph removes with a model above them:
+function findPlaces(roots) {
+  const places = [];
+
+  const visit = (obj) => {
+    for (const [key, value] of Object.entries(obj)) {
+      if (relationTypes[key]) {
+        for (const item of [value].flat()) {
+          if (item && typeof item === 'object' && !item['#ref'] && !item['#dbRef']) {
+            places.push({ obj: item, key, container: obj });
+            if (!isMarked(item)) visit(item);
+          }
+        }
+      }
+    }
+  };
+
+  roots.forEach(visit);
+  return places;
 }
 
 function isMarked(obj) {

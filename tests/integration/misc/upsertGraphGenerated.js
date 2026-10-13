@@ -7,6 +7,7 @@ import {
   dropGraphTables,
   dumpGraphTables,
   findKeptGraphRows,
+  findStrayGraphRows,
   seedGraphTables,
 } from '../../../testUtils/graphCases.js';
 
@@ -44,8 +45,9 @@ const expectedErrors = [
 
 // Write generated graphs, and check what has to hold for any graph: A failed
 // write leaves the rows as they were, the rows that the graph keeps or inserts
-// aren't deleted, no query runs after the write, and writing the same graph
-// again gives the same rows. Set OBJECTION_TEST_GRAPH_CASES for more cases.
+// aren't deleted, the rows that it leaves out of a relation are removed from it,
+// no query runs after the write, and writing the same graph again gives the
+// same rows. Set OBJECTION_TEST_GRAPH_CASES for more cases.
 export default (session) => {
   describe('upsertGraph() and insertGraph() of generated graphs', () => {
     const { knex } = session;
@@ -119,14 +121,19 @@ export default (session) => {
           expect(rows, context).toEqual(result.seededRows);
         } else if (testCase.method === 'upsertGraph') {
           // These options ignore places of rows, which may then be removed from
-          // the places that the graph leaves them out of:
-          const { noRelate, noInsert, insertMissing } = testCase.options;
+          // the places that the graph leaves them out of, or keep the rows
+          // below them where they are:
+          const { noRelate, noInsert, insertMissing, noDelete, noUnrelate } = testCase.options;
 
           if (!noRelate && !noInsert && !insertMissing) {
             const deletedRows = findKeptGraphRows(testCase).filter(([table, label]) =>
               rows[table].every((row) => JSON.parse(row).label !== label),
             );
             expect(deletedRows, context).toEqual([]);
+            // These options also keep the rows that the graph leaves out:
+            if (!noDelete && !noUnrelate) {
+              expect(findStrayGraphRows(testCase, rows), context).toEqual([]);
+            }
           }
 
           for (const [table, label, values] of testCase.expectedValues) {

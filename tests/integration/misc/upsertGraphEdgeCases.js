@@ -592,15 +592,14 @@ export default (session) => {
         expect(updatedIds).toEqual([1]);
       });
 
-      // The relations of moved rows are upserted after the move, so the row is
-      // written once for the move, and once more for the key of its new toy:
-      it('should run them for the move and for the relations of the row, with their ids', async () => {
+      // The row is written once, with its move and the key of its new toy:
+      it('should run them once for the move and the relations of the row, with their ids', async () => {
         await HookedPerson.query(knex).upsertGraph(
           { id: 3, pets: [{ id: 3 }, { id: 1, name: 'z', favoriteToy: { name: 'new toy' } }] },
           { relate: true },
         );
 
-        expect(updatedIds).toEqual([1, 1]);
+        expect(updatedIds).toEqual([1]);
         // The input is parsed once:
         expect(parsedNames).toEqual([undefined, 'z']);
       });

@@ -752,9 +752,8 @@ export default (session) => {
       });
 
       // Rows that move out of a slot below a row that moves to another owner
-      // first are related in a later pass, so they leave their slots by being
-      // unrelated before the rows that go into them (#398):
-      it('should write the rows of a slot whose row moves in a later pass', async () => {
+      // leave their slots before the rows that go into them (#398):
+      it('should write the rows of a slot whose row moves to an owner that moves', async () => {
         for (const [people1, people2, expectedPets] of [
           // The new pet 3 goes into the slot of person 1, and pet 1 moves to
           // person 2, which moves to org 2 first:
@@ -779,15 +778,6 @@ export default (session) => {
               { id: 3, ownerId: 1 },
             ],
           ],
-          // Pet 2 is related into the slot of person 1 instead:
-          [
-            [{ id: 1, onePet: { id: 2 } }],
-            [{ id: 2, onePet: { id: 1 } }],
-            [
-              { id: 1, ownerId: 2 },
-              { id: 2, ownerId: 1 },
-            ],
-          ],
         ]) {
           await createTables({ uniqueOwner: true });
           await insertPeople([
@@ -809,7 +799,28 @@ export default (session) => {
         }
       });
 
-      it('should keep a row in an emptied slot that a later pass moves', async () => {
+      // Rows that swap their slots can't both hold their keys at once, and the
+      // keys aren't cleared first, as they may be NOT NULL:
+      it('should fail to swap the rows of two slots with a unique key', async () => {
+        await createTables({ uniqueOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
+        await knex('graph_order_org').insert({ id: 2 });
+
+        await expect(
+          Org.query().upsertGraph(
+            [
+              { id: 1, people: [{ id: 1, onePet: { id: 2 } }] },
+              { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
+            ],
+            { relate: true, insertMissing: true },
+          ),
+        ).rejects.toThrow(UniqueViolationError);
+      });
+
+      it('should keep a row in an emptied slot whose row moves below a moving owner', async () => {
         await createTables({ uniqueOwner: true, requiredOwner: true });
         await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
         await knex('graph_order_org').insert({ id: 2 });
