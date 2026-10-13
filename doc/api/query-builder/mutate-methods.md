@@ -642,9 +642,9 @@ owners.
 
 Multiple items can be related by giving an array of identifiers: for has-many,
 belongs-to-many and many-to-many relations on all databases. On MySQL, the join
-rows of many-to-many relations need to have their ids, which they have unless a
-`through.modelClass` is used whose `idColumn` isn't made of the join columns. Belongs-to-one relations take
-one identifier.
+rows of many-to-many relations need to have their ids, which they have unless
+a `through.modelClass` is used whose `idColumn` isn't made of the join columns.
+Belongs-to-one relations take one identifier.
 
 The return value of the query is the number of affected items. On all databases
 except MySQL you can chain [returning('\*')](/api/query-builder/find-methods.html#returning)

@@ -8,7 +8,7 @@ export default (session) => {
   // SQL Server has no boolean expressions, so it gets a bound value instead.
   const rawTrue = () => (session.isMsSql() ? raw('?', [true]) : raw('1 = 1'));
 
-  describe('GraphInsert tests', () => {
+  describe('insertGraph() queries', () => {
     let Pet = null;
     let Person = null;
     let mockKnex = null;

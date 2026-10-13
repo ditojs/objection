@@ -24,7 +24,7 @@ import schema from './schema.js';
 import knexSnakeCase from './knexSnakeCase.js';
 import snakeCase from './snakeCase.js';
 import knexIdentifierMapping from './knexIdentifierMapping.js';
-import GraphInsert from './graph/GraphInsert.js';
+import insertGraphQueries from './graph/insertGraphQueries.js';
 import relationModify from './relationModify.js';
 import nonPrimaryKeyRelations from './nonPrimaryKeyRelations.js';
 import staticHooks from './staticHooks.js';
@@ -146,7 +146,7 @@ describe('integration tests', () => {
       knexSnakeCase(session);
       snakeCase(session);
       knexIdentifierMapping(session);
-      GraphInsert(session);
+      insertGraphQueries(session);
       relationModify(session);
       nonPrimaryKeyRelations(session);
       staticHooks(session);
