@@ -8,6 +8,7 @@
 - `upsertGraph()` sets the foreign key of a model that a `#ref` relates into a `HasManyRelation` or `HasOneRelation`. Before, the row was left without it, and the id of the owner could be cleared [#311](https://github.com/ditojs/objection/issues/311)
 - `upsertGraph()` with `relate` and `noUpdate` writes the foreign keys of models that it relates through a `HasManyRelation` or `HasOneRelation`, like it does for `BelongsToOneRelation` and `ManyToManyRelation`, instead of leaving them unrelated without an error, as it did since 1.5.0 [#355](https://github.com/ditojs/objection/pull/355)
 - `upsertGraph()` resolves a `#ref{}` to a value of an existing model, e.g. a foreign key that an inserted related model gives it, once the graph has filled it in. Before, it read the old value, e.g. `undefined` [#356](https://github.com/ditojs/objection/issues/356)
+- A many-to-many `patch()` / `update()` with join table extras and `limit()` on MySQL and SQL Server writes the extras to the join rows of the related rows that the limit picks when the relation joins through a related column other than the id, instead of to the join rows that refer to other rows by these ids, as it did since 3.8.0 [#360](https://github.com/ditojs/objection/issues/360)
 
 ## 3.9.0
 
