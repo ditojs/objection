@@ -317,6 +317,118 @@ export default (session) => {
         expect((await knex('graph_edge_person').where('name', 'N').first()).parentId).toBe(b.id);
       });
 
+      // `insertMissing` loads the rows of the models with ids, and the chain of
+      // children inserts `x` after the owners of the `#ref` models:
+      const insertedLate = {
+        name: 'k1',
+        children: [{ name: 'k2', children: [{ name: 'X', '#id': 'x' }] }],
+      };
+
+      for (const [title, places, getName] of [
+        [
+          'the place of its model',
+          [{ name: 'o', pets: [{ id: 1, '#id': 'p', name: 'of #ref{x.name}' }, { '#ref': 'p' }] }],
+          async () => (await knex('graph_edge_pet').where('id', 1).first()).name,
+        ],
+        [
+          'another place',
+          [
+            { name: 'o', children: [{ id: 1, '#id': 'p', name: 'of #ref{x.name}' }] },
+            { name: 'b', boss: { '#ref': 'p' } },
+          ],
+          async () => (await knex('graph_edge_person').where('id', 1).first()).name,
+        ],
+        [
+          'a place that keeps a key in its row',
+          [
+            { name: 'f', friends: [{ id: 1, '#id': 'p', name: 'of #ref{x.name}' }] },
+            { name: 'o', children: [{ '#ref': 'p' }] },
+          ],
+          async () => (await knex('graph_edge_person').where('id', 1).first()).name,
+        ],
+      ]) {
+        it(`should write the row of a #ref in ${title} with its resolved values`, async () => {
+          await Person.query(knex).upsertGraph(
+            { name: 'r', children: [insertedLate, ...places] },
+            { allowRefs: true, relate: true, insertMissing: true },
+          );
+
+          expect(await getName()).toBe('of X');
+        });
+      }
+
+      for (const [title, graph] of [
+        [
+          'as a BelongsToOne',
+          [
+            { id: 1, children: [{ id: 2, '#id': 'b', name: 'B2' }] },
+            { id: 3, boss: { '#ref': 'b' } },
+          ],
+        ],
+        [
+          'in a many-to-many relation',
+          [
+            { id: 1, children: [{ id: 2, '#id': 'b', name: 'B2' }] },
+            { id: 3, friends: [{ '#ref': 'b' }] },
+          ],
+        ],
+      ]) {
+        it(`should write the row of a #ref ${title} that its path allows, where the path of its model doesn't`, async () => {
+          await knex('graph_edge_person').where('id', 2).update({ parentId: 1 });
+
+          await Person.query(knex).upsertGraph(graph, {
+            allowRefs: true,
+            relate: true,
+            noUpdate: ['children'],
+          });
+
+          expect((await knex('graph_edge_person').where('id', 2).first()).name).toBe('B2');
+        });
+      }
+
+      it("should write the row of a #ref in a many-to-many relation it's already in that its path allows", async () => {
+        await knex('graph_edge_person').where('id', 2).update({ parentId: 1 });
+        await knex('graph_edge_friend').insert({ aId: 3, bId: 2 });
+
+        await Person.query(knex).upsertGraph(
+          {
+            id: 1,
+            children: [
+              { id: 2, '#id': 'b', name: 'B2' },
+              { id: 3, friends: [{ '#ref': 'b' }] },
+            ],
+          },
+          { allowRefs: true, relate: true, noUpdate: ['children'] },
+        );
+
+        expect((await knex('graph_edge_person').where('id', 2).first()).name).toBe('B2');
+      });
+
+      it('should insert a new model once when a #ref repeats its place', async () => {
+        const updatedNames = [];
+
+        class HookedPet extends Pet {
+          $beforeUpdate() {
+            updatedNames.push(this.name);
+          }
+        }
+
+        class HookedPerson extends Person {
+          static get relationMappings() {
+            const { pets } = super.relationMappings;
+            return { pets: { ...pets, modelClass: HookedPet } };
+          }
+        }
+
+        await HookedPerson.query(knex).upsertGraph(
+          { name: 'o', pets: [{ '#id': 'p', name: 'new' }, { '#ref': 'p' }] },
+          { allowRefs: true },
+        );
+
+        expect(updatedNames).toEqual([]);
+        expect(await knex('graph_edge_pet').where('name', 'new')).toHaveLength(1);
+      });
+
       it('should break a cycle through a BelongsToOne key instead of an array of keys', async () => {
         const [a, b] = await Person.query(knex).upsertGraph(
           [
