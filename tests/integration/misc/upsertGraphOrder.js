@@ -574,6 +574,27 @@ export default (session) => {
       });
     });
 
+    describe('rows that several places keep', () => {
+      it('should keep a row that one of its places keeps through the same key', async () => {
+        for (const reversed of [false, true]) {
+          await createTables();
+          await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
+
+          // Pet 1 leaves itself out of its siblings, person 1's pets keep it
+          // through the same key, and person 2's liked pets through another:
+          const people = [
+            { id: 1, pets: [{ id: 1, siblings: [] }] },
+            { id: 2, likedPets: [{ id: 1 }] },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+          });
+
+          expect(await selectPets()).toEqual([{ id: 1, name: 'a', ownerId: 1 }]);
+        }
+      });
+    });
+
     describe('unique foreign key of a HasOneRelation', () => {
       it('should delete the current row before inserting its replacement', async () => {
         await createTables({ uniqueOwner: true });
@@ -619,6 +640,30 @@ export default (session) => {
           expect(await selectPets()).toEqual([
             { id: 1, name: 'a', ownerId: 2 },
             { id: 2, name: 'b', ownerId: 1 },
+          ]);
+        }
+      });
+
+      it('should insert a row into a slot after its current row moves, next to a BelongsToOne relate of it', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
+
+          // Pet 1 moves to the new person 3, the new pet 3 into its slot, and
+          // person 1 relates pet 1 as its favorite, which doesn't move it:
+          const people = [
+            { id: 1, favoritePet: { id: 1 } },
+            { id: 1, onePet: { id: 3, name: 'c' } },
+            { id: 3, onePet: { id: 1 } },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+            insertMissing: true,
+          });
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 3 },
+            { id: 3, name: 'c', ownerId: 1 },
           ]);
         }
       });
