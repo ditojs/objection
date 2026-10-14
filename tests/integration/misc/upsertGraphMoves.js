@@ -350,6 +350,54 @@ export default (session) => {
         ]);
       });
 
+      // Person 99 is fetched once for both of its places, with the children of
+      // the one that gives them:
+      it('should remove the rows that a relation leaves out in one of two places of a row', async () => {
+        for (const reversed of [false, true]) {
+          await createTables();
+          await insertRows();
+          await knex('graph_move_person').where('id', 3).update({ parentId: 99 });
+
+          const people = [
+            { id: 99, children: [{ id: 1 }] },
+            { id: 99, name: 'r' },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            unrelate: true,
+          });
+
+          expect(await knex('graph_move_person').select('id', 'parentId').orderBy('id')).toEqual([
+            { id: 1, parentId: 99 },
+            { id: 2, parentId: null },
+            { id: 3, parentId: null },
+            { id: 99, parentId: null },
+          ]);
+        }
+      });
+
+      // Person 1 is fetched once for both of its places, with the parent of the
+      // one that gives it:
+      it('should delete the replaced BelongsToOne row of one of two places of a row', async () => {
+        for (const reversed of [false, true]) {
+          await createTables();
+          await insertRows();
+
+          const people = [
+            { id: 1, parent: { id: 3 } },
+            { id: 1, name: 'p1' },
+          ];
+          await Person.query().upsertGraph(reversed ? people.reverse() : people, {
+            relate: true,
+          });
+
+          expect(await knex('graph_move_person').select('id', 'parentId').orderBy('id')).toEqual([
+            { id: 1, parentId: 3 },
+            { id: 2, parentId: null },
+            { id: 3, parentId: null },
+          ]);
+        }
+      });
+
       it('should keep the old owners in a chain of moved rows that name their new owners', async () => {
         await createTables();
         await insertRows();

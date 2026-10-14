@@ -112,6 +112,7 @@
 - `upsertGraph()` throws a `ValidationError` of type `InvalidGraph` before anything is written for a graph that changes a key that is part of a row's id, e.g. with `idColumn = ['ownerId', 'name']`, by relating the row to another owner, or by pointing its own `BelongsToOneRelation` to another row or clearing it with `null`, `#unrelate` or `#delete`. 3.9.0 wrote nothing and returned the model as changed, or threw a `NotFoundError` for its relations
 - `upsertGraph()` keeps a row that a HasMany or HasOne relation leaves out when another place of the row sets the same key column: a relation on that column, e.g. pet 4 in `{ id: 2, pets: [{ id: 3 }, { id: 4, siblings: [] }] }` with `siblings` joined on `ownerId`, or the row's own `BelongsToOneRelation`, e.g. person 2 in `{ id: 2, parent: { id: 1, children: [] } }`, where 3.x unrelated it
 - `upsertGraph()` keeps a new row that one place inserts into a relation when a row that the graph moves leaves it out of a relation on the same key column, e.g. the new pet in `{ name: 'new', pets: [{ id: 10, siblings: [{ id: 10 }] }, { name: 'Bo' }] }` with `siblings` joined on `ownerId`, where 3.x deleted it with the relations of the moved row
+- `upsertGraph()` writes the relations of a row that the graph gives in several places the same way whatever their order, e.g. it removes person 3 from `children` in `[{ id: 1, children: [{ id: 2 }] }, { id: 1, name: 'a' }]`, as it does with the places swapped or with the first place alone, where 3.x kept the person depending on the order
 
 ### Types
 
