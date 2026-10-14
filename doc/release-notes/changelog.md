@@ -124,7 +124,7 @@
 
 - `InsertGraphOptions` includes `noInsert` and `noRelate`, which `insertGraph()` supports [#84](https://github.com/ditojs/objection/issues/84)
 - Faster type checking of query builders
-- `FromSchema<typeof Model.jsonSchema>` derives the properties of a model from its `jsonSchema`, declared `as const`. See [models](/guide/models.md#deriving-model-properties-from-the-json-schema-in-typescript) [#16](https://github.com/ditojs/objection/issues/16)
+- `FromModel<typeof Model>` derives the properties of a model from its `jsonSchema`, declared `as const`, and its `relationMappings`, and `FromJSONSchema` the types of other schemas. See [models](/guide/models.md#deriving-model-properties-in-typescript) [#16](https://github.com/ditojs/objection/issues/16) [#430](https://github.com/ditojs/objection/issues/430)
 - `patch()`, `patchById()`, `patchAndFetch()`, `patchAndFetchById()` and `merge()` take field expression keys of the model's columns, like `'address:street'`, typed as `PartialModelPatch<M>`. `insert()` and `update()` still reject them.
 
 ### Other

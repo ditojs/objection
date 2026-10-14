@@ -197,12 +197,12 @@ class Person extends Model {
 }
 ```
 
-## Deriving model properties from the JSON schema in TypeScript
+## Deriving model properties in TypeScript
 
-If a model has a `jsonSchema`, its properties don't need to be declared twice. Declare the schema `as const` and merge `FromSchema` of it into the class with an interface of the same name:
+A model's properties don't need to be declared next to its `jsonSchema` and `relationMappings`. Declare the schema `as const` and merge `FromModel` of the class into it with an interface of the same name:
 
 ```ts
-import { FromSchema, Model } from 'objection';
+import { FromModel, Model } from 'objection';
 
 class Person extends Model {
   static tableName = 'persons';
@@ -214,28 +214,49 @@ class Person extends Model {
       id: { type: 'integer' },
       firstName: { type: 'string', minLength: 1 },
       lastName: { type: ['string', 'null'] },
-      role: { enum: ['admin', 'user'] }
+      role: { enum: ['admin', 'user'] },
+      parentId: { type: ['integer', 'null'] }
     }
   } as const;
 
-  // Relations are declared by hand.
-  pets?: Animal[];
+  static relationMappings = () => ({
+    parent: {
+      relation: Model.BelongsToOneRelation,
+      modelClass: Person,
+      join: {
+        from: 'persons.parentId',
+        to: 'persons.id'
+      }
+    },
+    pets: {
+      relation: Model.HasManyRelation,
+      modelClass: Animal,
+      join: {
+        from: 'persons.id',
+        to: 'animals.ownerId'
+      }
+    }
+  });
 }
 
-interface Person extends FromSchema<typeof Person.jsonSchema> {}
+interface Person extends FromModel<typeof Person> {}
 
 const person = await Person.query().findById(1).throwIfNotFound();
 person.firstName; // string
 person.lastName; // string | null | undefined
 person.role; // 'admin' | 'user' | undefined
+person.parent; // Person | null | undefined
+person.pets; // Animal[] | undefined
 ```
 
-`FromSchema` understands `type` (also as an array like `['string', 'null']`), `required`, `nullable`, `enum`, `const`, `items` (also as a tuple), nested `properties`, `anyOf` and `oneOf`. Properties that aren't `required` are optional, and formats like `'date-time'` stay strings, as in JSON. Without `as const`, TypeScript widens the schema and `FromSchema` can't read it.
+Relations are optional, as they are only present when fetched, e.g. with `withGraphFetched()`, which narrows them to present. To-one relations (`BelongsToOneRelation`, `HasOneRelation` and `HasOneThroughRelation`) are typed `M | null`, as `withGraphFetched()` sets a missing one to `null`, and to-many relations `M[]`. `modelClass` can be a class or a function returning one, and the mappings a thunk, a static property or a getter. Relations whose type can't be read are left out and can be declared by hand: those with a module path as `modelClass`, and mappings declared with the general types `RelationMapping` or `RelationType` instead of being inferred.
 
-`as const` gives `static jsonSchema` the literal type of the schema, so a subclass can't replace it with a schema that requires more properties. For models that subclasses extend, declare the schema as a constant and give the static the general type `ReadonlyJSONSchema`:
+`FromModel` derives the properties from the schema with `FromJSONSchema`, which understands `type` (also as an array like `['string', 'null']`), `required`, `nullable`, `enum`, `const`, `items` (also as a tuple), nested `properties`, `anyOf` and `oneOf`. Properties that aren't `required` are optional, and formats like `'date-time'` stay strings, as in JSON. Without `as const`, TypeScript widens the schema and `FromJSONSchema` can't read it. `FromJSONSchema` also types schemas outside of models, e.g. of JSON columns or request bodies: `FromJSONSchema<typeof addressSchema>`.
+
+`as const` gives `static jsonSchema` the literal type of the schema, so a subclass can't replace it with a schema that requires more properties. For models that subclasses extend, declare the schema as a constant, give the static the general type `ReadonlyJSONSchema`, and derive the properties from the constant with `FromJSONSchema`. `FromModel` still adds the relations:
 
 ```ts
-import { FromSchema, Model, ReadonlyJSONSchema } from 'objection';
+import { FromModel, FromJSONSchema, Model, ReadonlyJSONSchema } from 'objection';
 
 const entrySchema = {
   type: 'object',
@@ -247,9 +268,21 @@ const entrySchema = {
 
 class Entry extends Model {
   static jsonSchema: ReadonlyJSONSchema = entrySchema;
+
+  static relationMappings = () => ({
+    owner: {
+      relation: Model.BelongsToOneRelation,
+      modelClass: Person,
+      join: {
+        from: 'entries.ownerId',
+        to: 'persons.id'
+      }
+    }
+  });
 }
 
-interface Entry extends FromSchema<typeof entrySchema> {}
+interface Entry
+  extends FromJSONSchema<typeof entrySchema>, FromModel<typeof Entry> {}
 
 const noteSchema = {
   type: 'object',
@@ -264,12 +297,12 @@ class Note extends Entry {
   static jsonSchema = noteSchema;
 }
 
-interface Note extends FromSchema<typeof noteSchema> {}
+interface Note extends FromModel<typeof Note> {}
 ```
 
 ## Checking relation mappings in TypeScript
 
-The relation properties of a model have to be declared by hand, and TypeScript doesn't check them against `relationMappings` by default. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation`, `ManyToManyRelation` or `BelongsToManyRelation` for an array), and that `modelClass` matches the property's model type:
+When the relation properties of a model are declared by hand, TypeScript doesn't check them against `relationMappings` by default. Models with `FromModel` don't need this check, and can't use it: `TypedRelationMappings` reads the relation properties that `FromModel` derives from the mappings. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation`, `ManyToManyRelation` or `BelongsToManyRelation` for an array), and that `modelClass` matches the property's model type:
 
 ```ts
 import { Model, TypedRelationMappings } from 'objection';
