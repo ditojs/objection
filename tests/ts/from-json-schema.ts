@@ -1,7 +1,7 @@
-// Type tests for FromSchema: model properties derived from `static
+// Type tests for FromJSONSchema: model properties derived from `static
 // jsonSchema`, declared `as const`.
 
-import { FromSchema, JSONSchema, Model, ModelObject, ReadonlyJSONSchema } from 'objection';
+import { FromJSONSchema, JSONSchema, Model, ModelObject, ReadonlyJSONSchema } from 'objection';
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
@@ -55,7 +55,7 @@ export class Owner extends Model {
   }
 }
 
-export interface Owner extends FromSchema<typeof Owner.jsonSchema> {}
+export interface Owner extends FromJSONSchema<typeof Owner.jsonSchema> {}
 
 export class Pet extends Model {
   static tableName = 'pets';
@@ -72,7 +72,7 @@ export class Pet extends Model {
   owner?: Owner;
 }
 
-export interface Pet extends FromSchema<typeof Pet.jsonSchema> {}
+export interface Pet extends FromJSONSchema<typeof Pet.jsonSchema> {}
 
 declare const owner: Owner;
 
@@ -97,7 +97,7 @@ type Props = {
   anything?: unknown;
 };
 
-type _props = Expect<Equal<FromSchema<typeof Owner.jsonSchema>, Props>>;
+type _props = Expect<Equal<FromJSONSchema<typeof Owner.jsonSchema>, Props>>;
 type _instance = Expect<Equal<Owner['address'], Props['address']>>;
 
 // ModelObject picks up the derived properties.
@@ -142,7 +142,7 @@ class BaseRecord extends Model {
   static jsonSchema: ReadonlyJSONSchema = baseSchema;
 }
 
-interface BaseRecord extends FromSchema<typeof baseSchema> {}
+interface BaseRecord extends FromJSONSchema<typeof baseSchema> {}
 
 const noteSchema = {
   type: 'object',
@@ -157,9 +157,9 @@ class Note extends BaseRecord {
   static jsonSchema = noteSchema;
 }
 
-interface Note extends FromSchema<typeof noteSchema> {}
+interface Note extends FromJSONSchema<typeof noteSchema> {}
 
-type _note = Expect<Equal<FromSchema<typeof noteSchema>, { id: number; text: string }>>;
+type _note = Expect<Equal<FromJSONSchema<typeof noteSchema>, { id: number; text: string }>>;
 declare const note: Note;
 note.id.toFixed();
 note.text.toUpperCase();
@@ -187,44 +187,47 @@ class ReadonlySchemaModel extends Model {
 
 // Variants of schema details.
 
-type Nullable = FromSchema<{ type: ['integer', 'null'] }>;
+type Nullable = FromJSONSchema<{ type: ['integer', 'null'] }>;
 type _nullable = Expect<Equal<Nullable, number | null>>;
-type Items = FromSchema<{
+type Items = FromJSONSchema<{
   type: 'array';
   items: { type: 'object'; properties: { a: { type: 'string' } } };
 }>;
 type _items = Expect<Equal<Items, { a?: string }[]>>;
-type NoRequired = FromSchema<{ type: 'object'; properties: { a: { type: 'string' } } }>;
+type NoRequired = FromJSONSchema<{ type: 'object'; properties: { a: { type: 'string' } } }>;
 type _noRequired = Expect<Equal<NoRequired, { a?: string }>>;
-type OneOf = FromSchema<{ oneOf: readonly [{ type: 'string' }, { type: 'null' }] }>;
+type OneOf = FromJSONSchema<{ oneOf: readonly [{ type: 'string' }, { type: 'null' }] }>;
 type _oneOf = Expect<Equal<OneOf, string | null>>;
-type Untyped = FromSchema<{ description: 'x' }>;
+type Untyped = FromJSONSchema<{ description: 'x' }>;
 type _untyped = Expect<Equal<Untyped, unknown>>;
-type ConditionalRequired = FromSchema<{
+type ConditionalRequired = FromJSONSchema<{
   type: 'object';
   required: ['id'];
   properties: { id: { type: 'integer' }; email: { type: 'string' } };
   anyOf: [{ required: ['email'] }, { required: ['id'] }];
 }>;
 type _conditionalRequired = Expect<Equal<ConditionalRequired, { id: number; email?: string }>>;
-type TypeAndAnyOf = FromSchema<{ type: 'string'; anyOf: [{ format: 'email' }, { format: 'uri' }] }>;
+type TypeAndAnyOf = FromJSONSchema<{
+  type: 'string';
+  anyOf: [{ format: 'email' }, { format: 'uri' }];
+}>;
 type _typeAndAnyOf = Expect<Equal<TypeAndAnyOf, string>>;
-type TypeAndOneOf = FromSchema<{ type: 'integer'; oneOf: [{ minimum: 0 }, { maximum: -10 }] }>;
+type TypeAndOneOf = FromJSONSchema<{ type: 'integer'; oneOf: [{ minimum: 0 }, { maximum: -10 }] }>;
 type _typeAndOneOf = Expect<Equal<TypeAndOneOf, number>>;
 // `type` narrows `enum` and `const`, as validation checks both.
-type NullableEnum = FromSchema<{ type: 'string'; enum: ['a', 'b']; nullable: true }>;
+type NullableEnum = FromJSONSchema<{ type: 'string'; enum: ['a', 'b']; nullable: true }>;
 type _nullableEnum = Expect<Equal<NullableEnum, 'a' | 'b'>>;
-type NullableEnumWithNull = FromSchema<{ type: 'string'; enum: ['a', null]; nullable: true }>;
+type NullableEnumWithNull = FromJSONSchema<{ type: 'string'; enum: ['a', null]; nullable: true }>;
 type _nullableEnumWithNull = Expect<Equal<NullableEnumWithNull, 'a' | null>>;
-type TypedConst = FromSchema<{ type: 'integer'; const: 1 }>;
+type TypedConst = FromJSONSchema<{ type: 'integer'; const: 1 }>;
 type _typedConst = Expect<Equal<TypedConst, 1>>;
-type EmptyObject = FromSchema<{ type: 'object'; properties: {} }>;
+type EmptyObject = FromJSONSchema<{ type: 'object'; properties: {} }>;
 type _emptyObject = Expect<Equal<EmptyObject, { [key: string]: unknown }>>;
-type AdditionalItems = FromSchema<{
+type AdditionalItems = FromJSONSchema<{
   type: 'array';
   items: [{ type: 'string' }];
   additionalItems: { type: 'number' };
 }>;
 type _additionalItems = Expect<Equal<AdditionalItems, [string?, ...number[]]>>;
-type Bool = FromSchema<true>;
+type Bool = FromJSONSchema<true>;
 type _bool = Expect<Equal<Bool, unknown>>;

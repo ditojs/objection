@@ -368,7 +368,7 @@ The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBui
 
 ## typescript: Model.jsonSchema is a readonly schema
 
-`static jsonSchema` is typed `ReadonlyJSONSchema`, a JSON schema with readonly arrays, so that schemas declared `as const` can be assigned to it, for `FromSchema`. A `JSONSchema` is assignable to it, but not the other way around: a model's schema read through the static type can't be passed to a parameter typed `JSONSchema`, or returned from `$beforeValidate()`. Declare the type on models that are used that way:
+`static jsonSchema` is typed `ReadonlyJSONSchema`, a JSON schema with readonly arrays, so that schemas declared `as const` can be assigned to it, for `FromJSONSchema`. A `JSONSchema` is assignable to it, but not the other way around: a model's schema read through the static type can't be passed to a parameter typed `JSONSchema`, or returned from `$beforeValidate()`. Declare the type on models that are used that way:
 
 ```ts
 import { JSONSchema, Model } from 'objection';

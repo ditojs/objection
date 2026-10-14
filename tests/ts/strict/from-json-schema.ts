@@ -1,7 +1,7 @@
 // Type tests for strict mode with model properties derived from the JSON
-// schema with FromSchema.
+// schema with FromJSONSchema.
 
-import { FromSchema, Model } from 'objection';
+import { FromJSONSchema, Model } from 'objection';
 
 class Owner extends Model {
   static tableName = 'owners';
@@ -18,7 +18,7 @@ class Owner extends Model {
   pets?: Pet[];
 }
 
-interface Owner extends FromSchema<typeof Owner.jsonSchema> {}
+interface Owner extends FromJSONSchema<typeof Owner.jsonSchema> {}
 
 class Pet extends Model {
   static tableName = 'pets';
@@ -32,7 +32,7 @@ class Pet extends Model {
   } as const;
 }
 
-interface Pet extends FromSchema<typeof Pet.jsonSchema> {}
+interface Pet extends FromJSONSchema<typeof Pet.jsonSchema> {}
 
 async function queries() {
   await Owner.query().where('firstName', 'Jennifer').where('role', 'admin');

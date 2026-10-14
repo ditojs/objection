@@ -18,7 +18,8 @@ import { Knex } from 'knex';
 // Only the declarations marked with `export` are exported.
 export {};
 
-// Phantom brand of the relation types, used by `TypedRelationMappings`.
+// Phantom brand of the relation types, used by `TypedRelationMappings` and
+// `FromModel`.
 declare const relationKind: unique symbol;
 // Phantom brand of `Generated` properties.
 declare const generated: unique symbol;
@@ -3215,23 +3216,16 @@ export interface initialize {
 
 /**
  * The type of the values that a JSON schema declared with `as const`
- * describes, e.g. the properties of a model from its `jsonSchema`:
+ * describes, e.g. of JSON columns, or of models that subclasses extend, whose
+ * `jsonSchema` has the general type for `FromModel`:
  *
- *   class Person extends Model {
- *     static jsonSchema = {
- *       type: 'object',
- *       required: ['firstName'],
- *       properties: {
- *         id: { type: 'integer' },
- *         firstName: { type: 'string' },
- *         age: { type: ['integer', 'null'] },
- *       },
- *     } as const;
+ *   const entrySchema = { type: 'object', properties: { ... } } as const;
  *
- *     pets?: Animal[];
+ *   class Entry extends Model {
+ *     static jsonSchema: ReadonlyJSONSchema = entrySchema;
  *   }
  *
- *   interface Person extends FromSchema<typeof Person.jsonSchema> {}
+ *   interface Entry extends FromJSONSchema<typeof entrySchema>, FromModel<typeof Entry> {}
  *
  * Supports `type` (also as an array), `required`, `nullable`, `enum`,
  * `const`, `items` (also as a tuple), nested `properties`, `anyOf` and
@@ -3240,7 +3234,7 @@ export interface initialize {
  * and `oneOf` only add constraints, e.g. alternative `required` lists, and
  * don't change the type.
  */
-export type FromSchema<S> = S extends boolean
+export type FromJSONSchema<S> = S extends boolean
   ? unknown
   : S extends { const: infer C }
     ? Extract<C, SchemaType<S>>
@@ -3251,7 +3245,7 @@ export type FromSchema<S> = S extends boolean
         : S extends { properties: object }
           ? SchemaObject<S>
           : S extends { anyOf: readonly (infer A)[] } | { oneOf: readonly (infer A)[] }
-            ? FromSchema<A> | SchemaNullable<S>
+            ? FromJSONSchema<A> | SchemaNullable<S>
             : unknown;
 
 // The type that `type` allows, which `enum` and `const` values are narrowed
@@ -3280,7 +3274,7 @@ type SchemaTypeName<N, S> = N extends 'string'
 type SchemaArray<S> = S extends { items: infer I }
   ? I extends readonly unknown[]
     ? SchemaTuple<I, S>
-    : FromSchema<I>[]
+    : FromJSONSchema<I>[]
   : unknown[];
 
 // Tuple `items` only check the items that are present: they are required
@@ -3288,12 +3282,12 @@ type SchemaArray<S> = S extends { items: infer I }
 // `additionalItems` restricts them.
 type SchemaTuple<I extends readonly unknown[], S> = [
   ...(S extends { minItems: I['length'] }
-    ? { -readonly [K in keyof I]: FromSchema<I[K]> }
-    : { -readonly [K in keyof I]?: FromSchema<I[K]> }),
+    ? { -readonly [K in keyof I]: FromJSONSchema<I[K]> }
+    : { -readonly [K in keyof I]?: FromJSONSchema<I[K]> }),
   ...(S extends { additionalItems: false }
     ? []
     : S extends { additionalItems: infer A }
-      ? FromSchema<A>[]
+      ? FromJSONSchema<A>[]
       : unknown[]),
 ];
 
@@ -3305,16 +3299,86 @@ type SchemaObject<S> = S extends { properties: infer P }
 
 // The intersection is flattened into one object type for readable hovers.
 type SchemaProperties<P, R> = {
-  -readonly [K in keyof P as K extends R ? K : never]: FromSchema<P[K]>;
+  -readonly [K in keyof P as K extends R ? K : never]: FromJSONSchema<P[K]>;
 } & {
-  -readonly [K in keyof P as K extends R ? never : K]?: FromSchema<P[K]>;
+  -readonly [K in keyof P as K extends R ? never : K]?: FromJSONSchema<P[K]>;
 } extends infer O
   ? { [K in keyof O]: O[K] }
   : never;
 
 /**
+ * The properties of a model class, derived from its `jsonSchema` declared
+ * `as const` and its `relationMappings`:
+ *
+ *   class Person extends Model {
+ *     static jsonSchema = { ... } as const;
+ *
+ *     static relationMappings = () => ({
+ *       parent: {
+ *         relation: Model.BelongsToOneRelation,
+ *         modelClass: Person,
+ *         join: { from: 'persons.parentId', to: 'persons.id' },
+ *       },
+ *     });
+ *   }
+ *
+ *   interface Person extends FromModel<typeof Person> {}
+ *
+ * The properties are typed as with `FromJSONSchema`. Relations are optional, as
+ * they are only present when fetched: to-one relations are typed `M | null`,
+ * as `withGraphFetched()` sets missing ones to `null`, and to-many relations
+ * `M[]`. Relations with a module path as `modelClass`, and mappings declared
+ * as `RelationMapping` instead of inferred, are left out, as are a schema and
+ * mappings with their general types, e.g. inherited from `Model`.
+ */
+export type FromModel<C extends { jsonSchema: unknown; relationMappings: unknown }> =
+  ModelSchemaProperties<C['jsonSchema']> & ModelRelationProperties<C['relationMappings']>;
+
+type ModelSchemaProperties<S> = ReadonlyJSONSchema extends S
+  ? {}
+  : FromJSONSchema<S> extends infer P extends object
+    ? P
+    : {};
+
+// Relations are picked by their mappings, as resolving the related models
+// while the model's own type is built would make it its own base type.
+type ModelRelationProperties<T, R = T extends () => infer M ? M : T> = string extends keyof R
+  ? {}
+  : {
+      -readonly [K in keyof R as IsMappedRelation<R[K]> extends true ? K : never]?: MappedRelation<
+        R[K]
+      >;
+    };
+
+// Relation types without a brand and module paths can't be resolved.
+type IsMappedRelation<M> = M extends { relation: infer T; modelClass: infer C }
+  ? [MappedKind<T>] extends [never]
+    ? false
+    : C extends string
+      ? false
+      : true
+  : false;
+
+// The related model is inferred from the constructor without checking it
+// against `Model`, as that check would circle back through the relations of
+// self-referencing models.
+type MappedRelation<M> = M extends { relation: infer T; modelClass: infer C }
+  ? MappedKind<T> extends 'HasMany' | 'ManyToMany' | 'BelongsToMany'
+    ? MappedModel<C>[]
+    : MappedModel<C> | null
+  : never;
+
+type MappedKind<T> = T extends { readonly [relationKind]?: infer K } ? K : never;
+
+type MappedModel<C> = C extends abstract new (...args: any) => infer I
+  ? I
+  : C extends () => abstract new (...args: any) => infer I
+    ? I
+    : never;
+
+/**
  * A JSON schema with readonly arrays, the type of `static jsonSchema`, so that
- * it takes schemas declared `as const`, for `FromSchema`. A `JSONSchema` is
+ * it takes schemas declared `as const`, for `FromJSONSchema`. A `JSONSchema` is
  * assignable to it.
  */
 export type ReadonlyJSONSchema = ReadonlyDeep<JSONSchema>;
