@@ -330,6 +330,26 @@ export default (session) => {
         },
       );
 
+      // Person 1's children leave out person 2, which names person 1 as its
+      // parent:
+      it('should keep a row with the parent that it names and that leaves it out', async () => {
+        await createTables();
+        await insertRows();
+        await knex('graph_move_person').where('id', 2).update({ parentId: 1 });
+
+        await Person.query().upsertGraph(
+          { id: 2, parent: { id: 1, children: [] } },
+          { relate: true },
+        );
+
+        expect(await knex('graph_move_person').select('id', 'parentId').orderBy('id')).toEqual([
+          { id: 1, parentId: 99 },
+          { id: 2, parentId: 1 },
+          { id: 3, parentId: null },
+          { id: 99, parentId: null },
+        ]);
+      });
+
       it('should keep the old owners in a chain of moved rows that name their new owners', async () => {
         await createTables();
         await insertRows();
