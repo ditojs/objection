@@ -203,6 +203,25 @@ export default (session) => {
       describe(title, () => {
         const graphOptions = { ...options, allowRefs: true };
 
+        // The pet's id is known before its insert, but the key only once the
+        // pet exists. SQL Server takes no explicit ids in identity columns:
+        it.skipIf(session.isMsSql())(
+          'should insert a BelongsToOne #ref with an id to a HasMany sibling',
+          async () => {
+            const result = await Person.query()[method](
+              {
+                name: 'Jennifer',
+                pets: [{ '#id': 'felix', id: 10, name: 'Felix' }],
+                favoritePet: { '#ref': 'felix' },
+              },
+              { ...graphOptions, ...(method === 'upsertGraph' && { insertMissing: true }) },
+            );
+
+            expect(result.favoritePetId).toBe(10);
+            expect((await fetchPerson('Jennifer')).favoritePet.name).toBe('Felix');
+          },
+        );
+
         it('should insert a BelongsToOne #ref to a HasMany sibling (issue example)', async () => {
           const result = await Person.query()[method](
             {

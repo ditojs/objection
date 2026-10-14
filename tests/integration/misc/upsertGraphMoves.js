@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { Model, NotFoundError, UniqueViolationError } from 'objection';
+import { Model, NotFoundError, UniqueViolationError, ValidationError } from 'objection';
 import { insertRowsWithIds } from '../../../testUtils/testUtils.js';
 
 // How upsertGraph() writes rows that it moves to other owners, and the rows
@@ -12,6 +12,12 @@ export default (session) => {
       class Category extends Model {
         static get tableName() {
           return 'graph_move_category';
+        }
+      }
+
+      class Badge extends Model {
+        static get tableName() {
+          return 'graph_move_badge';
         }
       }
 
@@ -91,6 +97,11 @@ export default (session) => {
               modelClass: Pet,
               join: { from: 'graph_move_person.favoritePetId', to: 'graph_move_pet.id' },
             },
+            badges: {
+              relation: Model.HasManyRelation,
+              modelClass: Badge,
+              join: { from: 'graph_move_person.code', to: 'graph_move_badge.personCode' },
+            },
             likedPets: {
               relation: Model.ManyToManyRelation,
               modelClass: Pet,
@@ -127,6 +138,7 @@ export default (session) => {
       }
 
       const tables = [
+        'graph_move_badge',
         'graph_move_like',
         'graph_move_friendship',
         'graph_move_toy',
@@ -153,6 +165,7 @@ export default (session) => {
           .createTable('graph_move_person', (table) => {
             table.increments('id');
             table.string('name');
+            table.string('code');
             table.integer('parentId');
             table.integer('favoritePetId');
           })
@@ -182,21 +195,27 @@ export default (session) => {
             table.integer('personId');
             table.integer('petId');
             table.string('note');
+          })
+          .createTable('graph_move_badge', (table) => {
+            table.increments('id');
+            table.string('name');
+            table.string('personCode');
           });
       }
 
       // Person 1, a child of person 99, owns pets 10 and 12, person 2 pet 11
-      // and person 3 pet 13. The graphs insert person 100 and pet 14.
+      // and person 3 pet 13. Persons 1 and 2 have the badges 300 and 301 through
+      // their codes. The graphs insert person 100, pet 14 and badge 302.
       async function insertRows() {
         await insertRowsWithIds(knex, 'graph_move_category', [
           { id: 5, name: 'cats' },
           { id: 6, name: 'dogs' },
         ]);
         await insertRowsWithIds(knex, 'graph_move_person', [
-          { id: 1, name: 'p1', parentId: 99 },
-          { id: 2, name: 'p2' },
-          { id: 3, name: 'p3' },
-          { id: 99, name: 'root' },
+          { id: 1, name: 'p1', code: 'c1', parentId: 99 },
+          { id: 2, name: 'p2', code: 'c2' },
+          { id: 3, name: 'p3', code: 'c3' },
+          { id: 99, name: 'root', code: 'c99' },
         ]);
         await insertRowsWithIds(knex, 'graph_move_pet', [
           { id: 10, name: 'Fluffy', ownerId: 1, categoryId: 5 },
@@ -205,6 +224,10 @@ export default (session) => {
           { id: 13, name: 'Kit', ownerId: 3 },
         ]);
         await insertRowsWithIds(knex, 'graph_move_toy', [{ id: 100, name: 'ball', petId: 10 }]);
+        await insertRowsWithIds(knex, 'graph_move_badge', [
+          { id: 300, name: 'b1', personCode: 'c1' },
+          { id: 301, name: 'b2', personCode: 'c2' },
+        ]);
         await knex('graph_move_friendship').insert([
           { personId: 1, friendId: 3 },
           { personId: 2, friendId: 99 },
@@ -219,8 +242,16 @@ export default (session) => {
         return knex('graph_move_pet').select('id', 'name', 'ownerId').orderBy('id');
       }
 
+      function selectCodes() {
+        return knex('graph_move_person').select('id', 'code').orderBy('id');
+      }
+
+      function selectBadges() {
+        return knex('graph_move_badge').select('id', 'name', 'personCode').orderBy('id');
+      }
+
       beforeAll(() => {
-        for (const modelClass of [Category, Toy, Pet, Person]) {
+        for (const modelClass of [Category, Badge, Toy, Pet, Person]) {
           modelClass.knex(knex);
         }
       });
@@ -396,6 +427,72 @@ export default (session) => {
             { id: 3, parentId: null },
           ]);
         }
+      });
+
+      // Pet 10 isn't the favorite pet of person 2, so the mark is ignored, also
+      // when the later pass writes the relations of the moved person:
+      it('should keep a BelongsToOne row of a moved row that is marked but not related', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          { id: 3, children: [{ id: 2, favoritePet: { id: 10, '#delete': true } }] },
+          { relate: true, allowMarkers: true },
+        );
+
+        expect((await selectPets()).map(({ id }) => id)).toEqual([10, 11, 12, 13]);
+        expect(await selectPeople()).toContainEqual({ id: 2, name: 'p2', favoritePetId: null });
+      });
+
+      // `noRelate` ignores person 1's pets, so pet 11 stays with person 2, and so
+      // does its new sibling:
+      it('should insert a sibling at the key of a row that an ignored place relates', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, pets: [{ id: 11 }] },
+            { id: 2, favoritePet: { id: 11, siblings: [{ id: 11 }, { name: 'S' }] } },
+          ],
+          { relate: true, noRelate: ['pets'], noUnrelate: true },
+        );
+
+        expect((await selectPets()).find(({ name }) => name === 'S').ownerId).toBe(2);
+      });
+
+      // The pets of the moved person 2 are written in a later pass, where
+      // `noRelate` ignores them:
+      it('should insert a sibling at the key of a row that an ignored place of a later pass relates', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, children: [{ id: 2, pets: [{ id: 11 }, { id: 13 }] }] },
+            { id: 3, favoritePet: { id: 13, siblings: [{ id: 13 }, { name: 'S' }] } },
+          ],
+          { relate: true, noRelate: ['children.pets'] },
+        );
+
+        expect((await selectPets()).find(({ name }) => name === 'S').ownerId).toBe(3);
+      });
+
+      // `noRelate` ignores the siblings of pet 11 in the later pass that writes
+      // them, so pet 13 stays with person 3, and so does its new sibling:
+      it('should insert a sibling at the key of a row that an ignored place of a later pass moves', async () => {
+        await createTables();
+        await insertRows();
+
+        await Pet.query().upsertGraph(
+          [
+            { id: 10, siblings: [{ id: 11, siblings: [{ id: 13 }] }] },
+            { id: 13, siblings: [{ id: 13 }, { name: 'S' }] },
+          ],
+          { relate: true, noRelate: ['siblings.siblings'], noDelete: true },
+        );
+
+        expect((await selectPets()).find(({ name }) => name === 'S').ownerId).toBe(3);
       });
 
       it('should keep the old owners in a chain of moved rows that name their new owners', async () => {
@@ -771,6 +868,111 @@ export default (session) => {
           { id: 12, name: 'Tom', ownerId: 1 },
           { id: 13, name: 'Kit', ownerId: 3 },
         ]);
+      });
+
+      describe('keys of rows in several places', () => {
+        // Person 1's pets leave pet 12 out, which unrelates it, so the sibling
+        // that its other place gives gets no owner either.
+        it('should give the siblings of a row that another place unrelates no owner', async () => {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph(
+            [
+              { id: 1, pets: [{ id: 10 }] },
+              { id: 3, favoritePet: { id: 12, siblings: [{ name: 's' }] } },
+            ],
+            { relate: true, unrelate: true },
+          );
+
+          const pets = await selectPets();
+          expect(pets.find(({ id }) => id === 12).ownerId).toBe(null);
+          expect(pets.find(({ name }) => name === 's').ownerId).toBe(null);
+        });
+
+        // Pet 13 is placed at person 3 and in the siblings of pet 11 that is the
+        // favorite pet of person 2, where `noUpdate` keeps its key at 3.
+        it('should fail with two different keys given to the siblings of one slot', async () => {
+          await createTables();
+          await insertRows();
+
+          const err = await Person.query()
+            .upsertGraph(
+              [
+                { id: 3, pets: [{ id: 13 }] },
+                {
+                  id: 2,
+                  favoritePet: { id: 11, ownerId: 3, siblings: [{ id: 13 }, { name: 'n' }] },
+                },
+              ],
+              { relate: true, noDelete: true, noUpdate: ['favoritePet'] },
+            )
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.type).toBe('InvalidGraph');
+          expect(await selectPets()).toEqual([
+            { id: 10, name: 'Fluffy', ownerId: 1 },
+            { id: 11, name: 'Rex', ownerId: 2 },
+            { id: 12, name: 'Tom', ownerId: 1 },
+            { id: 13, name: 'Kit', ownerId: 3 },
+          ]);
+        });
+
+        // Pets 10 and 11 list each other at different owners.
+        it('should fail with two rows that list each other as siblings at different owners', async () => {
+          await createTables();
+          await insertRows();
+
+          const err = await Pet.query()
+            .upsertGraph(
+              [
+                { id: 10, siblings: [{ id: 11 }] },
+                { id: 11, siblings: [{ id: 10 }] },
+              ],
+              { relate: true, noDelete: true },
+            )
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.type).toBe('InvalidGraph');
+          expect(await selectPets()).toEqual([
+            { id: 10, name: 'Fluffy', ownerId: 1 },
+            { id: 11, name: 'Rex', ownerId: 2 },
+            { id: 12, name: 'Tom', ownerId: 1 },
+            { id: 13, name: 'Kit', ownerId: 3 },
+          ]);
+        });
+
+        // `noUpdate` keeps person 1 from writing the code that the graph gives,
+        // so the badges are related to the code that it has.
+        it('should ignore a given key that noUpdate does not write', async () => {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph(
+            { id: 1, code: 'zz', badges: [{ name: 'nb' }] },
+            { noUpdate: true, noDelete: true },
+          );
+
+          expect((await selectCodes()).find(({ id }) => id === 1)).toEqual({ id: 1, code: 'c1' });
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'c1' });
+        });
+
+        // Without a foreign key, the code of person 3 is patched at one root and
+        // read by the badges at the other.
+        it('should give the related rows the key that another place of the row patches', async () => {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph([
+            { id: 3, code: 'x' },
+            { id: 3, badges: [{ name: 'nb' }] },
+          ]);
+
+          expect((await selectCodes()).find(({ id }) => id === 3)).toEqual({ id: 3, code: 'x' });
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
       });
     });
 
