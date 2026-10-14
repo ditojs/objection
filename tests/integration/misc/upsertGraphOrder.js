@@ -668,6 +668,29 @@ export default (session) => {
         }
       });
 
+      it('should insert a row into a slot whose current row moves through its own BelongsToOneRelation', async () => {
+        for (const reversed of [false, true]) {
+          await createTables({ uniqueOwner: true });
+          await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
+
+          // Pet 1 names person 2 as its owner, and the new pet 3 goes into its
+          // slot, so pet 1 leaves it first:
+          const relations = [
+            ['onePet', { id: 3, name: 'c' }],
+            ['favoritePet', { id: 1, owner: { id: 2 } }],
+          ];
+          await Person.query().upsertGraph(
+            { id: 1, ...Object.fromEntries(reversed ? relations.reverse() : relations) },
+            { relate: true, insertMissing: true },
+          );
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            { id: 3, name: 'c', ownerId: 1 },
+          ]);
+        }
+      });
+
       it('should relate a row into a slot after its current row moves into a slot that a delete frees', async () => {
         for (const reversed of [false, true]) {
           await createTables({ uniqueOwner: true });
