@@ -208,12 +208,13 @@ Rows that the graph relates into a `HasManyRelation` or `HasOneRelation` from an
 
 ## insertGraph() and upsertGraph() reject rows placed in conflicting ways
 
-A graph that gives one row two different values for the same column, or the slot of a `HasOneRelation` two different rows, throws a `ValidationError` of type `InvalidGraph` that names both data paths, before anything is written. A row is identified by its table and id, and a `#ref` or `#dbRef` model is a place of the row that it refers to. For example:
+A graph that gives one row two different values for the same column in any two of its places, also for values that places read through the rows they relate, or the slot of a `HasOneRelation` two different rows, throws a `ValidationError` of type `InvalidGraph` that names both data paths, before anything is written. A row is identified by its table and id, and a `#ref` or `#dbRef` model is a place of the row that it refers to. For example:
 
 - the row is placed under two owners through the same foreign key, e.g. a pet in the `pets` of two people, also through `#ref`;
 - the row is placed under an owner through a `HasManyRelation` or `HasOneRelation`, and its own `BelongsToOneRelation` names another model, e.g. `{ id: 1, pets: [{ id: 4, owner: { name: 'new' } }] }` or a child with another `parent`;
 - one place gives the row a foreign key prop that another place sets through a relation, e.g. `[{ id: 1, children: [{ id: 2 }] }, { id: 2, parentId: 5 }]`;
 - the row appears twice with different values for the same prop;
+- two rows read a value through the rows they relate, and the places give it different values, e.g. two pets that list each other as `siblings` while they have different owners;
 - two places give the same `HasOneRelation` of an owner two different rows, or one row and `null`, also when one of the rows gets the owner's key through a foreign key prop or its own `BelongsToOneRelation`, e.g. `{ id: 1, profile: null }` next to `{ id: 6, person: { id: 1 } }`. A `HasOneRelation` with a `filter` only counts the rows placed through it;
 - the row is marked with `#delete` in one place and kept in another, or marked with `#unrelate`, which clears its key, while another place puts it under an owner;
 - a many-to-many pair is marked with `#unrelate` in one place and related or kept in another, e.g. `{ id: 1, movies: [{ id: 3, '#id': 'm', '#unrelate': true }, { '#ref': 'm' }] }`, as the pair has one join row;
