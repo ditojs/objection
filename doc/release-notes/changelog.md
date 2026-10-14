@@ -111,6 +111,7 @@
 - `upsertGraph()` on SQLite throws for `BigInt` ids, which the SQLite driver binds as `NULL`, where 3.x wrote `NULL` keys or patched nothing
 - `upsertGraph()` throws a `ValidationError` of type `InvalidGraph` before anything is written for a graph that changes a key that is part of a row's id, e.g. with `idColumn = ['ownerId', 'name']`, by relating the row to another owner, or by pointing its own `BelongsToOneRelation` to another row or clearing it with `null`, `#unrelate` or `#delete`. 3.9.0 wrote nothing and returned the model as changed, or threw a `NotFoundError` for its relations
 - `upsertGraph()` keeps a row that the graph places in a HasMany or HasOne relation when another relation on the same key column leaves it out, e.g. pet 4 in `{ id: 2, pets: [{ id: 3 }, { id: 4, siblings: [] }] }` with `siblings` joined on `ownerId`, where 3.x unrelated it
+- `upsertGraph()` keeps a new row that one place inserts into a relation when a row that the graph moves leaves it out of a relation on the same key column, e.g. the new pet in `{ name: 'new', pets: [{ id: 10, siblings: [{ id: 10 }] }, { name: 'Bo' }] }` with `siblings` joined on `ownerId`, where 3.x deleted it with the relations of the moved row
 
 ### Types
 

@@ -285,6 +285,51 @@ export default (session) => {
         ]);
       });
 
+      // The new person's pets list the new pet, which its moved pet's siblings
+      // leave out:
+      it('should keep a new row that a moved row leaves out of a relation with the same key', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          { name: 'new', pets: [{ id: 10, siblings: [{ id: 10 }] }, { name: 'Bo' }] },
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 10, name: 'Fluffy', ownerId: 100 },
+          { id: 11, name: 'Rex', ownerId: 2 },
+          { id: 12, name: 'Tom', ownerId: 1 },
+          { id: 13, name: 'Kit', ownerId: 3 },
+          { id: 14, name: 'Bo', ownerId: 100 },
+        ]);
+      });
+
+      // Pet 20 is inserted through the new person's liked pets and related
+      // through its pets, which keep it in the later pass. SQL Server takes no
+      // explicit ids in identity columns:
+      it.skipIf(session.isMsSql())(
+        'should keep a row that one place inserts and another relates',
+        async () => {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph(
+            {
+              name: 'new',
+              pets: [{ id: 10, siblings: [{ id: 10 }] }, { id: 20 }],
+              likedPets: [{ id: 20, name: 'X' }],
+            },
+            { relate: true, insertMissing: ['likedPets'] },
+          );
+
+          expect((await selectPets()).filter(({ id }) => [10, 20].includes(id))).toEqual([
+            { id: 10, name: 'Fluffy', ownerId: 100 },
+            { id: 20, name: 'X', ownerId: 100 },
+          ]);
+        },
+      );
+
       it('should keep the old owners in a chain of moved rows that name their new owners', async () => {
         await createTables();
         await insertRows();
