@@ -69,3 +69,8 @@ async function beforeWrite(person: Person) {
   const found = await Person.query().returning('*').where('age', 1);
   type _found = Expect<Equal<typeof found, Person[]>>;
 }
+
+// Exported functions need a nameable type for declaration emit.
+export function insertReturning() {
+  return Person.query().insert({ firstName: 'Jennifer' }).returning('*');
+}
