@@ -1527,16 +1527,18 @@ export type JsonObjectOrFieldExpression = object | object[] | FieldExpression;
 export type Selection<QB extends AnyQueryBuilder> = ColumnRef | AnyQueryBuilder | CallbackVoid<QB>;
 
 export interface SelectMethod<out QB extends AnyQueryBuilder> {
-  // The model's properties come first, meant for autocompletion in loose mode,
-  // which the `any` overload below prevents:
-  <QBP extends QB>(...columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
+  // The column overload comes first, for autocompletion, and last in strict
+  // mode, so that errors are reported for it:
+  <QBP extends QB, const C extends readonly [unknown, ...unknown[]]>(
+    ...columns: IfStrict<ModelProps<ModelType<QBP>>[], StrictSelections<ModelType<QBP>, C>>
+  ): IfStrict<QB, SelectQueryBuilder<QBP, C>>;
   <QBP extends QB>(columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
 
   <QBP extends QB>(...columns: IfStrict<Selection<QBP>, never>[]): QB;
   <QBP extends QB>(columns: IfStrict<Selection<QBP>, never>[]): QB;
 
   // Allow anything else in loose mode, like `select(1)`:
-  <QBP extends QB>(...args: IfStrict<any, never>[]): QB;
+  <QBP extends QB>(...args: IfStrict<{} | null | undefined, never>[]): QB;
 
   <QBP extends QB, const C extends readonly unknown[] = []>(
     ...columns: StrictSelections<ModelType<QBP>, C>
@@ -1621,15 +1623,15 @@ export interface JsonRemove<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereMethod<out QB extends AnyQueryBuilder> {
-  // The model's properties come first, for autocompletion in loose mode:
-  <QBP extends QB>(
-    col: IfStrict<ModelProps<ModelType<QBP>>, never>,
-    op: Operator,
-    expr: Expression<PrimitiveValue>,
+  // The column overloads come first, for autocompletion:
+  <QBP extends QB, const C extends string = never, const O extends Operator = Operator>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    op: O,
+    expr: OperatorValueArg<ModelType<QBP>, C, O>,
   ): QB;
-  <QBP extends QB>(
-    col: IfStrict<ModelProps<ModelType<QBP>>, never>,
-    expr: Expression<PrimitiveValue>,
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    expr: ValueArg<ModelType<QBP>, C>,
   ): QB;
 
   (condition: boolean): QB;
@@ -1659,6 +1661,12 @@ export interface WhereMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereLikeMethod<out QB extends AnyQueryBuilder> {
+  // The column overload comes first, for autocompletion, and last, so that
+  // errors are reported for it:
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    expr: Expression<string>,
+  ): QB;
   (col: RefArg<QB>, expr: Expression<string>): QB;
   <QBP extends QB, const C extends string = never>(
     col: ColumnArg<ModelType<QBP>, C>,
@@ -1679,13 +1687,12 @@ export interface WhereExistsMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereInMethod<out QB extends AnyQueryBuilder> {
-  // The model's properties come first, for autocompletion in loose mode:
-  <QBP extends QB>(
-    col: IfStrict<ModelProps<ModelType<QBP>>, never>,
-    expr: Expression<PrimitiveValue>,
+  // The column overload comes first, for autocompletion, and last in strict
+  // mode, so that errors are reported for it:
+  <QBP extends QB, const C extends string = never>(
+    col: ColumnArg<ModelType<QBP>, C>,
+    expr: IfStrict<Expression<PrimitiveValue> | CallbackVoid<QB>, WhereInValues<QB, QBP, C>>,
   ): QB;
-  <QBP extends QB>(col: IfStrict<ModelProps<ModelType<QBP>>, never>, cb: CallbackVoid<QB>): QB;
-  <QBP extends QB>(col: IfStrict<ModelProps<ModelType<QBP>>, never>, qb: AnyQueryBuilder): QB;
 
   (col: RefArg<QB> | RefArg<QB>[], expr: readonly Expression<PrimitiveValue>[]): QB;
   (col: RefArg<QB> | RefArg<QB>[], cb: CallbackVoid<QB>): QB;
@@ -1693,13 +1700,16 @@ export interface WhereInMethod<out QB extends AnyQueryBuilder> {
 
   <QBP extends QB, const C extends string = never>(
     col: StrictColumn<ModelType<QBP>, C>,
-    expr: readonly ValueArg<ModelType<QBP>, C>[] | Raw | AnyQueryBuilder | CallbackVoid<QB>,
+    expr: WhereInValues<QB, QBP, C>,
   ): QB;
   <QBP extends QB, const C extends readonly unknown[] = []>(
     col: StrictColumns<ModelType<QBP>, C>,
     expr: readonly Expression<PrimitiveValue>[] | Raw | AnyQueryBuilder | CallbackVoid<QB>,
   ): QB;
 }
+
+type WhereInValues<QB extends AnyQueryBuilder, QBP extends QB, C extends string> =
+  readonly ValueArg<ModelType<QBP>, C>[] | Raw | AnyQueryBuilder | CallbackVoid<QB>;
 
 export interface WhereBetweenMethod<out QB extends AnyQueryBuilder> {
   (column: RefArg<QB>, range: [Expression<PrimitiveValue>, Expression<PrimitiveValue>]): QB;
