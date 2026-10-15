@@ -198,7 +198,7 @@ export interface CallbackVoid<T> {
 }
 
 export type Identity<T> = (value: T) => T;
-export type AnyQueryBuilder = QueryBuilder<any, any>;
+export type AnyQueryBuilder = QueryBuilder<any, any, any>;
 export type AnyModelConstructor = ModelConstructor<Model>;
 export type ModifierFunction<QB extends AnyQueryBuilder> = (qb: QB, ...args: any[]) => void;
 export type Modifier<QB extends AnyQueryBuilder = AnyQueryBuilder> =
@@ -399,7 +399,7 @@ export type WithGraphTreeQueryBuilder<QB extends AnyQueryBuilder, T> = [keyof T]
         ? QB
         : WithResultKind<
             QB,
-            WithGraph<ModelType<QB>, T>['QueryBuilderType'],
+            KeepExtra<WithGraph<ModelType<QB>, T>['QueryBuilderType'], ExtraType<QB>>,
             ModelType<QB>,
             ResultType<QB>,
             T
@@ -729,15 +729,32 @@ export type ModelType<T extends { ModelType: any }> = T['ModelType'];
 export type ResultType<T extends { ResultType: any }> = T['ResultType'];
 
 /**
- * Re-instantiates the query builder QB with the model type M and the result
- * type R, through its `RebindType`. The `~rebind` slot is `unknown`, so the
- * intersection resolves it to exactly `[M, R]`. Rebinding QB's own
- * `RebindType` instead of QB keeps the intersection small, which TypeScript
- * checks much faster.
+ * Re-instantiates the query builder QB with the model type M, the result
+ * type R and the extra type X, through its `RebindType`. The `~rebind` slot is
+ * `unknown`, so the intersection resolves it to exactly `[M, R, X]`.
+ * Rebinding QB's own `RebindType` instead of QB keeps the intersection small,
+ * which TypeScript checks much faster.
  */
-type Rebind<QB extends AnyQueryBuilder, M extends Model, R> = (QB['RebindType'] & {
-  '~rebind': [M, R];
+type Rebind<
+  QB extends AnyQueryBuilder,
+  M extends Model,
+  R,
+  X = IfStrict<unknown, ExtraType<QB>>,
+> = (QB['RebindType'] & {
+  '~rebind': [M, R, X];
 })['RebindType'];
+
+/**
+ * Gets the extra type from a query builder type: what the types know about
+ * the query beyond its model and result, see `QueryExtra`.
+ */
+export type ExtraType<T extends { ExtraType: any }> = T['ExtraType'];
+
+type WithExtra<QB extends AnyQueryBuilder, X> = Rebind<QB, ModelType<QB>, ResultType<QB>, X>;
+
+// The narrowed query builders of `withGraph*()` start without the extra type
+// of QB, so it is passed on, if there is one.
+type KeepExtra<NQB extends AnyQueryBuilder, X> = X extends QueryExtra ? WithExtra<NQB, X> : NQB;
 
 /**
  * Gets the single item query builder type for a query builder.
@@ -1160,6 +1177,16 @@ export type SelectedBrand<A> = { readonly [selected]: A };
  */
 export type ExtractedBrand<A> = { readonly [extracted]: A };
 
+/**
+ * The extra type of queries in strict mode: the model class C that started the
+ * query, e.g. with `Person.query()`, and the modifiers P registered with
+ * `modifiers()`, to check the names of modifiers.
+ */
+export interface QueryExtra<C = unknown, P = unknown> {
+  modelClass: C;
+  registered: P;
+}
+
 // The results whose rows have `jsonExtract()` values, which `withGraph*()`
 // keeps instead of converting the result kind:
 type ExtractedRows =
@@ -1277,16 +1304,185 @@ type UnknownRelations<M, T> = {
 
 /**
  * In strict mode, relation expressions are intersected with this, to reject
- * the names of unknown relations.
+ * the names of unknown relations, and of unknown modifiers, checked against
+ * the related class of each node and the modifiers registered on query
+ * builder QB.
  */
-type CheckRelationExpression<M, E> = IfStrict<
+type CheckRelationExpression<M, E, QB extends AnyQueryBuilder = never> = IfStrict<
   unknown,
   IsConcreteModel<M> extends true
     ? [UnknownRelations<M, ParseRelationExpression<E>>] extends [never]
-      ? unknown
+      ? CheckModifierExpression<E, QB>
       : { '~unknownRelation': UnknownRelations<M, ParseRelationExpression<E>> }
     : unknown
 >;
+
+type CheckModifierExpression<E, QB extends AnyQueryBuilder> =
+  HasQueryClass<QB> extends true
+    ? [CheckedModifiers<E, QB>] extends [never]
+      ? unknown
+      : { '~unknownModifier': CheckedModifiers<E, QB> }
+    : unknown;
+
+// Queries in generic code, where the model class can't be resolved, aren't
+// checked.
+type HasQueryClass<QB extends AnyQueryBuilder> =
+  IsConcreteModel<ModelType<QB>> extends false
+    ? false
+    : [QueryClass<QB>] extends [never]
+      ? false
+      : true;
+
+// Only expressions with modifiers are checked for them.
+type CheckedModifiers<E, QB> = E extends `${string}(${string}` | object
+  ? UnknownModifiers<
+      ClassMappings<QueryClass<QB>>,
+      ParseModifierExpression<E>,
+      keyof RegisteredModifiers<QB>
+    >
+  : never;
+
+/**
+ * The modifiers that a modifier name can refer to on query builder QB: the
+ * `modifiers` of the model class that started the query, and those registered
+ * with `modifiers()` before. Unknown names are only rejected in strict mode,
+ * and only on queries of model classes with literal `modifiers`.
+ */
+type KnownModifiers<QB> = ClassModifiers<QueryClass<QB>> & RegisteredModifiers<QB>;
+
+// The model class that started the query, if any.
+type QueryClass<QB> = [QB] extends [never]
+  ? never
+  : QB extends { ExtraType: QueryExtra<infer C> }
+    ? unknown extends C
+      ? never
+      : C
+    : never;
+
+type ClassModifiers<C> = C extends { modifiers: infer O } ? O : {};
+
+type ClassMappings<C> = C extends { relationMappings: infer T }
+  ? T extends () => infer R
+    ? R
+    : T
+  : {};
+
+type RegisteredModifiers<QB> = [QB] extends [never]
+  ? {}
+  : QB extends { ExtraType: { registered: infer P } }
+    ? P
+    : {};
+
+// Modifiers with their general type, e.g. inherited from `Model`, aren't
+// checked.
+type ChecksModifiers<QB extends AnyQueryBuilder> = IfStrict<
+  false,
+  HasQueryClass<QB> extends true ? ChecksClassModifiers<ClassModifiers<QueryClass<QB>>> : false
+>;
+
+type ChecksClassModifiers<O> = string extends keyof O ? false : true;
+
+// The names that `modify()` takes on query builder QB, also in lists. Names
+// in variables typed `string` are rejected where they are checked.
+type ModifierName<QB extends AnyQueryBuilder> =
+  ChecksModifiers<QB> extends true ? keyof KnownModifiers<QB> & string : string;
+
+type ModifyArg<QB extends AnyQueryBuilder> =
+  | ModifierName<QB>
+  | ModifierName<QB>[]
+  | ModifierFunction<QB>
+  | Record<string, Expression<PrimitiveValue>>;
+
+// The related classes are found through the relation mappings, at each step
+// of the path. P are the names registered with `modifiers()`.
+type UnknownModifiers<Mappings, T, P> = T extends unknown
+  ? {
+      [K in keyof T & string]: T[K] extends { names: infer N; children: infer Children }
+        ? MappedClass<Mappings, K> extends infer C
+          ? [C] extends [never]
+            ? never
+            : | (ChecksClassModifiers<ClassModifiers<C>> extends true
+                  ? Exclude<N, keyof ClassModifiers<C> | P>
+                  : never)
+              | UnknownModifiers<ClassMappings<C>, Children, P>
+          : never
+        : never;
+    }[keyof T & string]
+  : never;
+
+// Mappings with their general type, e.g. inherited from `Model`, give no class.
+type MappedClass<Mappings, K> = string extends keyof Mappings
+  ? never
+  : K extends keyof Mappings
+    ? Mappings[K] extends { modelClass: infer C }
+      ? C extends abstract new (...args: any) => any
+        ? C
+        : C extends () => infer RC
+          ? RC
+          : never
+      : never
+    : never;
+
+/**
+ * Parses the modifiers of relation expressions into a tree of the relations
+ * with their modifier names: 'pets(a, b).owner' ->
+ * `{ pets: { names: 'a' | 'b', children: { owner: ... } } }`. It is separate
+ * from `ParseRelationExpression`, so that the narrowing types don't carry the
+ * names.
+ */
+type ParseModifierExpression<E> = string extends E
+  ? {}
+  : E extends string
+    ? ParseModifierString<E>
+    : ParseModifierObject<E>;
+
+// A union of the trees of the list items, as they can name the same relation.
+type ParseModifierList<L extends string[], Acc = never> = L extends [
+  infer H extends string,
+  ...infer T extends string[],
+]
+  ? ParseModifierList<T, Acc | ParseModifierString<H>>
+  : Acc;
+
+type ParseModifierString<S extends string> =
+  Trim<S> extends `[${infer Inner}]`
+    ? ParseModifierList<SplitList<Inner>>
+    : Trim<S> extends `${infer Head}.${infer Rest}`
+      ? IsBalanced<Head> extends true
+        ? ModifierNode<Head, ParseModifierString<Rest>>
+        : {}
+      : ModifierNode<S, {}>;
+
+type ModifierNode<S extends string, Children> = [RelationName<S>] extends [never]
+  ? {}
+  : { [K in RelationName<S>]: { names: ModifierNames<S>; children: Children } };
+
+// Empty arguments, e.g. of 'pets()' or a trailing comma, are no names.
+type ModifierNames<S extends string> =
+  Trim<S> extends `${string}(${infer Args})` ? Exclude<Trim<SplitList<Args>[number]>, ''> : never;
+
+type ParseModifierObject<E> = string extends keyof E
+  ? {}
+  : {
+      [
+        K in keyof E as K extends `$${string}`
+          ? never
+          : false extends E[K]
+            ? never
+            : E[K] extends { $relation: any }
+              ? never
+              : K
+      ]: {
+        names: E[K] extends { $modify: infer N }
+          ? N extends readonly (infer I extends string)[]
+            ? I
+            : N extends string
+              ? N
+              : never
+          : never;
+        children: E[K] extends object ? ParseModifierObject<E[K]> : {};
+      };
+    };
 
 export interface ForClassMethod {
   <M extends Model>(modelClass: ModelConstructor<M>): QueryBuilderType<M>;
@@ -1665,7 +1861,7 @@ export interface JoinRelatedOptions {
 
 export interface JoinRelatedMethod<out QB extends AnyQueryBuilder> {
   <QBP extends QB, const E extends RelationExpression<ModelType<QBP>> = never>(
-    expr: E & CheckRelationExpression<ModelType<QBP>, E>,
+    expr: E & CheckRelationExpression<ModelType<QBP>, E, QBP>,
     opt?: JoinRelatedOptions,
   ): QB;
 }
@@ -2034,11 +2230,22 @@ export interface ClearContextMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface ModifyMethod<out QB extends AnyQueryBuilder> {
-  (modifier: Modifier<QB> | Modifier<QB>[], ...args: any[]): QB;
+  (modifier: ModifyArg<QB> | ModifyArg<QB>[], ...args: any[]): QB;
 }
 
-export interface ModifiersMethod<out QB extends AnyQueryBuilder> {
-  (modifiers: Modifiers): QB;
+// Registered modifiers add up, on queries with and without a model class.
+type RegisterModifiers<X, O> =
+  X extends QueryExtra<infer C, infer P> ? QueryExtra<C, P & O> : QueryExtra<unknown, O>;
+
+export interface ModifiersMethod<
+  out QB extends AnyQueryBuilder,
+  M extends Model = ModelType<QB>,
+  R = ResultType<QB>,
+  X = ExtraType<QB>,
+> {
+  <const O extends Modifiers>(
+    modifiers: O,
+  ): IfStrict<QB, Rebind<QB, M, R, RegisterModifiers<X, O>>>;
   (): QB;
 }
 
@@ -2052,7 +2259,11 @@ export interface CatchablePromiseLike<R> extends PromiseLike<R> {
   ): Promise<R | FR>;
 }
 
-export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseLike<R> {
+export class QueryBuilder<
+  M extends Model,
+  R = M[],
+  X = unknown,
+> implements CatchablePromiseLike<R> {
   static forClass: ForClassMethod;
 
   constructor(modelClass: ModelConstructor<M>);
@@ -2247,7 +2458,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   execute(): Promise<R>;
   castTo<MC extends Model>(modelClass: ModelConstructor<MC>): QueryBuilderType<MC>;
-  castTo<R>(): QueryBuilder<M, R>;
+  castTo<R>(): QueryBuilder<M, R, X>;
 
   update(update: PartialModelRow<M>): NumberQueryBuilder<this>;
   update(): NumberQueryBuilder<this>;
@@ -2293,15 +2504,15 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   // With literal relation expressions, the fetched relations become required
   // on the result type, see WithGraphQueryBuilder.
   withGraphFetched<const E extends RelationExpression<M>>(
-    expr: E & CheckRelationExpression<M, E>,
+    expr: E & CheckRelationExpression<M, E, this>,
     options?: GraphOptions,
   ): WithGraphQueryBuilder<this, E>;
   withGraphJoined<const E extends RelationExpression<M>>(
-    expr: E & CheckRelationExpression<M, E>,
+    expr: E & CheckRelationExpression<M, E, this>,
     options?: GraphOptions,
   ): WithGraphQueryBuilder<this, E>;
   withGraph<const E extends RelationExpression<M>>(
-    expr: E & CheckRelationExpression<M, E>,
+    expr: E & CheckRelationExpression<M, E, this>,
     options?: WithGraphOptions,
   ): WithGraphQueryBuilder<this, E>;
 
@@ -2379,7 +2590,7 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
   clearContext: ClearContextMethod<this>;
 
   modify: ModifyMethod<this>;
-  modifiers: ModifiersMethod<this>;
+  modifiers: ModifiersMethod<this, M, R, X>;
 
   isFind: BooleanReturningMethod;
   isExecutable: BooleanReturningMethod;
@@ -2405,27 +2616,29 @@ export class QueryBuilder<M extends Model, R = M[]> implements CatchablePromiseL
 
   ModelType: M;
   ResultType: R;
+  ExtraType: X;
 
-  // The model and result types that `RebindType` is instantiated with. They
-  // are `any` where `this` isn't rebound, e.g. when TypeScript checks the
-  // members of a custom query builder against this class.
+  // The model, result and extra types that `RebindType` is instantiated
+  // with. They are `any` where `this` isn't rebound, e.g. when TypeScript
+  // checks the members of a custom query builder against this class.
   '~rebind': unknown;
-  '~M': this['~rebind'] extends [any, any] ? this['~rebind'][0] : any;
-  '~R': this['~rebind'] extends [any, any] ? this['~rebind'][1] : any;
+  '~M': this['~rebind'] extends [any, any, any] ? this['~rebind'][0] : any;
+  '~R': this['~rebind'] extends [any, any, any] ? this['~rebind'][1] : any;
+  '~X': this['~rebind'] extends [any, any, any] ? this['~rebind'][2] : any;
 
   /**
-   * This query builder, re-instantiated with other model and result types,
-   * e.g. by `first()` or `page()`. Custom query builders redeclare it to keep
-   * their own type:
+   * This query builder, re-instantiated with other model, result and extra
+   * types, e.g. by `first()` or `page()`. Custom query builders redeclare it
+   * to keep their own type:
    *
-   *   declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+   *   declare RebindType: MyQueryBuilder<this['~M'], this['~R'], this['~X']>;
    */
-  RebindType: QueryBuilder<this['~M'], this['~R']>;
+  RebindType: QueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   // The query builder rebound to the result kinds of the helper types, e.g.
   // `SingleQueryBuilder`. As members, they also resolve where `this` is
   // generic, e.g. in the methods of custom query builders. Of the members
-  // starting with `~`, only `~M` and `~R` are API, for `RebindType`.
+  // starting with `~`, only `~M`, `~R` and `~X` are API, for `RebindType`.
   '~single': Rebind<this, M, ResultItem<R, M>>;
   '~maybeSingle': Rebind<this, M, ResultItem<R, M> | undefined>;
   '~array': Rebind<this, M, ResultItem<R, M>[]>;
@@ -2950,16 +3163,19 @@ export class Model {
 
   static defaultGraphOptions?: GraphOptions;
 
-  static query<M extends Model>(
-    this: ConstructorType<M>,
+  static query<M extends Model, C = unknown>(
+    this: ConstructorType<M> & IfStrict<unknown, C>,
     trxOrKnex?: TransactionOrKnex,
-  ): QueryBuilderType<M>;
+  ): IfStrict<QueryBuilderType<M>, WithExtra<QueryBuilderType<M>, QueryExtra<C, {}>>>;
 
-  static relatedQuery<M extends Model, K extends keyof M>(
-    this: ConstructorType<M>,
+  static relatedQuery<M extends Model, K extends keyof M, C = unknown>(
+    this: ConstructorType<M> & IfStrict<unknown, C>,
     relationName: K,
     trxOrKnex?: TransactionOrKnex,
-  ): ArrayRelatedQueryBuilder<M[K]>;
+  ): IfStrict<
+    ArrayRelatedQueryBuilder<M[K]>,
+    WithExtra<ArrayRelatedQueryBuilder<M[K]>, QueryExtra<MappedClass<ClassMappings<C>, K>, {}>>
+  >;
 
   static relatedQuery<RM extends Model>(
     relationName: string,

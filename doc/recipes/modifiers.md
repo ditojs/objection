@@ -58,10 +58,10 @@ You can register new modifiers for a query using the [modifiers](/api/query-buil
 
 ```js
 const people = await Person.query()
-  .withGraphFetched('children(defaultSelects, filterWomen)')
   .modifiers({
     filterWomen: query => query.modify('filterGender', 'female')
-  });
+  })
+  .withGraphFetched('children(defaultSelects, filterWomen)');
 ```
 
 ## Usage in joinRelated

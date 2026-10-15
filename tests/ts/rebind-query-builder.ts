@@ -20,8 +20,8 @@ type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;
 
-class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+class MyQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: MyQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   someCustomMethod(): this {
     return this;
@@ -188,8 +188,8 @@ const plainPage = PlainModel.query().page(0, 10);
 type _plainPage = Expect<Equal<typeof plainPage, QueryBuilder<PlainModel, Page<PlainModel>>>>;
 
 // Custom query builders that extend other custom query builders.
-class MyOtherQueryBuilder<M extends Model, R = M[]> extends MyQueryBuilder<M, R> {
-  declare RebindType: MyOtherQueryBuilder<this['~M'], this['~R']>;
+class MyOtherQueryBuilder<M extends Model, R = M[], X = unknown> extends MyQueryBuilder<M, R, X> {
+  declare RebindType: MyOtherQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   otherCustomMethod(): this {
     return this;
@@ -207,7 +207,7 @@ const other = OtherModel.query().first().someCustomMethod().otherCustomMethod();
 type _other = Expect<Equal<typeof other, MyOtherQueryBuilder<OtherModel, OtherModel | undefined>>>;
 
 // Without the `RebindType` declaration, the custom methods are lost.
-class ForgetfulQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
+class ForgetfulQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
   someCustomMethod(): this {
     return this;
   }
@@ -237,8 +237,8 @@ async function expectErrors() {
 }
 
 // Query builders that override methods with the helper types as return types.
-class OverridingQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: OverridingQueryBuilder<this['~M'], this['~R']>;
+class OverridingQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: OverridingQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   withGraph<const E extends RelationExpression<M>>(
     expr: E,
@@ -322,8 +322,8 @@ type _single = MyQueryBuilder<Person>['SingleQueryBuilderType'];
 
 // Inside the methods of a custom query builder, where `this` is generic, the
 // methods that change the result kind keep the model and result types.
-class GenericThisQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: GenericThisQueryBuilder<this['~M'], this['~R']>;
+class GenericThisQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: GenericThisQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   custom(): this {
     return this;

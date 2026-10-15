@@ -780,9 +780,6 @@ Relations can also be modified using modifiers like this:
 
 ```js
 const people = await Person.query()
-  .withGraphFetched(
-    '[pets(selectName, onlyDogs), children(orderByAge).[pets, children]]'
-  )
   .modifiers({
     selectName: builder => {
       builder.select('name');
@@ -795,7 +792,10 @@ const people = await Person.query()
     onlyDogs: builder => {
       builder.where('species', 'dog');
     }
-  });
+  })
+  .withGraphFetched(
+    '[pets(selectName, onlyDogs), children(orderByAge).[pets, children]]'
+  );
 
 console.log(people[0].children[0].pets[0].name);
 console.log(people[0].children[0].movies[0].id);

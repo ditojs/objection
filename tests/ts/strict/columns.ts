@@ -182,8 +182,12 @@ async function unchecked(column: string, personColumn: 'firstName' | 'lastName')
 
 // Generic code is checked loosely, as the columns can't be resolved there.
 
-export class GenericQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: GenericQueryBuilder<this['~M'], this['~R']>;
+export class GenericQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<
+  M,
+  R,
+  X
+> {
+  declare RebindType: GenericQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   byName(name: string) {
     return this.where('name', name).orderBy('name').findById(1).where('name', name);

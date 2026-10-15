@@ -50,8 +50,12 @@ export class Person extends Model {
 
 // A custom query builder, as in the custom query builder recipe.
 
-export class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
+export class CustomQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<
+  M,
+  R,
+  X
+> {
+  declare RebindType: CustomQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   someCustomMethod(): this {
     return this;

@@ -1,7 +1,7 @@
 import { Model, Page, QueryBuilder, Generated } from 'objection';
 
-export class AppQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: AppQueryBuilder<this['~M'], this['~R']>;
+export class AppQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: AppQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   active(): this {
     return this.where('deletedAt', null);

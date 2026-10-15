@@ -897,6 +897,24 @@ const pageQb = Person.query().page(1, 10);
 let pagePromise: PromiseLike<objection.Page<Person>> = pageQb;
 pagePromise = pageQb.execute();
 
+// The extra types of query builders don't merge with the query context.
+({ transaction: {} as objection.Transaction }) satisfies objection.QueryContext;
+
+Person.query<Person>().first();
+
+// Models can override `query()`, e.g. for a default scope.
+class ScopedPerson extends Person {
+  static query<M extends objection.Model>(
+    this: objection.ModelClass<M>,
+    trx?: objection.TransactionOrKnex,
+  ) {
+    return super.query(trx) as objection.QueryBuilderType<M>;
+  }
+}
+
+Person.query().modify([(qb: objection.QueryBuilder<Person>) => qb, ['someModifier']]);
+
+// Modifier names are only checked in strict mode.
 Person.query()
   .modify('someModifier')
   .modify('someModifier', 1, 'foo', { bar: true })
