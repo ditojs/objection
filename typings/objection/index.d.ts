@@ -1617,6 +1617,17 @@ export interface JsonRemove<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereMethod<out QB extends AnyQueryBuilder> {
+  // The model's properties come first, for autocompletion in loose mode.
+  <QBP extends QB>(
+    col: IfStrict<ModelProps<ModelType<QBP>>, never>,
+    op: Operator,
+    expr: Expression<PrimitiveValue>,
+  ): QB;
+  <QBP extends QB>(
+    col: IfStrict<ModelProps<ModelType<QBP>>, never>,
+    expr: Expression<PrimitiveValue>,
+  ): QB;
+
   (condition: boolean): QB;
   (cb: CallbackVoid<QB>): QB;
   (raw: Raw): QB;

@@ -17,7 +17,7 @@
     "test": "pnpm eslint && vitest run && pnpm test:typings",
     "test:fast": "vitest run --bail 1",
     "test:watch": "vitest",
-    "test:typings": "tsc && tsc -p tests/ts/strict && tsc -p tests/bench/typings && prettier --check \"typings/**/*.ts\" \"tests/ts/**/*.ts\" \"tests/bench/typings/*.ts\" \"tests/bench/typings/app/*.ts\"",
+    "test:typings": "tsc && tsc -p tests/ts/strict && tsc -p tests/bench/typings && node tests/ts/completions.js && prettier --check \"typings/**/*.ts\" \"tests/ts/**/*.ts\" \"tests/bench/typings/*.ts\" \"tests/bench/typings/app/*.ts\"",
     "bench:typings": "node tests/bench/typings/bench.js",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose --profile mssql down -v",
@@ -91,6 +91,7 @@
     "sqlite3": "^6.0.1",
     "tedious": "^20.3.7",
     "typescript": "^7.0.0",
+    "typescript-5": "npm:typescript@5.8.3",
     "vitepress": "1.6.4",
     "vitest": "^4.1.11"
   }
