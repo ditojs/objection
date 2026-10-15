@@ -214,6 +214,7 @@ export type RelationExpression<M extends Model> = string | object;
 
 // Type-level parsing of relation expressions, used to narrow the result
 // types of `withGraphFetched()`, `withGraphJoined()` and `fetchGraph()`.
+// The types that declarations of inferred query types refer to are exported.
 
 /**
  * Parses a relation expression, in string or object notation, into a tree
@@ -234,9 +235,9 @@ export type ParseRelationExpression<E> = [E] extends [never]
       ? ParseRelationString<E>
       : ParseRelationObject<E>;
 
-export type Whitespace = ' ' | '\n' | '\r' | '\t';
+type Whitespace = ' ' | '\n' | '\r' | '\t';
 
-export type Trim<S extends string> = S extends `${Whitespace}${infer R}`
+type Trim<S extends string> = S extends `${Whitespace}${infer R}`
   ? Trim<R>
   : S extends `${infer L}${Whitespace}`
     ? Trim<L>
@@ -245,7 +246,7 @@ export type Trim<S extends string> = S extends `${Whitespace}${infer R}`
 /**
  * Counts the occurrences of character C in S, as a tuple length.
  */
-export type CountChar<
+type CountChar<
   S extends string,
   C extends string,
   N extends 0[] = [],
@@ -254,7 +255,7 @@ export type CountChar<
 /**
  * True if S has as many opening as closing brackets and parentheses.
  */
-export type IsBalanced<S extends string> =
+type IsBalanced<S extends string> =
   CountChar<S, '['> extends CountChar<S, ']'>
     ? CountChar<S, '('> extends CountChar<S, ')'>
       ? true
@@ -265,7 +266,7 @@ export type IsBalanced<S extends string> =
  * Splits a list of expressions at the commas that aren't nested inside
  * brackets or parentheses: 'a, b.[c, d]' -> ['a', 'b.[c, d]'].
  */
-export type SplitList<
+type SplitList<
   S extends string,
   Acc extends string = '',
   Out extends string[] = [],
@@ -275,7 +276,7 @@ export type SplitList<
     : SplitList<Rest, `${Acc}${Head},`, Out>
   : [...Out, `${Acc}${S}`];
 
-export type ParseRelationList<L extends string[], Acc = {}> = L extends [
+type ParseRelationList<L extends string[], Acc = {}> = L extends [
   infer H extends string,
   ...infer T extends string[],
 ]
@@ -285,7 +286,7 @@ export type ParseRelationList<L extends string[], Acc = {}> = L extends [
 /**
  * Parses '[a, b]', 'a.b' and 'a' style expressions.
  */
-export type ParseRelationString<S extends string> =
+type ParseRelationString<S extends string> =
   Trim<S> extends `[${infer Inner}]`
     ? ParseRelationList<SplitList<Inner>>
     : Trim<S> extends `${infer Head}.${infer Rest}`
@@ -299,7 +300,7 @@ export type ParseRelationString<S extends string> =
  * 'pets(selectName)' -> 'pets'. Returns never for nodes that can't be
  * narrowed: aliases ('pets as p'), '*' and recursion ('^', '^2').
  */
-export type RelationName<S extends string> =
+type RelationName<S extends string> =
   Trim<S> extends `${infer Name}(${string})`
     ? RelationName<Name>
     : Trim<S> extends infer Name extends string
@@ -310,7 +311,7 @@ export type RelationName<S extends string> =
           : Name
       : never;
 
-export type RelationNode<Name extends string, Children> = [Name] extends [never]
+type RelationNode<Name extends string, Children> = [Name] extends [never]
   ? {}
   : { [K in Name]: Children };
 
@@ -319,26 +320,27 @@ export type RelationNode<Name extends string, Children> = [Name] extends [never]
  * `$` are options, and aliased nodes (`{ p: { $relation: 'pets' } }`) are
  * skipped.
  */
-export type ParseRelationObject<E> = string extends keyof E
-  ? {}
-  : {
-      [
-        K in keyof E as K extends `$${string}`
-          ? never
-          : false extends E[K]
+type ParseRelationObject<E> =
+  HasOnlyLiteralKeys<E> extends true
+    ? {
+        [
+          K in keyof E as K extends `$${string}`
             ? never
-            : E[K] extends { $relation: any }
+            : false extends E[K]
               ? never
-              : K
-      ]: E[K] extends object ? ParseRelationObject<E[K]> : {};
-    };
+              : E[K] extends { $relation: any }
+                ? never
+                : K
+        ]: E[K] extends object ? ParseRelationObject<E[K]> : {};
+      }
+    : {};
 
 /**
  * Marks the relations in tree T as fetched on model M: they become required
  * and are narrowed recursively. Only `undefined` is removed: declared `null`
  * is kept, as to-one relations can be null when there is no related row.
  */
-export type WithGraph<M, T> = [keyof T] extends [never]
+type WithGraph<M, T> = [keyof T] extends [never]
   ? M
   : WithGraphRelations<M, T, FetchedRelations<M, T>>;
 
@@ -362,7 +364,7 @@ export type FetchedRelations<M, T> = {
   [K in keyof M & keyof T]: NonNullable<M[K]> extends Model | Model[] ? K : never;
 }[keyof M & keyof T];
 
-export type WithGraphProperty<P, T> = [keyof T] extends [never]
+type WithGraphProperty<P, T> = [keyof T] extends [never]
   ? P
   : P extends Array<infer I>
     ? WithGraph<I, T>[]
@@ -467,11 +469,6 @@ type ItemOf<R, M> = R extends readonly (infer I)[]
       : M;
 
 /**
- * If T is an array, returns the item type, otherwise returns T.
- */
-export type ItemType<T> = T extends Array<unknown> ? T[number] : T;
-
-/**
  * Type for keys of non-function properties of T.
  */
 export type NonFunctionPropertyNames<T> = {
@@ -550,7 +547,7 @@ export type PartialModelObject<T extends Model> = {
  * builders for models with narrowed relations (see WithGraphModel) remain
  * assignable to the query builders for the plain models.
  */
-export type PartialModelProps<T extends Model> = {
+type PartialModelProps<T extends Model> = {
   [K in DataPropertyNames<T>]?: K extends RelationPropertyNames<T> ? never : Expression<T[K]>;
 };
 
@@ -622,7 +619,7 @@ export interface GeneratedBrand {
 /**
  * Insert keys are optional for optional, nullable and generated properties.
  */
-export type OptionalInsertPropertyNames<M> = {
+type OptionalInsertPropertyNames<M> = {
   [K in keyof M]-?: {} extends Pick<M, K>
     ? K
     : null extends M[K]
@@ -632,7 +629,7 @@ export type OptionalInsertPropertyNames<M> = {
         : never;
 }[keyof M];
 
-export type InsertablePropertyNames<M> = Exclude<DataPropertyNames<M>, RelationPropertyNames<M>>;
+type InsertablePropertyNames<M> = Exclude<DataPropertyNames<M>, RelationPropertyNames<M>>;
 
 /**
  * The complete data of a new row of model M, to check what is passed to
@@ -656,9 +653,9 @@ export type InsertableGraph<M extends Model> = Insertable<M> &
     [K in RelationPropertyNames<M>]?: InsertableGraphField<M[K]>;
   };
 
-export type InsertableGraphReference = { '#dbRef': MaybeCompositeId } | { '#ref': string };
+type InsertableGraphReference = { '#dbRef': MaybeCompositeId } | { '#ref': string };
 
-export type InsertableGraphField<F> =
+type InsertableGraphField<F> =
   NonNullable<F> extends (infer I extends Model)[]
     ? (InsertableGraph<I> | InsertableGraphReference)[]
     : NonNullable<F> extends infer I extends Model
@@ -1119,7 +1116,7 @@ type ExtractedProperties<M, A extends string> = {
 type SelectQueryBuilder<QB extends AnyQueryBuilder, C extends readonly unknown[]> = NarrowRows<
   QB,
   SelectedRow<ModelType<QB>, C>,
-  true extends SelectsAll<C[number]> ? true : false
+  true extends IsSelectAll<C[number]> ? true : false
 >;
 
 /**
@@ -1200,7 +1197,7 @@ type SelectBase<Item, M, All extends boolean> = All extends true
 // unknown types, under any aliases.
 type UnknownSelection = { [key: string]: unknown } & SelectedBrand<{ [key: string]: true }>;
 
-type SelectsAll<X> = X extends '*' | `${string}.*` ? true : false;
+type IsSelectAll<X> = X extends '*' | `${string}.*` ? true : false;
 
 /**
  * Replaces the item of the result R with the row.
@@ -1312,9 +1309,9 @@ type CheckRelationExpression<M, E, QB extends AnyQueryBuilder = never> = IfStric
 
 type CheckModifierExpression<E, QB extends AnyQueryBuilder> =
   HasQueryClass<QB> extends true
-    ? [CheckedModifiers<E, QB>] extends [never]
+    ? [UnknownExpressionModifiers<E, QB>] extends [never]
       ? unknown
-      : { '~unknownModifier': CheckedModifiers<E, QB> }
+      : { '~unknownModifier': UnknownExpressionModifiers<E, QB> }
     : unknown;
 
 // Queries in generic code, where the model class can't be resolved, aren't
@@ -1327,7 +1324,7 @@ type HasQueryClass<QB extends AnyQueryBuilder> =
       : true;
 
 // Only expressions with modifiers are checked for them.
-type CheckedModifiers<E, QB> = E extends `${string}(${string}` | object
+type UnknownExpressionModifiers<E, QB> = E extends `${string}(${string}` | object
   ? UnknownModifiers<
       ClassMappings<QueryClass<QB>>,
       ParseModifierExpression<E>,
@@ -1404,17 +1401,17 @@ type PropertyId<M, C extends string, F> =
 
 // Modifiers with their general type, e.g. inherited from `Model`, aren't
 // checked.
-type ChecksModifiers<QB extends AnyQueryBuilder> = IfStrict<
+type ShouldCheckModifiers<QB extends AnyQueryBuilder> = IfStrict<
   false,
-  HasQueryClass<QB> extends true ? ChecksClassModifiers<ClassModifiers<QueryClass<QB>>> : false
+  HasQueryClass<QB> extends true ? HasOnlyLiteralKeys<ClassModifiers<QueryClass<QB>>> : false
 >;
 
-type ChecksClassModifiers<O> = string extends keyof O ? false : true;
+type HasOnlyLiteralKeys<O> = string extends keyof O ? false : true;
 
 // The names that `modify()` takes on query builder QB, also in lists. Names
 // in variables typed `string` are rejected where they are checked.
 type ModifierName<QB extends AnyQueryBuilder> =
-  ChecksModifiers<QB> extends true ? keyof KnownModifiers<QB> & string : string;
+  ShouldCheckModifiers<QB> extends true ? keyof KnownModifiers<QB> & string : string;
 
 type ModifyArg<QB extends AnyQueryBuilder> =
   | ModifierName<QB>
@@ -1430,7 +1427,7 @@ type UnknownModifiers<Mappings, T, P> = T extends unknown
         ? MappedClass<Mappings, K> extends infer C
           ? [C] extends [never]
             ? never
-            : | (ChecksClassModifiers<ClassModifiers<C>> extends true
+            : | (HasOnlyLiteralKeys<ClassModifiers<C>> extends true
                   ? Exclude<N, keyof ClassModifiers<C> | P>
                   : never)
               | UnknownModifiers<ClassMappings<C>, Children, P>
@@ -1440,15 +1437,16 @@ type UnknownModifiers<Mappings, T, P> = T extends unknown
   : never;
 
 // Mappings with their general type, e.g. inherited from `Model`, give no class.
-type MappedClass<Mappings, K> = string extends keyof Mappings
-  ? never
-  : K extends keyof Mappings
-    ? Mappings[K] extends { modelClass: infer C }
-      ? C extends abstract new (...args: any) => any
-        ? C
-        : C extends () => infer RC
-          ? RC
-          : never
+type MappedClass<Mappings, K> =
+  HasOnlyLiteralKeys<Mappings> extends true
+    ? K extends keyof Mappings
+      ? Mappings[K] extends { modelClass: infer C }
+        ? C extends abstract new (...args: any) => any
+          ? C
+          : C extends () => infer RC
+            ? RC
+            : never
+        : never
       : never
     : never;
 
@@ -1490,28 +1488,29 @@ type ModifierNode<S extends string, Children> = [RelationName<S>] extends [never
 type ModifierNames<S extends string> =
   Trim<S> extends `${string}(${infer Args})` ? Exclude<Trim<SplitList<Args>[number]>, ''> : never;
 
-type ParseModifierObject<E> = string extends keyof E
-  ? {}
-  : {
-      [
-        K in keyof E as K extends `$${string}`
-          ? never
-          : false extends E[K]
+type ParseModifierObject<E> =
+  HasOnlyLiteralKeys<E> extends true
+    ? {
+        [
+          K in keyof E as K extends `$${string}`
             ? never
-            : E[K] extends { $relation: any }
+            : false extends E[K]
               ? never
-              : K
-      ]: {
-        names: E[K] extends { $modify: infer N }
-          ? N extends readonly (infer I extends string)[]
-            ? I
-            : N extends string
-              ? N
-              : never
-          : never;
-        children: E[K] extends object ? ParseModifierObject<E[K]> : {};
-      };
-    };
+              : E[K] extends { $relation: any }
+                ? never
+                : K
+        ]: {
+          names: E[K] extends { $modify: infer N }
+            ? N extends readonly (infer I extends string)[]
+              ? I
+              : N extends string
+                ? N
+                : never
+            : never;
+          children: E[K] extends object ? ParseModifierObject<E[K]> : {};
+        };
+      }
+    : {};
 
 export interface ForClassMethod {
   <M extends Model>(modelClass: ModelConstructor<M>): QueryBuilderType<M>;
@@ -2807,11 +2806,11 @@ export interface BelongsToManyRelationType extends RelationType {
  * Names of the properties of M that hold related models. Properties typed
  * `any` or `any[]` are columns.
  */
-export type RelationPropertyNames<M> = {
-  [K in keyof M]-?: HoldsModels<NonNullable<M[K]>> extends true ? K : never;
+type RelationPropertyNames<M> = {
+  [K in keyof M]-?: HasModels<NonNullable<M[K]>> extends true ? K : never;
 }[keyof M];
 
-type HoldsModels<P> = [P] extends [readonly (infer I)[]] ? IsModelLike<I> : IsModelLike<P>;
+type HasModels<P> = [P] extends [readonly (infer I)[]] ? IsModelLike<I> : IsModelLike<P>;
 
 type IsModelLike<P> = 0 extends 1 & P ? false : [P] extends [ModelLike] ? true : false;
 
@@ -2820,7 +2819,7 @@ type IsModelLike<P> = 0 extends 1 & P ? false : [P] extends [ModelLike] ? true :
 // Spreads of instances and their JSON don't have it.
 type ModelLike = { $clone(opt?: CloneOptions): unknown };
 
-export type TypedModelClassSpecifier<M extends Model> =
+type TypedModelClassSpecifier<M extends Model> =
   string | ModelConstructor<M> | (() => ModelConstructor<M>);
 
 /**
@@ -2834,7 +2833,7 @@ export interface TypedRelationMapping<
   modelClass: TypedModelClassSpecifier<M>;
 }
 
-export type TypedRelationMappingFor<T> =
+type TypedRelationMappingFor<T> =
   NonNullable<T> extends (infer I extends Model)[]
     ? TypedRelationMapping<
         I,
@@ -3631,13 +3630,14 @@ type ModelSchemaProperties<S> = ReadonlyJSONSchema extends S
 
 // Relations are picked by their mappings, as resolving the related models
 // while the model's own type is built would make it its own base type.
-type ModelRelationProperties<T, R = T extends () => infer M ? M : T> = string extends keyof R
-  ? {}
-  : {
-      -readonly [K in keyof R as IsMappedRelation<R[K]> extends true ? K : never]?: MappedRelation<
-        R[K]
-      >;
-    };
+type ModelRelationProperties<T, R = T extends () => infer M ? M : T> =
+  HasOnlyLiteralKeys<R> extends true
+    ? {
+        -readonly [
+          K in keyof R as IsMappedRelation<R[K]> extends true ? K : never
+        ]?: MappedRelation<R[K]>;
+      }
+    : {};
 
 // Relation types without a brand and module paths can't be resolved.
 type IsMappedRelation<M> = M extends { relation: infer T; modelClass: infer C }

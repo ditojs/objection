@@ -35,6 +35,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: insertGraph() has no allowMarkers option](#typescript-insertgraph-has-no-allowmarkers-option)
 - [typescript: RelateQueryBuilder takes the number query builder](#typescript-relatequerybuilder-takes-the-number-query-builder)
 - [typescript: Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype)
+- [typescript: Internal helper types are no longer exported](#typescript-internal-helper-types-are-no-longer-exported)
 - [typescript: Model.jsonSchema is a readonly schema](#typescript-model-jsonschema-is-a-readonly-schema)
 - [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
 - [typescript: Property types leave out $ properties](#typescript-property-types-leave-out-properties)
@@ -369,6 +370,10 @@ class MyQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder
 The third type parameter `X` holds extra types of the query, which strict mode uses to check the names of modifiers, see [Checking queries in TypeScript](/guide/models.html#checking-queries-in-typescript). Custom query builders pass it on to `QueryBuilder` and `RebindType`. Models whose query builder doesn't are type errors on the model class, about the types returned by methods like `castTo()`, which don't mention `X`.
 
 The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBuilder`, `NumberQueryBuilder` and `PageQueryBuilder` take any query builder, e.g. `MaybeSingleQueryBuilder<this>` as the return type of an overridden `findById()`, and `NumberQueryBuilder<MaybeSingleQueryBuilder<this>>` for `patchById()`, `updateById()` and `deleteById()`, the writes of `findById()`. `WithGraphModelQueryBuilder<M, E>` is removed. Use `QueryBuilderType<WithGraphModel<M, E>>` instead. The `ReturningMethod` interface is removed too, `returning()` is a method of `QueryBuilder`. On query builders with an `any` result, e.g. `AnyQueryBuilder`, it returns `QueryBuilder<any, any> | QueryBuilder<any, any[]>` instead of `QueryBuilder<any, any[]>`.
+
+## typescript: Internal helper types are no longer exported
+
+The helper types of the relation expression parser, the `withGraph*()` narrowing and the property names, like `ParseRelationString`, `WithGraph`, `WithGraphProperty`, `InsertablePropertyNames` and `RelationPropertyNames`, are no longer exported, and the unused `ItemType` is removed. Use `WithGraphModel`, `WithGraphQueryBuilder`, `ModelProps` and `ModelRelations` instead.
 
 ## typescript: Model.jsonSchema is a readonly schema
 
