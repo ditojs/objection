@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { Model, UniqueViolationError } from 'objection';
+import { DBError, Model, UniqueViolationError } from 'objection';
 
 export default (session) => {
   describe('upsertGraph() order of the writes (#214)', () => {
@@ -872,9 +872,9 @@ export default (session) => {
         }
       });
 
-      // A known limit: rows that swap slots would need one of them unrelated
-      // first, which we don't do for a unique foreign key.
-      it('should fail to swap the rows of two slots', async () => {
+      // One row of a cycle of swaps leaves its slot empty first, and takes its
+      // key once the others moved:
+      it('should swap the rows of two slots', async () => {
         await createTables({ uniqueOwner: true });
         await insertPeople([
           { id: 1, name: 'a', ownerId: 1 },
@@ -882,15 +882,70 @@ export default (session) => {
         ]);
         await knex('graph_order_org').insert({ id: 2 });
 
+        await Org.query().upsertGraph(
+          [
+            { id: 1, people: [{ id: 1, onePet: { id: 2 } }] },
+            { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
+          ],
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 2 },
+          { id: 2, name: 'b', ownerId: 1 },
+        ]);
+      });
+
+      it('should rotate the rows of three slots', async () => {
+        await createTables({ uniqueOwner: true });
+        await knex('graph_order_person').insert({ id: 3 });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+          { id: 3, name: 'c', ownerId: 3 },
+        ]);
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, onePet: { id: 2 } },
+            { id: 2, onePet: { id: 3 } },
+            { id: 3, onePet: { id: 1 } },
+          ],
+          { relate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 3 },
+          { id: 2, name: 'b', ownerId: 1 },
+          { id: 3, name: 'c', ownerId: 2 },
+        ]);
+      });
+
+      // A key that can't be null can't leave a slot empty, and the transaction
+      // is rolled back:
+      it('should fail to swap the rows of two slots with a required key', async () => {
+        await createTables({ uniqueOwner: true, requiredOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
+
         await expect(
-          Org.query().upsertGraph(
-            [
-              { id: 1, people: [{ id: 1, onePet: { id: 2 } }] },
-              { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
-            ],
-            { relate: true },
+          Person.transaction((trx) =>
+            Person.query(trx).upsertGraph(
+              [
+                { id: 1, onePet: { id: 2 } },
+                { id: 2, onePet: { id: 1 } },
+              ],
+              { relate: true },
+            ),
           ),
-        ).rejects.toThrow(UniqueViolationError);
+        ).rejects.toThrow(DBError);
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
       });
 
       // Pet 1 is the current row of its own `sibling` slot, which it leaves for
