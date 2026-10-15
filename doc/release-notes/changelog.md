@@ -120,6 +120,7 @@
 - `insertGraph()` and `upsertGraph()` stay under the number of values that a query can bind on SQL Server, PostgreSQL and SQLite when they insert, patch and remove many rows, and fetch many roots or related models
 - `upsertGraphAndFetch()` loads the relations of a `withGraphFetched()` on its query with their modifiers, named modifiers, aliases and options into the fetched models, like `insertGraphAndFetch()`, instead of ignoring the modifiers and aliases [#839](https://github.com/Vincit/objection.js/issues/839)
 - The error of `upsertGraph()` queries with other query builder calls names `$query()`, which adds such a call too [#1168](https://github.com/Vincit/objection.js/issues/1168)
+- Errors of knex's `better-sqlite3` client are wrapped like those of `sqlite3`, e.g. a unique violation as a `UniqueViolationError` with its table and columns, where they reached the app as the driver's `SqliteError`, also in 3.x
 
 ### Types
 
