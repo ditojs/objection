@@ -48,6 +48,18 @@ describe('SQLite database errors', () => {
         expect(err).toMatchObject({ table: 't', columns: ['a', 'b'], client: 'sqlite' });
       });
 
+      it('should wrap primary key violations as unique violations', () => {
+        const err = wrapError(
+          createError(
+            'SQLITE_CONSTRAINT',
+            'SQLITE_CONSTRAINT_PRIMARYKEY',
+            'UNIQUE constraint failed: p.id',
+          ),
+        );
+        expect(err).toBeInstanceOf(UniqueViolationError);
+        expect(err).toMatchObject({ table: 'p', columns: ['id'] });
+      });
+
       it('should wrap not null violations', () => {
         const err = wrapError(
           createError(
