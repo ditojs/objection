@@ -287,6 +287,22 @@ Rows that the graph deletes are deleted with one query per relation instead of o
 
 On SQLite, rows that the graph inserts are inserted in batches, where 3.x inserted one row per query, so the static `beforeInsert` and `afterInsert` hooks get several models at once.
 
+These batches go through the query builder's `insert()` with an array of rows. A custom `QueryBuilder` that sends arrays from `insert()` to `insertGraph()`, the usual 3.x way to insert several rows on SQLite, now calls itself until the process runs out of memory, without an error:
+
+```js
+class MyQueryBuilder extends QueryBuilder {
+  insert(data) {
+    // Remove this override: `insert()` inserts arrays on SQLite itself.
+    if (Array.isArray(data) && data.length > 1) {
+      return this.insertGraph(data);
+    }
+    return super.insert(data);
+  }
+}
+```
+
+Remove such overrides, as `insert()` inserts several rows on SQLite itself now.
+
 ## Custom relations that extend Relation declare keySide
 
 `insertGraph()` and `upsertGraph()` read where the keys of a relation are stored from its `keySide` getter: `'owner'` for keys in the owner rows, like `BelongsToOneRelation`, `'related'` for keys in the related rows, like `HasManyRelation`, and `'join'` for keys in the rows of a join table, like `ManyToManyRelation`. Relation classes that extend the built-in relations inherit it. Classes that extend `Relation` directly need to declare it, or graph writes through them throw `not implemented`:
