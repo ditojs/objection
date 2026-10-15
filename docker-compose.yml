@@ -1,6 +1,7 @@
 # The test databases, see "Running the tests" in doc/guide/contributing.md.
 # The host ports are unusual on purpose, so they don't collide with databases
-# that may already be installed locally.
+# that may already be installed locally. They stay below 32768, out of the range
+# that Linux takes ports for outgoing connections from.
 name: objection
 
 services:
@@ -8,7 +9,7 @@ services:
     image: 'postgres:17'
     command: postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off -c random_page_cost=1.0
     ports:
-      - '55432:5432'
+      - '15432:5432'
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_USER=objection
@@ -24,7 +25,7 @@ services:
     # disables by default. Enable it and make it the default for new users.
     command: --mysql-native-password=ON --authentication-policy=mysql_native_password
     ports:
-      - '33306:3306'
+      - '13306:3306'
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_DATABASE=objection_test
@@ -45,7 +46,7 @@ services:
     # large and runs emulated on arm64.
     profiles: [mssql]
     ports:
-      - '51433:1433'
+      - '11433:1433'
     environment:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=Objection1!

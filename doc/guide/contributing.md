@@ -56,12 +56,12 @@ pnpm db:down # Stop the test databases and delete their data.
 
 Docker only runs the two database servers, PostgreSQL 17 and MySQL 8.4, as defined in `docker-compose.yml`, which needs Docker Compose 2.23.1 or newer. The tests themselves run on your machine with your Node.js, and SQLite runs inside the test process. The containers create the `objection` user and the `objection_test` database on their own, so there is nothing else to set up.
 
-`pnpm db:up` returns once both databases accept connections. They listen on the ports 55432 (PostgreSQL) and 33306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `pnpm db:down` removes the containers together with their data, and the next `pnpm db:up` starts from scratch.
+`pnpm db:up` returns once both databases accept connections. They listen on the ports 15432 (PostgreSQL) and 13306 (MySQL), so they don't collide with databases that you may have installed locally. The data isn't kept: `pnpm db:down` removes the containers together with their data, and the next `pnpm db:up` starts from scratch.
 
 CI also runs the tests on SQL Server 2022. Its image is large and runs emulated on arm64, so `pnpm db:up` doesn't start it, and `pnpm test` only runs its tests when they are requested:
 
 ```bash
-pnpm db:up mssql # Start SQL Server, on the port 51433.
+pnpm db:up mssql # Start SQL Server, on the port 11433.
 DATABASES=mssql pnpm test:fast
 ```
 
@@ -77,7 +77,7 @@ To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*`, `OBJECTI
 | Variable                                         | Default for PostgreSQL | Default for MySQL | Default for SQL Server |
 | ------------------------------------------------ | ---------------------- | ----------------- | ---------------------- |
 | `OBJECTION_TEST_{POSTGRES,MYSQL,MSSQL}_HOST`     | `127.0.0.1`            | `127.0.0.1`       | `127.0.0.1`            |
-| `OBJECTION_TEST_{POSTGRES,MYSQL,MSSQL}_PORT`     | `55432`                | `33306`           | `51433`                |
+| `OBJECTION_TEST_{POSTGRES,MYSQL,MSSQL}_PORT`     | `15432`                | `13306`           | `11433`                |
 | `OBJECTION_TEST_{POSTGRES,MYSQL,MSSQL}_USER`     | `objection`            | `objection`       | `sa`                   |
 | `OBJECTION_TEST_{POSTGRES,MYSQL,MSSQL}_PASSWORD` | none                   | none              | `Objection1!`          |
 | `OBJECTION_TEST_{POSTGRES,MYSQL,MSSQL}_DATABASE` | `objection_test`       | `objection_test`  | `objection_test`       |
