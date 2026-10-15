@@ -542,6 +542,18 @@ export default (session) => {
         ).toEqual([11, pet.id]);
       });
 
+      it('should read the relations below a moved row with only the identifiers fetched', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          { id: 1, pets: [{ id: 11, owner: { id: 1, parent: { id: 99 } } }] },
+          { relate: true, fetchStrategy: 'OnlyIdentifiers' },
+        );
+
+        expect((await selectPets()).find(({ id }) => id === 11).ownerId).toBe(1);
+      });
+
       it('should read a to-many relation of a moved row at its new key', async () => {
         await createTables();
         await insertRows();
