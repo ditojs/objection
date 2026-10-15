@@ -36,3 +36,7 @@ export function custom() {
 export function extraction() {
   return Person.query().select('id').jsonExtract('address', '$.street', 'street');
 }
+
+export function returning() {
+  return Person.query().insert({ firstName: 'Jennifer' }).returning('*');
+}

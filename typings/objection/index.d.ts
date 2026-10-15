@@ -2114,7 +2114,7 @@ type WriteQueryBuilder<QB extends AnyQueryBuilder, M extends Model, R> = [R] ext
  * The writes after `returning()` on single and maybe-single query builders,
  * which resolve to one row.
  */
-interface ReturningWrites<QB extends AnyQueryBuilder, M extends Model, W> {
+export interface ReturningWrites<QB extends AnyQueryBuilder, M extends Model, W> {
   update(update: PartialModelRow<M>): Rebind<QB, M, W>;
   update(): Rebind<QB, M, W>;
   patch(update: PartialModelPatch<M>): Rebind<QB, M, W>;
