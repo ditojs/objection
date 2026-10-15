@@ -1536,15 +1536,14 @@ export interface SelectMethod<out QB extends AnyQueryBuilder> {
   <QBP extends QB>(...columns: IfStrict<Selection<QBP>, never>[]): QB;
   <QBP extends QB>(columns: IfStrict<Selection<QBP>, never>[]): QB;
 
-  // Allow anything else in loose mode, like `select(1)`:
-  <QBP extends QB>(...args: IfStrict<{} | null | undefined, never>[]): QB;
-
-  <QBP extends QB, const C extends readonly unknown[] = []>(
-    ...columns: StrictSelections<ModelType<QBP>, C>
-  ): SelectQueryBuilder<QBP, C>;
   <QBP extends QB, const C extends readonly unknown[] = []>(
     columns: StrictSelections<ModelType<QBP>, C>,
   ): SelectQueryBuilder<QBP, C>;
+  // Allow anything else in loose mode, like `select(1)`. The last overload
+  // is what `Parameters<>` sees, so it takes the loose arguments:
+  <QBP extends QB, const C extends readonly unknown[] = []>(
+    ...columns: IfStrict<({} | null | undefined)[], StrictSelections<ModelType<QBP>, C>>
+  ): IfStrict<QB, SelectQueryBuilder<QBP, C>>;
 }
 
 export interface AsMethod<out QB extends AnyQueryBuilder> {
@@ -1654,9 +1653,10 @@ export interface WhereMethod<out QB extends AnyQueryBuilder> {
 
   <QBP extends QB>(obj: IfStrict<PartialModelProps<ModelType<QBP>>, never>): QB;
   // Allow any keys in loose mode. The model's properties above only serve
-  // autocompletion.
-  (obj: IfStrict<object, never>): QB;
-  <QBP extends QB, const O extends object = {}>(obj: O & StrictWhereObject<ModelType<QBP>, O>): QB;
+  // autocompletion. The last overload is what `Parameters<>` sees:
+  <QBP extends QB, const O extends object = {}>(
+    obj: IfStrict<object, O & StrictWhereObject<ModelType<QBP>, O>>,
+  ): QB;
 }
 
 export interface WhereLikeMethod<out QB extends AnyQueryBuilder> {
@@ -1701,8 +1701,10 @@ export interface WhereInMethod<out QB extends AnyQueryBuilder> {
     col: StrictColumn<ModelType<QBP>, C>,
     expr: WhereInValues<QB, QBP, C>,
   ): QB;
+  // The last overload is what `Parameters<>` sees, so it takes the loose
+  // columns in loose mode:
   <QBP extends QB, const C extends readonly unknown[] = []>(
-    col: StrictColumns<ModelType<QBP>, C>,
+    col: IfStrict<RefArg<QB> | RefArg<QB>[], StrictColumns<ModelType<QBP>, C>>,
     expr: readonly Expression<PrimitiveValue>[] | Raw | AnyQueryBuilder | CallbackVoid<QB>,
   ): QB;
 }
