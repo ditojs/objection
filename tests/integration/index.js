@@ -53,7 +53,9 @@ function connection(client, defaults) {
   return Object.fromEntries(
     settings.map((setting) => {
       const name = `OBJECTION_TEST_${client}_${setting}`.toUpperCase();
-      return [setting, process.env[name] || defaults[setting]];
+      const value = process.env[name];
+      // SQL Server's driver takes the port only as a number:
+      return [setting, value ? (setting === 'port' ? Number(value) : value) : defaults[setting]];
     }),
   );
 }
