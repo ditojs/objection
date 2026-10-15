@@ -482,7 +482,7 @@ Keys with a `:` that the model's [jsonSchema](/api/model/static-properties.html#
 [snakeCaseMappers](/api/objection/#snakecasemappers) only converts the column part of [field expressions](/api/types/#type-fieldexpression) used as property names, and keeps their JSON keys as written: the `preserveJsonKeys` option defaults to `true`. 3.x converted the JSON keys too:
 
 ```js
-// 4.0: update "persons" set "json_column" = jsonb_set("json_column", '{someKey}', '1', true)
+// 4.0: update "persons" set "json_column" = jsonb_set(COALESCE("json_column", '{}'), '{someKey}', '1', true)
 // 3.x: update "persons" set "json_column" = jsonb_set("json_column", '{some_key}', '1', true)
 await Person.query().patch({ 'jsonColumn:someKey': 1 });
 ```

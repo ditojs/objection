@@ -255,6 +255,13 @@ export default (session) => {
         expect(item.meta).toEqual({ size: 1, color: 'red' });
       });
 
+      it('patch() should write a json path into a NULL json column', async () => {
+        await knex('field_expression_keys').where('id', 1).update({ meta: null });
+        await Item.query().patch({ 'meta:color': 'red' }).where('id', 1);
+        const item = await Item.query().findById(1);
+        expect(item.meta).toEqual({ color: 'red' });
+      });
+
       it('patch() should write an undeclared key with a colon to the json path when built before', async () => {
         const query = Item.query().patch({ 'meta:color': 'red' }).where('id', 1);
         query.toKnexQuery();

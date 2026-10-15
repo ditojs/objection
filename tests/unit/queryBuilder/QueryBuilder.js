@@ -2540,7 +2540,7 @@ describe('QueryBuilder', () => {
       `select "Model".* from "Model" where CAST("content"#>>'{""}' AS text) = 'x'`,
     );
     expect(toSql(TestModel.query().patch({ 'content:[""]': 1 }))).toBe(
-      `update "Model" set "content" = jsonb_set("Model"."content", '{""}', '1', true)`,
+      `update "Model" set "content" = jsonb_set(COALESCE("Model"."content", '{}'), '{""}', '1', true)`,
     );
   });
 
@@ -2581,7 +2581,7 @@ describe('QueryBuilder', () => {
       'jsonCol',
     );
     expect(toSql(TestModel.query().patch({ 'content:a': 1, 'content:b': 2 }))).toBe(
-      `update "Model" set "content" = jsonb_set(jsonb_set("Model"."content", '{a}', '1', true), '{b}', '2', true)`,
+      `update "Model" set "content" = jsonb_set(jsonb_set(COALESCE("Model"."content", '{}'), '{a}', '1', true), '{b}', '2', true)`,
     );
   });
 
@@ -2595,14 +2595,14 @@ describe('QueryBuilder', () => {
 
     expect(toSql('mysql', json)).toBe(
       'update `Model` set `content` = JSON_SET(JSON_SET(JSON_SET(' +
-        "`Model`.`content`, '$.\"a\"', CAST('1' AS JSON)), " +
+        "COALESCE(`Model`.`content`, '{}'), '$.\"a\"', CAST('1' AS JSON)), " +
         '\'$."b"[0]\', CAST(\'{\\"c\\":\\"d\\"}\' AS JSON)), ' +
         `_utf8mb4 X'${Buffer.from('$."e?f"').toString('hex')}', ` +
         "JSON_EXTRACT(JSON_ARRAY(JSON_EXTRACT(`other`, '$.\"g\"')), '$[0]'))",
     );
     expect(toSql('sqlite3', json)).toBe(
       'update `Model` set `content` = json_set(json_set(json_set(' +
-        "`Model`.`content`, '$.\"a\"', json('1')), " +
+        "COALESCE(`Model`.`content`, '{}'), '$.\"a\"', json('1')), " +
         '\'$."b"[0]\', json(\'{"c":"d"}\')), ' +
         '\'$."e\\u003ff"\', json_quote(json_extract(`other`, \'$."g"\')))',
     );
@@ -2861,7 +2861,7 @@ describe('QueryBuilder', () => {
         `select "Model".* from "Model" where "content"#>'{a?b}' ?| array['c?']`,
       );
       expect(toSql(TestModel.query().patch({ "content:x') or 1=1 --": 1 }))).toBe(
-        `update "Model" set "content" = jsonb_set("Model"."content", '{"x'') or 1=1 --"}', '1', true)`,
+        `update "Model" set "content" = jsonb_set(COALESCE("Model"."content", '{}'), '{"x'') or 1=1 --"}', '1', true)`,
       );
     });
 
@@ -2922,7 +2922,7 @@ describe('QueryBuilder', () => {
         `select "model".* from "model" where "${col}" ?& array['a','b']`,
       );
       expect(toSql(Model.query(knex).patch({ 'jsonCol:[0][innerKey]': 1, otherCol: 2 }))).toBe(
-        `update "model" set "json_col" = jsonb_set("model"."json_col", '${patchPath}', '1', true), "other_col" = 2`,
+        `update "model" set "json_col" = jsonb_set(COALESCE("model"."json_col", '[]'), '${patchPath}', '1', true), "other_col" = 2`,
       );
       expect(toSql(Model.query(knex).patch({ jsonCol: { innerKey: 1 } }))).toBe(
         `update "model" set "json_col" = '{"innerKey":1}'`,
