@@ -406,6 +406,16 @@ export default (session) => {
       static get jsonAttributes() {
         return ['data'];
       }
+
+      static get relationMappings() {
+        return {
+          owner: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: Person,
+            join: { from: 'json_key_pet.data:ownerId', to: 'json_key_person.id' },
+          },
+        };
+      }
     }
 
     class Person extends Model {
@@ -442,12 +452,97 @@ export default (session) => {
         });
     });
 
+    beforeEach(async () => {
+      await knex('json_key_pet').delete();
+      await knex('json_key_person').delete();
+    });
+
     afterAll(() =>
       knex.schema.dropTableIfExists('json_key_pet').dropTableIfExists('json_key_person'),
     );
 
-    // The places use different json paths of one column. The relate writes the
-    // whole json column, so the unrelate shows in its query:
+    it('should keep the other values of a json column that it relates a row through (#415)', async () => {
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({
+        id: 3,
+        data: JSON.stringify({ ownerId: 1, color: 'red' }),
+      });
+
+      await Person.query(knex).upsertGraph({ id: 2, sitted: [{ id: 3 }] }, { relate: true });
+
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ ownerId: 1, color: 'red', sitterId: 2 });
+    });
+
+    it('should keep the other values of a json column that it relates a row through with update', async () => {
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({
+        id: 3,
+        data: JSON.stringify({ ownerId: 1, color: 'red' }),
+      });
+
+      await Person.query(knex).upsertGraph(
+        { id: 2, sitted: [{ id: 3 }] },
+        { relate: true, update: true },
+      );
+
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ ownerId: 1, color: 'red', sitterId: 2 });
+    });
+
+    it('should reject the field expressions of a model with update', async () => {
+      await knex('json_key_person').insert({ id: 2 });
+      await knex('json_key_pet').insert({ id: 3, data: JSON.stringify({ color: 'red' }) });
+
+      await expect(
+        Person.query(knex).upsertGraph(
+          { id: 2, sitted: [{ id: 3, 'data:color': 'blue' }] },
+          { relate: true, update: true },
+        ),
+      ).rejects.toThrow('field expressions can only be used in patch, not in update');
+    });
+
+    it('should keep the other values of a json column whose BelongsToOne key it clears', async () => {
+      await knex('json_key_person').insert({ id: 1 });
+      await knex('json_key_pet').insert({
+        id: 3,
+        data: JSON.stringify({ ownerId: 1, color: 'red' }),
+      });
+
+      await Pet.query(knex).upsertGraph({ id: 3, owner: null }, { unrelate: true });
+
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ ownerId: null, color: 'red' });
+    });
+
+    it('should write a key into a NULL json column that it relates a row through', async () => {
+      await knex('json_key_person').insert({ id: 2 });
+      await knex('json_key_pet').insert({ id: 3, data: null });
+
+      await Person.query(knex).upsertGraph({ id: 2, sitted: [{ id: 3 }] }, { relate: true });
+
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ sitterId: 2 });
+    });
+
+    it('should keep the other values of a json column that it relates a row through under noUpdate', async () => {
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({
+        id: 3,
+        data: JSON.stringify({ ownerId: 1, color: 'red' }),
+      });
+
+      await Person.query(knex).upsertGraph(
+        { id: 2, sitted: [{ id: 3 }] },
+        { relate: true, noUpdate: true },
+      );
+
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ ownerId: 1, color: 'red', sitterId: 2 });
+    });
+
+    // The places use different json paths of one column, which the relate and
+    // the unrelate write separately:
     it('should unrelate a row that another relation on another key keeps', async () => {
       await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
       await knex('json_key_pet').insert({ id: 3, data: JSON.stringify({ ownerId: 1 }) });

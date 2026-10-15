@@ -695,6 +695,31 @@ export default (session) => {
       });
     });
 
+    it('should patch the keys of the rows that it relates with noUpdate', async () => {
+      const patches = [];
+
+      class HookedPet extends Pet {
+        $beforeUpdate(opt) {
+          patches.push(opt.patch);
+        }
+      }
+
+      class HookedPerson extends Person {
+        static get relationMappings() {
+          const { pets } = super.relationMappings;
+          return { pets: { ...pets, modelClass: HookedPet } };
+        }
+      }
+
+      await HookedPerson.query(knex).upsertGraph(
+        { id: 1, pets: [{ id: 3 }] },
+        { relate: true, noDelete: true, noUpdate: true },
+      );
+
+      expect(patches).toEqual([true]);
+      expect(await knex('graph_edge_pet').where('id', 3).first()).toMatchObject({ ownerId: 1 });
+    });
+
     it('should not write the references of moved rows before they are resolved', async () => {
       await Person.query(knex).upsertGraph(
         {
