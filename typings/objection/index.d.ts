@@ -3505,10 +3505,11 @@ export interface initialize {
  *
  * Supports `type` (also as an array), `required`, `nullable`, `enum`,
  * `const`, `items` (also as a tuple), nested `properties`, `anyOf` and
- * `oneOf`. Formats like 'date-time' stay strings, as in JSON. Properties
- * that aren't required are optional. Next to `type` or `properties`, `anyOf`
- * and `oneOf` only add constraints, e.g. alternative `required` lists, and
- * don't change the type.
+ * `oneOf`. Formats like 'date-time' stay strings, as in JSON, see the
+ * timestamps recipe for the dates that drivers return. Properties that aren't
+ * required are optional. Next to `type` or `properties`, `anyOf` and `oneOf`
+ * only add constraints, e.g. alternative `required` lists, and don't change
+ * the type.
  */
 export type FromJSONSchema<S> = S extends boolean
   ? unknown
