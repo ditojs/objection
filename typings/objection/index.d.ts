@@ -478,8 +478,9 @@ export type NonFunctionPropertyNames<T> = {
   [K in keyof T]: T[K] extends Function ? never : K;
 }[keyof T];
 
-// The type-only members of models, which aren't data.
-type ModelTypeMembers = 'QueryBuilderType' | 'ColumnNameMapping';
+// The type-only members of models, which aren't data, also the keys of the
+// virtual attributes that `FromModel` adds.
+type ModelTypeMembers = 'QueryBuilderType' | 'ColumnNameMapping' | `~virtual:${string}`;
 
 /**
  * Type that attempts to only select the user-defined model properties.
@@ -502,14 +503,23 @@ export type ModelObject<T extends Model> = Pick<T, DataPropertyNames<T>>;
 
 /**
  * The JSON of model M, as `toJSON()` returns it: its properties without
- * methods, and the related models as JSON too. Values aren't converted, e.g.
- * dates stay dates.
+ * methods, the results of the methods in `virtualAttributes` on models with
+ * `FromModel`, and the related models as JSON too. Values aren't converted,
+ * e.g. dates stay dates.
  */
 export type ModelJson<M> = {
-  [K in keyof Pick<M, DataPropertyNames<M> & keyof M>]: K extends RelationPropertyNames<M>
+  [
+    K in keyof Pick<M, (DataPropertyNames<M> | VirtualAttributeNames<M>) & keyof M>
+  ]: K extends RelationPropertyNames<M>
     ? RelationJson<M[K]>
-    : M[K];
+    : M[K] extends (...args: any) => infer R
+      ? RelationJson<R>
+      : M[K];
 };
+
+type VirtualAttributeNames<M> = {
+  [K in keyof M]: K extends `~virtual:${infer N}` ? N : never;
+}[keyof M];
 
 type RelationJson<P> = P extends (infer I)[]
   ? ModelJson<I>[]
@@ -3063,7 +3073,7 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
   relationMappings: RelationMappings | RelationMappingsThunk;
   modelPaths: string[];
   jsonAttributes: string[] | readonly string[];
-  virtualAttributes: string[];
+  virtualAttributes: readonly string[];
   uidProp: string;
   uidRefProp: string;
   dbRefProp: string;
@@ -3176,7 +3186,7 @@ export class Model {
   static relationMappings: RelationMappings | RelationMappingsThunk;
   static modelPaths: string[];
   static jsonAttributes: string[] | readonly string[];
-  static virtualAttributes: string[];
+  static virtualAttributes: readonly string[];
   static uidProp: string;
   static uidRefProp: string;
   static dbRefProp: string;
@@ -3595,10 +3605,21 @@ type SchemaProperties<P, R> = {
  * as `withGraphFetched()` sets missing ones to `null`, and to-many relations
  * `M[]`. Relations with a module path as `modelClass`, and mappings declared
  * as `RelationMapping` instead of inferred, are left out, as are a schema and
- * mappings with their general types, e.g. inherited from `Model`.
+ * mappings with their general types, e.g. inherited from `Model`. The names of
+ * `virtualAttributes` declared `as const` are kept for `ModelJson`.
  */
 export type FromModel<C extends { jsonSchema: unknown; relationMappings: unknown }> =
-  ModelSchemaProperties<C['jsonSchema']> & ModelRelationProperties<C['relationMappings']>;
+  ModelSchemaProperties<C['jsonSchema']> &
+    ModelRelationProperties<C['relationMappings']> &
+    VirtualAttributeKeys<C>;
+
+// One key per name, so that subclasses that add virtual attributes have the
+// same keys as their parent for the inherited ones.
+type VirtualAttributeKeys<C> = C extends { virtualAttributes: infer V extends readonly string[] }
+  ? string extends V[number]
+    ? {}
+    : { readonly [K in V[number] as `~virtual:${K}`]?: true }
+  : {};
 
 type ModelSchemaProperties<S> = ReadonlyJSONSchema extends S
   ? {}
