@@ -30,9 +30,10 @@ async function selections() {
   added[0].id;
   added[0].firstName;
 
-  // `*` keeps the columns, and adds the other selections, also before and
-  // after them.
+  // `*` and `select()` without columns keep the columns, and `*` adds the
+  // other selections, also before and after them.
   const all: Person[] = await Person.query().select('*');
+  const none: Person[] = await Person.query().select();
   const before = await Person.query().select('*').select('id as key');
   type _before = Expect<Equal<(typeof before)[number]['lastName'], string | undefined>>;
   before[0].key;

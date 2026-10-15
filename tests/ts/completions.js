@@ -25,8 +25,19 @@ const methodsByMode = {
     'findOne',
     'having',
     'jsonSet',
+    'select',
   ],
-  strict: ['whereColumn', 'jsonSet', 'whereJsonSupersetOf'],
+  strict: [
+    'where',
+    'findOne',
+    'having',
+    'whereLike',
+    'whereIn',
+    'select',
+    'whereColumn',
+    'jsonSet',
+    'whereJsonSupersetOf',
+  ],
 };
 
 const file = path.join(root, 'tests/ts/completions.ts');
