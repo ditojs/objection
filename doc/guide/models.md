@@ -382,7 +382,7 @@ await Person.query().where('pets.nme', 'Fluffy'); // Error: not a column of Anim
 await Person.query().where('age', 'thirty'); // Error: age is a number
 ```
 
-`where()`, `select()`, `orderBy()`, `groupBy()`, `having()`, the aggregates, `whereIn()` and the other column methods are checked this way, and so are the names of relations in relation expressions, e.g. in `withGraphFetched()` and `joinRelated()`. Values are checked against the property types: `null` is accepted for any column, and dates also take strings.
+`where()`, `select()`, `orderBy()`, `groupBy()`, `having()`, the aggregates, `whereIn()` and the other column methods are checked this way, and so are the names of relations in relation expressions, e.g. in `withGraphFetched()` and `joinRelated()`. Generic code takes relation expressions as `RelationExpression<M>`: a type parameter like `E extends RelationExpression<M>` can't be checked and is rejected. Values are checked against the property types: `null` is accepted for any column, and dates also take strings.
 
 Qualifiers that aren't relation paths, like table names and aliases, are passed through unchecked: `persons.firstName`, or `p.name` after `joinRelated('pets as p')`. Column names that aren't literals, columns of other queries, and aliases of selections outside of `orderBy()` are referenced with `ref()`, or passed as `raw()`:
 
@@ -406,7 +406,7 @@ people[0].petCount; // number | string
 people[0].lastName; // Error: not selected
 ```
 
-`select('*')` and `select('persons.*')` keep all columns, `first()`, `findById()`, `page()` and `withGraphFetched()` keep the narrowed rows, and repeated selections add up. `clearSelect()` gives back all columns. `distinctOn()` doesn't select its columns and `jsonExtract()` isn't a selection: they don't narrow the rows, and `jsonExtract()` adds its alias to them, of unknown type.
+`select('*')` and `select('persons.*')` keep all columns, `first()`, `findById()`, `page()` and `withGraphFetched()` keep the narrowed rows, and repeated selections add up. `clearSelect()` gives back all columns. `distinctOn()` doesn't select its columns and `jsonExtract()` isn't a selection: they don't narrow the rows, and `jsonExtract()` adds its alias to them, of unknown type. Model methods that return a narrowed query started from `this` report TS2527 when declarations are emitted: cast `this` to the model, like `(this as Person).$query().select('id')`.
 
 Models that map their columns with `snakeCaseMappers()` declare it, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html). Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
 
