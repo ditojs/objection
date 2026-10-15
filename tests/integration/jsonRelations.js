@@ -356,6 +356,14 @@ export default (session) => {
             });
         });
 
+        it('relate into a NULL json column', async () => {
+          const animal = await Animal.query().insert({ name: 'Nemo' });
+          await Animal.relatedQuery('favoritePerson').for(animal.id).relate('Arnold');
+
+          const { json } = await Animal.query().findById(animal.id);
+          expect(json).toEqual({ favoritePersonName: 'Arnold' });
+        });
+
         it('unrelate should only clear the keys of the owner models that it unrelates', async () => {
           const [arnold, brad] = await Person.query().orderBy('name');
           const bradPetId = brad.json.stuff.favoritePetId;

@@ -370,7 +370,7 @@ class Person extends Model {
   }
 }
 
-// update "persons" set "json_column" = jsonb_set("json_column", '{some_key}', '1', true)
+// update "persons" set "json_column" = jsonb_set(COALESCE("json_column", '{}'), '{some_key}', '1', true)
 await Person.query().patch({ 'jsonColumn:someKey': 1 });
 ```
 
