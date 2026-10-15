@@ -540,7 +540,7 @@ export type PartialModelObject<T extends Model> = {
         ? I[] | PartialModelObject<I>[]
         : Expression<T[K]>
       : NonNullable<T[K]> extends Model
-        ? Expression<T[K]> | PartialModelObject<NonNullable<T[K]>> // nullable to-one relations
+        ? Expression<T[K]> | PartialModelObject<NonNullable<T[K]>> // Nullable to-one relations
         : Expression<T[K]>;
 };
 
@@ -591,7 +591,7 @@ export type GraphParameters = {
 export type PartialModelGraph<M, T = M & GraphParameters> = T extends any
   ? {
       [K in DataPropertyNames<T>]?: null extends T[K]
-        ? PartialModelGraphField<NonNullable<T[K]>> | null // handle nullable BelongsToOneRelations
+        ? PartialModelGraphField<NonNullable<T[K]>> | null // Strip null to recognize to-one relations
         : PartialModelGraphField<T[K]>;
     }
   : never;
@@ -635,9 +635,10 @@ export type OptionalInsertPropertyNames<M> = {
 export type InsertablePropertyNames<M> = Exclude<DataPropertyNames<M>, RelationPropertyNames<M>>;
 
 /**
- * The data to insert a model M with `insert()`. Unlike `PartialModelObject`,
- * all properties are required except optional, nullable and `Generated`
- * ones. Relation properties are left out.
+ * The complete data of a new row of model M, to check what is passed to
+ * `insert()`, which itself takes any subset of the properties. Unlike
+ * `PartialModelObject`, all properties are required except optional, nullable
+ * and `Generated` ones. Relation properties are left out.
  */
 export type Insertable<M extends Model> = {
   [K in Exclude<InsertablePropertyNames<M>, OptionalInsertPropertyNames<M>>]: Expression<M[K]>;
@@ -646,9 +647,9 @@ export type Insertable<M extends Model> = {
 };
 
 /**
- * Like `Insertable`, but for `insertGraph()`: relation properties are
- * optional and hold the insertable graphs of the related models, or
- * references to existing ones through `#dbRef` or `#ref`.
+ * Like `Insertable`, but for graphs passed to `insertGraph()`: relation
+ * properties are optional and hold the insertable graphs of the related
+ * models, or references to existing ones through `#dbRef` or `#ref`.
  */
 export type InsertableGraph<M extends Model> = Insertable<M> &
   Omit<GraphParameters, '#dbRef' | '#ref'> & {
@@ -675,7 +676,7 @@ export type ModelProps<T extends Model> = InsertablePropertyNames<T>;
 export type ModelRelations<T extends Model> = RelationPropertyNames<T>;
 
 /**
- * Given a model property type, returns a query builer type of
+ * Given a model property type, returns a query builder type of the
  * correct kind if the property is a model or a model array. Queries for
  * to-one relations resolve to `undefined` when there's no related row.
  */
@@ -737,6 +738,18 @@ type Rebind<
  */
 export type ExtraType<T extends { ExtraType: any }> = T['ExtraType'];
 
+/**
+ * The extra type of queries in strict mode: the model class C that started the
+ * query, e.g. with `Person.query()`, and the modifiers P registered with
+ * `modifiers()`, to check the names of modifiers, and the id I of the class,
+ * for `findById()` and the other `*ById()` methods.
+ */
+export interface QueryExtra<C = unknown, P = unknown, I = MaybeCompositeId> {
+  modelClass: C;
+  registered: P;
+  id: I;
+}
+
 type WithExtra<QB extends AnyQueryBuilder, X> = Rebind<QB, ModelType<QB>, ResultType<QB>, X>;
 
 // The narrowed query builders of `withGraph*()` start without the extra type
@@ -769,15 +782,16 @@ export type NumberQueryBuilder<QB extends AnyQueryBuilder> = QB['~number'];
  */
 export type PageQueryBuilder<QB extends AnyQueryBuilder> = QB['~page'];
 
-// Strict mode checks the column names and values of queries against the
-// models. Augment `TypeConfig` to opt in:
-//
-//   declare module 'objection' {
-//     interface TypeConfig {
-//       strict: true;
-//     }
-//   }
-
+/**
+ * Strict mode checks the column names and values of queries against the
+ * models. Augment `TypeConfig` to opt in:
+ *
+ *   declare module 'objection' {
+ *     interface TypeConfig {
+ *       strict: true;
+ *     }
+ *   }
+ */
 export interface TypeConfig {}
 
 type IsStrict = TypeConfig extends { strict: true } ? true : false;
@@ -896,8 +910,9 @@ type CheckedColumn<M, C extends string> =
   IsConcreteModel<M> extends true ? CheckColumn<M, C> : string;
 
 /**
- * A column argument: checked against model M in strict mode, any column in
- * loose mode, where the model's properties come first, for autocompletion.
+ * A column argument: checked against model M in strict mode, the model's
+ * properties in loose mode, for autocompletion. In loose mode, other columns
+ * go through the RefArg overloads.
  */
 type ColumnArg<M, C extends string> = IfStrict<InsertablePropertyNames<M>, CheckedColumn<M, C>>;
 
@@ -1048,8 +1063,8 @@ type StrictSelectionObject<M, O> = {
 /**
  * The query builder QB with its result rows narrowed to the properties P in
  * strict mode, next to the model's methods and relations, as after `select()`
- * and the aggregates, marked with SelectedBrand. Repeated selections add up. Queries
- * that aren't checked, e.g. in generic code, aren't narrowed.
+ * and the aggregates, marked with SelectedBrand. Repeated selections add up.
+ * Queries that aren't checked, e.g. in generic code, aren't narrowed.
  */
 type NarrowRows<QB extends AnyQueryBuilder, P, All extends boolean = false> = RowsQueryBuilder<
   QB,
@@ -1165,18 +1180,6 @@ export type SelectedBrand<A> = { readonly [selected]: A };
  */
 export type ExtractedBrand<A> = { readonly [extracted]: A };
 
-/**
- * The extra type of queries in strict mode: the model class C that started the
- * query, e.g. with `Person.query()`, and the modifiers P registered with
- * `modifiers()`, to check the names of modifiers, and the id I of the class,
- * for `findById()` and the other `*ById()` methods.
- */
-export interface QueryExtra<C = unknown, P = unknown, I = MaybeCompositeId> {
-  modelClass: C;
-  registered: P;
-  id: I;
-}
-
 // The results whose rows have `jsonExtract()` values, which `withGraph*()`
 // keeps instead of converting the result kind:
 type ExtractedRows =
@@ -1242,9 +1245,9 @@ type SelectedType<M, C extends string> = C extends `${infer Q}.${infer Col}`
   : ColumnType<M, C>;
 
 /**
- * The property of the column or alias C in the result rows: `snakeCaseMappers()`
- * converts them to camel case, with `upperCase: true` after lowering the case
- * of names in upper case.
+ * The property of the column or alias C in the result rows:
+ * `snakeCaseMappers()` converts them to camel case, with `upperCase: true`
+ * after lowering the case of names in upper case.
  */
 type ResultKey<M, C extends string> = M extends { ColumnNameMapping: 'snakeCase' }
   ? CamelCase<C>
@@ -1524,14 +1527,15 @@ export type JsonObjectOrFieldExpression = object | object[] | FieldExpression;
 export type Selection<QB extends AnyQueryBuilder> = ColumnRef | AnyQueryBuilder | CallbackVoid<QB>;
 
 export interface SelectMethod<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The model's properties come first, meant for autocompletion in loose mode,
+  // which the `any` overload below prevents:
   <QBP extends QB>(...columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
   <QBP extends QB>(columns: IfStrict<ModelProps<ModelType<QBP>>, never>[]): QB;
 
   <QBP extends QB>(...columns: IfStrict<Selection<QBP>, never>[]): QB;
   <QBP extends QB>(columns: IfStrict<Selection<QBP>, never>[]): QB;
 
-  // Allows things like `select(1)`, not sure if we should be more specific here?
+  // Allow anything else in loose mode, like `select(1)`:
   <QBP extends QB>(...args: IfStrict<any, never>[]): QB;
 
   <QBP extends QB, const C extends readonly unknown[] = []>(
@@ -1561,7 +1565,7 @@ export interface JsonExtraction {
 
 // Extractions without an alias, or with several, add any properties.
 export interface JsonExtract<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never, const A extends string = string>(
     column: ColumnArg<ModelType<QBP>, C>,
     path: string,
@@ -1582,7 +1586,7 @@ export interface JsonExtract<out QB extends AnyQueryBuilder> {
 }
 
 export interface JsonSet<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never>(
     column: ColumnArg<ModelType<QBP>, C>,
     path: string,
@@ -1594,7 +1598,7 @@ export interface JsonSet<out QB extends AnyQueryBuilder> {
 }
 
 export interface JsonInsert<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never>(
     column: ColumnArg<ModelType<QBP>, C>,
     path: string,
@@ -1606,7 +1610,7 @@ export interface JsonInsert<out QB extends AnyQueryBuilder> {
 }
 
 export interface JsonRemove<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never>(
     column: ColumnArg<ModelType<QBP>, C>,
     path: string,
@@ -1617,7 +1621,7 @@ export interface JsonRemove<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereMethod<out QB extends AnyQueryBuilder> {
-  // The model's properties come first, for autocompletion in loose mode.
+  // The model's properties come first, for autocompletion in loose mode:
   <QBP extends QB>(
     col: IfStrict<ModelProps<ModelType<QBP>>, never>,
     op: Operator,
@@ -1636,7 +1640,7 @@ export interface WhereMethod<out QB extends AnyQueryBuilder> {
   (col: RefArg<QB>, op: Operator, expr: Expression<PrimitiveValue>): QB;
   (col: RefArg<QB>, expr: Expression<PrimitiveValue>): QB;
 
-  // The column overloads come last, so that errors are reported for them.
+  // The column overloads come last, so that errors are reported for them:
   <QBP extends QB, const C extends string = never, const O extends Operator = Operator>(
     col: ColumnArg<ModelType<QBP>, C>,
     op: O,
@@ -1648,9 +1652,8 @@ export interface WhereMethod<out QB extends AnyQueryBuilder> {
   ): QB;
 
   <QBP extends QB>(obj: IfStrict<PartialModelProps<ModelType<QBP>>, never>): QB;
-  // We must allow any keys in the object. The previous type
-  // is kind of useless, but maybe one day vscode and other
-  // tools can autocomplete using it.
+  // Allow any keys in loose mode. The model's properties above only serve
+  // autocompletion.
   (obj: IfStrict<object, never>): QB;
   <QBP extends QB, const O extends object = {}>(obj: O & StrictWhereObject<ModelType<QBP>, O>): QB;
 }
@@ -1676,7 +1679,7 @@ export interface WhereExistsMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereInMethod<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The model's properties come first, for autocompletion in loose mode:
   <QBP extends QB>(
     col: IfStrict<ModelProps<ModelType<QBP>>, never>,
     expr: Expression<PrimitiveValue>,
@@ -1712,7 +1715,7 @@ export interface WhereNullMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereColumnMethod<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never, const D extends string = never>(
     col1: ColumnArg<ModelType<QBP>, C>,
     op: Operator,
@@ -1735,7 +1738,7 @@ export interface WhereColumnMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereJsonObject<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never>(
     col: ColumnArg<ModelType<QBP>, C>,
     value: any,
@@ -1745,7 +1748,7 @@ export interface WhereJsonObject<out QB extends AnyQueryBuilder> {
 }
 
 export interface WhereJsonPath<out QB extends AnyQueryBuilder> {
-  // These must come first so that we get autocomplete.
+  // The column overloads come first, for autocompletion:
   <QBP extends QB, const C extends string = never>(
     col: ColumnArg<ModelType<QBP>, C>,
     jsonPath: string,
@@ -2227,7 +2230,8 @@ export interface GraphOptions {
   maxBatchSize?: number;
   /**
    * Apply `limit()`, `offset()` and `first()` in graph modifiers to the related
-   * items of each parent. Defaults to `true`. Only applies to `withGraphFetched()`.
+   * items of each parent. Defaults to `true`. Only applies to
+   * `withGraphFetched()`.
    */
   limitPerParent?: boolean;
 }
@@ -2694,8 +2698,6 @@ export class QueryBuilder<
   ): Promise<R | FR>;
 }
 
-export type X<T> = Promise<T>;
-
 export interface FetchGraphOptions {
   transaction?: TransactionOrKnex;
   skipFetched?: boolean;
@@ -3043,7 +3045,8 @@ export interface ConstructorFunctionType<T = any> extends PrototypeType<T> {
   new (...args: any[]): T;
 }
 
-// for internal use on generic static this deduction, copied from https://github.com/microsoft/TypeScript/issues/5863#issuecomment-1483978415
+// Used internally to infer the generic static `this`, copied from:
+// https://github.com/microsoft/TypeScript/issues/5863#issuecomment-1483978415
 export type ConstructorType<T = unknown, Static extends Record<string, any> = PrototypeType<T>> = (
   ConstructorFunctionType<T> | PrototypeType<T>
 ) & {
