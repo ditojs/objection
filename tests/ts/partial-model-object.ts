@@ -2,7 +2,18 @@
 // PartialModelRow, the data accepted by `insert()`, `patch()` and the other
 // mutating methods.
 
-import { Model, PartialModelObject, PartialModelRow, raw } from 'objection';
+import {
+  Model,
+  ModelProps,
+  ModelRelations,
+  PartialModelObject,
+  PartialModelRow,
+  raw,
+} from 'objection';
+
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Expect<T extends true> = T;
 
 class Pet extends Model {
   id!: number;
@@ -97,3 +108,9 @@ async function queries() {
   await Owner.query().insertGraph({ name: 'Jennifer', pets: [{ name: 'Doggo' }] });
   await Owner.query().upsertGraph({ id: 1, parent: null });
 }
+
+// The property and relation names of models: nullable relations are relations,
+// columns typed `any` or `any[]` are properties.
+type _petProps = Expect<Equal<ModelProps<Pet>, 'id' | 'name' | 'meta' | 'tags'>>;
+type _ownerProps = Expect<Equal<ModelProps<Owner>, 'id' | 'name'>>;
+type _ownerRelations = Expect<Equal<ModelRelations<Owner>, 'pets' | 'partner' | 'parent'>>;
