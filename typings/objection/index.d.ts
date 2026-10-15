@@ -475,7 +475,7 @@ export type ItemType<T> = T extends Array<unknown> ? T[number] : T;
  * Type for keys of non-function properties of T.
  */
 export type NonFunctionPropertyNames<T> = {
-  [K in keyof T]: T[K] extends Function ? never : K;
+  [K in keyof T]-?: T[K] extends Function ? never : K;
 }[keyof T];
 
 // The type-only members of models, which aren't data, also the keys of the
@@ -667,35 +667,12 @@ export type InsertableGraphField<F> =
 /**
  * Extracts the property names (excluding relations) of a model class.
  */
-export type ModelProps<T extends Model> = Exclude<
-  {
-    [K in keyof T]?: Defined<T[K]> extends Model
-      ? never
-      : Defined<T[K]> extends Array<infer I>
-        ? I extends Model
-          ? never
-          : K
-        : T[K] extends Function
-          ? never
-          : K;
-  }[keyof T],
-  undefined | ModelTypeMembers
->;
+export type ModelProps<T extends Model> = InsertablePropertyNames<T>;
 
 /**
- * Extracts the relation names of the a model class.
+ * Extracts the relation names of a model class.
  */
-export type ModelRelations<T extends Model> = Defined<
-  {
-    [K in keyof T]?: Defined<T[K]> extends Model
-      ? K
-      : Defined<T[K]> extends Array<infer I>
-        ? I extends Model
-          ? K
-          : never
-        : never;
-  }[keyof T]
->;
+export type ModelRelations<T extends Model> = RelationPropertyNames<T>;
 
 /**
  * Given a model property type, returns a query builer type of
@@ -922,7 +899,7 @@ type CheckedColumn<M, C extends string> =
  * A column argument: checked against model M in strict mode, any column in
  * loose mode, where the model's properties come first, for autocompletion.
  */
-type ColumnArg<M, C extends string> = IfStrict<ModelProps<M & Model>, CheckedColumn<M, C>>;
+type ColumnArg<M, C extends string> = IfStrict<InsertablePropertyNames<M>, CheckedColumn<M, C>>;
 
 /**
  * The value of a column of type T in conditions: `null` is always accepted,

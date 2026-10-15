@@ -50,6 +50,10 @@ class BaseModel extends Model {
   $query(trxOrKnex?: TransactionOrKnex) {
     return super.$query(trxOrKnex);
   }
+
+  get reloaded() {
+    return this.$query();
+  }
 }
 
 class Animal extends BaseModel {
@@ -76,6 +80,17 @@ const pets: CustomQueryBuilder<Animal, Animal | undefined> = new Person()
   .where('id', 1)
   .first()
   .someCustomMethod();
+
+// Values typed `any` used to exceed the instantiation depth of TypeScript 5.8,
+// for models with members that hold query builders, like `reloaded`.
+declare const anyValue: any;
+const findOneAny: CustomQueryBuilder<Person, Person | undefined> = Person.query().findOne(
+  'firstName',
+  anyValue,
+);
+const firstWhereAny: CustomQueryBuilder<Person, Person | undefined> = Person.query()
+  .first()
+  .where('firstName', '=', anyValue);
 
 const emptyPeople: CustomQueryBuilder<Person, Person[]> = Person.query()
   .someCustomMethod()
