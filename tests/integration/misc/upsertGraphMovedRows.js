@@ -1126,6 +1126,44 @@ export default (session) => {
       expect(await knex('review_keys_liked')).toEqual([{ personId: 2, petId: 3 }]);
     });
 
+    // SQL Server takes no explicit ids in identity columns:
+    it.skipIf(session.isMsSql())(
+      'should insert a row with an id that insertMissing finds nowhere',
+      async () => {
+        await insertPersons(2);
+
+        await Person.query().upsertGraph(
+          { id: 2, liked: [{ id: 3 }], pets: [{ id: 4 }] },
+          { insertMissing: true },
+        );
+
+        expect(await knex('review_keys_pet').orderBy('id')).toMatchObject([
+          { id: 3 },
+          { id: 4, ownerId: 2 },
+        ]);
+        expect(await knex('review_keys_liked')).toEqual([{ personId: 2, petId: 3 }]);
+      },
+    );
+
+    // SQL Server takes no explicit ids in identity columns:
+    it.skipIf(session.isMsSql())(
+      'should move a row with insertMissing by deleting it in one place and inserting it in another',
+      async () => {
+        await insertPersons(1, 2);
+        await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 3, name: 'a', ownerId: 1 }]);
+
+        await Person.query().upsertGraph(
+          [
+            { id: 1, pets: [] },
+            { id: 2, pets: [{ id: 3, name: 'b' }] },
+          ],
+          { insertMissing: true },
+        );
+
+        expect(await knex('review_keys_pet')).toMatchObject([{ id: 3, name: 'b', ownerId: 2 }]);
+      },
+    );
+
     it('should read the siblings of a row that its own owner moves at its new owner', async () => {
       // Moved through its own owner, pet 1's siblings are the pets of owner 4,
       // so pet 2 stays with owner 1.
