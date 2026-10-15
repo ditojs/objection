@@ -327,6 +327,17 @@ export default (session) => {
           expect(jennifer.pets).toEqual([]);
         });
 
+        it('should throw for a #ref at the root', async () => {
+          await expect(
+            Person.query()[method](
+              [{ '#id': 'jennifer', name: 'Jennifer' }, { '#ref': 'jennifer' }],
+              graphOptions,
+            ),
+          ).rejects.toThrow("the reference at '[1]' has no relation to place its model in");
+
+          expect(await Person.query().where('name', 'Jennifer')).toEqual([]);
+        });
+
         it('should resolve #ref{} properties of the owner that are not deferred', async () => {
           await Person.query()[method](
             {
