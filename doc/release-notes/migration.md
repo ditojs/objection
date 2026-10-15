@@ -7,6 +7,7 @@ This section lists the breaking changes in objection 4.0.
 - [Dropped support for knex < 3.3](#dropped-support-for-knex-3-3)
 - [Dropped support for TypeScript < 5.8](#dropped-support-for-typescript-5-8)
 - [Dropped support for MySQL < 8](#dropped-support-for-mysql-8)
+- [Many-to-many patches with join table extras run in one query](#many-to-many-patches-with-join-table-extras-run-in-one-query)
 - [Database errors are objection's own classes](#database-errors-are-objection-s-own-classes)
 - [Model files given as paths](#model-files-given-as-paths)
 - [skipUndefined() is removed](#skipundefined-is-removed)
@@ -23,6 +24,7 @@ This section lists the breaking changes in objection 4.0.
 - [upsertGraph() relates moved rows before it deletes](#upsertgraph-relates-moved-rows-before-it-deletes)
 - [upsertGraph() upserts below related models in the same graph](#upsertgraph-upserts-below-related-models-in-the-same-graph)
 - [insertGraph() and upsertGraph() write in fewer queries](#insertgraph-and-upsertgraph-write-in-fewer-queries)
+- [Custom relations that extend Relation declare keySide](#custom-relations-that-extend-relation-declare-keyside)
 - [insertGraph() and upsertGraph() reject rows placed in conflicting ways](#insertgraph-and-upsertgraph-reject-rows-placed-in-conflicting-ways)
 - [upsertGraph() checks that related models exist](#upsertgraph-checks-that-related-models-exist)
 - [insertGraph() and upsertGraph() errors name the index of array input](#insertgraph-and-upsertgraph-errors-name-the-index-of-array-input)
@@ -199,6 +201,8 @@ A row related from another owner can no longer take the unique key of a row that
 
 A new row can't take the unique key of a row that moves to a new owner either: the move waits for the insert of the new owner, so the row still holds its key when the new row is inserted. 3.x cleared the moved row's foreign key first, which fails for `NOT NULL` keys. Insert the new owner with a separate call first, or make the unique constraint deferred and run `upsertGraph()` in a transaction.
 
+Swapping the rows of two `HasOneRelation` slots with a unique foreign key, e.g. `[{ id: 1, pet: { id: 2 } }, { id: 2, pet: { id: 1 } }]`, fails with a `UniqueViolationError` too, as each row is related while the other one still holds the key. 3.x with `unrelate` unrelated both rows first. Unrelate one of the rows with a separate query in the same transaction first.
+
 ## upsertGraph() upserts below related models in the same graph
 
 3.x upserted the models below a related model with a nested `upsertGraph()` call for each owner and relation, after all other writes of the graph. 4.0 fetches the rows of the related models with their relations together with the rest of the graph, and writes them in the same steps, so their deletes, inserts and patches run with the others of their kind instead of last. The options keep matching the full relation paths.
@@ -249,7 +253,7 @@ await Person.query().insertGraph([{ firstName: 'Jennifer' }, { pets: [{ name: 1 
 
 ## `#ref` to new models that the graph doesn't write throws
 
-A `#ref` to a new model, or a `#ref{}` to the id of a new model, that the graph doesn't write throws a `ValidationError` of type `InvalidGraph` before anything is written, e.g. for a model that `noInsert` skips, or below a model that `noRelate` ignores or that is marked with `#delete` or `#unrelate`. For references of models below rows that `upsertGraph()` moves into a `HasManyRelation` or `HasOneRelation`, it's thrown once the rest of the graph is written, before these models are. Point the reference to a model that the graph writes, or give the referenced model its id. Other `#ref{}` read the models as the graph gives them, also in branches that the graph doesn't write. In 3.x, a `#ref` into a branch that `noRelate`, `#delete` or `#unrelate` leave out failed with an error, sometimes after writing, and a `#ref{}` into such a branch wrote the `#ref{}` text itself, also for ids. A plain `#ref` to a model that `noInsert` skipped silently wrote `null`, and a `#ref{}` to its id wrote `null`, or failed after writing in a key that the relation sets too. See [the guide](/guide/query-examples.md#graph-inserts) for the rule.
+A `#ref` to a new model, or a `#ref{}` to the id of a new model, that the graph doesn't write throws a `ValidationError` of type `InvalidGraph` before anything is written, e.g. for a model that `noInsert` skips, or below a model that `noRelate` ignores or that is marked with `#delete` or `#unrelate`. Point the reference to a model that the graph writes, or give the referenced model its id. Other `#ref{}` read the models as the graph gives them, also in branches that the graph doesn't write. In 3.x, a `#ref` into a branch that `noRelate`, `#delete` or `#unrelate` leave out failed with an error, sometimes after writing, and a `#ref{}` into such a branch wrote the `#ref{}` text itself, also for ids. A plain `#ref` to a model that `noInsert` skipped silently wrote `null`, and a `#ref{}` to its id wrote `null`, or failed after writing in a key that the relation sets too. See [the guide](/guide/query-examples.md#graph-inserts) for the rule.
 
 ## insertGraph() and upsertGraph() keep only the referenced branches below noInsert models
 
@@ -280,6 +284,20 @@ To keep such a row, place it where the graph writes it, or use `noDelete` for it
 ## insertGraph() and upsertGraph() write in fewer queries
 
 Rows that the graph deletes are deleted with one query per relation instead of one per owner, so the static `beforeDelete` and `afterDelete` hooks run once with all owners as `items`. Join rows and unrelated rows are still removed per owner.
+
+On SQLite, rows that the graph inserts are inserted in batches, where 3.x inserted one row per query, so the static `beforeInsert` and `afterInsert` hooks get several models at once.
+
+## Custom relations that extend Relation declare keySide
+
+`insertGraph()` and `upsertGraph()` read where the keys of a relation are stored from its `keySide` getter: `'owner'` for keys in the owner rows, like `BelongsToOneRelation`, `'related'` for keys in the related rows, like `HasManyRelation`, and `'join'` for keys in the rows of a join table, like `ManyToManyRelation`. Relation classes that extend the built-in relations inherit it. Classes that extend `Relation` directly need to declare it, or graph writes through them throw `not implemented`:
+
+```js
+class MyRelation extends Relation {
+  get keySide() {
+    return 'related';
+  }
+}
+```
 
 ## typescript: The typings are ES module declarations
 
@@ -312,7 +330,7 @@ class Person extends Model {
 
 The static `after*` hooks run as the last step of the query, after `first()`, `page()`'s models and the fetches of the `*AndFetch()` methods, but before the `runAfter()` callbacks, including the ones in `context()`, `throwIfNotFound()` and `traverse()`. These callbacks now get the result in the shape that the query returns and after the hooks, e.g. the model with `first()` also if `runAfter()` is called before `first()`, and they run before `page()` and `range()` wrap the result in `{ results, total }`.
 
-The outer queries of `upsertGraph()` and `upsertGraphAndFetch()` no longer call the static `beforeFind` and `afterFind` hooks of the root model class with the input models. The queries that run for the models of the graph and their relations call the hooks as before. Likewise, `fetchGraph()` / `$fetchGraph()` and the relations that `skipFetched` skips no longer call the static `beforeFind` hook of the models they already have, as they didn't call `afterFind`: the find hooks are only called for queries that run.
+The outer queries of `upsertGraph()` and `upsertGraphAndFetch()` no longer call the static `beforeFind` and `afterFind` hooks of the root model class with the input models, nor `$afterFind` on the input models that they return. The queries that run for the models of the graph and their relations call the hooks as before. Likewise, `fetchGraph()` / `$fetchGraph()` and the relations that `skipFetched` skips no longer call the static `beforeFind` hook of the models they already have, as they didn't call `afterFind`: the find hooks are only called for queries that run.
 
 TypeScript: `StaticHookArguments<M, R>` declares `result: R`, with `R = undefined` by default, and the static hooks of `Model` declare the shapes that they get, e.g. `StaticHookArguments<any, Model | Model[] | undefined>` for `afterFind`. Overrides that destructure `result` from `StaticHookArguments<Person>` need the type of the result as second type argument, e.g. `StaticHookArguments<Person, Person | Person[] | undefined>`.
 
