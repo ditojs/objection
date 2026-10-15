@@ -76,7 +76,7 @@ describe('integration tests', () => {
       client: 'mysql',
       connection: connection('mysql', {
         host: '127.0.0.1',
-        port: 33306,
+        port: 13306,
         user: 'objection',
         database: 'objection_test',
       }),
@@ -94,7 +94,7 @@ describe('integration tests', () => {
       client: 'postgres',
       connection: connection('postgres', {
         host: '127.0.0.1',
-        port: 55432,
+        port: 15432,
         user: 'objection',
         database: 'objection_test',
       }),
@@ -103,7 +103,7 @@ describe('integration tests', () => {
       client: 'mssql',
       connection: connection('mssql', {
         host: '127.0.0.1',
-        port: 51433,
+        port: 11433,
         user: 'sa',
         password: 'Objection1!',
         database: 'objection_test',
