@@ -302,7 +302,7 @@ export default (session) => {
     });
   });
 
-  describe('upsertGraph() writing the relations of moved rows in a later pass', () => {
+  describe('upsertGraph() writing the relations of moved rows', () => {
     const { knex } = session;
 
     class Toy extends Model {
@@ -460,9 +460,9 @@ export default (session) => {
       expect(await knex('moved_later_pet').where('id', 1)).toMatchObject([{ ownerId: 2 }]);
     });
 
-    it('should relate a row that a later pass gives its key under noUpdate', async () => {
-      // The owner of pet 4 is set in the later pass of the moved pet 3, so pet 1
-      // is related there, which writes its key also under `noUpdate`.
+    it('should relate a row that the relations of a moved row give its key under noUpdate', async () => {
+      // The owner of pet 4 is set below the moved pet 3, so pet 1 is related
+      // there, which writes its key also under `noUpdate`.
       await insertPersons(1, 2, 3, 4);
       await insertRowsWithIds(knex, 'moved_later_pet', [
         { id: 1, ownerId: 1, sitterId: 2 },
@@ -485,9 +485,9 @@ export default (session) => {
       ]);
     });
 
-    it('should write the key of a BelongsToOne row that a later pass inserts', async () => {
+    it('should write the key of a BelongsToOne row that waits for an insert below a moved row', async () => {
       // The name of person 1's new favorite pet reads the id of a pet below the
-      // moved person 2, so it is inserted in the later pass, and its key patched in there.
+      // moved person 2, so it is inserted after that pet.
       await insertPersons(1, 2, 3);
       await insertRowsWithIds(knex, 'moved_later_pet', [{ id: 10, ownerId: 3 }]);
 
@@ -547,7 +547,7 @@ export default (session) => {
     });
 
     it('should give the new sibling of a moved row in its other place the final owner', async () => {
-      // The other place of pet 12 is written in a later pass, so we read its final owner.
+      // The other place of pet 12 gives it its final owner, which its new sibling reads.
       await insertPersons(1, 2, 3);
       await insertRowsWithIds(knex, 'moved_later_pet', [
         { id: 10, ownerId: 2 },
@@ -571,7 +571,7 @@ export default (session) => {
       ]);
     });
 
-    it('should give the new sibling of a row whose owner a later pass sets the final owner', async () => {
+    it('should give the new sibling of a row whose owner its moved sibling sets the final owner', async () => {
       // Pet 12 is related to person 3 by its sibling pet 10, so its new sibling follows it there.
       await insertPersons(1, 2, 3);
       await insertRowsWithIds(knex, 'moved_later_pet', [
@@ -1039,9 +1039,82 @@ export default (session) => {
       ]);
     });
 
-    it('should read the siblings of a row that its own owner moves at its old owner', async () => {
-      // A known limit: moved through its own owner, pet 1's siblings are still
-      // read at owner 1, so pet 2 is unrelated there, as in 3.x.
+    it('should insert the new siblings of a moved row that lists itself among its siblings', async () => {
+      // Pet 1 moves to person 2, where it isn't among the siblings yet, so its
+      // own listing there is related, with the new sibling below it.
+      await insertPersons(1, 2);
+      await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 1, ownerId: 1 }]);
+
+      await Pet.query().upsertGraph(
+        { id: 1, owner: { id: 2 }, siblings: [{ id: 1, siblings: [{ name: 'x' }] }] },
+        { relate: true },
+      );
+
+      expect(await knex('review_keys_pet').orderBy('id')).toMatchObject([
+        { id: 1, ownerId: 2 },
+        { name: 'x', ownerId: 2 },
+      ]);
+    });
+
+    it('should insert the new toys of a moved row in its own listing among its siblings', async () => {
+      // Pet 1 isn't among the siblings at person 2 yet, so its listing there is
+      // related, with the new toy below it.
+      await insertPersons(1, 2);
+      await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 1, ownerId: 1 }]);
+
+      await Pet.query().upsertGraph(
+        { id: 1, owner: { id: 2 }, siblings: [{ id: 1, toys: [{ name: 't' }] }] },
+        { relate: true },
+      );
+
+      expect(await knex('review_keys_pet')).toMatchObject([{ id: 1, ownerId: 2 }]);
+      expect(await knex('review_keys_toy')).toMatchObject([{ name: 't', petId: 1 }]);
+    });
+
+    it('should move a row through its owner given the same way in two places', async () => {
+      await insertPersons(1, 4);
+      await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 1, ownerId: 1 }]);
+      const place = { id: 1, favPet: { id: 1, owner: { id: 4 } } };
+
+      await Person.query().upsertGraph([place, place], { relate: true });
+
+      expect(await knex('review_keys_pet')).toMatchObject([{ id: 1, ownerId: 4 }]);
+    });
+
+    it('should unrelate a moved row that leaves itself out of its siblings', async () => {
+      // Pet 2 moves to the code of person 2, and its siblings at person 1 are
+      // pet 3, which unrelates pet 2 itself, as for a row at its place.
+      await insertPersons(1, 2);
+      await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 2, ownerId: 1 }, { id: 3 }]);
+
+      await Person.query().upsertGraph(
+        { id: 2, codePets: [{ id: 2, siblings: [{ id: 3 }] }] },
+        { relate: true, unrelate: true },
+      );
+
+      expect(await knex('review_keys_pet').orderBy('id')).toMatchObject([
+        { id: 2, ownerId: null, ownerCode: 'c2' },
+        { id: 3, ownerId: 1 },
+      ]);
+    });
+
+    it('should fail for a row below a moved row that the relate option leaves out', async () => {
+      // Pet 3 moves to the new person y, where it isn't among the siblings, and
+      // `relate` doesn't cover them.
+      await insertPersons(1);
+      await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 3, ownerId: 1 }]);
+
+      await expect(
+        Person.query().upsertGraph(
+          { name: 'x', favPet: { id: 3, siblings: [{ id: 3, owner: { name: 'y' } }] } },
+          { relate: ['favPet'], noDelete: true },
+        ),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should read the siblings of a row that its own owner moves at its new owner', async () => {
+      // Moved through its own owner, pet 1's siblings are the pets of owner 4,
+      // so pet 2 stays with owner 1.
       await insertPersons(1, 2, 4);
       await insertRowsWithIds(knex, 'review_keys_pet', [
         { id: 1, ownerId: 1 },
@@ -1055,7 +1128,7 @@ export default (session) => {
 
       expect(await knex('review_keys_pet').orderBy('id')).toMatchObject([
         { id: 1, ownerId: 4 },
-        { id: 2, ownerId: null },
+        { id: 2, ownerId: 1 },
       ]);
     });
 
@@ -1225,10 +1298,10 @@ export default (session) => {
     describe.each([
       ['in the order of the rows', false],
       ['in the reverse order of the rows', true],
-    ])('a many-to-many #ref to a row that a later pass inserts, %s', (_, reverse) => {
+    ])('a many-to-many #ref to a row inserted below a moved row, %s', (_, reverse) => {
       it('should relate the row at its own place and through the many-to-many', async () => {
-        // Pet 9 moves to person 1, and its siblings are the pets of person 1, so
-        // the new pet is only inserted in a later pass, after the #ref is seen.
+        // Pet 9 moves to person 1, and its siblings are the pets of person 1,
+        // where the new pet is inserted.
         await insertPersons(1, 2, 3);
         await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 9, ownerId: 2 }]);
 
@@ -1416,7 +1489,7 @@ export default (session) => {
       expect(await knex('review_keys_pet').where('id', 2)).toMatchObject([{ ownerId: 1 }]);
     });
 
-    it('should keep the owner of a row whose sibling is moved by a #ref{} while unrelating', async () => {
+    it('should unrelate a row that leaves itself out of its siblings while one is moved by a #ref{}', async () => {
       await insertSeed();
 
       await Person.query().upsertGraph(
@@ -1430,7 +1503,7 @@ export default (session) => {
         { relate: true, unrelate: true, allowRefs: true },
       );
 
-      expect(await knex('review_keys_pet').where('id', 2)).toMatchObject([{ ownerId: 1 }]);
+      expect(await knex('review_keys_pet').where('id', 2)).toMatchObject([{ ownerId: null }]);
     });
   });
 };

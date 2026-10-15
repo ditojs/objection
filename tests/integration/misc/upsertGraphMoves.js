@@ -337,7 +337,7 @@ export default (session) => {
       });
 
       // Pet 20 is inserted through the new person's liked pets and related
-      // through its pets, which keep it in the later pass. SQL Server takes no
+      // through its pets, which keep it. SQL Server takes no
       // explicit ids in identity columns:
       it.skipIf(session.isMsSql())(
         'should keep a row that one place inserts and another relates',
@@ -430,7 +430,7 @@ export default (session) => {
       });
 
       // Pet 10 isn't the favorite pet of person 2, so the mark is ignored, also
-      // when the later pass writes the relations of the moved person:
+      // where the relations of the moved person are written:
       it('should keep a BelongsToOne row of a moved row that is marked but not related', async () => {
         await createTables();
         await insertRows();
@@ -461,9 +461,8 @@ export default (session) => {
         expect((await selectPets()).find(({ name }) => name === 'S').ownerId).toBe(2);
       });
 
-      // The pets of the moved person 2 are written in a later pass, where
-      // `noRelate` ignores them:
-      it('should insert a sibling at the key of a row that an ignored place of a later pass relates', async () => {
+      // `noRelate` ignores the pets of the moved person 2:
+      it('should insert a sibling at the key of a row that an ignored place below a moved row relates', async () => {
         await createTables();
         await insertRows();
 
@@ -478,9 +477,9 @@ export default (session) => {
         expect((await selectPets()).find(({ name }) => name === 'S').ownerId).toBe(3);
       });
 
-      // `noRelate` ignores the siblings of pet 11 in the later pass that writes
-      // them, so pet 13 stays with person 3, and so does its new sibling:
-      it('should insert a sibling at the key of a row that an ignored place of a later pass moves', async () => {
+      // `noRelate` ignores the siblings of pet 11, so pet 13 stays with person 3,
+      // and so does its new sibling:
+      it('should insert a sibling at the key of a row that an ignored place below a moved row moves', async () => {
         await createTables();
         await insertRows();
 
@@ -522,6 +521,25 @@ export default (session) => {
           { id: 12, name: 'Tom', ownerId: 1 },
           { id: 13, name: 'Kit', ownerId: 3 },
         ]);
+      });
+
+      // Person 2 likes pet 11 at its own place and the new pet where it moves:
+      it('should relate the many-to-many rows of all places of a moved row', async () => {
+        await createTables();
+        await insertRows();
+
+        await Person.query().upsertGraph(
+          [
+            { id: 2, likedPets: [{ id: 11 }] },
+            { id: 3, children: [{ id: 2, likedPets: [{ name: 'new' }] }] },
+          ],
+          { relate: true },
+        );
+
+        const [pet] = await knex('graph_move_pet').where('name', 'new');
+        expect(
+          await knex('graph_move_like').where('personId', 2).orderBy('petId').pluck('petId'),
+        ).toEqual([11, pet.id]);
       });
 
       it('should read a to-many relation of a moved row at its new key', async () => {
@@ -871,23 +889,26 @@ export default (session) => {
       });
 
       describe('keys of rows in several places', () => {
-        // Person 1's pets leave pet 12 out, which unrelates it, so the sibling
-        // that its other place gives gets no owner either.
-        it('should give the siblings of a row that another place unrelates no owner', async () => {
+        // Person 1's pets leave pet 12 out, which clears its owner, while its
+        // other place gives it a sibling by that owner.
+        it('should fail to place siblings by a key that another place clears', async () => {
           await createTables();
           await insertRows();
-
-          await Person.query().upsertGraph(
-            [
-              { id: 1, pets: [{ id: 10 }] },
-              { id: 3, favoritePet: { id: 12, siblings: [{ name: 's' }] } },
-            ],
-            { relate: true, unrelate: true },
-          );
-
           const pets = await selectPets();
-          expect(pets.find(({ id }) => id === 12).ownerId).toBe(null);
-          expect(pets.find(({ name }) => name === 's').ownerId).toBe(null);
+
+          const err = await Person.query()
+            .upsertGraph(
+              [
+                { id: 1, pets: [{ id: 10 }] },
+                { id: 3, favoritePet: { id: 12, siblings: [{ name: 's' }] } },
+              ],
+              { relate: true, unrelate: true },
+            )
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.type).toBe('InvalidGraph');
+          expect(await selectPets()).toEqual(pets);
         });
 
         // Pet 13 is placed at person 3 and in the siblings of pet 11 that is the

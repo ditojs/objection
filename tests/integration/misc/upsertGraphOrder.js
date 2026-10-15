@@ -53,6 +53,11 @@ export default (session) => {
             modelClass: Pet,
             join: { from: 'graph_order_pet.ownerId', to: 'graph_order_pet.ownerId' },
           },
+          sibling: {
+            relation: Model.HasOneRelation,
+            modelClass: Pet,
+            join: { from: 'graph_order_pet.ownerId', to: 'graph_order_pet.ownerId' },
+          },
           fans: {
             relation: Model.HasManyRelation,
             modelClass: Person,
@@ -820,9 +825,8 @@ export default (session) => {
       });
 
       // Rows that move out of a slot below a row that moves to another owner
-      // first are related in a later pass, so they leave their slots by being
-      // unrelated before the rows that go into them (#398):
-      it('should write the rows of a slot whose row moves in a later pass', async () => {
+      // leave it before the rows that go into it (#398):
+      it('should write the rows of a slot whose row moves below a moved row', async () => {
         for (const [people1, people2, expectedPets] of [
           // The new pet 3 goes into the slot of person 1, and pet 1 moves to
           // person 2, which moves to org 2 first:
@@ -847,15 +851,6 @@ export default (session) => {
               { id: 3, ownerId: 1 },
             ],
           ],
-          // Pet 2 is related into the slot of person 1 instead:
-          [
-            [{ id: 1, onePet: { id: 2 } }],
-            [{ id: 2, onePet: { id: 1 } }],
-            [
-              { id: 1, ownerId: 2 },
-              { id: 2, ownerId: 1 },
-            ],
-          ],
         ]) {
           await createTables({ uniqueOwner: true });
           await insertPeople([
@@ -877,7 +872,45 @@ export default (session) => {
         }
       });
 
-      it('should keep a row in an emptied slot that a later pass moves', async () => {
+      // A known limit: rows that swap slots would need one of them unrelated
+      // first, which we don't do for a unique foreign key.
+      it('should fail to swap the rows of two slots', async () => {
+        await createTables({ uniqueOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
+        await knex('graph_order_org').insert({ id: 2 });
+
+        await expect(
+          Org.query().upsertGraph(
+            [
+              { id: 1, people: [{ id: 1, onePet: { id: 2 } }] },
+              { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
+            ],
+            { relate: true },
+          ),
+        ).rejects.toThrow(UniqueViolationError);
+      });
+
+      // Pet 1 is the current row of its own `sibling` slot, which it leaves for
+      // the new pet:
+      it('should replace a row in its own slot', async () => {
+        await createTables({ uniqueOwner: true });
+        await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
+
+        await Pet.query().upsertGraph(
+          { id: 1, sibling: { id: 2, name: 'n' } },
+          { unrelate: true, insertMissing: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: null },
+          { id: 2, name: 'n', ownerId: 1 },
+        ]);
+      });
+
+      it('should keep a row in an emptied slot that the relations of a moved row move', async () => {
         await createTables({ uniqueOwner: true, requiredOwner: true });
         await insertPeople([{ id: 1, name: 'a', ownerId: 1 }]);
         await knex('graph_order_org').insert({ id: 2 });

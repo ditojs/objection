@@ -32,9 +32,6 @@ const expectedErrors = [
     name: 'UniqueViolationError',
     when: ({ options }) => options.insertMissing || options.noDelete || options.noUnrelate,
   },
-  // TODO: Remove once #398 is fixed: The row of a HasOneRelation slot that
-  // only moves out in a later pass collides with the new row of the slot.
-  { name: 'UniqueViolationError', message: /graph_gen_profile/ },
   // SQL Server doesn't take the ids that `insertMissing` inserts in identity
   // columns:
   {
