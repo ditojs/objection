@@ -383,11 +383,12 @@ class Person extends Model {
 }
 ```
 
-How the database returns the columns of the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes):
+The kind of columns that hold the [jsonAttributes](/api/model/static-properties.html#static-jsonattributes). The format applies to all JSON attributes of the model, not per column:
 
-- `'auto'` (default): the PostgreSQL drivers (`pg`, `pgnative`, `cockroachdb`) return `json` and `jsonb` columns parsed, and their values are left as they are. With other drivers, and in rows passed to `fromDatabaseJson()` by hand, strings that are valid JSON are parsed and other strings are kept.
-- `'text'`: the columns hold JSON text, e.g. JSON in `text` columns on PostgreSQL, or on MariaDB. It is parsed with `JSON.parse()`, and invalid JSON throws an error.
-- `'parsed'`: the driver returns the columns parsed. Their values are never parsed.
+- `'auto'` (default): `'json'` on the PostgreSQL drivers (`pg`, `pgnative`, `cockroachdb`), `'text'` on SQLite and SQL Server, and `'mixed'` on MySQL and MariaDB, with other drivers and in rows passed to `fromDatabaseJson()` by hand. `mysql2` returns `json` columns parsed, so on MySQL, a string in them that looks like JSON, e.g. `'123'`, comes back parsed. Set `'json'` with `mysql2` on MySQL to keep such strings, but not with `mysql`, which returns JSON as text, and not on MariaDB, which stores it as text.
+- `'json'`: `json` or `jsonb` columns, which the driver returns parsed. Their values are never parsed again.
+- `'text'`: text columns that hold JSON, e.g. JSON in `text` columns on PostgreSQL, or on MariaDB. It is parsed with `JSON.parse()`, and invalid JSON throws an error.
+- `'mixed'`: text columns that hold JSON or plain text. Strings that are valid JSON are parsed, and other strings are kept, so a string that looks like JSON, e.g. `'123'`, comes back parsed, also from `json` and `jsonb` columns on PostgreSQL.
 
 ## `static` cloneObjectAttributes
 
