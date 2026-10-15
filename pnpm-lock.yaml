@@ -209,6 +209,9 @@ importers:
       typescript:
         specifier: ^7.0.0
         version: 7.0.2
+      typescript-5:
+        specifier: npm:typescript@5.8.3
+        version: typescript@5.8.3
       vitepress:
         specifier: 1.6.4
         version: 1.6.4(@algolia/client-search@5.59.0)(@types/node@22.15.24)(lightningcss@1.33.0)(postcss@8.5.29)(search-insights@2.17.3)(typescript@7.0.2)
@@ -2565,6 +2568,11 @@ packages:
   type-fest@0.20.2:
     resolution: {integrity: sha512-Ne+eE4r0/iWnpAxD852z3A+N0Bt5RN//NjJwRd2VFHEmrywxf5vsZlh4R6lixl6B+wz/8d+maTSAkN1FIkI3LQ==}
     engines: {node: '>=10'}
+
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
 
   typescript@7.0.2:
     resolution: {integrity: sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==}
@@ -4974,6 +4982,8 @@ snapshots:
       prelude-ls: 1.2.1
 
   type-fest@0.20.2: {}
+
+  typescript@5.8.3: {}
 
   typescript@7.0.2:
     optionalDependencies:
