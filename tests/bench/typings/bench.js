@@ -51,21 +51,17 @@ for (let copy = 0; copy < +options.copies; copy++) {
   }
 }
 
-// One project per mode. Loose mode opts out with the `TypeConfig` augmentation.
+// One project per mode. Strict mode opts in with the `TypeConfig` augmentation.
 // The checks for declaration emit of the type tests aren't measured:
 const extendsConfig = path.relative(generatedDir, path.join(root, 'tsconfig.json'));
 for (const mode of ['strict', 'loose']) {
-  const include = ['app/**/*.ts', ...(mode === 'loose' ? ['loose.ts'] : [])];
+  const include = ['app/**/*.ts', ...(mode === 'strict' ? ['../strict.ts'] : [])];
   const compilerOptions = { declaration: false };
   fs.writeFileSync(
     path.join(generatedDir, `tsconfig.${mode}.json`),
     JSON.stringify({ extends: extendsConfig, compilerOptions, include, exclude: [] }, null, 2),
   );
 }
-fs.writeFileSync(
-  path.join(generatedDir, 'loose.ts'),
-  `declare module 'objection' {\n  interface TypeConfig {\n    strict: false;\n  }\n}\n\nexport {};\n`,
-);
 
 console.log(`Sample: ${+options.copies} x 10 models, ${lines} lines, ${runs} runs.`);
 

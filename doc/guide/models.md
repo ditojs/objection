@@ -339,7 +339,17 @@ class Person extends Model {
 
 ## Checking queries in TypeScript
 
-The typings check the column names and values of queries against the models. A column is a property of the model that is neither a method nor a relation, nor starts with `$`. Columns qualified with a relation path, as objection names joined relations, are checked against the related model, whether the relation is joined before or after:
+In strict mode, the typings check the column names and values of queries against the models. Strict mode is opt-in, turned on by augmenting `TypeConfig`:
+
+```ts
+declare module 'objection' {
+  interface TypeConfig {
+    strict: true;
+  }
+}
+```
+
+A column is a property of the model that is neither a method nor a relation, nor starts with `$`. Columns qualified with a relation path, as objection names joined relations, are checked against the related model, whether the relation is joined before or after:
 
 ```ts
 await Person.query()
@@ -381,16 +391,6 @@ people[0].lastName; // Error: not selected
 `select('*')` and `select('persons.*')` keep all columns, `first()`, `findById()`, `page()` and `withGraphFetched()` keep the narrowed rows, and repeated selections add up. `clearSelect()` gives back all columns. `distinctOn()` doesn't select its columns and `jsonExtract()` isn't a selection: they don't narrow the rows, and `jsonExtract()` adds its alias to them, of unknown type.
 
 Models that map their columns with `snakeCaseMappers()` declare it, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html). Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
-
-To turn the checks off, augment `TypeConfig`:
-
-```ts
-declare module 'objection' {
-  interface TypeConfig {
-    strict: false;
-  }
-}
-```
 
 ## Typing generated properties in TypeScript
 

@@ -764,18 +764,18 @@ export type NumberQueryBuilder<QB extends AnyQueryBuilder> = QB['~number'];
  */
 export type PageQueryBuilder<QB extends AnyQueryBuilder> = QB['~page'];
 
-// Strict mode, on by default, checks the column names and values of queries
-// against the models. Augment `TypeConfig` to opt out:
+// Strict mode checks the column names and values of queries against the
+// models. Augment `TypeConfig` to opt in:
 //
 //   declare module 'objection' {
 //     interface TypeConfig {
-//       strict: false;
+//       strict: true;
 //     }
 //   }
 
 export interface TypeConfig {}
 
-type IsStrict = TypeConfig extends { strict: false } ? false : true;
+type IsStrict = TypeConfig extends { strict: true } ? true : false;
 
 // As IsStrict isn't generic, IfStrict resolves eagerly.
 type IfStrict<Loose, Strict> = IsStrict extends true ? Strict : Loose;

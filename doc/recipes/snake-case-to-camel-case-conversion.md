@@ -122,7 +122,7 @@ class Person extends Model {
 await Person.query().where('first_name', 'Jennifer');
 ```
 
-In TypeScript, the typings check the column names of queries against the model's properties. With `snakeCaseMappers`, declare the mapping on the model, so that queries take the snake case names of the properties, while `insert`, `patch` and the results keep the properties:
+In TypeScript, strict mode checks the column names of queries against the model's properties, see [Checking queries in TypeScript](/guide/models.html#checking-queries-in-typescript). With `snakeCaseMappers`, declare the mapping on the model, so that queries take the snake case names of the properties, while `insert`, `patch` and the results keep the properties:
 
 ```ts
 class BaseModel extends Model {
