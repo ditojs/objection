@@ -425,6 +425,21 @@ class Person extends Model {
 }
 ```
 
+`findById()`, `findByIds()` and the other `*ById()` methods take the type of the property of a literal `idColumn`, or a tuple of them for composite ids, in queries started from a model class:
+
+```ts
+class Membership extends Model {
+  static idColumn = ['groupId', 'memberId'] as const;
+  groupId!: number;
+  memberId!: string;
+}
+
+await Membership.query().findById([1, 'a']);
+await Membership.query().findById(1); // Error: not a [number, string] tuple
+```
+
+`static readonly idColumn = 'code'` is literal too, without `as const`. Composite ids in variables are typed as tuples, e.g. `[number, string]`, not as arrays. Snake case id columns need the model's `ColumnNameMapping`, see above. Models without a literal `idColumn`, like the inherited `'id'`, take any id, and so do queries started from instances, models that override `query()`, and generic code that doesn't resolve the class. Like `jsonSchema`, models that subclasses extend with another `idColumn` declare the general type, `static idColumn: string | readonly string[]`.
+
 ## Typing generated properties in TypeScript
 
 `insert()` accepts any subset of the model's properties without the relations, and `insertGraph()` accepts the relations too. To check that the data for a new row is complete, mark the properties the database generates, like auto-incremented ids, timestamps or columns with defaults, as `Generated`, and type the data as `Insertable`:

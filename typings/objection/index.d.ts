@@ -754,7 +754,8 @@ type WithExtra<QB extends AnyQueryBuilder, X> = Rebind<QB, ModelType<QB>, Result
 
 // The narrowed query builders of `withGraph*()` start without the extra type
 // of QB, so it is passed on, if there is one.
-type KeepExtra<NQB extends AnyQueryBuilder, X> = X extends QueryExtra ? WithExtra<NQB, X> : NQB;
+type KeepExtra<NQB extends AnyQueryBuilder, X> =
+  X extends QueryExtra<any, any, any> ? WithExtra<NQB, X> : NQB;
 
 /**
  * Gets the single item query builder type for a query builder.
@@ -1180,11 +1181,13 @@ export type ExtractedBrand<A> = { readonly [extracted]: A };
 /**
  * The extra type of queries in strict mode: the model class C that started the
  * query, e.g. with `Person.query()`, and the modifiers P registered with
- * `modifiers()`, to check the names of modifiers.
+ * `modifiers()`, to check the names of modifiers, and the id I of the class,
+ * for `findById()` and the other `*ById()` methods.
  */
-export interface QueryExtra<C = unknown, P = unknown> {
+export interface QueryExtra<C = unknown, P = unknown, I = MaybeCompositeId> {
   modelClass: C;
   registered: P;
+  id: I;
 }
 
 // The results whose rows have `jsonExtract()` values, which `withGraph*()`
@@ -1353,7 +1356,7 @@ type KnownModifiers<QB> = ClassModifiers<QueryClass<QB>> & RegisteredModifiers<Q
 // The model class that started the query, if any.
 type QueryClass<QB> = [QB] extends [never]
   ? never
-  : QB extends { ExtraType: QueryExtra<infer C> }
+  : QB extends { ExtraType: QueryExtra<infer C, any, any> }
     ? unknown extends C
       ? never
       : C
@@ -1372,6 +1375,42 @@ type RegisteredModifiers<QB> = [QB] extends [never]
   : QB extends { ExtraType: { registered: infer P } }
     ? P
     : {};
+
+/**
+ * The id that `findById()` and the other `*ById()` methods take on query
+ * builder QB: in strict mode, the type of the property of the class's literal
+ * `idColumn`, or a tuple of them for composite ids, e.g. with
+ * `static idColumn = ['groupId', 'memberId'] as const`.
+ */
+type IdArg<QB extends AnyQueryBuilder> = IfStrict<
+  MaybeCompositeId,
+  [QueryClass<QB>] extends [never]
+    ? MaybeCompositeId
+    : QB extends { ExtraType: QueryExtra<any, any, infer I> }
+      ? I
+      : MaybeCompositeId
+>;
+
+// The id of a related class, read from its instances.
+type ClassId<C> = C extends { idColumn: infer K; prototype: infer M }
+  ? ColumnsId<K, M>
+  : MaybeCompositeId;
+
+// The inherited `idColumn` and other general types give any id.
+type ColumnsId<K, M> = [K] extends [string]
+  ? string extends K
+    ? MaybeCompositeId
+    : PropertyId<M, K, MaybeCompositeId>
+  : [K] extends [readonly string[]]
+    ? string extends K[number]
+      ? MaybeCompositeId
+      : { readonly [I in keyof K]: PropertyId<M, K[I] & string, Id> }
+    : MaybeCompositeId;
+
+// The id column is a database column, named after the property by the
+// model's `ColumnNameMapping`. Columns without a property give the fallback F.
+type PropertyId<M, C extends string, F> =
+  ResultKey<M, C> extends infer P extends keyof M ? NonNullable<M[P]> : F;
 
 // Modifiers with their general type, e.g. inherited from `Model`, aren't
 // checked.
@@ -2235,7 +2274,9 @@ export interface ModifyMethod<out QB extends AnyQueryBuilder> {
 
 // Registered modifiers add up, on queries with and without a model class.
 type RegisterModifiers<X, O> =
-  X extends QueryExtra<infer C, infer P> ? QueryExtra<C, P & O> : QueryExtra<unknown, O>;
+  X extends QueryExtra<infer C, infer P, infer I>
+    ? QueryExtra<C, P & O, I>
+    : QueryExtra<unknown, O>;
 
 export interface ModifiersMethod<
   out QB extends AnyQueryBuilder,
@@ -2452,8 +2493,8 @@ export class QueryBuilder<
   groupBy: GroupByMethod<this>;
   groupByRaw: RawInterface<this>;
 
-  findById(id: MaybeCompositeId): MaybeSingleQueryBuilder<this>;
-  findByIds(ids: MaybeCompositeId[]): this;
+  findById(id: IdArg<this>): MaybeSingleQueryBuilder<this>;
+  findByIds(ids: IdArg<this>[]): this;
   findOne: WhereMethod<MaybeSingleQueryBuilder<this>>;
 
   execute(): Promise<R>;
@@ -2463,24 +2504,24 @@ export class QueryBuilder<
   update(update: PartialModelRow<M>): NumberQueryBuilder<this>;
   update(): NumberQueryBuilder<this>;
   updateById(
-    id: MaybeCompositeId,
+    id: IdArg<this>,
     update: PartialModelRow<M>,
   ): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
   updateAndFetch(update: PartialModelRow<M>): SingleQueryBuilder<this>;
-  updateAndFetchById(id: MaybeCompositeId, update: PartialModelRow<M>): SingleQueryBuilder<this>;
+  updateAndFetchById(id: IdArg<this>, update: PartialModelRow<M>): SingleQueryBuilder<this>;
 
   patch(update: PartialModelPatch<M>): NumberQueryBuilder<this>;
   patch(): NumberQueryBuilder<this>;
   patchById(
-    id: MaybeCompositeId,
+    id: IdArg<this>,
     update: PartialModelPatch<M>,
   ): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
   patchAndFetch(update: PartialModelPatch<M>): SingleQueryBuilder<this>;
-  patchAndFetchById(id: MaybeCompositeId, update: PartialModelPatch<M>): SingleQueryBuilder<this>;
+  patchAndFetchById(id: IdArg<this>, update: PartialModelPatch<M>): SingleQueryBuilder<this>;
 
   del(): NumberQueryBuilder<this>;
   delete(): NumberQueryBuilder<this>;
-  deleteById(id: MaybeCompositeId): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
+  deleteById(id: IdArg<this>): NumberQueryBuilder<MaybeSingleQueryBuilder<this>>;
 
   insert(insert: PartialModelRow<M>): SingleQueryBuilder<this>;
   insert(insert: PartialModelRow<M>[]): ArrayQueryBuilder<this>;
@@ -3163,10 +3204,16 @@ export class Model {
 
   static defaultGraphOptions?: GraphOptions;
 
-  static query<M extends Model, C = unknown>(
-    this: ConstructorType<M> & IfStrict<unknown, C>,
+  // The id column K is inferred separately from the class C, so that it
+  // resolves through the constraint of a generic class, e.g. in static helpers
+  // with `this: T`.
+  static query<M extends Model, C = unknown, K = unknown>(
+    this: ConstructorType<M> & IfStrict<unknown, C & { idColumn?: K }>,
     trxOrKnex?: TransactionOrKnex,
-  ): IfStrict<QueryBuilderType<M>, WithExtra<QueryBuilderType<M>, QueryExtra<C, {}>>>;
+  ): IfStrict<
+    QueryBuilderType<M>,
+    WithExtra<QueryBuilderType<M>, QueryExtra<C, {}, ColumnsId<K, M>>>
+  >;
 
   static relatedQuery<M extends Model, K extends keyof M, C = unknown>(
     this: ConstructorType<M> & IfStrict<unknown, C>,
@@ -3174,7 +3221,10 @@ export class Model {
     trxOrKnex?: TransactionOrKnex,
   ): IfStrict<
     ArrayRelatedQueryBuilder<M[K]>,
-    WithExtra<ArrayRelatedQueryBuilder<M[K]>, QueryExtra<MappedClass<ClassMappings<C>, K>, {}>>
+    WithExtra<
+      ArrayRelatedQueryBuilder<M[K]>,
+      QueryExtra<MappedClass<ClassMappings<C>, K>, {}, ClassId<MappedClass<ClassMappings<C>, K>>>
+    >
   >;
 
   static relatedQuery<RM extends Model>(
