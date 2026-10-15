@@ -1,0 +1,28 @@
+name: publish
+
+# Publishes the version of a pushed version tag to npm through npm's trusted
+# publishing: npm trusts this workflow, so no tokens are needed. The dist-tag
+# comes from `publishConfig.tag` of the tagged commit: `next` on next, `latest`
+# on main.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Trusted publishing needs npm 11.5.1 or later, which comes with Node 24.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
+
+      - run: npm publish
