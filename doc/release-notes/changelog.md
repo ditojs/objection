@@ -132,6 +132,7 @@
 - In strict mode, `findById()`, `findByIds()` and the other `*ById()` methods take the types of the properties of a literal `idColumn` in queries started from model classes, e.g. `[number, string]` for `static idColumn = ['groupId', 'memberId'] as const`. See [models](/guide/models.md#checking-queries-in-typescript) [#432](https://github.com/ditojs/objection/issues/432)
 - `ModelProps` and `ModelRelations` tell properties and relations apart like the other types: nullable and readonly relations are relations, and properties typed `any` or `any[]` aren't, so loose mode no longer suggests relations as columns in queries
 - `ModelClass<M>`, the type of `modelClass()` and `$modelClass`, accepts `transaction(undefined, callback)`, like `Model`
+- `Parameters<>` of `whereIn()` takes all its values, not only query builders, as its other overloads do
 - `patch()`, `patchById()`, `patchAndFetch()`, `patchAndFetchById()` and `merge()` take field expression keys of the model's columns, like `'address:street'`, typed as `PartialModelPatch<M>`. `insert()` and `update()` still reject them.
 
 ### Other

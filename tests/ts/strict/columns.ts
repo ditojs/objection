@@ -180,6 +180,25 @@ async function unchecked(column: string, personColumn: 'firstName' | 'lastName')
   await Untyped.query().where('anything', 1).orderBy('anything');
 }
 
+// Pin what wrappers that forward their arguments through `Parameters<>` get:
+// the last overload, which takes where objects without checking their keys.
+// The literal column checks of `select()` and `whereIn()` can't be forwarded:
+// `Parameters<>` of `select()` is `unknown[]`, so such a wrapper accepts any
+// arguments, and fails to compile inside its body.
+
+function where(...args: Parameters<QueryBuilder<Person>['where']>) {
+  return Person.query().where(...args);
+}
+
+function findOne(...args: Parameters<QueryBuilder<Person>['findOne']>) {
+  return Person.query().findOne(...args);
+}
+
+async function forwarded() {
+  await where({ firstName: 'Jennifer', unknown: 1 });
+  await findOne({ firstName: 'Jennifer', unknown: 1 });
+}
+
 // Generic code is checked loosely, as the columns can't be resolved there.
 
 export class GenericQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<
