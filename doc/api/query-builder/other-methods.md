@@ -1125,6 +1125,8 @@ Registers modifiers for the query.
 
 You can call this method without arguments to get the currently registered modifiers.
 
+In TypeScript's strict mode, the names of modifiers are checked, so register them before the methods that use them, like `modify()` and `withGraphFetched()`. See [checking queries in TypeScript](/guide/models.md#checking-queries-in-typescript).
+
 See the [modifier recipe](/recipes/modifiers.html) for more info and examples.
 
 ##### Return value

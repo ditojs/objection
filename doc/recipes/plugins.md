@@ -25,8 +25,8 @@ const MixinPerson = Mixin()(Person);
 ```ts
 type Constructor<T> = new (...args: any[]) => T;
 
-class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
+class CustomQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: CustomQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   someCustomMethod(): this {
     return this;

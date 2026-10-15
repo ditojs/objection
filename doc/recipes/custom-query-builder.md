@@ -75,10 +75,10 @@ With typescript, you need to add an extra type property to the custom query buil
 ```ts
 import { Model, QueryBuilder } from 'objection';
 
-class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
+class MyQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
   // This is necessary. You can just copy-paste it and change the name of the
   // query builder class.
-  declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+  declare RebindType: MyQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   myCustomMethod(something: number): this {
     doSomething(something);

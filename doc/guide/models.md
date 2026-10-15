@@ -392,6 +392,39 @@ people[0].lastName; // Error: not selected
 
 Models that map their columns with `snakeCaseMappers()` declare it, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html). Queries for models without declared columns, like the base `Model`, and queries in generic code, e.g. in the methods of custom query builders, aren't checked. After `withGraphFetched()` on a generic query builder, e.g. `this.$query()` in a model method, TypeScript resolves the narrowed query builder to a union, on which only `ref()` and `raw()` columns are accepted.
 
+The names of modifiers are checked too, in `modify()` and in relation expressions, for queries started from a model class, like `Person.query()` and `Person.relatedQuery('pets')`: against the class's `modifiers`, including inherited ones, the `modifiers` of the related class at each step of a relation path, found through `relationMappings`, and the modifiers registered with `modifiers()`. The types require `modifiers()` to come before the methods that use the names, although the order doesn't matter when the query runs:
+
+```ts
+await Person.query().modify('olderThan', 30).withGraphFetched('pets(onlyDogs)');
+await Person.query().modifiers({ latest }).withGraphFetched('pets(latest)');
+
+await Person.query().modify('olderThn', 30); // Error: not a modifier of Person
+await Person.query().withGraphFetched('pets(orderByAge)'); // Error: not a modifier of Animal
+await Person.query().withGraphFetched('pets(latest)').modifiers({ latest }); // Error: registered after
+```
+
+The arguments of the modifiers aren't checked. Names in variables are typed as names of the modifiers, e.g. `keyof typeof Person.modifiers`, as `modify()` rejects names typed `string`. Queries started from instances, like `person.$relatedQuery('pets')`, or in generic code, relation expressions that aren't literals, aliased relations, the expressions of `modifyGraph()`, `allowGraph()` and `fetchGraph()`, classes whose `modifiers` have the general type `Modifiers`, e.g. because their `modifierNotFound()` handles any name, and relations whose mappings have the general type `RelationMappings` or a module path as `modelClass` aren't checked. Neither are models that override `query()`, which declare `this` as `ConstructorType<M>` in strict mode:
+
+```ts
+class BaseModel extends Model {
+  static query<M extends Model>(this: ConstructorType<M>, trx?: TransactionOrKnex) {
+    return super.query(trx).where('deletedAt', null) as QueryBuilderType<M>;
+  }
+}
+```
+
+A modifier that returns a query with `modify()` on its own class needs a return type, as TypeScript would have to infer the class's `modifiers` to check the name:
+
+```ts
+class Person extends Model {
+  static modifiers = {
+    adults: (query: QueryBuilder<Person>) => query.where('age', '>=', 18),
+    parentsOfAdults: (query: QueryBuilder<Person>): QueryBuilder<Person> =>
+      query.whereIn('id', Person.query().modify('adults').select('parentId')),
+  };
+}
+```
+
 ## Typing generated properties in TypeScript
 
 `insert()` accepts any subset of the model's properties without the relations, and `insertGraph()` accepts the relations too. To check that the data for a new row is complete, mark the properties the database generates, like auto-incremented ids, timestamps or columns with defaults, as `Generated`, and type the data as `Insertable`:

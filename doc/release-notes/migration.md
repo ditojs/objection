@@ -327,10 +327,10 @@ The `limitPerParent` [graph option](/api/types/#type-graphoptions) of `withGraph
 ```js
 // Up to three pets per person. In 3.x, up to three pets for all persons together.
 const people = await Person.query()
-  .withGraphFetched('pets(latest)')
   .modifiers({
     latest: (query) => query.orderBy('createdAt', 'desc').limit(3)
-  });
+  })
+  .withGraphFetched('pets(latest)');
 ```
 
 The relation query becomes a subquery, and its order moves into a `row_number()` window function. The order can only refer to the related table's columns that are selected and to the aliases of the result columns, see [limiting related items per parent](/api/query-builder/eager-methods.html#limiting-related-items-per-parent).
@@ -360,10 +360,12 @@ class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
 }
 
 // 4.0
-class MyQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: MyQueryBuilder<this['~M'], this['~R']>;
+class MyQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: MyQueryBuilder<this['~M'], this['~R'], this['~X']>;
 }
 ```
+
+The third type parameter `X` holds extra types of the query, which strict mode uses to check the names of modifiers, see [Checking queries in TypeScript](/guide/models.html#checking-queries-in-typescript). Custom query builders pass it on to `QueryBuilder` and `RebindType`. Models whose query builder doesn't are type errors on the model class, about the types returned by methods like `castTo()`, which don't mention `X`.
 
 The helper types `SingleQueryBuilder`, `MaybeSingleQueryBuilder`, `ArrayQueryBuilder`, `NumberQueryBuilder` and `PageQueryBuilder` take any query builder, e.g. `MaybeSingleQueryBuilder<this>` as the return type of an overridden `findById()`, and `NumberQueryBuilder<MaybeSingleQueryBuilder<this>>` for `patchById()`, `updateById()` and `deleteById()`, the writes of `findById()`. `WithGraphModelQueryBuilder<M, E>` is removed. Use `QueryBuilderType<WithGraphModel<M, E>>` instead. The `ReturningMethod` interface is removed too, `returning()` is a method of `QueryBuilder`. On query builders with an `any` result, e.g. `AnyQueryBuilder`, it returns `QueryBuilder<any, any> | QueryBuilder<any, any[]>` instead of `QueryBuilder<any, any[]>`.
 

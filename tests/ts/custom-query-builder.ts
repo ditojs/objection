@@ -13,8 +13,8 @@ import {
   WithGraphQueryBuilder,
 } from 'objection';
 
-class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
+class CustomQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<M, R, X> {
+  declare RebindType: CustomQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   someCustomMethod(): this {
     return this;
@@ -100,8 +100,12 @@ const throwIfNotFound: CustomQueryBuilder<Person, Person> = Person.query()
 
 // Custom query builders can define their own constructor and call `super()`
 // with the model class, see #2306.
-class DefaultSchemaQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: DefaultSchemaQueryBuilder<this['~M'], this['~R']>;
+class DefaultSchemaQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<
+  M,
+  R,
+  X
+> {
+  declare RebindType: DefaultSchemaQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   constructor(modelClass: ModelConstructor<M>) {
     super(modelClass);

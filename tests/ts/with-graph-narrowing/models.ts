@@ -28,12 +28,22 @@ export class Person extends Model {
   fullName() {
     return this.firstName + ' ' + this.lastName;
   }
+
+  // Where `this` is generic, the narrowed query builder is a union, on which
+  // `modify()` can be called.
+  petsQuery() {
+    return this.$query().withGraphFetched('pets').modify('someModifier');
+  }
 }
 
 // Models with a custom query builder, as in the custom query builder recipe.
 
-export class CustomQueryBuilder<M extends Model, R = M[]> extends QueryBuilder<M, R> {
-  declare RebindType: CustomQueryBuilder<this['~M'], this['~R']>;
+export class CustomQueryBuilder<M extends Model, R = M[], X = unknown> extends QueryBuilder<
+  M,
+  R,
+  X
+> {
+  declare RebindType: CustomQueryBuilder<this['~M'], this['~R'], this['~X']>;
 
   someCustomMethod(): this {
     return this;

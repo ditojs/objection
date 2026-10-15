@@ -32,10 +32,10 @@ Note that while [withGraphJoined](/api/query-builder/eager-methods.html#withgrap
 
 ```js
 const people = await Person.query()
-  .withGraphFetched('pets(latest)')
   .modifiers({
     latest: (query) => query.orderBy('createdAt', 'desc').limit(3)
-  });
+  })
+  .withGraphFetched('pets(latest)');
 
 // Up to three pets per person.
 console.log(people[0].pets.length);
@@ -102,9 +102,6 @@ Relation results can be filtered and modified by giving modifier function names 
 
 ```js
 const people = await Person.query()
-  .withGraphFetched(
-    'children(selectNameAndId).[pets(onlyDogs, orderByName), movies]'
-  )
   .modifiers({
     selectNameAndId(builder) {
       builder.select('name', 'id');
@@ -117,7 +114,10 @@ const people = await Person.query()
     onlyDogs(builder) {
       builder.where('species', 'dog');
     }
-  });
+  })
+  .withGraphFetched(
+    'children(selectNameAndId).[pets(onlyDogs, orderByName), movies]'
+  );
 
 console.log(people[0].children[0].pets[0].name);
 console.log(people[0].children[0].movies[0].id);
