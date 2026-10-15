@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Model, NotFoundError, UniqueViolationError, ValidationError } from 'objection';
 import { insertRowsWithIds } from '../../../testUtils/testUtils.js';
 
@@ -18,6 +18,16 @@ export default (session) => {
       class Badge extends Model {
         static get tableName() {
           return 'graph_move_badge';
+        }
+
+        static get relationMappings() {
+          return {
+            person: {
+              relation: Model.BelongsToOneRelation,
+              modelClass: Person,
+              join: { from: 'graph_move_badge.personCode', to: 'graph_move_person.code' },
+            },
+          };
         }
       }
 
@@ -102,6 +112,25 @@ export default (session) => {
               modelClass: Badge,
               join: { from: 'graph_move_person.code', to: 'graph_move_badge.personCode' },
             },
+            firstBadge: {
+              relation: Model.HasOneRelation,
+              modelClass: Badge,
+              join: { from: 'graph_move_person.code', to: 'graph_move_badge.personCode' },
+            },
+            mentor: {
+              relation: Model.BelongsToOneRelation,
+              modelClass: Person,
+              join: { from: 'graph_move_person.mentorCode', to: 'graph_move_person.code' },
+            },
+            awards: {
+              relation: Model.ManyToManyRelation,
+              modelClass: Badge,
+              join: {
+                from: 'graph_move_person.code',
+                through: { from: 'graph_move_award.personCode', to: 'graph_move_award.badgeId' },
+                to: 'graph_move_badge.id',
+              },
+            },
             likedPets: {
               relation: Model.ManyToManyRelation,
               modelClass: Pet,
@@ -138,6 +167,7 @@ export default (session) => {
       }
 
       const tables = [
+        'graph_move_award',
         'graph_move_badge',
         'graph_move_like',
         'graph_move_friendship',
@@ -154,8 +184,13 @@ export default (session) => {
       };
 
       // `ownerOnDelete` is the action of the foreign key of the pets' owners,
-      // null for no foreign key.
-      async function createTables({ ownerOnDelete = 'CASCADE', requiredOwner = false } = {}) {
+      // null for no foreign key. `codeForeignKey` makes the codes of the people
+      // unique, and the badges, awards and mentees reference them.
+      async function createTables({
+        ownerOnDelete = 'CASCADE',
+        requiredOwner = false,
+        codeForeignKey = false,
+      } = {}) {
         await dropTables();
         await knex.schema
           .createTable('graph_move_category', (table) => {
@@ -168,6 +203,12 @@ export default (session) => {
             table.string('code');
             table.integer('parentId');
             table.integer('favoritePetId');
+            table.string('mentorCode');
+            // SQL Server only references unique constraints, not the filtered
+            // unique indexes that knex creates there:
+            if (codeForeignKey) {
+              table.unique(['code'], { useConstraint: true });
+            }
           })
           .createTable('graph_move_pet', (table) => {
             table.increments('id');
@@ -199,8 +240,26 @@ export default (session) => {
           .createTable('graph_move_badge', (table) => {
             table.increments('id');
             table.string('name');
-            table.string('personCode');
+            const personCode = table.string('personCode');
+            if (codeForeignKey) {
+              personCode.references('graph_move_person.code').onUpdate('CASCADE');
+            }
+          })
+          .createTable('graph_move_award', (table) => {
+            const personCode = table.string('personCode');
+            if (codeForeignKey) {
+              personCode.references('graph_move_person.code').onUpdate('CASCADE');
+            }
+            table.integer('badgeId');
           });
+
+        if (codeForeignKey) {
+          // The unique constraint only exists once the table does. SQL Server
+          // doesn't cascade the updates of keys of the same table:
+          await knex.schema.alterTable('graph_move_person', (table) => {
+            table.foreign('mentorCode').references('graph_move_person.code');
+          });
+        }
       }
 
       // Person 1, a child of person 99, owns pets 10 and 12, person 2 pet 11
@@ -1005,6 +1064,180 @@ export default (session) => {
 
           expect((await selectCodes()).find(({ id }) => id === 3)).toEqual({ id: 3, code: 'x' });
           expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
+      });
+
+      // The badges and awards reference the codes of the people, which the graphs
+      // change, so the code is patched before the rows that read it (#428).
+      describe('keys that the graph changes and relates rows by', () => {
+        beforeEach(async () => {
+          await createTables({ codeForeignKey: true });
+          await insertRows();
+        });
+
+        function selectAwards() {
+          return knex('graph_move_award').select('personCode', 'badgeId').orderBy('badgeId');
+        }
+
+        it('should patch the key before inserting the rows that another place relates by it', async () => {
+          await Person.query().upsertGraph([
+            { id: 3, code: 'x' },
+            { id: 3, badges: [{ name: 'nb' }] },
+          ]);
+
+          expect((await selectCodes()).find(({ id }) => id === 3)).toEqual({ id: 3, code: 'x' });
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
+
+        it('should patch the key before inserting the rows that its own place relates by it', async () => {
+          await Person.query().upsertGraph({
+            id: 1,
+            code: 'x',
+            badges: [{ id: 300 }, { name: 'nb' }],
+          });
+
+          expect(await selectBadges()).toEqual([
+            { id: 300, name: 'b1', personCode: 'x' },
+            { id: 301, name: 'b2', personCode: 'c2' },
+            { id: 302, name: 'nb', personCode: 'x' },
+          ]);
+        });
+
+        it('should patch the key before inserting a row into a HasOneRelation by it', async () => {
+          await Person.query().upsertGraph({ id: 3, code: 'x', firstBadge: { name: 'nb' } });
+
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
+
+        it('should patch the key before relating a row by it', async () => {
+          await Person.query().upsertGraph(
+            [
+              { id: 3, code: 'x' },
+              { id: 3, badges: [{ id: 301 }] },
+            ],
+            { relate: true, noDelete: true },
+          );
+
+          expect(await selectBadges()).toContainEqual({ id: 301, name: 'b2', personCode: 'x' });
+        });
+
+        it('should patch the key before inserting the row that a BelongsToOneRelation relates by it', async () => {
+          await Badge.query().upsertGraph(
+            { name: 'nb', person: { id: 3, code: 'x' } },
+            { relate: true },
+          );
+
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
+
+        it('should patch the key before inserting the join rows that read it', async () => {
+          await Person.query().upsertGraph(
+            { id: 3, code: 'x', awards: [{ name: 'nb' }, { id: 300 }] },
+            { relate: true },
+          );
+
+          expect(await selectAwards()).toEqual([
+            { personCode: 'x', badgeId: 300 },
+            { personCode: 'x', badgeId: 302 },
+          ]);
+        });
+
+        it('should patch a key that a #ref{} gives before inserting the rows that read it', async () => {
+          await Person.query().upsertGraph(
+            [
+              { id: 2, '#id': 'p2', name: 'x' },
+              { id: 3, code: '#ref{p2.name}', badges: [{ name: 'nb' }] },
+            ],
+            { allowRefs: true },
+          );
+
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
+
+        it('should relate a new row with the key that its inserted rows read before inserting them', async () => {
+          await Person.query().upsertGraph(
+            [
+              { '#id': 'n', name: 'n' },
+              { id: 1, children: [{ '#ref': 'n', code: 'x', badges: [{ name: 'nb' }] }] },
+            ],
+            { allowRefs: true, relate: true, noDelete: true },
+          );
+
+          expect(await selectCodes()).toContainEqual({ id: 100, code: 'x' });
+          expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+        });
+
+        describe('read through a #ref model', () => {
+          it('should patch the key before inserting the rows that the #ref model relates by it', async () => {
+            await Person.query().upsertGraph(
+              [
+                { '#id': 'p3', id: 3, code: 'x' },
+                { id: 1, children: [{ '#ref': 'p3', badges: [{ name: 'nb' }] }] },
+              ],
+              { allowRefs: true, relate: true, noDelete: true },
+            );
+
+            expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+          });
+
+          it('should patch the key before inserting a row into a HasOneRelation of the #ref model', async () => {
+            await Person.query().upsertGraph(
+              [
+                { '#id': 'p3', id: 3, code: 'x' },
+                { id: 1, children: [{ '#ref': 'p3', firstBadge: { name: 'nb' } }] },
+              ],
+              { allowRefs: true, relate: true, noDelete: true },
+            );
+
+            expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'x' });
+          });
+
+          it('should patch the key before inserting the row that relates the #ref model', async () => {
+            await Person.query().upsertGraph(
+              [
+                { '#id': 'p3', id: 3, code: 'x' },
+                { name: 'np', mentor: { '#ref': 'p3' } },
+              ],
+              { allowRefs: true, relate: true },
+            );
+
+            expect(await knex('graph_move_person').where('name', 'np').first('mentorCode')).toEqual(
+              { mentorCode: 'x' },
+            );
+          });
+
+          // Person 3 waits for its new parent, which reads the code that it patches.
+          it('should fail to change a key that the new row that it waits for reads', async () => {
+            const people = await selectCodes();
+
+            const err = await Person.query()
+              .upsertGraph(
+                { '#id': 'p3', id: 3, code: 'x', parent: { name: 'np', mentor: { '#ref': 'p3' } } },
+                { allowRefs: true, relate: true },
+              )
+              .catch((err) => err);
+
+            expect(err).toBeInstanceOf(ValidationError);
+            expect(err.type).toBe('InvalidGraph');
+            expect(await selectCodes()).toEqual(people);
+          });
+        });
+
+        // Person 3's patch reads the id of the badge that reads the code it patches.
+        it('should fail to change a key that inserts read in a patch that reads an inserted key', async () => {
+          const people = await selectCodes();
+
+          const err = await Person.query()
+            .upsertGraph(
+              { id: 3, code: 'x', name: '#ref{b.id}', badges: [{ '#id': 'b', name: 'nb' }] },
+              { allowRefs: true },
+            )
+            .catch((err) => err);
+
+          expect(err).toBeInstanceOf(ValidationError);
+          expect(err.type).toBe('InvalidGraph');
+          expect(await selectCodes()).toEqual(people);
+          expect(await selectBadges()).toHaveLength(2);
         });
       });
     });

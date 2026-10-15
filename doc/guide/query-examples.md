@@ -1161,7 +1161,7 @@ Graphs that place a row in contradicting ways, like a pet in the `pets` of two p
 
 - swapping the rows of two `HasOneRelation` slots with a unique foreign key fails with a `UniqueViolationError`,
 - `insertMissing` inserts models that aren't found at their place, so a row that exists elsewhere fails on its unique key unless the graph deletes it there first: use `relate` to move it instead,
-- a key that the graph changes while it relates rows by it fails with a foreign key on that column: patch the key in a separate query first ([#428](https://github.com/ditojs/objection/issues/428)).
+- a row that changes a key while it waits for a value of the rows that read that key throws a `ValidationError` of type `InvalidGraph`: write the key in a separate query first.
 
 ##### Examples
 
@@ -1291,7 +1291,7 @@ const graph = await Person.query().upsertGraph({
 
 1. Relate the rows that move to existing owners of a `HasManyRelation` or `HasOneRelation`, by patching their foreign keys.
 2. Delete or unrelate the removed rows that reference their owners: the rows of `HasManyRelation`s and `HasOneRelation`s, and the join rows of many-to-many relations.
-3. Insert the new rows, and the join rows of many-to-many inserts and relates.
+3. Insert the new rows, and the join rows of many-to-many inserts and relates. A row whose key the graph changes is patched before the rows that it relates by that key, so a foreign key with `ON UPDATE CASCADE` on that column holds. With `NO ACTION`, the patch itself fails while other rows still reference the old key.
 4. Patch or update the changed rows, relate the remaining rows, and point the owners of `BelongsToOneRelation`s to their new related rows or to `null`.
 5. Delete the removed rows of `BelongsToOneRelation`s.
 6. Upsert the models below the rows that moved into a `HasManyRelation` or `HasOneRelation` from another owner, in a pass of their own with the same steps, against their rows as they are after the move.
