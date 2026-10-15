@@ -16,6 +16,8 @@ import { Model, ModelClass, StaticHookArguments, asArray } from 'objection';
   const tableName: string = modelClass.tableName;
   const persons = await modelClass.query().where('firstName', 'Jennifer');
   const persons2: Person[] = await modelClass.fetchGraph(persons, 'pets');
+  // Model classes have the statics of `Model`:
+  const transacted: number = await modelClass.transaction(undefined, async () => 1);
 })();
 
 // Static methods work on model classes with constructor arguments and on

@@ -421,7 +421,7 @@ await Person.query().withGraphFetched('pets(orderByAge)'); // Error: not a modif
 await Person.query().withGraphFetched('pets(latest)').modifiers({ latest }); // Error: registered after
 ```
 
-The arguments of the modifiers aren't checked. Names in variables are typed as names of the modifiers, e.g. `keyof typeof Person.modifiers`, as `modify()` rejects names typed `string`. Queries started from instances, like `person.$relatedQuery('pets')`, or in generic code, relation expressions that aren't literals, aliased relations, the expressions of `modifyGraph()`, `allowGraph()` and `fetchGraph()`, classes whose `modifiers` have the general type `Modifiers`, e.g. because their `modifierNotFound()` handles any name, and relations whose mappings have the general type `RelationMappings` or a module path as `modelClass` aren't checked. Neither are models that override `query()`, which declare `this` as `ConstructorType<M>` in strict mode:
+The arguments of the modifiers aren't checked. Names in variables are typed as names of the modifiers, e.g. `keyof typeof Person.modifiers`, as `modify()` rejects names typed `string`. Queries started from instances, like `person.$relatedQuery('pets')`, from `ModelClass<M>`, like `query.modelClass().query()`, or in generic code, relation expressions that aren't literals, aliased relations, the expressions of `modifyGraph()`, `allowGraph()` and `fetchGraph()`, classes whose `modifiers` have the general type `Modifiers`, e.g. because their `modifierNotFound()` handles any name, and relations whose mappings have the general type `RelationMappings` or a module path as `modelClass` aren't checked. Neither are models that override `query()`, which declare `this` as `ConstructorType<M>` in strict mode:
 
 ```ts
 class BaseModel extends Model {
@@ -456,7 +456,7 @@ await Membership.query().findById([1, 'a']);
 await Membership.query().findById(1); // Error: not a [number, string] tuple
 ```
 
-`static readonly idColumn = 'code'` is literal too, without `as const`. Composite ids in variables are typed as tuples, e.g. `[number, string]`, not as arrays. Snake case id columns need the model's `ColumnNameMapping`, see above. Models without a literal `idColumn`, like the inherited `'id'`, take any id, and so do queries started from instances, models that override `query()`, and generic code that doesn't resolve the class. Like `jsonSchema`, models that subclasses extend with another `idColumn` declare the general type, `static idColumn: string | readonly string[]`.
+`static readonly idColumn = 'code'` is literal too, without `as const`. Composite ids in variables are typed as tuples, e.g. `[number, string]`, not as arrays. Snake case id columns need the model's `ColumnNameMapping`, see above. Models without a literal `idColumn`, like the inherited `'id'`, take any id, and so do queries started from instances or from `ModelClass<M>`, models that override `query()`, and generic code that doesn't resolve the class. Like `jsonSchema`, models that subclasses extend with another `idColumn` declare the general type, `static idColumn: string | readonly string[]`.
 
 ## Typing generated properties in TypeScript
 

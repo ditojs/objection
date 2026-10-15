@@ -3123,7 +3123,7 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
 
   transaction<T>(callback: (trx: Transaction) => Promise<T>): Promise<T>;
   transaction<T>(
-    trxOrKnex: TransactionOrKnex,
+    trxOrKnex: TransactionOrKnex | undefined,
     callback: (trx: Transaction) => Promise<T>,
   ): Promise<T>;
 
