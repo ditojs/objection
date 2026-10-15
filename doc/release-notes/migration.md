@@ -37,7 +37,7 @@ This section lists the breaking changes in objection 4.0.
 - [typescript: Custom query builders declare RebindType](#typescript-custom-query-builders-declare-rebindtype)
 - [typescript: Model.jsonSchema is a readonly schema](#typescript-model-jsonschema-is-a-readonly-schema)
 - [typescript: insert(), patch() and update() reject relation data](#typescript-insert-patch-and-update-reject-relation-data)
-- [typescript: Queries are checked against the models](#typescript-queries-are-checked-against-the-models)
+- [typescript: Property types leave out $ properties](#typescript-property-types-leave-out-properties)
 - [typescript: $relatedQuery() of to-one relations may resolve to undefined](#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined)
 - [Writes of to-one relation queries with returning() resolve to one model](#writes-of-to-one-relation-queries-with-returning-resolve-to-one-model)
 - [typescript: toJSON() returns ModelJson](#typescript-tojson-returns-modeljson)
@@ -410,28 +410,9 @@ function insertPerson(data: PartialModelRow<Person>) {
 
 Custom query builders that override these methods use `PartialModelRow<M>` for the data instead of `PartialModelObject<M>`, and `PartialModelPatch<M>` for `patch()`, its variants and `merge()`, which also takes field expression keys like `'address:street'`.
 
-## typescript: Queries are checked against the models
+## typescript: Property types leave out $ properties
 
-The typings check the column names and values of queries against the models: `where('firstNme', …)`, `where('age', 'thirty')` or `withGraphFetched('petz')` are type errors. See [Checking queries in TypeScript](/guide/models.html#checking-queries-in-typescript) for the rules. Code that the checks reject:
-
-- Column names in variables typed `string`: pass them with `ref(column)`, or type them as a union of the model's columns.
-- Columns of other queries, e.g. of an outer query in a subquery, and aliases of selections in `groupBy()` or `having()`: use `ref('persons.id')`.
-- Properties of results that a `select()` leaves out: they aren't in the result type anymore. Select them, or select `*`.
-- Columns that the model doesn't declare as properties: declare them, or use `ref()` / `raw()`.
-- Column methods after `withGraphFetched()` / `withGraphJoined()` on a generic query builder, e.g. `this.$query().withGraphFetched('pets').where('id', this.id)` in a model method: TypeScript resolves the narrowed query builder to a union there, which only takes `ref()` / `raw()` columns, e.g. `where(ref('id'), this.id)`.
-- Models with `snakeCaseMappers()`: declare `ColumnNameMapping: 'snakeCase'` on the model, so that the snake case names in queries are checked, see [Snake case to camel case conversion](/recipes/snake-case-to-camel-case-conversion.html).
-
-`ModelObject`, `PartialModelObject` and the other property types leave out properties starting with `$`, which objection treats as internal, like `toJSON()` does. Properties like `$app` declared on models aren't columns either.
-
-To keep the typings of 3.x, opt out of the checks:
-
-```ts
-declare module 'objection' {
-  interface TypeConfig {
-    strict: false;
-  }
-}
-```
+`ModelObject`, `PartialModelObject` and the other property types leave out properties starting with `$`, which objection treats as internal, like `toJSON()` does.
 
 ## typescript: $relatedQuery() of to-one relations may resolve to undefined
 
