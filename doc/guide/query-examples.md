@@ -1151,6 +1151,18 @@ For simple things `upsertGraph` calls are easy to understand and remain readable
 It's also really easy to create a server that doesn't work well with multiple users by overusing `upsertGraph`. That's because you can easily get into a situation where you override other user's changes if you always upsert large graphs at a time. Always try to update the minimum amount of rows and columns and you'll save yourself a lot of trouble in the long run.
 :::
 
+`upsertGraph` fits best where a form or an API edits a tree of rows: each row appears once, below its owner, and the options stay simple. Prefer separate queries, or several smaller graphs, for:
+
+- moving rows between owners, especially through several relations at once,
+- graphs that list the same row in several places, or that mix `#ref` with relates of the same rows,
+- combinations of options per relation path, like `relate`, `unrelate` and `noDelete` for different paths of one graph.
+
+Graphs that place a row in contradicting ways, like a pet in the `pets` of two people, throw a `ValidationError` of type `InvalidGraph` before anything is written. Some writes need separate queries, as `upsertGraph` doesn't do them:
+
+- swapping the rows of two `HasOneRelation` slots with a unique foreign key fails with a `UniqueViolationError`,
+- `insertMissing` inserts models that aren't found at their place, so a row that exists elsewhere fails on its unique key unless the graph deletes it there first: use `relate` to move it instead,
+- a key that the graph changes while it relates rows by it fails with a foreign key on that column: patch the key in a separate query first ([#428](https://github.com/ditojs/objection/issues/428)).
+
 ##### Examples
 
 For the following examples, assume this is the content of the database:
