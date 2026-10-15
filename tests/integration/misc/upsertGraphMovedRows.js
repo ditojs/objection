@@ -1112,6 +1112,20 @@ export default (session) => {
       ).rejects.toThrow(NotFoundError);
     });
 
+    // The id of the liked pet is only known once the `#ref{}` is resolved, so it
+    // isn't looked up before:
+    it('should relate a model whose id is a #ref{}', async () => {
+      await insertPersons(2);
+      await insertRowsWithIds(knex, 'review_keys_pet', [{ id: 3 }]);
+
+      await Person.query().upsertGraph(
+        { id: 2, favPet: { '#id': 'a', id: 3 }, liked: [{ id: '#ref{a.id}' }] },
+        { relate: true, allowRefs: true },
+      );
+
+      expect(await knex('review_keys_liked')).toEqual([{ personId: 2, petId: 3 }]);
+    });
+
     it('should read the siblings of a row that its own owner moves at its new owner', async () => {
       // Moved through its own owner, pet 1's siblings are the pets of owner 4,
       // so pet 2 stays with owner 1.
