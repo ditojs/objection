@@ -300,6 +300,24 @@ class Note extends Entry {
 interface Note extends FromModel<typeof Note> {}
 ```
 
+`FromModel` also reads `virtualAttributes` declared `as const`, so that the type of `toJSON()` includes the results of the methods listed there. Getters still need to be listed, but are typed as properties already:
+
+```ts
+class Person extends Model {
+  static virtualAttributes = ['fullName'] as const;
+
+  fullName() {
+    return `${this.firstName} ${this.lastName}`;
+  }
+}
+
+interface Person extends FromModel<typeof Person> {}
+
+person.toJSON().fullName; // string
+```
+
+Like `jsonSchema`, models that subclasses extend with more virtual attributes declare the general type, `static virtualAttributes: readonly string[]`, and the subclasses list all of their virtual attributes `as const`.
+
 ## Checking relation mappings in TypeScript
 
 When the relation properties of a model are declared by hand, TypeScript doesn't check them against `relationMappings` by default. Models with `FromModel` don't need this check, and can't use it: `TypedRelationMappings` reads the relation properties that `FromModel` derives from the mappings. Add `satisfies TypedRelationMappings<Person>` to the mappings to check that each key is a relation property of `Person`, that the relation type fits the property (`BelongsToOneRelation`, `HasOneRelation` or `HasOneThroughRelation` for a single model, `HasManyRelation`, `ManyToManyRelation` or `BelongsToManyRelation` for an array), and that `modelClass` matches the property's model type:
