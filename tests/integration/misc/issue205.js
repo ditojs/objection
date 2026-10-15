@@ -112,12 +112,46 @@ export default (session) => {
         expect(item.data).toEqual({ a: 1 });
       });
 
-      it('should keep text in JSON columns that is not JSON', async () => {
-        await knex('issue205Item').insert({ id: 1, data: 'not json' });
-        const item = await Item.query().findById(1);
-        expect(item.data).toBe('not json');
-      });
+      // MySQL's columns may hold JSON or plain text, SQLite's hold JSON text:
+      if (session.isMySql()) {
+        it('should keep text in JSON columns that is not JSON', async () => {
+          await knex('issue205Item').insert({ id: 1, data: 'not json' });
+          const item = await Item.query().findById(1);
+          expect(item.data).toBe('not json');
+        });
+      } else {
+        it('should throw for text in JSON columns that is not JSON', async () => {
+          await knex('issue205Item').insert({ id: 1, data: 'not json' });
+          await expect(Item.query().findById(1)).rejects.toThrow(
+            "Invalid JSON in JSON attribute 'data' of model 'Item'",
+          );
+        });
+      }
     }
+
+    it("should parse JSON text and keep other text with jsonColumnFormat 'mixed'", async () => {
+      class MixedItem extends Item {
+        static jsonColumnFormat = 'mixed';
+      }
+
+      await knex('issue205Item').insert([
+        { id: 1, data: '{"a":1}' },
+        { id: 2, data: 'plain text' },
+      ]);
+      expect((await MixedItem.query().findById(1)).data).toEqual({ a: 1 });
+      expect((await MixedItem.query().findById(2)).data).toBe('plain text');
+    });
+
+    it("should read the same with jsonColumnFormat 'auto' as by default", async () => {
+      class AutoItem extends Item {
+        static jsonColumnFormat = 'auto';
+      }
+
+      await knex('issue205Item').insert({ id: 1, meta: JSON.stringify('123'), data: '{"a":1}' });
+      expect((await AutoItem.query().findById(1)).toJSON()).toEqual(
+        (await Item.query().findById(1)).toJSON(),
+      );
+    });
 
     it("should parse JSON text strictly with jsonColumnFormat 'text'", async () => {
       class TextItem extends Item {
@@ -134,9 +168,9 @@ export default (session) => {
       );
     });
 
-    it("should not parse JSON text with jsonColumnFormat 'parsed'", async () => {
+    it("should not parse JSON text with jsonColumnFormat 'json'", async () => {
       class ParsedItem extends Item {
-        static jsonColumnFormat = 'parsed';
+        static jsonColumnFormat = 'json';
       }
 
       await knex('issue205Item').insert({ id: 1, data: '{"a":1}' });
@@ -145,12 +179,12 @@ export default (session) => {
 
     it('should throw for an invalid jsonColumnFormat', async () => {
       class InvalidItem extends Item {
-        static jsonColumnFormat = 'json';
+        static jsonColumnFormat = 'parsed';
       }
 
       await knex('issue205Item').insert({ id: 1 });
       await expect(InvalidItem.query().findById(1)).rejects.toThrow(
-        "Invalid jsonColumnFormat of model 'InvalidItem': 'json'.",
+        "Invalid jsonColumnFormat of model 'InvalidItem': 'parsed'.",
       );
     });
 

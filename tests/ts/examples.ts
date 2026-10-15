@@ -1442,7 +1442,11 @@ class TextJsonModel extends objection.Model {
 }
 
 class ParsedJsonModel extends objection.Model {
-  static jsonColumnFormat: objection.JsonColumnFormat = 'parsed';
+  static jsonColumnFormat: objection.JsonColumnFormat = 'json';
+}
+
+class MixedJsonModel extends objection.Model {
+  static jsonColumnFormat = 'mixed' as const;
 }
 
 class DatabaseJsonModel extends objection.Model {
@@ -1459,9 +1463,9 @@ class DatabaseJsonModel extends objection.Model {
   }
 }
 
-// @ts-expect-error jsonColumnFormat only takes 'auto', 'text' and 'parsed'
+// @ts-expect-error jsonColumnFormat only takes 'auto', 'json', 'text' and 'mixed'
 class InvalidJsonFormatModel extends objection.Model {
-  static jsonColumnFormat = 'json' as const;
+  static jsonColumnFormat = 'parsed' as const;
 }
 
 async () => {

@@ -2952,7 +2952,7 @@ export interface SnakeCaseMappersOptions extends SnakeCaseOptions {
 
 export interface KnexSnakeCaseMappersOptions extends SnakeCaseOptions {}
 
-export type JsonColumnFormat = 'auto' | 'text' | 'parsed';
+export type JsonColumnFormat = 'auto' | 'json' | 'text' | 'mixed';
 
 // Passed by queries to `fromDatabaseJson()`, `$setDatabaseJson()` and
 // `$parseDatabaseJson()`. Overrides pass them on to `super`.

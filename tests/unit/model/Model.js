@@ -980,9 +980,9 @@ describe('Model', () => {
       );
     });
 
-    it("should not parse JSON attributes with jsonColumnFormat 'parsed'", () => {
+    it("should not parse JSON attributes with jsonColumnFormat 'json'", () => {
       Model1.jsonAttributes = ['a'];
-      Model1.jsonColumnFormat = 'parsed';
+      Model1.jsonColumnFormat = 'json';
       expect(Model1.fromDatabaseJson({ a: '{"d":1}' }).a).toBe('{"d":1}');
     });
   });
