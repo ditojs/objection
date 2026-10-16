@@ -2,97 +2,143 @@
 
 ## 4.0.0
 
-### Packaging
+Upgrading from 3.x? The [migration guide](/release-notes/migration.md) explains each breaking change and what to do about it.
 
-- **Breaking:** objection is an ES module package with an `exports` map and no default export. Deep imports like `objection/lib/...` no longer work. See [migration](/release-notes/migration.md#objection-is-an-es-module-package)
-- **Breaking:** The typings are ES module declarations instead of `export =`. See [migration](/release-notes/migration.md#typescript-the-typings-are-es-module-declarations)
-- **Breaking:** Requires node 20.19, or 22.12 on node 22 ([migration](/release-notes/migration.md#dropped-support-for-node-20-19)), knex 3.3 ([migration](/release-notes/migration.md#dropped-support-for-knex-3-3)), TypeScript 5.8 as optional peer dependency ([migration](/release-notes/migration.md#dropped-support-for-typescript-5-8)) and MySQL 8.0.17 ([migration](/release-notes/migration.md#dropped-support-for-mysql-8)) [#95](https://github.com/ditojs/objection/issues/95) [#485](https://github.com/ditojs/objection/issues/485) [#292](https://github.com/ditojs/objection/issues/292)
-- **Breaking:** The database error classes are objection's own, so `instanceof` checks against classes of the `db-errors` package no longer match. See [migration](/release-notes/migration.md#database-errors-are-objection-s-own-classes)
-- **Breaking:** Model files given as paths are loaded with `require()`: ES module model files export the model class as default or only model class, and can't use top-level await. See [migration](/release-notes/migration.md#model-files-given-as-paths)
-- `wrapError()` is exported, to wrap errors of the database driver in objection's error classes, and errors of knex's `better-sqlite3` client are wrapped like those of `sqlite3`
+### Breaking changes
 
-### upsertGraph() and insertGraph()
+#### Packaging
 
-- **Breaking:** Both are rewritten and write in far fewer queries: one delete per relation and batched inserts on SQLite, so static hooks get several models. A custom `insert()` that forwards arrays to `insertGraph()` now recurses forever. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-write-in-fewer-queries)
-- **Breaking:** Both throw for `onConflict()`, `ignore()` and `merge()` ([migration](/release-notes/migration.md#onconflict-with-insertgraph-and-upsertgraph-throws)), for unknown options, options that don't apply to `insertGraph()` and option values of the wrong type ([migration](/release-notes/migration.md#unknown-graph-options-throw)), and `insertGraph()` for new models below related models ([migration](/release-notes/migration.md#insertgraph-throws-for-new-models-below-related-models)) [#2156](https://github.com/Vincit/objection.js/issues/2156) [#84](https://github.com/ditojs/objection/issues/84) [#217](https://github.com/ditojs/objection/issues/217)
-- **Breaking:** Graphs that place a row in conflicting ways, e.g. two values for one column or two rows in one `HasOneRelation` slot, throw `InvalidGraph`. A many-to-many pair gets one join row. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-reject-rows-placed-in-conflicting-ways)
-- **Breaking:** `upsertGraph()` upserts models below related models together with the rest of the graph, reads the relations of moved rows at their new owner, and writes each moved row once. See [migration](/release-notes/migration.md#upsertgraph-upserts-below-related-models-in-the-same-graph) [#427](https://github.com/ditojs/objection/pull/427)
-- **Breaking:** `upsertGraph()` relates rows that move to existing owners before it deletes, so rows moved out of a deleted parent are kept. Some unique key swaps now fail. See [migration](/release-notes/migration.md#upsertgraph-relates-moved-rows-before-it-deletes) [#214](https://github.com/ditojs/objection/issues/214)
-- **Breaking:** `upsertGraph()` checks that all related models exist, also through `#dbRef`, and throws a `NotFoundError` before anything is written. See [migration](/release-notes/migration.md#upsertgraph-checks-that-related-models-exist) [#372](https://github.com/ditojs/objection/issues/372)
-- **Breaking:** `upsertGraph()` writes only what changes: no patches for unchanged models, `patch()` for keys under `noUpdate`, and a `NotFoundError` for relates and updates that find no row. See [migration](/release-notes/migration.md#upsertgraph-writes-only-what-changes) [#214](https://github.com/ditojs/objection/issues/214) [#415](https://github.com/ditojs/objection/issues/415)
-- **Breaking:** `upsertGraph()` gives a row the same keys in all its places, in any order, and patches changed keys before the rows that relate by them. See [migration](/release-notes/migration.md#upsertgraph-gives-a-row-the-same-keys-in-all-its-places) [#427](https://github.com/ditojs/objection/pull/427) [#428](https://github.com/ditojs/objection/issues/428) [#491](https://github.com/ditojs/objection/issues/491)
-- **Breaking:** `upsertGraph()` clears the foreign key of a `BelongsToOneRelation` before it deletes the related row, whatever the owner's `jsonSchema` allows. See [migration](/release-notes/migration.md#upsertgraph-sets-the-foreign-key-to-null-before-deleting-a-belongstoonerelation-row) [#212](https://github.com/ditojs/objection/issues/212)
-- **Breaking:** `upsertGraph()` keeps the current `HasOneRelation` / `HasOneThroughRelation` model when the graph only holds models that it ignores. See [migration](/release-notes/migration.md#upsertgraph-keeps-the-current-to-one-model-for-ignored-models) [#261](https://github.com/ditojs/objection/issues/261)
-- **Breaking:** A `#ref` or `#ref{}` to a new model that the graph doesn't write throws `InvalidGraph`, and cycles of `#ref{}` values throw instead of writing the `#ref{…}` text. See [migration](/release-notes/migration.md#ref-to-new-models-that-the-graph-doesn-t-write-throws) [#53](https://github.com/ditojs/objection/issues/53) [#427](https://github.com/ditojs/objection/pull/427)
-- **Breaking:** Below a model that `noInsert` skips, only the branches that a `#ref` points into are kept, without join rows for the skipped model. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-keep-only-the-referenced-branches-below-noinsert-models) [#369](https://github.com/ditojs/objection/issues/369)
-- **Breaking:** Error data paths of array input start with the index, e.g. `[1].pets[0].name`, and the returned models never hold `#id`, `#ref`, `#dbRef`, `#unrelate` or `#delete` markers. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-errors-name-the-index-of-array-input)
-- **Breaking:** Custom relations that extend `Relation` directly declare a `keySide` getter. See [migration](/release-notes/migration.md#custom-relations-that-extend-relation-declare-keyside)
-- `#ref` and `#ref{}` work in more places: in foreign keys that the relation sets too, into `HasManyRelation` and `HasOneRelation`, as values that the graph fills in, next to the model itself and to `#unrelate` models, and keep or write only their own join table extras [#1378](https://github.com/Vincit/objection.js/issues/1378) [#311](https://github.com/ditojs/objection/issues/311) [#356](https://github.com/ditojs/objection/issues/356)
-- Keys are written where 3.x left them out: keys that the database generates, parent keys that the graph leaves out, foreign keys under `relate` with `noUpdate`, keys in JSON paths, and `BelongsToOneRelation` models that only give their key [#853](https://github.com/Vincit/objection.js/issues/853) [#53](https://github.com/ditojs/objection/issues/53) [#415](https://github.com/ditojs/objection/issues/415) [#488](https://github.com/ditojs/objection/issues/488)
-- Moved and swapped rows: rows move between owners and `HasOneRelation` slots without failing, rows that another place keeps aren't removed, and relations no longer depend on the order of places [#214](https://github.com/ditojs/objection/issues/214) [#368](https://github.com/ditojs/objection/issues/368) [#398](https://github.com/ditojs/objection/issues/398)
-- A `#ref` at the root and changes of keys that are part of a row's id throw `InvalidGraph` before anything is written, instead of a `TypeError` or no write
-- Queries: rollbacks wait for started queries, inserts of models without properties work on PostgreSQL, large graphs stay under the bind limits, rows that point to each other are patched one by one, and `BigInt` ids throw on SQLite [#335](https://github.com/ditojs/objection/pull/335) [#1694](https://github.com/Vincit/objection.js/issues/1694) [#385](https://github.com/ditojs/objection/issues/385)
-- Results: no `objectiontmpjoin*` aliases on loaded models, returned models write all their props in later patches, and `upsertGraphAndFetch()` applies the modifiers of `withGraphFetched()` [#370](https://github.com/ditojs/objection/issues/370) [#371](https://github.com/ditojs/objection/issues/371) [#839](https://github.com/Vincit/objection.js/issues/839)
-- The error of `upsertGraph()` queries with other query builder calls names `$query()`, which adds such a call too [#1168](https://github.com/Vincit/objection.js/issues/1168)
+- objection is an ES module package with an `exports` map and no default export. Deep imports like `objection/lib/...` no longer work. See [migration](/release-notes/migration.md#objection-is-an-es-module-package) [#140](https://github.com/ditojs/objection/issues/140)
+- The typings are ES module declarations instead of `export =`. See [migration](/release-notes/migration.md#typescript-the-typings-are-es-module-declarations)
+- Node 20.19 or newer is required ([migration](/release-notes/migration.md#dropped-support-for-node-20-19))
+- Knex 3.3 or newer is required ([migration](/release-notes/migration.md#dropped-support-for-knex-3-3)) [#95](https://github.com/ditojs/objection/issues/95)
+- MySQL 8.0.17 or newer is required ([migration](/release-notes/migration.md#dropped-support-for-mysql-8)) [#292](https://github.com/ditojs/objection/issues/292)
+- The typings require TypeScript 5.8 or newer ([migration](/release-notes/migration.md#dropped-support-for-typescript-5-8)) [#485](https://github.com/ditojs/objection/issues/485)
+- The database error classes are objection's own, so `instanceof` checks against the classes of the `db-errors` package no longer match. See [migration](/release-notes/migration.md#database-errors-are-objection-s-own-classes)
+- Errors of knex's `better-sqlite3` client are wrapped in objection's error classes, e.g. `UniqueViolationError`, instead of reaching you as `SqliteError`
+- Model files given as paths are loaded with `require()`, so ES module model files need to export the model class as default or as their only class, and can't use top-level await. See [migration](/release-notes/migration.md#model-files-given-as-paths)
 
-### Hooks
+#### upsertGraph() and insertGraph()
 
-- **Breaking:** The `result` of static `after*` hooks has the shape that the query returns: a model, `undefined`, a number or an array. The hooks run last, after `first()` and the fetches of `*AndFetch()`. `asArray()` turns it into an array, and `StaticHookArguments<M, R>` types it. See [migration](/release-notes/migration.md#static-hooks-get-the-result-in-the-shape-that-the-query-returns) [#66](https://github.com/ditojs/objection/issues/66) [#210](https://github.com/ditojs/objection/issues/210)
-- **Breaking:** `runAfter()` callbacks, also of `context()`, `throwIfNotFound()` and `traverse()`, run after these hooks and get the same shape, before `page()` and `range()` wrap it. See [migration](/release-notes/migration.md#static-hooks-get-the-result-in-the-shape-that-the-query-returns) [#66](https://github.com/ditojs/objection/issues/66)
-- **Breaking:** Find hooks only run for queries that run: not for the input models of `upsertGraph()`, nor `beforeFind` for the models that `fetchGraph()` and `skipFetched` already have. See [migration](/release-notes/migration.md#static-hooks-get-the-result-in-the-shape-that-the-query-returns) [#66](https://github.com/ditojs/objection/issues/66)
-- **Breaking:** `withGraphFetched()` assigns what `afterFind` and `runAfter()` of the relation query return, and `withGraphJoined()` calls `afterFind` of joined models. Other objects than the found models throw, also in the fetch of `insertAndFetch()` and `patchAndFetch()`. See [migration](/release-notes/migration.md#withgraphfetched-assigns-what-the-relation-query-returns) [#1963](https://github.com/Vincit/objection.js/issues/1963)
-- The hooks of `relate()` and `unrelate()` queries get the `relation` and its owners as `items`, and `cancelQuery()` with a single row in `beforeInsert` is merged into the inserted model [#66](https://github.com/ditojs/objection/issues/66)
+Both are rewritten. They now write a graph in the order that its rows depend on each other, and reject graphs that contradict themselves before writing anything.
 
-### Queries
+- They write in far fewer queries, e.g. one delete per relation, so static hooks get several models at once. A custom `insert()` that forwards arrays to `insertGraph()` now recurses forever. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-write-in-fewer-queries)
+- They throw for `onConflict()`, `ignore()` and `merge()`, which 3.x ignored ([migration](/release-notes/migration.md#onconflict-with-insertgraph-and-upsertgraph-throws)) [#2156](https://github.com/Vincit/objection.js/issues/2156)
+- They throw for unknown options, and for option values of the wrong type even when no model uses them ([migration](/release-notes/migration.md#unknown-graph-options-throw)) [#84](https://github.com/ditojs/objection/issues/84)
+- `insertGraph()` throws for new models below models that it relates ([migration](/release-notes/migration.md#insertgraph-throws-for-new-models-below-related-models)) [#217](https://github.com/ditojs/objection/issues/217)
+- A graph that gives the same row two different values for a column, or two rows to one `HasOneRelation`, throws `InvalidGraph`. A many-to-many pair gets one join row. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-reject-rows-placed-in-conflicting-ways)
+- A `#ref` or `#ref{}` to a new model that the graph doesn't insert throws `InvalidGraph`, and so do cycles of `#ref{}` values. See [migration](/release-notes/migration.md#ref-to-new-models-that-the-graph-doesn-t-write-throws) [#53](https://github.com/ditojs/objection/issues/53) [#427](https://github.com/ditojs/objection/pull/427)
+- Below a model that `noInsert` skips, only the models that a `#ref` points to are kept. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-keep-only-the-referenced-branches-below-noinsert-models) [#369](https://github.com/ditojs/objection/issues/369)
+- Validation error paths of array input start with the index, e.g. `[1].pets[0].name`, and the returned models no longer contain `#id`, `#ref` or other markers. See [migration](/release-notes/migration.md#insertgraph-and-upsertgraph-errors-name-the-index-of-array-input)
+- Custom relation classes that extend `Relation` directly need a `keySide` getter that says where their keys are stored: `'owner'`, `'related'` or `'join'`. See [migration](/release-notes/migration.md#custom-relations-that-extend-relation-declare-keyside)
+- `upsertGraph()` writes models below related models together with the rest of the graph, instead of in nested calls at the end. See [migration](/release-notes/migration.md#upsertgraph-upserts-below-related-models-in-the-same-graph) [#427](https://github.com/ditojs/objection/pull/427)
+- `upsertGraph()` moves rows to their new owners before it deletes, so a row moved out of a deleted parent is kept. Swapping rows on a unique key now needs the `unrelate` option. See [migration](/release-notes/migration.md#upsertgraph-relates-moved-rows-before-it-deletes) [#214](https://github.com/ditojs/objection/issues/214)
+- `upsertGraph()` checks that the models it relates exist, and throws a `NotFoundError` before writing anything. See [migration](/release-notes/migration.md#upsertgraph-checks-that-related-models-exist) [#372](https://github.com/ditojs/objection/issues/372)
+- `upsertGraph()` doesn't patch models that didn't change, so their update hooks don't run, and throws a `NotFoundError` when a row it updates is gone. See [migration](/release-notes/migration.md#upsertgraph-writes-only-what-changes) [#214](https://github.com/ditojs/objection/issues/214) [#415](https://github.com/ditojs/objection/issues/415)
+- When a graph changes a row's key, `upsertGraph()` writes the new key first, and uses it wherever the row appears in the graph. See [migration](/release-notes/migration.md#upsertgraph-gives-a-row-the-same-keys-in-all-its-places) [#427](https://github.com/ditojs/objection/pull/427) [#428](https://github.com/ditojs/objection/issues/428) [#491](https://github.com/ditojs/objection/issues/491)
+- `upsertGraph()` sets the owner's foreign key to `null` before it deletes a `BelongsToOneRelation` model, also when the owner's schema doesn't allow `null`. See [migration](/release-notes/migration.md#upsertgraph-sets-the-foreign-key-to-null-before-deleting-a-belongstoonerelation-row) [#212](https://github.com/ditojs/objection/issues/212)
+- `upsertGraph()` keeps the current `HasOneRelation` model when the graph gives a different model marked with `#unrelate` or `#delete`, or a replacement that `noInsert` or `noRelate` skips. See [migration](/release-notes/migration.md#upsertgraph-keeps-the-current-to-one-model-for-ignored-models) [#261](https://github.com/ditojs/objection/issues/261)
+- `upsertGraph()` relates a `BelongsToOneRelation` model that only gives its key, like `pet: { code: 'c1' }`, without looking it up, and throws `InvalidGraph` if it also gives other props or relations
 
-- **Breaking:** `skipUndefined()` is removed. `undefined` values and ids throw. See [migration](/release-notes/migration.md#skipundefined-is-removed) [#53](https://github.com/ditojs/objection/issues/53)
-- **Breaking:** `findById()` and `findByIds()` put their id condition in its own parentheses, so `orWhere()` can't widen it. See [migration](/release-notes/migration.md#findbyid-and-findbyids-keep-their-id-condition-in-its-own-group) [#271](https://github.com/ditojs/objection/issues/271)
-- **Breaking:** Aggregates select their aliases, not their columns, and queries that load relations add the join columns, which grouped queries need to group by. See [migration](/release-notes/migration.md#aggregates-don-t-select-the-columns-they-re-passed) [#111](https://github.com/ditojs/objection/issues/111)
-- **Breaking:** Writes with `returning()` through to-one `$relatedQuery()` resolve to one model or `undefined`, and the typings follow the result kind of the query. See [migration](/release-notes/migration.md#writes-of-to-one-relation-queries-with-returning-resolve-to-one-model) [#53](https://github.com/ditojs/objection/issues/53)
-- **Breaking:** `offset()` in `update()`, `patch()` and `delete()` throws, and so does `orderBy()` with `limit()` in `delete()` on MySQL. See [migration](/release-notes/migration.md#offset-in-updates-and-deletes-throws) [#286](https://github.com/ditojs/objection/issues/286) [#235](https://github.com/ditojs/objection/issues/235)
-- **Breaking:** Many-to-many `patch()` / `update()` with join table extras run in one query, which needs SQL Server 2016 and has row limits for binary and composite ids. See [migration](/release-notes/migration.md#many-to-many-patches-with-join-table-extras-run-in-one-query) [#287](https://github.com/ditojs/objection/issues/287)
-- **Breaking:** `idColumn = undefined` means that the model has no primary key, like `null` [#129](https://github.com/ditojs/objection/issues/129)
-- `insert()` of several models works on SQLite 3.35 and on all databases when all models have ids. Rows that don't fit into one query are split, atomic only in a transaction.
-- Many-to-many `patch()` / `update()` with join table extras and `limit()` order by join table columns and patch the right join rows on MySQL and SQL Server, and `asFindQuery()` in their hooks finds more rows than SQL Server binds [#161](https://github.com/ditojs/objection/issues/161) [#360](https://github.com/ditojs/objection/issues/360) [#287](https://github.com/ditojs/objection/issues/287)
+#### Hooks
 
-### Relations
+- The `result` of static `after*` hooks has the shape that the query returns: a model, `undefined`, a number or an array. `asArray()` turns it into an array. See [migration](/release-notes/migration.md#static-hooks-get-the-result-in-the-shape-that-the-query-returns) [#66](https://github.com/ditojs/objection/issues/66) [#210](https://github.com/ditojs/objection/issues/210)
+- The static `after*` hooks run last, after `first()` and the fetch of `*AndFetch()`, and `runAfter()` callbacks run after them. See [migration](/release-notes/migration.md#static-hooks-get-the-result-in-the-shape-that-the-query-returns) [#66](https://github.com/ditojs/objection/issues/66)
+- Find hooks only run for queries that actually run, so no longer for the input models of `upsertGraph()`, and `beforeFind` no longer for models that `fetchGraph()` already has. See [migration](/release-notes/migration.md#static-hooks-get-the-result-in-the-shape-that-the-query-returns) [#66](https://github.com/ditojs/objection/issues/66)
+- `withGraphFetched()` uses the models that `afterFind` returns, so the hook can filter or reorder them, and `withGraphJoined()` calls `afterFind` too. See [migration](/release-notes/migration.md#withgraphfetched-assigns-what-the-relation-query-returns) [#1963](https://github.com/Vincit/objection.js/issues/1963)
 
-- **Breaking:** `limit()`, `offset()` and `first()` of `withGraphFetched()` relations apply per parent (`limitPerParent: true`), so their order can only use selected columns. See [migration](/release-notes/migration.md#limit-offset-and-first-apply-per-parent-in-graph-modifiers) [#127](https://github.com/ditojs/objection/issues/127) [#429](https://github.com/Vincit/objection.js/issues/429)
-- **Breaking:** Relation expressions that name a relation twice ([migration](/release-notes/migration.md#relation-expressions-that-name-a-relation-twice-throw)) or have anything after `*` or `^` ([migration](/release-notes/migration.md#misplaced-and-in-relation-expressions-throw)) throw [#131](https://github.com/ditojs/objection/issues/131) [#221](https://github.com/ditojs/objection/issues/221)
-- **Breaking:** Fetching relations throws for owners loaded from the database without their join property, for related models without it, and for array join properties. See [migration](/release-notes/migration.md#missing-and-array-join-properties-throw) [#1832](https://github.com/Vincit/objection.js/issues/1832) [#2258](https://github.com/Vincit/objection.js/issues/2258) [#114](https://github.com/ditojs/objection/issues/114)
-- **Breaking:** `$setRelated()` and `$appendRelated()` keep the foreign keys of `BelongsToOneRelation`, `HasOneRelation` and `HasManyRelation` in sync. See [migration](/release-notes/migration.md#setrelated-and-appendrelated-sync-foreign-keys) [#2001](https://github.com/Vincit/objection.js/issues/2001)
-- **Breaking:** `BelongsToOneRelation` `unrelate()` applies the relation's `modify` / `filter` and only unrelates the owners whose related row matches it, instead of all owners [#234](https://github.com/ditojs/objection/issues/234)
-- `BelongsToManyRelation`, where the owner holds an array of the related keys, e.g. `post.tagIds`, in a JSON or PostgreSQL array column, for reads, writes and graphs. See [relations](/guide/relations.md) [#2667](https://github.com/Vincit/objection.js/issues/2667)
-- `modifyJoin()` modifies the `ON` clause of the joins of `joinRelated()` and `withGraphJoined()` [#1975](https://github.com/Vincit/objection.js/issues/1975)
+#### Queries
 
-### JSON
+- `skipUndefined()` is removed, and `undefined` values passed to `where()` and the other query methods throw. See [migration](/release-notes/migration.md#skipundefined-is-removed) [#53](https://github.com/ditojs/objection/issues/53)
+- `findById(1).orWhere(…)` can no longer return other rows: the id condition gets its own parentheses. See [migration](/release-notes/migration.md#findbyid-and-findbyids-keep-their-id-condition-in-its-own-group) [#271](https://github.com/ditojs/objection/issues/271)
+- Aggregates like `count()` select only their alias, and queries that load relations add the join columns they need, which grouped queries must group by. See [migration](/release-notes/migration.md#aggregates-don-t-select-the-columns-they-re-passed) [#111](https://github.com/ditojs/objection/issues/111)
+- Writes with `returning()` on a to-one `$relatedQuery()` resolve to one model or `undefined`, not an array. See [migration](/release-notes/migration.md#writes-of-to-one-relation-queries-with-returning-resolve-to-one-model) [#53](https://github.com/ditojs/objection/issues/53)
+- `offset()` in updates and deletes throws, and so does `orderBy()` with `limit()` in a MySQL delete. See [migration](/release-notes/migration.md#offset-in-updates-and-deletes-throws) [#286](https://github.com/ditojs/objection/issues/286) [#235](https://github.com/ditojs/objection/issues/235)
+- Many-to-many patches with join table extras run in one query, which needs SQL Server 2016 or newer. See [migration](/release-notes/migration.md#many-to-many-patches-with-join-table-extras-run-in-one-query) [#287](https://github.com/ditojs/objection/issues/287)
+- `idColumn = undefined` means that the model has no primary key, like `null` [#129](https://github.com/ditojs/objection/issues/129)
 
-- **Breaking:** JSON attributes are parsed by the new `Model.jsonColumnFormat`: PostgreSQL drivers keep what the driver returns, so JSON in `text` columns stays a string, and invalid JSON throws on SQLite and SQL Server. See [migration](/release-notes/migration.md#json-in-postgresql-text-columns-is-no-longer-parsed) [#205](https://github.com/ditojs/objection/issues/205)
-- **Breaking:** `snakeCaseMappers()` keeps the JSON keys of field expressions as written (`preserveJsonKeys: true`). See [migration](/release-notes/migration.md#snakecasemappers-keeps-the-json-keys-of-field-expressions) [#1089](https://github.com/Vincit/objection.js/issues/1089)
-- **Breaking:** `insert()` and `update()` reject field expression keys like `'meta:color'`. Use `patch()`. See [migration](/release-notes/migration.md#insert-and-update-reject-field-expression-keys) [#160](https://github.com/ditojs/objection/issues/160)
-- **Breaking:** JSON field expressions, `castJson()` and the `whereJson*()` methods throw on SQL Server and Oracle, and `whereJsonSupersetOf()` / `whereJsonSubsetOf()` on SQLite. See [migration](/release-notes/migration.md#json-field-expressions-throw-on-sql-server-and-oracle) [#113](https://github.com/ditojs/objection/issues/113)
-- **Breaking:** On MySQL, the casts of `ref()` and `val()` use MySQL's types, and on MySQL and SQLite, `val()` of objects and arrays and `castJson()` are JSON values. See [migration](/release-notes/migration.md#casts-json-values-and-json-methods-on-mysql-and-sqlite) [#276](https://github.com/Vincit/objection.js/issues/276)
-- JSON field expressions work on MySQL and SQLite, in `ref()`, as keys of `patch()` and `merge()`, and in the `whereJson*()` methods. See [JSON queries](/recipes/json-queries.md) [#276](https://github.com/Vincit/objection.js/issues/276)
-- Field expression keys of `patch()` and `merge()` survive building the query twice, JSON paths are written into `NULL` columns, and SQLite `insert()` stores arrays as JSON [#53](https://github.com/ditojs/objection/issues/53)
+#### Relations
 
-### Typings
+- `limit()`, `offset()` and `first()` in `withGraphFetched()` modifiers apply to each parent, not to all of them together. Set `limitPerParent: false` for the 3.x behaviour. See [migration](/release-notes/migration.md#limit-offset-and-first-apply-per-parent-in-graph-modifiers) [#127](https://github.com/ditojs/objection/issues/127) [#429](https://github.com/Vincit/objection.js/issues/429)
+- Relation expressions that name a relation twice ([migration](/release-notes/migration.md#relation-expressions-that-name-a-relation-twice-throw)) or have anything after `*` or `^` ([migration](/release-notes/migration.md#misplaced-and-in-relation-expressions-throw)) throw [#131](https://github.com/ditojs/objection/issues/131) [#221](https://github.com/ditojs/objection/issues/221)
+- Fetching a relation throws when the models lack the columns it joins on, instead of finding nothing. See [migration](/release-notes/migration.md#missing-and-array-join-properties-throw) [#1832](https://github.com/Vincit/objection.js/issues/1832) [#2258](https://github.com/Vincit/objection.js/issues/2258) [#114](https://github.com/ditojs/objection/issues/114)
+- `$setRelated()` and `$appendRelated()` update the foreign keys to match. See [migration](/release-notes/migration.md#setrelated-and-appendrelated-sync-foreign-keys) [#2001](https://github.com/Vincit/objection.js/issues/2001)
+- `unrelate()` of a `BelongsToOneRelation` respects the relation's `modify` / `filter`, instead of unrelating all owners [#234](https://github.com/ditojs/objection/issues/234)
 
-- **Breaking:** Custom query builders declare one `RebindType` instead of five `*QueryBuilderType` members ([migration](/release-notes/migration.md#typescript-custom-query-builders-declare-rebindtype)), and `RelateQueryBuilder` takes the number query builder ([migration](/release-notes/migration.md#typescript-relatequerybuilder-takes-the-number-query-builder)) [#125](https://github.com/ditojs/objection/issues/125) [#319](https://github.com/Vincit/objection.js/issues/319)
-- **Breaking:** `insert()`, `patch()`, `update()`, `merge()` and `relate()` take `PartialModelRow<M>` and reject relation properties. See [migration](/release-notes/migration.md#typescript-insert-patch-and-update-reject-relation-data) [#53](https://github.com/ditojs/objection/issues/53)
-- **Breaking:** `static jsonSchema` is a `ReadonlyJSONSchema` ([migration](/release-notes/migration.md#typescript-model-jsonschema-is-a-readonly-schema)), and `virtualAttributes` is `readonly string[]`, so code that changes the inherited list needs a copy [#16](https://github.com/ditojs/objection/issues/16) [#433](https://github.com/ditojs/objection/issues/433)
-- **Breaking:** `ModelObject` and the other property types leave out `$` properties ([migration](/release-notes/migration.md#typescript-property-types-leave-out-properties)), and `toJSON()` returns `ModelJson<M>` ([migration](/release-notes/migration.md#typescript-tojson-returns-modeljson)) [#16](https://github.com/ditojs/objection/issues/16) [#2380](https://github.com/Vincit/objection.js/issues/2380)
-- **Breaking:** To-one `$relatedQuery()` resolves to `Model | undefined` ([migration](/release-notes/migration.md#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined)), and `relate().returning()` to `Pojo[]` ([migration](/release-notes/migration.md#typescript-relate-returning-rows-are-plain-objects)) [#2355](https://github.com/Vincit/objection.js/issues/2355)
-- **Breaking:** Internal helper types like `ParseRelationString`, `WithGraph` and `RelationPropertyNames` are no longer exported. See [migration](/release-notes/migration.md#typescript-internal-helper-types-are-no-longer-exported)
-- **Breaking:** `InsertGraphOptions` drops `allowMarkers` and gets `noInsert` and `noRelate`. See [migration](/release-notes/migration.md#typescript-insertgraph-has-no-allowmarkers-option) [#84](https://github.com/ditojs/objection/issues/84)
-- **Breaking:** `distinctOn()` takes only column names, `raw()` and `ref()`, like `groupBy()`
-- `FromModel<typeof Model>` derives a model's properties from its `jsonSchema`, `relationMappings` and `virtualAttributes` declared `as const`, and `ModelJson` includes the virtual attributes. See [models](/guide/models.md#deriving-model-properties-in-typescript) [#16](https://github.com/ditojs/objection/issues/16) [#430](https://github.com/ditojs/objection/issues/430) [#433](https://github.com/ditojs/objection/issues/433)
-- Strict mode, opt-in with `TypeConfig { strict: true }`, checks columns, values, relations, modifiers and ids of queries against the models. See [models](/guide/models.md#checking-queries-in-typescript) [#16](https://github.com/ditojs/objection/issues/16) [#431](https://github.com/ditojs/objection/issues/431) [#432](https://github.com/ditojs/objection/issues/432)
-- `patch()` and its variants and `merge()` take field expression keys like `'address:street'`, as `PartialModelPatch<M>`
-- Faster type checking of query builders, and fixes in `ModelProps`, `ModelRelations`, `ModelClass<M>` and `whereIn()`
+#### JSON
 
-### Other
+- On PostgreSQL, JSON attributes are no longer parsed a second time, so JSON stored in `text` columns stays a string. Set `jsonColumnFormat = 'text'` for those. See [migration](/release-notes/migration.md#json-in-postgresql-text-columns-is-no-longer-parsed) [#205](https://github.com/ditojs/objection/issues/205)
+- `snakeCaseMappers()` no longer converts JSON keys in field expressions like `'data:someKey'`. See [migration](/release-notes/migration.md#snakecasemappers-keeps-the-json-keys-of-field-expressions) [#1089](https://github.com/Vincit/objection.js/issues/1089)
+- `insert()` and `update()` reject field expression keys like `'meta:color'`. Use `patch()`. See [migration](/release-notes/migration.md#insert-and-update-reject-field-expression-keys) [#160](https://github.com/ditojs/objection/issues/160)
+- JSON field expressions and the `whereJson*()` methods throw on SQL Server and Oracle, instead of warning. See [migration](/release-notes/migration.md#json-field-expressions-throw-on-sql-server-and-oracle) [#113](https://github.com/ditojs/objection/issues/113)
+- On MySQL, the casts of `ref()` and `val()` use MySQL's own types, and objects and arrays in `val()` are JSON values on MySQL and SQLite. See [migration](/release-notes/migration.md#casts-json-values-and-json-methods-on-mysql-and-sqlite) [#276](https://github.com/Vincit/objection.js/issues/276)
 
-- The tests run with vitest, development uses TypeScript 7 and sqlite3 6, CI tests node 20.19.0 and up, and the examples and docs use ES modules
+#### Typings
+
+- Custom query builders declare one `RebindType` instead of five `*QueryBuilderType` members. See [migration](/release-notes/migration.md#typescript-custom-query-builders-declare-rebindtype) [#125](https://github.com/ditojs/objection/issues/125)
+- `insert()`, `patch()`, `update()` and `relate()` reject relation properties, which they ignore at runtime. See [migration](/release-notes/migration.md#typescript-insert-patch-and-update-reject-relation-data) [#53](https://github.com/ditojs/objection/issues/53)
+- `toJSON()` returns plain JSON types instead of model instances. See [migration](/release-notes/migration.md#typescript-tojson-returns-modeljson) [#2380](https://github.com/Vincit/objection.js/issues/2380)
+- `$relatedQuery()` of to-one relations may resolve to `undefined`. See [migration](/release-notes/migration.md#typescript-relatedquery-of-to-one-relations-may-resolve-to-undefined) [#2355](https://github.com/Vincit/objection.js/issues/2355)
+- Smaller type changes: `RelateQueryBuilder` ([migration](/release-notes/migration.md#typescript-relatequerybuilder-takes-the-number-query-builder)), readonly `jsonSchema` ([migration](/release-notes/migration.md#typescript-model-jsonschema-is-a-readonly-schema)) and `virtualAttributes`, no `$` properties in `ModelObject` ([migration](/release-notes/migration.md#typescript-property-types-leave-out-properties)), `relate().returning()` rows ([migration](/release-notes/migration.md#typescript-relate-returning-rows-are-plain-objects)), no internal helper types ([migration](/release-notes/migration.md#typescript-internal-helper-types-are-no-longer-exported)), no `allowMarkers` ([migration](/release-notes/migration.md#typescript-insertgraph-has-no-allowmarkers-option)), and `distinctOn()` takes only columns, `raw()` and `ref()` [#16](https://github.com/ditojs/objection/issues/16) [#319](https://github.com/Vincit/objection.js/issues/319) [#433](https://github.com/ditojs/objection/issues/433) [#84](https://github.com/ditojs/objection/issues/84)
+
+### Features and fixes
+
+#### Packaging
+
+- `wrapError()` is exported, to wrap errors of the database driver that don't come from objection's queries
+
+#### upsertGraph() and insertGraph()
+
+- `#ref` sets the foreign key in a `HasManyRelation` or `HasOneRelation` [#311](https://github.com/ditojs/objection/issues/311)
+- `#ref{}` works in foreign keys that the relation also sets [#1378](https://github.com/Vincit/objection.js/issues/1378), and reads values that the graph fills in, like the key of an inserted model [#356](https://github.com/ditojs/objection/issues/356)
+- A many-to-many `#ref` writes only its own join table extras, instead of copying those of the model it points to
+- A row can move out of a `HasOneRelation` while a new row takes its place [#368](https://github.com/ditojs/objection/issues/368) [#398](https://github.com/ditojs/objection/issues/398)
+- Keys that the database generates, like a uuid that isn't the id, are fetched before rows that join through them are written [#853](https://github.com/Vincit/objection.js/issues/853)
+- New models get the keys of their parents that the graph leaves out, instead of `NULL`
+- With `relate` and `noUpdate`, `HasManyRelation` and `HasOneRelation` models are related, instead of silently left alone [#53](https://github.com/ditojs/objection/issues/53)
+- Foreign keys in a JSON path, like `pet.data:sitterId`, are written without losing the other values of the column [#488](https://github.com/ditojs/objection/issues/488)
+- A failed graph waits for its running queries before it rejects, so a transaction rolls back after them [#335](https://github.com/ditojs/objection/pull/335)
+- Large graphs stay under the number of values that a database can bind in one query
+- Several models without properties can be inserted on PostgreSQL [#1694](https://github.com/Vincit/objection.js/issues/1694)
+- Rows whose foreign keys point to each other are patched one after the other, which avoids deadlocks on MySQL [#385](https://github.com/ditojs/objection/issues/385)
+- `upsertGraphAndFetch()` applies the modifiers and aliases of `withGraphFetched()` [#839](https://github.com/Vincit/objection.js/issues/839)
+- Models returned by `upsertGraph()` write all their props when patched later [#371](https://github.com/ditojs/objection/issues/371)
+- Loaded many-to-many models no longer carry internal `objectiontmpjoin*` aliases, e.g. in the `items` of delete hooks [#370](https://github.com/ditojs/objection/issues/370)
+- The error for `upsertGraph()` queries with other query builder calls mentions `$query()`, which adds such a call too [#1168](https://github.com/Vincit/objection.js/issues/1168)
+- A `#ref` at the root, or a graph that changes part of a composite id, throws `InvalidGraph` before anything is written, and `BigInt` ids throw on SQLite, which can't bind them
+
+#### Hooks
+
+- The hooks of `relate()` and `unrelate()` get the `relation` and its owners [#66](https://github.com/ditojs/objection/issues/66)
+- `cancelQuery()` with a single row in `beforeInsert` is used as the inserted model, instead of being ignored [#66](https://github.com/ditojs/objection/issues/66)
+
+#### Queries
+
+- `insert()` of several models works on SQLite 3.35 or newer, and on all databases when every model has its id
+- Many-to-many patches with join table extras and `limit()` can order by join table columns, and patch the right join rows on MySQL and SQL Server [#161](https://github.com/ditojs/objection/issues/161) [#360](https://github.com/ditojs/objection/issues/360)
+- `asFindQuery()` in the hooks of these patches works for more rows than SQL Server can bind [#287](https://github.com/ditojs/objection/issues/287)
+
+#### Relations
+
+- New `BelongsToManyRelation`, for owners that hold an array of related ids, e.g. `post.tagIds`. See [relations](/guide/relations.md) [#2667](https://github.com/Vincit/objection.js/issues/2667)
+- `modifyJoin()` changes the `ON` clause of the joins of `joinRelated()` and `withGraphJoined()` [#1975](https://github.com/Vincit/objection.js/issues/1975)
+
+#### JSON
+
+- JSON field expressions and the `whereJson*()` methods work on MySQL and SQLite, except `whereJsonSupersetOf()` and `whereJsonSubsetOf()` on SQLite. See [JSON queries](/recipes/json-queries.md) [#276](https://github.com/Vincit/objection.js/issues/276)
+- `patch()` with field expression keys writes into `NULL` columns, and still works when the query is built twice [#53](https://github.com/ditojs/objection/issues/53)
+- `insert()` on SQLite stores arrays as JSON, instead of `'[object Object]'`
+
+#### Typings
+
+- Strict mode, opt-in with `TypeConfig { strict: true }`, checks the columns, values, relations and modifiers of queries against your models. See [models](/guide/models.md#checking-queries-in-typescript) [#16](https://github.com/ditojs/objection/issues/16) [#431](https://github.com/ditojs/objection/issues/431) [#432](https://github.com/ditojs/objection/issues/432)
+- `FromModel<typeof Model>` derives a model's properties from its `jsonSchema` and `relationMappings`. See [models](/guide/models.md#deriving-model-properties-in-typescript) [#16](https://github.com/ditojs/objection/issues/16) [#430](https://github.com/ditojs/objection/issues/430)
+- `patch()` and `merge()` accept field expression keys like `'address:street'`
+- Faster type checking, and fixes in `ModelProps`, `ModelRelations`, `ModelClass<M>` and `whereIn()`
+
+#### Other
+
+- The tests run on vitest, and the examples and docs use ES modules
 
 ## 3.9.1
 
