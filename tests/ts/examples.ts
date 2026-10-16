@@ -1329,6 +1329,8 @@ const plugin2 = {} as any as objection.Plugin;
     const dataError: objection.DataError = err;
   }
 
+  const wrapped: objection.DBError | Error = objection.wrapError(new Error());
+
   function handleUniqueViolation(error: objection.UniqueViolationError): string[] {
     return error.columns;
   }

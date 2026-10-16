@@ -61,6 +61,7 @@ describe('main module', () => {
     expect(objection.NotNullViolationError).toBe(dbErrors.NotNullViolationError);
     expect(objection.CheckViolationError).toBe(dbErrors.CheckViolationError);
     expect(objection.DataError).toBe(dbErrors.DataError);
+    expect(objection.wrapError).toBe(dbErrors.wrapError);
   };
 
   it('should be able to load using named imports', () => {
