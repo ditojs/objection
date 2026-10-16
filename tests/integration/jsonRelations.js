@@ -284,6 +284,32 @@ export default (session) => {
       });
     });
 
+    describe('castText() comparisons', () => {
+      it("with a string column, in the column's collation", async () => {
+        await Animal.query().insert({ name: 'Rex', json: { favoritePersonName: 'BRAD' } });
+        const pets = await Animal.query()
+          .select('name')
+          .whereExists(
+            Person.query().where(
+              ref('Animal.json:favoritePersonName').castText(),
+              ref('Person.name'),
+            ),
+          )
+          .orderBy('name');
+        // Only MySQL's default collation for columns is case-insensitive:
+        expect(pets).toEqual(
+          session.isMySql() ? [{ name: 'Fluffy' }, { name: 'Rex' }] : [{ name: 'Fluffy' }],
+        );
+      });
+
+      it('with a string value, case-sensitively', async () => {
+        const findPets = (name) =>
+          Animal.query().select('name').where(ref('json:favoritePersonName').castText(), name);
+        expect(await findPets('Brad')).toEqual([{ name: 'Fluffy' }]);
+        expect(await findPets('BRAD')).toEqual([]);
+      });
+    });
+
     describe('$relatedQuery', () => {
       describe('belongs to one relation', () => {
         it('insert', () => {
