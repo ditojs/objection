@@ -30,6 +30,8 @@ This section lists the breaking changes in objection 4.0.
 - [insertGraph() and upsertGraph() errors name the index of array input](#insertgraph-and-upsertgraph-errors-name-the-index-of-array-input)
 - [`#ref` to new models that the graph doesn't write throws](#ref-to-new-models-that-the-graph-doesn-t-write-throws)
 - [insertGraph() and upsertGraph() keep only the referenced branches below noInsert models](#insertgraph-and-upsertgraph-keep-only-the-referenced-branches-below-noinsert-models)
+- [upsertGraph() writes only what changes](#upsertgraph-writes-only-what-changes)
+- [upsertGraph() gives a row the same keys in all its places](#upsertgraph-gives-a-row-the-same-keys-in-all-its-places)
 - [typescript: The typings are ES module declarations](#typescript-the-typings-are-es-module-declarations)
 - [Static hooks get the result in the shape that the query returns](#static-hooks-get-the-result-in-the-shape-that-the-query-returns)
 - [withGraphFetched() assigns what the relation query returns](#withgraphfetched-assigns-what-the-relation-query-returns)
@@ -282,6 +284,22 @@ await Org.query().upsertGraph(
 ```
 
 To keep such a row, place it where the graph writes it, or use `noDelete` for its owner's relation.
+
+## upsertGraph() writes only what changes
+
+`upsertGraph()` doesn't patch existing models that the graph gives no changes, e.g. a model with only its id and an `#id`, or a related model whose `BelongsToOneRelation` key stays the same, so their update hooks don't run. 3.x patched them and ran the hooks. The same holds for a model whose changes `noUpdate` drops, where 3.9.0 ran its `$beforeUpdate` hook once without writing. The join rows of existing many-to-many models are patched only with the join table extras that change, and with none under `noUpdate`, where 3.x wrote all extras that the graph gives with every patch of the related model.
+
+The keys that `upsertGraph()` changes under `noUpdate` are written with `patch()` instead of `update()`, so `$beforeUpdate()` and `$afterUpdate()` get `patch: true` in their options for them, as for the patches of other models. They were already validated as patches [#415](https://github.com/ditojs/objection/issues/415).
+
+A relate or update that finds no row to write throws a `NotFoundError`, e.g. for a row moved below a new row while `ON DELETE CASCADE` deletes it with its old parent, or a row deleted by a concurrent query. 3.x reported success and returned the row. Writes that a `beforeUpdate` hook resolves, e.g. with `cancelQuery()`, and patches that leave no column to write still succeed [#214](https://github.com/ditojs/objection/issues/214).
+
+## upsertGraph() gives a row the same keys in all its places
+
+A row that the graph places in several places gets the same keys at all of them, in any order of the places: the siblings, children and join rows of each place follow the key that one place writes, or the owner that the row moves to, instead of the key the row had. A key that the graph gives a row but doesn't write, e.g. under `noUpdate` or at a `BelongsToOneRelation` `#ref` place, is ignored: the rows related through it get the row's real key, where 3.x gave them the unwritten one.
+
+A row that lists itself in a relation on its own key, e.g. in its own `siblings`, gives that relation no key, so the listing no longer conflicts with the keys that the row's other places give. Where 3.x threw a `ValidationError` of type `InvalidGraph`, such a graph is written, or throws the `NotFoundError` that asks for the `relate` option when a row it moves isn't related. A row that such a relation leaves out of its own list, e.g. a pet whose `siblings` name only the other pets, is removed from it, as in 3.x, also where the graph relates or moves the row.
+
+A key that the graph changes in an existing row, or gives a row that isn't loaded, is patched before the rows that the graph relates by that key, at the same place or another one, so a foreign key with `ON UPDATE CASCADE` on that column holds. 3.x wrote these rows with the old key and relied on the cascade. The patch and its `$beforeUpdate` run before the inserts and `$beforeInsert` of these rows, and before the relates and patches of the rows that read the key. A patch that also waits for a key or `#ref{}` value of these rows throws a `ValidationError` of type `InvalidGraph` before anything is written. The same goes for rows whose `#ref{}` copies a value other than the id that the graph changes in another existing row, e.g. `personCode: '#ref{p.code}'`, as a foreign key may reference it, so such a relate is no longer moved before the removals. Copies that wait for each other are written in the order of the graph [#428](https://github.com/ditojs/objection/issues/428) [#491](https://github.com/ditojs/objection/issues/491).
 
 ## insertGraph() and upsertGraph() write in fewer queries
 
