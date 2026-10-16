@@ -7,7 +7,7 @@
 - objection is an ES module package with an `exports` map and no default export. Deep imports like `objection/lib/...` no longer work. See [migration](/release-notes/migration.md#objection-is-an-es-module-package)
 - Node 20.19 or newer is required, or 22.12 or newer on node 22. See [migration](/release-notes/migration.md#dropped-support-for-node-20-19)
 - The knex peer dependency is `^3.3.0`. See [migration](/release-notes/migration.md#dropped-support-for-knex-3-3) [#95](https://github.com/ditojs/objection/issues/95)
-- The typings require TypeScript 5.8 or newer, and CI checks them with TypeScript 5.8 and 7. See [migration](/release-notes/migration.md#dropped-support-for-typescript-5-8)
+- The typings require TypeScript 5.8 or newer, and CI checks them with TypeScript 5.8 and 7. objection declares `typescript` as an optional peer dependency, so npm refuses to install objection next to an older TypeScript, and pnpm and yarn warn. See [migration](/release-notes/migration.md#dropped-support-for-typescript-5-8) [#485](https://github.com/ditojs/objection/issues/485)
 - MySQL 8.0.17 or newer is required. MySQL 5.7 is no longer supported. See [migration](/release-notes/migration.md#dropped-support-for-mysql-8) [#292](https://github.com/ditojs/objection/issues/292)
 - The typings are ES module declarations instead of `export =`. See [migration](/release-notes/migration.md#typescript-the-typings-are-es-module-declarations)
 - The database error classes are objection's own, from a vendored copy of db-errors, and `instanceof` checks against classes from the `db-errors` package no longer match. See [migration](/release-notes/migration.md#database-errors-are-objection-s-own-classes)
