@@ -89,6 +89,8 @@ Objection 4.0 needs at least knex 3.3.
 
 The typings of objection 4.0 need at least TypeScript 5.8, the first version that understands that node can `require()` ES modules. TypeScript 5.8, 6 and 7 are supported.
 
+objection declares `typescript` as an optional peer dependency, so npm refuses to install objection next to an older TypeScript, and pnpm and yarn warn. As npm doesn't match prereleases against the range, TypeScript betas and nightlies need `--legacy-peer-deps` or an `overrides` entry. 3.x needs TypeScript 5.0 since 3.3 and 5.1 since 3.8, without declaring it [#485](https://github.com/ditojs/objection/issues/485).
+
 ## Dropped support for MySQL < 8
 
 Objection 4.0 needs at least MySQL 8.0.17, for window functions, for derived tables that refer to the outer query, and for `JSON_OVERLAPS()` in `whereJsonHasAny()` and `whereJsonHasAll()` and the `MEMBER OF` operator of `BelongsToManyRelation`. MySQL 5.7 reached its end of life in October 2023. 3.x keeps supporting it.
