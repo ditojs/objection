@@ -1,13 +1,11 @@
 name: Docs
 
+# The docs describe the published package, so they deploy with the releases:
+# version tags without a prerelease part. Docs fixes between releases deploy
+# through a manual run on main.
 on:
   push:
-    branches: [main]
-    paths:
-      - 'doc/**'
-      - '.github/workflows/docs.yml'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
+    tags: ['v*', '!v*-*']
   workflow_dispatch:
 
 permissions:
