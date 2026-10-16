@@ -2,8 +2,8 @@ name: publish
 
 # Publishes the version of a pushed version tag to npm through npm's trusted
 # publishing: npm trusts this workflow, so no tokens are needed. The dist-tag
-# comes from `publishConfig.tag` of the tagged commit: `next` on next, `latest`
-# on main.
+# comes from `publishConfig.tag` of the tagged commit: `latest` for releases,
+# `next` for prereleases.
 on:
   push:
     tags: ['v*']
