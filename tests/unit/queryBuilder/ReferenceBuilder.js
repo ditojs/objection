@@ -191,7 +191,7 @@ describe('ReferenceBuilder', () => {
       // MySQL casts json null to 0 or 'null', so it's turned into NULL first.
       const value = "NULLIF(JSON_EXTRACT(`Column`, '$.\"a\"'), CAST('null' AS JSON))";
       expect(toSql('mysql', builder)).toBe(
-        `select CAST(JSON_UNQUOTE(${value}) AS CHAR), ` +
+        `select JSON_UNQUOTE(${value}), ` +
           `CAST(${value} AS SIGNED), ` +
           `CAST(${value} AS SIGNED), ` +
           `CAST(${value} AS DOUBLE), ` +

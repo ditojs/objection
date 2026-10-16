@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.1
+
+### Fixes
+
+- `ref().castText()` on a JSON path compares with string columns on MySQL with the `mysql2` driver, e.g. in the joins of JSON relations. Since 4.0.0 it threw "Illegal mix of collations". Comparisons with string values, `orderBy()`, `groupBy()` and `distinct()` on these values now compare bytes instead of using the connection's collation, so they're case-sensitive like on Postgres
+
 ## 4.0.0
 
 Upgrading from 3.x? The [migration guide](/release-notes/migration.md) explains each breaking change and what to do about it.
