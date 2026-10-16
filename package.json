@@ -18,7 +18,7 @@
     "docs:preview": "vitepress preview doc"
   },
   "publishConfig": {
-    "tag": "latest"
+    "tag": "legacy"
   },
   "author": {
     "name": "Sami Koskimäki",
