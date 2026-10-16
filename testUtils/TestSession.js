@@ -344,9 +344,10 @@ class TestSession {
 
                 // Reset sequence.
                 if (knexUtils.isSqlite(trx)) {
-                  return trx.raw(
-                    'UPDATE sqlite_sequence SET seq = ' + maxId + ' WHERE name = "' + table + '"',
-                  );
+                  return trx.raw('UPDATE sqlite_sequence SET seq = ? WHERE name = ?', [
+                    maxId,
+                    table,
+                  ]);
                 } else if (knexUtils.isPostgres(trx)) {
                   return trx.raw(
                     'ALTER SEQUENCE "' + table + '_' + idCol + '_seq" RESTART WITH ' + (maxId + 1),
@@ -415,6 +416,12 @@ class TestSession {
 
   isMsSql() {
     return knexUtils.isMsSql(this.knex);
+  }
+
+  // The text that a number written into a text column reads back as:
+  // better-sqlite3 binds numbers as REAL.
+  numberAsText(number) {
+    return this.knex.client.driverName === 'better-sqlite3' ? number.toFixed(1) : `${number}`;
   }
 }
 

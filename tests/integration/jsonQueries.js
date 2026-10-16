@@ -33,7 +33,8 @@ export default (session) => {
     let BoundModel = ModelJson.bindKnex(session.knex);
 
     // The mysql driver returns json values as text.
-    const jsonValue = (value) => (session.isMySql() ? JSON.stringify(value) : value);
+    const isMySqlDriver = session.knex.client.driverName === 'mysql';
+    const jsonValue = (value) => (isMySqlDriver ? JSON.stringify(value) : value);
     // SQLite has no json containment for whereJsonSupersetOf() and whereJsonSubsetOf().
     const hasJsonContainment = !session.isSqlite();
     // The tests that pass the `@>` and `<@` operators of Postgres to where() only
@@ -275,7 +276,8 @@ export default (session) => {
                 id: 1,
                 name: '1',
                 jsonObject: { attr: name },
-                jsonArray: name,
+                // jsonColumnFormat 'mixed' parses the string that mysql2 parsed:
+                jsonArray: session.isMySql() && !isMySqlDriver ? 1 : name,
               });
             });
         });

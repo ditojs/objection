@@ -8,6 +8,7 @@ on:
 
 jobs:
   run-tests:
+    name: run-tests (${{ matrix.node-version }}, ${{ matrix.database }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -17,15 +18,22 @@ jobs:
         # require() ES modules without a flag.
         node-version: [20.19.0, 20.x, 22.x, 24.x]
         database: [default]
-        # Also test SQL Server as a separate job.
+        # Also test SQL Server and the second drivers of SQLite and MySQL as
+        # separate jobs.
         include:
           - node-version: 24.x
             database: mssql
+            services: mssql
+          - node-version: 24.x
+            database: better-sqlite3
+          - node-version: 24.x
+            database: mysql2
+            services: mysql
 
     env:
-      # The SQL Server job only needs its database, the default services start
-      # otherwise.
-      SERVICES: ${{ matrix.database == 'mssql' && 'mssql' || '' }}
+      # The jobs of single databases only need their own, the default services
+      # start otherwise.
+      SERVICES: ${{ matrix.services }}
 
     steps:
       - uses: actions/checkout@v7
@@ -63,7 +71,7 @@ jobs:
       # large image restores no faster than it pulls.
       - name: Determine database images
         id: images
-        if: matrix.database != 'mssql'
+        if: matrix.database != 'mssql' && matrix.database != 'better-sqlite3'
         run: |
           images=$(docker compose config --images $SERVICES | sort | xargs)
           {
@@ -81,6 +89,7 @@ jobs:
           key: ${{ steps.images.outputs.key }}
 
       - name: Start test databases
+        if: matrix.database != 'better-sqlite3'
         env:
           IS_CACHED: ${{ steps.cache.outputs.cache-hit == 'true' }}
           IMAGES: ${{ steps.images.outputs.images }}
@@ -111,7 +120,7 @@ jobs:
         if: matrix.database == 'default'
         run: pnpm test
 
-      # The SQL Server job only runs the tests of its database, the other jobs
+      # The jobs of single databases only run their tests, the other jobs
       # already lint and check typings.
       - name: Run the tests of the database
         if: matrix.database != 'default'

@@ -61,13 +61,35 @@ function connection(client, defaults) {
 }
 
 describe('integration tests', () => {
+  const sqliteConfig = {
+    useNullAsDefault: true,
+    connection: {
+      filename: SQLITE_FILE,
+    },
+  };
+
+  const mysqlConfig = {
+    connection: connection('mysql', {
+      host: '127.0.0.1',
+      port: 13306,
+      user: 'objection',
+      database: 'objection_test',
+    }),
+    pool: {
+      min: 2,
+      max: 10,
+      afterCreate: (conn, cb) => {
+        conn.query(`SET SESSION sql_mode='NO_AUTO_VALUE_ON_ZERO'`, (err) => {
+          cb(err, conn);
+        });
+      },
+    },
+  };
+
   const testDatabaseConfigs = [
     {
       client: 'sqlite3',
-      useNullAsDefault: true,
-      connection: {
-        filename: SQLITE_FILE,
-      },
+      ...sqliteConfig,
       pool: {
         afterCreate: (conn, cb) => {
           conn.run('PRAGMA foreign_keys = ON', cb);
@@ -75,22 +97,22 @@ describe('integration tests', () => {
       },
     },
     {
-      client: 'mysql',
-      connection: connection('mysql', {
-        host: '127.0.0.1',
-        port: 13306,
-        user: 'objection',
-        database: 'objection_test',
-      }),
+      client: 'better-sqlite3',
+      ...sqliteConfig,
       pool: {
-        min: 2,
-        max: 10,
         afterCreate: (conn, cb) => {
-          conn.query(`SET SESSION sql_mode='NO_AUTO_VALUE_ON_ZERO'`, (err) => {
-            cb(err, conn);
-          });
+          conn.pragma('foreign_keys = ON');
+          cb(null, conn);
         },
       },
+    },
+    {
+      client: 'mysql',
+      ...mysqlConfig,
+    },
+    {
+      client: 'mysql2',
+      ...mysqlConfig,
     },
     {
       client: 'postgres',
@@ -112,9 +134,12 @@ describe('integration tests', () => {
       }),
     },
   ].filter((it) => {
-    // SQL Server only runs when requested, as its database isn't started by
-    // default, see docker-compose.yml.
-    return DATABASES.length === 0 ? it.client !== 'mssql' : DATABASES.includes(it.client);
+    // SQL Server and the second drivers of SQLite and MySQL only run when
+    // requested: SQL Server's database isn't started by default, see
+    // docker-compose.yml, and CI runs the drivers in jobs of their own.
+    return DATABASES.length === 0
+      ? ['sqlite3', 'mysql', 'postgres'].includes(it.client)
+      : DATABASES.includes(it.client);
   });
 
   const sessions = testDatabaseConfigs.map((knexConfig) => {
