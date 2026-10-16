@@ -203,7 +203,7 @@ A row related from another owner can no longer take the unique key of a row that
 
 A new row can't take the unique key of a row that moves to a new owner either: the move waits for the insert of the new owner, so the row still holds its key when the new row is inserted. 3.x cleared the moved row's foreign key first, which fails for `NOT NULL` keys. Insert the new owner with a separate call first, or make the unique constraint deferred and run `upsertGraph()` in a transaction.
 
-Swapping the rows of two `HasOneRelation` slots with a unique foreign key, e.g. `[{ id: 1, pet: { id: 2 } }, { id: 2, pet: { id: 1 } }]`, fails with a `UniqueViolationError` too, as each row is related while the other one still holds the key. 3.x with `unrelate` unrelated both rows first. Unrelate one of the rows with a separate query in the same transaction first.
+Swapping the rows of two `HasOneRelation` slots with a unique foreign key, e.g. `[{ id: 1, pet: { id: 2 } }, { id: 2, pet: { id: 1 } }]`, works with `unrelate`, as in 3.x: where the database reports the key column as nullable, one of the rows clears its key with a plain update first, without validation or hooks, and takes its new key with its own write. A hook that cancels that write leaves the key cleared, as the unrelate of 3.x did. Swaps of `NOT NULL` keys, or of keys in JSON columns, are written directly, which works where the key isn't unique.
 
 ## upsertGraph() upserts below related models in the same graph
 

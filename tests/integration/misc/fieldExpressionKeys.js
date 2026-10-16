@@ -435,6 +435,11 @@ export default (session) => {
             modelClass: Pet,
             join: { from: 'json_key_person.id', to: 'json_key_pet.data:sitterId' },
           },
+          onePet: {
+            relation: Model.HasOneRelation,
+            modelClass: Pet,
+            join: { from: 'json_key_person.id', to: 'json_key_pet.data:ownerId' },
+          },
         };
       }
     }
@@ -571,6 +576,30 @@ export default (session) => {
 
       const { data } = await Pet.query(knex).findById(3);
       expect(data).toEqual({ ownerId: null, color: 'red' });
+    });
+
+    // The swap doesn't clear the keys first, which would clear the json columns
+    // (#489):
+    it('should keep the other values of json columns whose keys swap slots', async () => {
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert([
+        { id: 3, data: JSON.stringify({ ownerId: 1, color: 'red' }) },
+        { id: 4, data: JSON.stringify({ ownerId: 2, color: 'blue' }) },
+      ]);
+
+      await Person.query(knex).upsertGraph(
+        [
+          { id: 1, onePet: { id: 4 } },
+          { id: 2, onePet: { id: 3 } },
+        ],
+        { relate: true, unrelate: true },
+      );
+
+      const pets = await Pet.query(knex).orderBy('id');
+      expect(pets.map(({ data }) => data)).toEqual([
+        { ownerId: 2, color: 'red' },
+        { ownerId: 1, color: 'blue' },
+      ]);
     });
 
     it('should write a key into a NULL json column that it relates a row through', async () => {

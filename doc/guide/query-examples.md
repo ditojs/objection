@@ -1159,7 +1159,7 @@ It's also really easy to create a server that doesn't work well with multiple us
 
 Graphs that place a row in contradicting ways, like a pet in the `pets` of two people, throw a `ValidationError` of type `InvalidGraph` before anything is written. Some writes need separate queries, as `upsertGraph` doesn't do them:
 
-- swapping the rows of two `HasOneRelation` slots with a unique foreign key fails with a `UniqueViolationError`, and so can a graph where one row gives up the value of a unique column that another row takes, as the patches aren't ordered by unique columns,
+- swapping the rows of two `HasOneRelation` slots with a unique foreign key fails with a `UniqueViolationError` without `unrelate`, and so can a graph where one row gives up the value of a unique column that another row takes: the writes of each step run concurrently, as in 3.x, so their order isn't guaranteed and the outcome may vary from run to run,
 - `insertMissing` inserts models that aren't found at their place, so a row that exists elsewhere fails on its unique key unless the graph deletes it there first: use `relate` to move it instead,
 - a row that changes a key while it waits for a value of the rows that read that key throws a `ValidationError` of type `InvalidGraph`: write the key in a separate query first.
 
