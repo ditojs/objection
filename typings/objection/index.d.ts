@@ -80,6 +80,10 @@ export class UniqueViolationError extends ConstraintViolationError {
   schema?: string;
 }
 
+// Wraps an error of the database driver in the matching database error class,
+// or returns it as it is.
+export function wrapError<E>(err: E): DBError | E;
+
 export interface RawBuilder extends Aliasable {}
 
 export interface RawFunction extends RawInterface<RawBuilder> {}

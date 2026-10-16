@@ -590,3 +590,13 @@ import { DataError } from 'objection';
 ```
 
 The [DataError](https://github.com/Vincit/db-errors#dataerror) class from objection's own copy of the [db-errors](https://github.com/Vincit/db-errors) library.
+
+## wrapError
+
+```js
+import { wrapError } from 'objection';
+
+const error = wrapError(driverError);
+```
+
+The [wrapError](https://github.com/Vincit/db-errors#wraperror) function from objection's own copy of the [db-errors](https://github.com/Vincit/db-errors) library. It wraps an error of the database driver in the matching error class above, as objection does for the errors of its queries, or returns it as it is. Use it for errors that don't come from objection's queries, e.g. a failed `COMMIT`.
