@@ -448,6 +448,7 @@ export default (session) => {
         })
         .createTable('json_key_pet', (table) => {
           table.integer('id').primary();
+          table.string('name');
           table.jsonb('data');
         });
     });
@@ -472,6 +473,63 @@ export default (session) => {
 
       const { data } = await Pet.query(knex).findById(3);
       expect(data).toEqual({ ownerId: 1, color: 'red', sitterId: 2 });
+    });
+
+    it('should show the json column of a key to hooks as the graph gives it (#488)', async () => {
+      const hookData = [];
+
+      class HookedPet extends Pet {
+        $beforeUpdate() {
+          hookData.push({ keys: Object.keys(this), data: this.data });
+        }
+      }
+
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({
+        id: 3,
+        data: JSON.stringify({ ownerId: 1, color: 'red' }),
+      });
+
+      await HookedPet.query(knex).upsertGraph({ id: 3, owner: { id: 2 } }, { relate: true });
+
+      expect(hookData).toEqual([{ keys: ['id', 'owner', 'data'], data: { ownerId: 2 } }]);
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ ownerId: 2, color: 'red' });
+    });
+
+    it('should keep the key path update when a hook writes another column (#488)', async () => {
+      class HookedPet extends Pet {
+        $beforeUpdate() {
+          this.name = raw('?', ['hooked']);
+        }
+      }
+
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({
+        id: 3,
+        data: JSON.stringify({ ownerId: 1, color: 'red' }),
+      });
+
+      await HookedPet.query(knex).upsertGraph({ id: 3, owner: { id: 2 } }, { relate: true });
+
+      const { name, data } = await Pet.query(knex).findById(3);
+      expect({ name, data }).toEqual({ name: 'hooked', data: { ownerId: 2, color: 'red' } });
+    });
+
+    it('should write the json column of a key that a hook changes (#488)', async () => {
+      class HookedPet extends Pet {
+        $beforeUpdate() {
+          this.data.color = 'blue';
+        }
+      }
+
+      await knex('json_key_person').insert([{ id: 1 }, { id: 2 }]);
+      await knex('json_key_pet').insert({ id: 3, data: JSON.stringify({ ownerId: 1 }) });
+
+      await HookedPet.query(knex).upsertGraph({ id: 3, owner: { id: 2 } }, { relate: true });
+
+      const { data } = await Pet.query(knex).findById(3);
+      expect(data).toEqual({ ownerId: 2, color: 'blue' });
     });
 
     it('should keep the other values of a json column that it relates a row through with update', async () => {
