@@ -924,7 +924,9 @@ export default (session) => {
             .then((models) => {
               expect(models.map((it) => it.id)).toEqual([1, 2]);
               expect(models.map((it) => it.sum)).toEqual(
-                session.isPostgres() ? ['60', null] : [60, null],
+                ['pg', 'mysql2'].includes(session.knex.client.driverName)
+                  ? ['60', null]
+                  : [60, null],
               );
             });
         });
@@ -942,7 +944,9 @@ export default (session) => {
             .then((models) => {
               expect(models.map((it) => it.id)).toEqual([1, 2]);
               expect(models.map((it) => it.sum)).toEqual(
-                session.isPostgres() ? ['60', null] : [60, null],
+                ['pg', 'mysql2'].includes(session.knex.client.driverName)
+                  ? ['60', null]
+                  : [60, null],
               );
             });
         });

@@ -574,7 +574,7 @@ export default (session) => {
 
         expect(await selectPets()).toEqual([
           { id: 10, name: 'a', ownerId: 2 },
-          { id: 11, name: '2', ownerId: 1 },
+          { id: 11, name: session.numberAsText(2), ownerId: 1 },
         ]);
       });
     });
@@ -923,7 +923,7 @@ export default (session) => {
 
           expect(await selectPets()).toEqual([
             { id: 1, name: 'a', ownerId: 2 },
-            { id: 2, name: '3', ownerId: 1 },
+            { id: 2, name: session.numberAsText(3), ownerId: 1 },
           ]);
         }
       });

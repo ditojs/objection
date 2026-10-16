@@ -72,6 +72,8 @@ DATABASES=sqlite3 pnpm test
 DATABASES=postgres pnpm test
 ```
 
+The tests run SQLite with the `sqlite3` driver and MySQL with the `mysql` driver. CI also runs them with the `better-sqlite3` and `mysql2` drivers, which `DATABASES` selects by their names, e.g. `DATABASES=better-sqlite3,mysql2`.
+
 To use your own databases instead, set the `OBJECTION_TEST_POSTGRES_*`, `OBJECTION_TEST_MYSQL_*` and `OBJECTION_TEST_MSSQL_*` env variables. The PostgreSQL user needs to own the database or be a superuser, as the tests create schemas in it. The MySQL user needs to be able to create databases and to use the `mysql_native_password` authentication plugin. The SQL Server user needs to be able to create tables and sequences.
 
 | Variable                                         | Default for PostgreSQL | Default for MySQL | Default for SQL Server |

@@ -285,12 +285,12 @@ export default (session) => {
                       {
                         model2Prop1: 'child4',
                         model2Prop2: 3,
-                        extra2: '4',
+                        extra2: session.numberAsText(4),
                       },
                       {
                         model2Prop1: 'child5',
                         model2Prop2: 3,
-                        extra2: '4',
+                        extra2: session.numberAsText(4),
                       },
                     ],
                   });
@@ -382,7 +382,7 @@ export default (session) => {
                       {
                         model2Prop1: 'child4',
                         model2Prop2: 3,
-                        extra2: '4',
+                        extra2: session.numberAsText(4),
                       },
                       {
                         model2Prop1: 'child5',

@@ -1227,10 +1227,22 @@ export default (session) => {
             })
             .then(([a, ab]) => {
               expect(a).toEqual(
-                aOld.concat([{ id1: 1000, id2: '2000', aval: 'new', bid3: null, bid4: null }]),
+                aOld.concat([
+                  {
+                    id1: 1000,
+                    id2: session.numberAsText(2000),
+                    aval: 'new',
+                    bid3: null,
+                    bid4: null,
+                  },
+                ]),
               );
 
-              expect(ab).toEqual(abOld.concat([{ aid1: 1000, aid2: '2000', bid3: 1, bid4: '2' }]));
+              expect(ab).toEqual(
+                abOld.concat([
+                  { aid1: 1000, aid2: session.numberAsText(2000), bid3: 1, bid4: '2' },
+                ]),
+              );
             });
         });
 

@@ -973,8 +973,8 @@ export default (session) => {
 
       const [n] = await knex('review_keys_person').where('name', 'zz');
       expect(await knex('review_keys_pet').orderBy('id')).toMatchObject([
-        { id: 2, ownerCode: String(n.id) },
-        { name: 'np', ownerCode: String(n.id) },
+        { id: 2, ownerCode: session.numberAsText(n.id) },
+        { name: 'np', ownerCode: session.numberAsText(n.id) },
       ]);
     });
 
@@ -1326,7 +1326,7 @@ export default (session) => {
 
       const [np] = await knex('review_keys_person').where('name', 'np');
       expect(await knex('review_keys_pet').whereNotIn('id', [1, 2])).toMatchObject([
-        { name: `${np.id}` },
+        { name: session.numberAsText(np.id) },
       ]);
     });
 
@@ -1344,7 +1344,9 @@ export default (session) => {
       );
 
       const [np] = await knex('review_keys_person').where('name', 'np');
-      expect(await knex('review_keys_person').where('id', 2)).toMatchObject([{ name: `${np.id}` }]);
+      expect(await knex('review_keys_person').where('id', 2)).toMatchObject([
+        { name: session.numberAsText(np.id) },
+      ]);
     });
 
     describe.each([
