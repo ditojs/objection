@@ -1051,6 +1051,32 @@ export default (session) => {
           expect(await selectBadges()).toContainEqual({ id: 302, name: 'nb', personCode: 'c1' });
         });
 
+        // The people copy the codes that they change from each other, so the
+        // copies can't wait for the changes. Without a foreign key, they are
+        // written in the order of the graph (#491).
+        it('should write #ref{} copies of changed values that wait for each other', async () => {
+          await createTables();
+          await insertRows();
+
+          await Person.query().upsertGraph(
+            [
+              { id: 2, '#id': 'a', code: 'x', mentorCode: '#ref{b.code}' },
+              { id: 3, '#id': 'b', code: 'y', mentorCode: '#ref{a.code}' },
+            ],
+            { allowRefs: true },
+          );
+
+          expect(
+            await knex('graph_move_person')
+              .select('id', 'code', 'mentorCode')
+              .whereIn('id', [2, 3])
+              .orderBy('id'),
+          ).toEqual([
+            { id: 2, code: 'x', mentorCode: 'y' },
+            { id: 3, code: 'y', mentorCode: 'x' },
+          ]);
+        });
+
         // Without a foreign key, the code of person 3 is patched at one root and
         // read by the badges at the other.
         it('should give the related rows the key that another place of the row patches', async () => {
@@ -1101,6 +1127,66 @@ export default (session) => {
             { id: 301, name: 'b2', personCode: 'c2' },
             { id: 302, name: 'nb', personCode: 'x' },
           ]);
+        });
+
+        it('should patch the key before inserting a row whose #ref{} copies it (#491)', async () => {
+          await Person.query().upsertGraph(
+            [
+              { id: 3, code: 'x', '#id': 'p' },
+              { id: 1, children: [{ name: 'np', mentorCode: '#ref{p.code}' }] },
+            ],
+            { allowRefs: true },
+          );
+
+          expect(
+            await knex('graph_move_person').select('name', 'mentorCode').where('name', 'np'),
+          ).toEqual([{ name: 'np', mentorCode: 'x' }]);
+        });
+
+        it('should patch the key before patching a row whose #ref{} copies it (#491)', async () => {
+          await Person.query().upsertGraph(
+            [
+              { id: 2, mentorCode: '#ref{p.code}' },
+              { id: 3, code: 'x', '#id': 'p' },
+            ],
+            { allowRefs: true },
+          );
+
+          expect(await knex('graph_move_person').select('id', 'mentorCode').where('id', 2)).toEqual(
+            [{ id: 2, mentorCode: 'x' }],
+          );
+        });
+
+        it('should patch the key of a related row before writing a row whose #ref{} copies it (#491)', async () => {
+          await Person.query().upsertGraph(
+            [
+              { name: 'nc', code: 'nc', children: [{ id: 3, '#id': 'c', code: 'x' }] },
+              { id: 2, children: [{ name: 'np', mentorCode: '#ref{c.code}' }] },
+            ],
+            { relate: true, allowRefs: true },
+          );
+
+          expect(
+            await knex('graph_move_person').select('name', 'mentorCode').where('name', 'np'),
+          ).toEqual([{ name: 'np', mentorCode: 'x' }]);
+        });
+
+        it('should patch the key before writing a row whose #ref{} copies it through a #ref model (#491)', async () => {
+          await Person.query().upsertGraph(
+            [
+              { id: 3, '#id': 'p', code: 'x' },
+              {
+                id: 1,
+                parent: { '#ref': 'p', '#id': 'q' },
+                children: [{ name: 'np', mentorCode: '#ref{q.code}' }],
+              },
+            ],
+            { allowRefs: true },
+          );
+
+          expect(
+            await knex('graph_move_person').select('name', 'mentorCode').where('name', 'np'),
+          ).toEqual([{ name: 'np', mentorCode: 'x' }]);
         });
 
         it('should patch the key before inserting a row into a HasOneRelation by it', async () => {
