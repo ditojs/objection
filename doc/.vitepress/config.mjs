@@ -143,6 +143,10 @@ export default defineConfig({
           { text: 'Changelog', link: '/release-notes/changelog' },
           { text: 'Migration to 4.0', link: '/release-notes/migration' },
           {
+            text: 'v3.x documentation',
+            link: 'https://github.com/ditojs/objection/tree/3.x/doc',
+          },
+          {
             text: 'v2.x documentation',
             link: 'https://github.com/Vincit/objection.js/tree/v2/doc',
           },
