@@ -119,4 +119,83 @@ export default (session) => {
       expect(hookResults).toEqual([['Jennifer']]);
     });
   });
+
+  describe('asFindQuery() in static hooks resolves to an array, unwrapped by first()', () => {
+    const { knex } = session;
+    let Person;
+    let hookResults;
+
+    beforeAll(async () => {
+      await knex.schema.dropTableIfExists('as_find_query_owner');
+      await session.createTable('as_find_query_owner', (table, { increments }) => {
+        increments('id');
+        table.string('name');
+        table.integer('parentId');
+      });
+    });
+
+    afterAll(() => {
+      return knex.schema.dropTableIfExists('as_find_query_owner');
+    });
+
+    beforeAll(() => {
+      Person = class Person extends Model {
+        static get tableName() {
+          return 'as_find_query_owner';
+        }
+
+        static get relationMappings() {
+          return {
+            child: {
+              relation: Model.HasOneRelation,
+              modelClass: Person,
+              join: {
+                from: 'as_find_query_owner.id',
+                to: 'as_find_query_owner.parentId',
+              },
+            },
+          };
+        }
+
+        static async beforeUpdate({ asFindQuery }) {
+          hookResults.push({
+            all: await asFindQuery(),
+            first: await asFindQuery().first(),
+            missing: await asFindQuery().where('as_find_query_owner.id', -1).first(),
+          });
+        }
+      };
+
+      Person.knex(knex);
+    });
+
+    beforeEach(async () => {
+      await knex('as_find_query_owner').delete();
+      await knex('as_find_query_owner').insert([
+        { id: 1, name: 'Jennifer' },
+        { id: 2, name: 'Brad', parentId: 1 },
+      ]);
+      hookResults = [];
+    });
+
+    const writes = {
+      'where()': () => Person.query().where('id', 2),
+      'findById()': () => Person.query().findById(2),
+      '$query()': () => Person.fromJson({ id: 2 }).$query(),
+      'a to-one $relatedQuery()': () => Person.fromJson({ id: 1 }).$relatedQuery('child'),
+    };
+
+    for (const [name, query] of Object.entries(writes)) {
+      it(`should resolve to an array, and to one model or undefined with first(), for ${name}`, async () => {
+        await query().patch({ name: 'Updated' });
+
+        expect(hookResults).toHaveLength(1);
+        const [{ all, first, missing }] = hookResults;
+        expect(all.map((it) => it.id)).toEqual([2]);
+        expect(first).toBeInstanceOf(Person);
+        expect(first.id).toBe(2);
+        expect(missing).toBeUndefined();
+      });
+    }
+  });
 };
