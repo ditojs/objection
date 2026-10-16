@@ -872,9 +872,109 @@ export default (session) => {
         }
       });
 
-      // A known limit: rows that swap slots would need one of them unrelated
-      // first, which we don't do for a unique foreign key.
-      it('should fail to swap the rows of two slots', async () => {
+      // Under `unrelate`, one of the rows leaves its slot first, as its key may
+      // be null (#489):
+      it('should swap the rows of two slots with unrelate', async () => {
+        await createTables({ uniqueOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
+        await knex('graph_order_org').insert({ id: 2 });
+
+        await Org.query().upsertGraph(
+          [
+            { id: 1, people: [{ id: 1, onePet: { id: 2 } }] },
+            { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 2 },
+          { id: 2, name: 'b', ownerId: 1 },
+        ]);
+      });
+
+      // Pet 2 waits for the insert of person 3, which its name reads, so it is
+      // related after the inserts, and pet 1 leaves its slot right before it:
+      it('should swap the rows of two slots when one waits for an insert', async () => {
+        for (const uniqueOwner of [true, false]) {
+          await createTables({ uniqueOwner });
+          await insertPeople([
+            { id: 1, name: 'a', ownerId: 1 },
+            { id: 2, name: 'b', ownerId: 2 },
+          ]);
+          await knex('graph_order_org').insert({ id: 2 });
+
+          await Org.query().upsertGraph(
+            [
+              {
+                id: 1,
+                people: [
+                  { id: 1, onePet: { id: 2, name: '#ref{n.id}' } },
+                  { '#id': 'n', id: 3 },
+                ],
+              },
+              { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
+            ],
+            { relate: true, unrelate: true, insertMissing: true, allowRefs: true },
+          );
+
+          expect(await selectPets()).toEqual([
+            { id: 1, name: 'a', ownerId: 2 },
+            { id: 2, name: '3', ownerId: 1 },
+          ]);
+        }
+      });
+
+      // The key is cleared without validation, so a schema that doesn't allow
+      // null in it doesn't fail:
+      it('should swap the rows of two slots whose keys the schema requires', async () => {
+        class TypedPet extends Pet {
+          static get jsonSchema() {
+            return {
+              type: 'object',
+              properties: { id: { type: 'integer' }, ownerId: { type: 'integer' } },
+            };
+          }
+        }
+
+        class TypedPerson extends Person {
+          static get relationMappings() {
+            return {
+              onePet: {
+                relation: Model.HasOneRelation,
+                modelClass: TypedPet,
+                join: { from: 'graph_order_person.id', to: 'graph_order_pet.ownerId' },
+              },
+            };
+          }
+        }
+
+        await createTables({ uniqueOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
+
+        await TypedPerson.query().upsertGraph(
+          [
+            { id: 1, onePet: { id: 2 } },
+            { id: 2, onePet: { id: 1 } },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 2 },
+          { id: 2, name: 'b', ownerId: 1 },
+        ]);
+      });
+
+      // A known limit: without `unrelate`, the rows aren't unrelated, so they
+      // can't leave their slots first.
+      it('should fail to swap the rows of two slots without unrelate', async () => {
         await createTables({ uniqueOwner: true });
         await insertPeople([
           { id: 1, name: 'a', ownerId: 1 },
@@ -891,6 +991,30 @@ export default (session) => {
             { relate: true },
           ),
         ).rejects.toThrow(UniqueViolationError);
+      });
+
+      // Keys that can't be null are swapped directly, which works where they
+      // aren't unique:
+      it('should swap the rows of two slots with required keys with unrelate', async () => {
+        await createTables({ requiredOwner: true });
+        await insertPeople([
+          { id: 1, name: 'a', ownerId: 1 },
+          { id: 2, name: 'b', ownerId: 2 },
+        ]);
+        await knex('graph_order_org').insert({ id: 2 });
+
+        await Org.query().upsertGraph(
+          [
+            { id: 1, people: [{ id: 1, onePet: { id: 2 } }] },
+            { id: 2, people: [{ id: 2, onePet: { id: 1 } }] },
+          ],
+          { relate: true, unrelate: true },
+        );
+
+        expect(await selectPets()).toEqual([
+          { id: 1, name: 'a', ownerId: 2 },
+          { id: 2, name: 'b', ownerId: 1 },
+        ]);
       });
 
       // Pet 1 is the current row of its own `sibling` slot, which it leaves for
