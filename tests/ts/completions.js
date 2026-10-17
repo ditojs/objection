@@ -1,7 +1,7 @@
 // Checks that editors suggest the columns of the model in the first argument
-// of the query builder methods, in loose and strict mode. tsc can't check
-// this, so we ask the language service of TypeScript 5, as TypeScript 7 has
-// none in JavaScript yet.
+// of the query builder methods, as a string and as an object key, in loose and
+// strict mode. tsc can't check this, so we ask the language service of
+// TypeScript 5, as TypeScript 7 has none in JavaScript yet.
 //
 //   node tests/ts/completions.js
 
@@ -39,6 +39,7 @@ const methodsByMode = {
     'whereJsonSupersetOf',
   ],
 };
+const objectMethods = ['where', 'findOne', 'having'];
 
 const file = path.join(root, 'tests/ts/completions.ts');
 const options = {
@@ -63,10 +64,15 @@ for (const [mode, methods] of Object.entries(methodsByMode)) {
     '  age?: number;\n' +
     '}\n';
   const positions = {};
+  const addCall = (name, call, end) => {
+    positions[name] = source.length + call.length;
+    source += `${call}${end});\n`;
+  };
   for (const method of methods) {
-    const call = `Person.query().${method}('`;
-    positions[method] = source.length + call.length;
-    source += `${call}');\n`;
+    addCall(`${method}()`, `Person.query().${method}('`, "'");
+  }
+  for (const method of objectMethods) {
+    addCall(`${method}({})`, `Person.query().${method}({ `, ' }');
   }
   const service = ts.createLanguageService({
     getScriptFileNames: () => [file],
@@ -86,12 +92,12 @@ for (const [mode, methods] of Object.entries(methodsByMode)) {
     directoryExists: ts.sys.directoryExists,
     getDirectories: ts.sys.getDirectories,
   });
-  for (const method of methods) {
-    const completions = service.getCompletionsAtPosition(file, positions[method], {});
+  for (const [name, position] of Object.entries(positions)) {
+    const completions = service.getCompletionsAtPosition(file, position, {});
     const names = new Set(completions?.entries.map((entry) => entry.name));
     const missing = columns.filter((column) => !names.has(column));
     if (missing.length > 0) {
-      console.error(`${mode} ${method}(): no completions for ${missing.join(', ')}`);
+      console.error(`${mode} ${name}: no completions for ${missing.join(', ')}`);
       process.exitCode = 1;
     }
   }

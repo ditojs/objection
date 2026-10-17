@@ -5,6 +5,7 @@
 ### Fixes
 
 - `ref().castText()` on a JSON path compares with string columns on MySQL with the `mysql2` driver, e.g. in the joins of JSON relations. Since 4.0.0 it threw "Illegal mix of collations". Comparisons with string values, `orderBy()`, `groupBy()` and `distinct()` on these values now compare bytes instead of using the connection's collation, so they're case-sensitive like on Postgres
+- In strict mode, editors suggest the columns of the model as keys of the objects that `where()`, `findOne()` and `having()` take. Since 4.0.0 they suggested none
 
 ## 4.0.0
 
