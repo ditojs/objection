@@ -1,9 +1,14 @@
 # Changelog
 
-## 4.0.1
+## 4.1.0
+
+### Changes
+
+- On PostgreSQL, json field expressions with a single key use `->` and `->>`, e.g. `"props"->>'points'` for `ref('props:points').castText()`, so that expression indexes like `((props->>'points'))` match them. Deeper paths and keys that can be array indexes, like `[0]`, `0` or `-1`, keep `#>` and `#>>`. This changes the generated SQL: an index built on the `#>>'{points}'` form no longer matches and needs to be rebuilt with `->>` [#508](https://github.com/ditojs/objection/issues/508)
 
 ### Fixes
 
+- On PostgreSQL with `standard_conforming_strings` off, json keys with backslashes in field expressions read the right values. Since 3.3.0 they read other keys or threw "malformed array literal"
 - `ref().castText()` on a JSON path compares with string columns on MySQL with the `mysql2` driver, e.g. in the joins of JSON relations. Since 4.0.0 it threw "Illegal mix of collations". Comparisons with string values, `orderBy()`, `groupBy()` and `distinct()` on these values now compare bytes instead of using the connection's collation, so they're case-sensitive like on Postgres
 
 ## 4.0.0

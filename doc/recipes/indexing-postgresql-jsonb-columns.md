@@ -37,6 +37,8 @@ An expression index referring an internal `details.name` attribute of an object 
 .raw("CREATE INDEX on ?? ((??#>>'{details,name}'))", ['Hero', 'jsonColumn'])
 ```
 
+The index needs the same expression as the query. objection extracts single keys with `->`, or `->>` when cast, e.g. `"jsonColumn"->>'name'` for `ref('jsonColumn:name').castText()`, and deeper paths with `#>` and `#>>` as above. Keys that can be array indexes, like `ref('jsonColumn:[0]')`, `ref('jsonColumn:0')` or `ref('jsonColumn:-1')`, also use `#>` and `#>>`, as `->` and `->>` would only read either array elements or object keys.
+
 ## Complete Migration Example and Created Tables / Indexes
 
 Complete example how to try out different index choices.
@@ -57,7 +59,7 @@ export function up(knex) {
         .inTable('Place');
     })
     .raw('CREATE INDEX on ?? USING GIN (??)', ['Hero', 'details'])
-    .raw("CREATE INDEX on ?? ((??#>>'{type}'))", ['Hero', 'details'])
+    .raw("CREATE INDEX on ?? ((??->>'type'))", ['Hero', 'details'])
     .createTable('Place', table => {
       table.increments('id').primary();
       table.string('name');
@@ -84,7 +86,7 @@ objection-jsonb-example=# \d "Hero"
 Indexes:
     "Hero_pkey" PRIMARY KEY, btree (id)
     "Hero_details_idx" gin (details)
-    "Hero_expr_idx" btree ((details #>> '{type}'::text[]))
+    "Hero_expr_idx" btree ((details ->> 'type'::text))
 
 objection-jsonb-example=# \d "Place"
            Table "public.Place"
@@ -101,10 +103,10 @@ Indexes:
 Expression index is used for example for following query:
 
 ```sql
-explain select * from "Hero" where details#>>'{type}' = 'Hero';
+explain select * from "Hero" where details->>'type' = 'Hero';
 
                            QUERY PLAN
 ----------------------------------------------------------------
  Index Scan using "Hero_expr_idx" on "Hero"
-   Index Cond: ((details #>> '{type}'::text[]) = 'Hero'::text)
+   Index Cond: ((details ->> 'type'::text) = 'Hero'::text)
 ```

@@ -37,16 +37,34 @@ describe('ReferenceBuilder', () => {
 
   it('should allow field expression + casting', () => {
     let reference = ref('Table.Column:jsonAttr').castBool();
-    expect(toRawArgs(reference)).toEqual(["CAST(??#>>'{jsonAttr}' AS boolean)", ['Table.Column']]);
+    expect(toRawArgs(reference)).toEqual(["CAST(??->>'jsonAttr' AS boolean)", ['Table.Column']]);
   });
 
   it('should allow field expression + no casting', () => {
     let reference = ref('Table.Column:jsonAttr');
-    expect(toRawArgs(reference)).toEqual(["??#>'{jsonAttr}'", ['Table.Column']]);
+    expect(toRawArgs(reference)).toEqual(["??->'jsonAttr'", ['Table.Column']]);
+  });
+
+  it('should use json paths for nested keys and keys that can be array indexes', () => {
+    expect(toRawArgs(ref('Table.Column:a.b'))).toEqual(["??#>'{a,b}'", ['Table.Column']]);
+    expect(toRawArgs(ref('Table.Column:a.b').castText())).toEqual([
+      "CAST(??#>>'{a,b}' AS text)",
+      ['Table.Column'],
+    ]);
+    expect(toRawArgs(ref('Table.Column:[0]'))).toEqual(["??#>'{0}'", ['Table.Column']]);
+    expect(toRawArgs(ref('Table.Column:0').castText())).toEqual([
+      "CAST(??#>>'{0}' AS text)",
+      ['Table.Column'],
+    ]);
+    expect(toRawArgs(ref('Table.Column:-1'))).toEqual(["??#>'{-1}'", ['Table.Column']]);
+    expect(toRawArgs(ref('Table.Column:+1'))).toEqual(["??#>'{+1}'", ['Table.Column']]);
+    expect(toRawArgs(ref("Table.Column:[' 1']"))).toEqual([`??#>'{" 1"}'`, ['Table.Column']]);
+    expect(toRawArgs(ref('Table.Column:0'))).toEqual(["??#>'{0}'", ['Table.Column']]);
+    expect(toRawArgs(ref('Table.Column:a1'))).toEqual(["??->'a1'", ['Table.Column']]);
   });
 
   it('should quote empty keys in field expressions', () => {
-    expect(toRawArgs(ref('Table.Column:[""]'))).toEqual([`??#>'{""}'`, ['Table.Column']]);
+    expect(toRawArgs(ref('Table.Column:[""]'))).toEqual([`??->''`, ['Table.Column']]);
     expect(toRawArgs(ref("Table.Column:a[''].b").castText())).toEqual([
       `CAST(??#>>'{a,"",b}' AS text)`,
       ['Table.Column'],
@@ -58,30 +76,44 @@ describe('ReferenceBuilder', () => {
       `??#>'{"a,b","{c}"}'`,
       ['Table.Column'],
     ]);
+    expect(toRawArgs(ref("Table.Column:a['a\\\"b']"))).toEqual([
+      `??#>E'{a,"a\\134\\134\\134"b"}'`,
+      ['Table.Column'],
+    ]);
     expect(toRawArgs(ref("Table.Column:['a\\\"b']"))).toEqual([
-      `??#>'{"a\\\\\\"b"}'`,
+      `??->E'a\\134"b'`,
       ['Table.Column'],
     ]);
   });
 
   it('should escape single quotes and question marks in json path keys', () => {
     expect(toRawArgs(ref("Table.Column:x') or 1=1 --"))).toEqual([
-      `??#>'{"x'') or 1=1 --"}'`,
+      `??->'x'') or 1=1 --'`,
+      ['Table.Column'],
+    ]);
+    expect(toRawArgs(ref("Table.Column:a.x') or 1=1 --"))).toEqual([
+      `??#>'{a,"x'') or 1=1 --"}'`,
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:a?b').castText().as('x'))).toEqual([
-      `CAST(??#>>'{a\\?b}' AS text) as ??`,
+      `CAST(??->>'a\\?b' AS text) as ??`,
       ['Table.Column', 'x'],
     ]);
-    // Backslashes are doubled inside the quoted text array element.
-    expect(toRawArgs(ref(`Table.Column:["a\\'?b"]`))).toEqual([
-      `??#>'{"a\\\\''\\?b"}'`,
+    // Backslashes are written as octal escapes in an escape string literal, so
+    // that they can't escape the closing quote, and knex can't drop them in
+    // front of `?`. In paths, they are doubled inside the quoted element first.
+    expect(toRawArgs(ref(`Table.Column:["a\\b"]`))).toEqual([`??->E'a\\134b'`, ['Table.Column']]);
+    expect(toRawArgs(ref(`Table.Column:["a\\"]`))).toEqual([`??->E'a\\134'`, ['Table.Column']]);
+    expect(toRawArgs(ref(`Table.Column:a["a\\'?b"]`))).toEqual([
+      `??#>E'{a,"a\\134\\134''\\?b"}'`,
       ['Table.Column'],
     ]);
-    // knex drops backslashes in front of `?`, so they are written as octal
-    // escapes in an escape string literal.
+    expect(toRawArgs(ref(`Table.Column:a["a\\?'b"]`))).toEqual([
+      `??#>E'{a,"a\\134\\134\\?''b"}'`,
+      ['Table.Column'],
+    ]);
     expect(toRawArgs(ref(`Table.Column:["a\\?'b"]`))).toEqual([
-      `??#>E'{"a\\134\\134\\?''b"}'`,
+      `??->E'a\\134\\?''b'`,
       ['Table.Column'],
     ]);
   });
@@ -93,11 +125,12 @@ describe('ReferenceBuilder', () => {
       }
     }
     const { sql } = TestModel.query(Knex({ client: 'pg' }))
-      .select(ref(`Table.Column:["a\\?b"]`))
+      .select(ref(`Table.Column:["a\\?b"]`), ref(`Table.Column:a["a\\?b"]`))
       .toKnexQuery()
       .toSQL()
       .toNative();
-    expect(sql).toContain(`"Table"."Column"#>E'{"a\\134\\134?b"}'`);
+    expect(sql).toContain(`"Table"."Column"->E'a\\134?b'`);
+    expect(sql).toContain(`"Table"."Column"#>E'{a,"a\\134\\134?b"}'`);
   });
 
   it('should keep bindings in order when used as a column in whereIn', () => {
@@ -111,37 +144,37 @@ describe('ReferenceBuilder', () => {
       .toKnexQuery()
       .toSQL()
       .toNative();
-    expect(sql).toContain(`CAST("Table"."Column"#>>'{a?b}' AS integer) in ($1)`);
+    expect(sql).toContain(`CAST("Table"."Column"->>'a?b' AS integer) in ($1)`);
     expect(bindings).toEqual([1]);
   });
 
   it('should support few different casts', () => {
     expect(toRawArgs(ref('Table.Column:jsonAttr').castText())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS text)",
+      "CAST(??->>'jsonAttr' AS text)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:jsonAttr').castInt())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS integer)",
+      "CAST(??->>'jsonAttr' AS integer)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:jsonAttr').castBigInt())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS bigint)",
+      "CAST(??->>'jsonAttr' AS bigint)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:jsonAttr').castFloat())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS float)",
+      "CAST(??->>'jsonAttr' AS float)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:jsonAttr').castDecimal())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS decimal)",
+      "CAST(??->>'jsonAttr' AS decimal)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:jsonAttr').castReal())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS real)",
+      "CAST(??->>'jsonAttr' AS real)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column:jsonAttr').castBool())).toEqual([
-      "CAST(??#>>'{jsonAttr}' AS boolean)",
+      "CAST(??->>'jsonAttr' AS boolean)",
       ['Table.Column'],
     ]);
     expect(toRawArgs(ref('Table.Column').castJson())).toEqual(['to_jsonb(??)', ['Table.Column']]);

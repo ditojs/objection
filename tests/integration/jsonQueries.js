@@ -217,6 +217,29 @@ export default (session) => {
               });
           },
         );
+
+        it.skipIf(!session.isPostgres())(
+          'should match expression indexes on single json keys',
+          async () => {
+            const { knex } = session;
+            await knex.raw(
+              `CREATE INDEX "ModelJson_attr" ON "ModelJson" (("jsonObject"->>'attr'))`,
+            );
+            try {
+              const { sql, bindings } = BoundModel.query()
+                .where(ref('jsonObject:attr').castText(), '2')
+                .toKnexQuery()
+                .toSQL();
+              const { rows } = await knex.transaction(async (trx) => {
+                await trx.raw('SET LOCAL enable_seqscan = off');
+                return trx.raw(`EXPLAIN ${sql}`, bindings);
+              });
+              expect(rows.map((row) => row['QUERY PLAN']).join('\n')).toContain('ModelJson_attr');
+            } finally {
+              await knex.raw('DROP INDEX "ModelJson_attr"');
+            }
+          },
+        );
       });
 
       describe('.insert()', () => {
