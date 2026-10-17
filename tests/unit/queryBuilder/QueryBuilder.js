@@ -2482,7 +2482,7 @@ describe('QueryBuilder', () => {
       `select "Model".* from "Model" where ( "content"#>'{a,b}' )::jsonb @> ( '{"a":1}' )::jsonb`,
     );
     expect(toSql(TestModel.query().whereJsonHasAll('content:a', ['b']))).toBe(
-      `select "Model".* from "Model" where "content"#>'{a}' ?& array['b']`,
+      `select "Model".* from "Model" where "content"->'a' ?& array['b']`,
     );
   });
 
@@ -2490,7 +2490,7 @@ describe('QueryBuilder', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
 
     expect(toSql(TestModel.query().whereJsonSupersetOf('content:a', ref('other:b')))).toBe(
-      `select "Model".* from "Model" where ( "content"#>'{a}' )::jsonb @> ( "other"#>'{b}' )::jsonb`,
+      `select "Model".* from "Model" where ( "content"->'a' )::jsonb @> ( "other"->'b' )::jsonb`,
     );
     expect(toSql(TestModel.query().whereJsonSubsetOf('content', ref('Model.other')))).toBe(
       `select "Model".* from "Model" where ( "content" )::jsonb <@ ( "Model"."other" )::jsonb`,
@@ -2502,7 +2502,7 @@ describe('QueryBuilder', () => {
           .orWhereJsonNotSubsetOf('content', ref("other:x'?")),
       ),
     ).toBe(
-      `select "Model".* from "Model" where ( "a" )::jsonb @> ( "b" )::jsonb or not ( "content" )::jsonb <@ ( "other"#>'{x''?}' )::jsonb`,
+      `select "Model".* from "Model" where ( "a" )::jsonb @> ( "b" )::jsonb or not ( "content" )::jsonb <@ ( "other"->'x''?' )::jsonb`,
     );
     expect(
       toSql(TestModel.query().whereJsonSupersetOf('content', val({ a: '?' }).castJson())),
@@ -2528,16 +2528,16 @@ describe('QueryBuilder', () => {
     const toSql = (builder) => builder.toKnexQuery().toString();
 
     expect(toSql(TestModel.query().whereJsonSupersetOf('content:[""]', { a: 1 }))).toBe(
-      `select "Model".* from "Model" where ( "content"#>'{""}' )::jsonb @> ( '{"a":1}' )::jsonb`,
+      `select "Model".* from "Model" where ( "content"->'' )::jsonb @> ( '{"a":1}' )::jsonb`,
     );
     expect(toSql(TestModel.query().whereJsonHasAny("content:a['']", ['b']))).toBe(
       `select "Model".* from "Model" where "content"#>'{a,""}' ?| array['b']`,
     );
     expect(toSql(TestModel.query().whereJsonIsObject('content:[""]'))).toBe(
-      `select "Model".* from "Model" where jsonb_typeof(( "content"#>'{""}' )::jsonb) = 'object'`,
+      `select "Model".* from "Model" where jsonb_typeof(( "content"->'' )::jsonb) = 'object'`,
     );
     expect(toSql(TestModel.query().where(ref('content:[""]').castText(), 'x'))).toBe(
-      `select "Model".* from "Model" where CAST("content"#>>'{""}' AS text) = 'x'`,
+      `select "Model".* from "Model" where CAST("content"->>'' AS text) = 'x'`,
     );
     expect(toSql(TestModel.query().patch({ 'content:[""]': 1 }))).toBe(
       `update "Model" set "content" = jsonb_set(COALESCE("Model"."content", '{}'), '{""}', '1', true)`,
@@ -2830,9 +2830,11 @@ describe('QueryBuilder', () => {
 
     for (const key of keys) {
       it(`escapes the key ${JSON.stringify(key)} in SQL`, () => {
-        // The json path `{a,<key>}` as an escaped Postgres string literal.
+        // The json path `{a,<key>}` as an escaped Postgres string literal, an
+        // escape string literal with octal backslashes if it contains any.
         const element = /[{}",\\\s]/.test(key) ? `"${key.replace(/["\\]/g, '\\$&')}"` : key;
-        const literal = `'{a,${element.replace(/'/g, "''")}}'`;
+        const path = `{a,${element.replace(/'/g, "''")}}`;
+        const literal = path.includes('\\') ? `E'${path.replace(/\\/g, '\\134')}'` : `'${path}'`;
         // Patch queries can only be built once, so create the queries twice.
         const strings = queries(key).map(toSql);
         for (const query of queries(key)) {
@@ -2852,13 +2854,13 @@ describe('QueryBuilder', () => {
 
     it('escapes keys correctly in the json path literal', () => {
       expect(toSql(TestModel.query().where(ref("content:x') or 1=1 --"), 1))).toBe(
-        `select "Model".* from "Model" where "content"#>'{"x'') or 1=1 --"}' = 1`,
+        `select "Model".* from "Model" where "content"->'x'') or 1=1 --' = 1`,
       );
       expect(toSql(TestModel.query().whereJsonSupersetOf('content:a?b', { a: 1 }))).toBe(
-        `select "Model".* from "Model" where ( "content"#>'{a?b}' )::jsonb @> ( '{"a":1}' )::jsonb`,
+        `select "Model".* from "Model" where ( "content"->'a?b' )::jsonb @> ( '{"a":1}' )::jsonb`,
       );
       expect(toSql(TestModel.query().whereJsonHasAny('content:a?b', ['c?']))).toBe(
-        `select "Model".* from "Model" where "content"#>'{a?b}' ?| array['c?']`,
+        `select "Model".* from "Model" where "content"->'a?b' ?| array['c?']`,
       );
       expect(toSql(TestModel.query().patch({ "content:x') or 1=1 --": 1 }))).toBe(
         `update "Model" set "content" = jsonb_set(COALESCE("Model"."content", '{}'), '{"x'') or 1=1 --"}', '1', true)`,
@@ -2867,7 +2869,7 @@ describe('QueryBuilder', () => {
 
     it('binds string values containing `?` in json methods', () => {
       expect(toSql(TestModel.query().whereJsonHasAny('content:a', ['?', 'b?']))).toBe(
-        `select "Model".* from "Model" where "content"#>'{a}' ?| array['?','b?']`,
+        `select "Model".* from "Model" where "content"->'a' ?| array['?','b?']`,
       );
       const { sql, bindings } = toSQL(
         TestModel.query().whereJsonHasAll('content', "x') or 1=1 --"),
@@ -2904,19 +2906,19 @@ describe('QueryBuilder', () => {
         `select "model".* from "model" where CAST("${col}"#>>'{0,innerKey}' AS text) = 'x'`,
       );
       expect(toSql(Model.query(knex).whereJsonSupersetOf('jsonCol:someKey', { innerKey: 1 }))).toBe(
-        `select "model".* from "model" where ( "${col}"#>'{someKey}' )::jsonb @> ( '{"innerKey":1}' )::jsonb`,
+        `select "model".* from "model" where ( "${col}"->'someKey' )::jsonb @> ( '{"innerKey":1}' )::jsonb`,
       );
       expect(toSql(Model.query(knex).whereJsonHasAny('jsonCol:someKey', 'fooBar'))).toBe(
-        `select "model".* from "model" where "${col}"#>'{someKey}' ?| array['fooBar']`,
+        `select "model".* from "model" where "${col}"->'someKey' ?| array['fooBar']`,
       );
       expect(toSql(Model.query(knex).whereJsonIsObject('jsonCol:someKey'))).toBe(
-        `select "model".* from "model" where jsonb_typeof(( "${col}"#>'{someKey}' )::jsonb) = 'object'`,
+        `select "model".* from "model" where jsonb_typeof(( "${col}"->'someKey' )::jsonb) = 'object'`,
       );
       expect(toSql(Model.query(knex).whereJsonNotObject('model.jsonCol:someKey'))).toBe(
-        `select "model".* from "model" where not coalesce(jsonb_typeof(( "model"."${col}"#>'{someKey}' )::jsonb) = 'object', false)`,
+        `select "model".* from "model" where not coalesce(jsonb_typeof(( "model"."${col}"->'someKey' )::jsonb) = 'object', false)`,
       );
       expect(toSql(Model.query(knex).whereJsonSubsetOf('jsonCol', 'model.jsonCol:a'))).toBe(
-        `select "model".* from "model" where ( "${col}" )::jsonb <@ ( "model"."${col}"#>'{a}' )::jsonb`,
+        `select "model".* from "model" where ( "${col}" )::jsonb <@ ( "model"."${col}"->'a' )::jsonb`,
       );
       expect(toSql(Model.query(knex).whereJsonHasAll('jsonCol', ['a', 'b']))).toBe(
         `select "model".* from "model" where "${col}" ?& array['a','b']`,
