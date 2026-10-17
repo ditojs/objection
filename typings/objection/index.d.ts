@@ -1271,6 +1271,14 @@ type OutputColumn<QB extends AnyQueryBuilder> =
     : never;
 
 /**
+ * A where object O with only unqualified columns of model M, for
+ * autocompletion in strict mode. Other keys go through StrictWhereObject.
+ */
+type WhereColumns<M, O> = {
+  [K in ColumnName<M>]?: Expression<ColumnValue<ColumnType<M, K>>>;
+} & Record<Exclude<keyof O, ColumnName<M>>, never>;
+
+/**
  * Checks the keys of a where object as columns, and their values.
  */
 type StrictWhereObject<M, O> = IfStrict<
@@ -1655,8 +1663,10 @@ export interface WhereMethod<out QB extends AnyQueryBuilder> {
     expr: ValueArg<ModelType<QBP>, C>,
   ): QB;
 
-  <QBP extends QB>(obj: IfStrict<PartialModelProps<ModelType<QBP>>, never>): QB;
-  // Allow any keys in loose mode. The model's properties above only serve
+  <QBP extends QB, const O extends object = {}>(
+    obj: IfStrict<PartialModelProps<ModelType<QBP>>, O & WhereColumns<ModelType<QBP>, O>>,
+  ): QB;
+  // Allow any keys in loose mode. The model's columns above only serve
   // autocompletion. The last overload is what `Parameters<>` sees:
   <QBP extends QB, const O extends object = {}>(
     obj: IfStrict<object, O & StrictWhereObject<ModelType<QBP>, O>>,

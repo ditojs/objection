@@ -119,6 +119,23 @@ async function methods() {
   await q.where({ firstName: 'Jennifer', 'pets.name': 'Fluffy' });
   // @ts-expect-error
   await q.where({ firstNme: 'Jennifer' });
+  // Also when they aren't literals, next to valid columns:
+  const unknownKey = { firstName: 'Jennifer', bogus: 1 };
+  // @ts-expect-error
+  await q.where(unknownKey);
+  // @ts-expect-error
+  await Person.query().findOne(unknownKey);
+  // @ts-expect-error
+  await q.having(unknownKey);
+  const typo = { age: 1, agee: 2 };
+  // @ts-expect-error
+  await q.where(typo);
+  const relationColumn = { firstName: 'Jennifer', 'pets.bogus': 1 };
+  // @ts-expect-error
+  await q.where(relationColumn);
+  const record: Record<string, unknown> = {};
+  // @ts-expect-error
+  await q.where(record);
 
   // `findOne()` takes the same arguments as `where()`.
   await Person.query().findOne('firstName', 'Jennifer');
