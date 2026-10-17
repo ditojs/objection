@@ -78,8 +78,10 @@ describe('integration tests', () => {
     pool: {
       min: 2,
       max: 10,
+      // Keep MySQL's default modes (strict mode etc.), and allow inserting 0 ids:
       afterCreate: (conn, cb) => {
-        conn.query(`SET SESSION sql_mode='NO_AUTO_VALUE_ON_ZERO'`, (err) => {
+        const sql = `SET SESSION sql_mode = CONCAT(@@sql_mode, ',NO_AUTO_VALUE_ON_ZERO')`;
+        conn.query(sql, (err) => {
           cb(err, conn);
         });
       },
