@@ -221,6 +221,8 @@ await Person.relatedQuery('pets')
 // relation:   pets
 ```
 
+The values of [raw](/api/objection/#raw), [ref](/api/objection/#ref) and subqueries passed to `insert()`, `patch()` or `update()` aren't on the input items: they are kept apart from the model data and written as given. Assigning a value to such a property in a `before*` hook doesn't replace it, [\$setJson](/api/model/instance-methods.html#setjson) does.
+
 In `afterDelete`, `afterUpdate`, `afterInsert` and `afterFind` hooks, the `result` property of the input argument contains what the query returns: an array of models, a single model, e.g. with `first()`, `findById()`, `insert()` of a single model or `patchAndFetchById()`, `undefined` if nothing was found, or the number of updated or deleted rows. The hooks run as the last step of the query, after `first()` and the fetch of `insertAndFetch()` and `patchAndFetch()`, and before the [runAfter](/api/query-builder/other-methods.html#runafter) callbacks. See the [after hooks](/api/model/static-methods.html#static-afterfind) for the details of each query. In `before*` hooks, `result` is `undefined`.
 
 To handle single models and arrays the same way, turn `result` into an array with [asArray](/api/objection/#asarray):

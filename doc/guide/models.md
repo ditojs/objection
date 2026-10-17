@@ -355,6 +355,8 @@ class Person extends Model {
 
 `modelClass` is only checked when it is a class or a function returning one, not when it is a module path. Models are compared structurally, so a model class whose instances have all the properties of the expected model passes too.
 
+`ModelRelations<Person>` gives the names of the relation properties of a model, and `ModelProps<Person>` the names of the other properties. Both read the properties in the model's type, declared or derived with `FromModel`: for a model whose type has no relation properties, `ModelRelations` is `never`. Properties typed `any` count as columns.
+
 ## Checking queries in TypeScript
 
 In strict mode, the typings check the column names and values of queries against the models. Strict mode is opt-in, turned on by augmenting `TypeConfig`:
