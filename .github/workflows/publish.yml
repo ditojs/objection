@@ -1,9 +1,11 @@
 name: publish
 
-# Publishes the version of a pushed version tag to npm through npm's trusted
-# publishing: npm trusts this workflow, so no tokens are needed. The dist-tag
-# comes from `publishConfig.tag` of the tagged commit: `legacy` on 3.x, so
-# its releases don't replace the `latest` 4.x version.
+# Stages the version of a pushed version tag on npm through npm's trusted
+# publishing: npm trusts this workflow, so no tokens are needed. A maintainer
+# then approves the staged version with 2FA on npmjs.com or with
+# `npm stage approve`, which makes it installable. The dist-tag comes from
+# `publishConfig.tag` of the tagged commit: `legacy` on 3.x, so its releases
+# don't replace the `latest` 4.x version.
 on:
   push:
     tags: ['v*']
@@ -19,10 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Trusted publishing needs npm 11.5.1 or later, which comes with Node 24.
       - uses: actions/setup-node@v7
         with:
           node-version: 24.x
           registry-url: https://registry.npmjs.org
 
-      - run: npm publish
+      # Staged publishing needs npm 11.15.0 or later.
+      - run: npm install -g npm@^11.15.0
+
+      # `npm stage publish` isn't documented to read `publishConfig`, so pass its tag:
+      - run: npm stage publish --tag "$(node -p "require('./package.json').publishConfig.tag")"
