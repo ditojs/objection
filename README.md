@@ -11,7 +11,7 @@ Even though ORM is the best commonly known acronym to describe objection, a more
 
 ## About this repository
 
-objection.js was created by [@koskimas](https://github.com/koskimas). I've maintained it at Vincit/objection.js since 2023. After Vincit removed my access in 2026, development continues here, published as the same npm package `objection`.
+objection.js was created by [@koskimas](https://github.com/koskimas) and has been maintained by [@lehni](https://github.com/lehni) since 2023. After Vincit removed @lehni's access to Vincit/objection.js in 2026, development continues here at ditojs/objection, published as the same npm package `objection`.
 
 - 4.x is the current version. See the [changelog](https://ditojs.github.io/objection/release-notes/changelog.html) and the [migration guide](https://ditojs.github.io/objection/release-notes/migration.html).
 - 3.x gets fixes on the [`3.x` branch](https://github.com/ditojs/objection/tree/3.x), published under the npm dist-tag `legacy`.
