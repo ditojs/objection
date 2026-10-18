@@ -12,11 +12,13 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v7
@@ -31,3 +33,36 @@ jobs:
 
       # `npm stage publish` isn't documented to read `publishConfig`, so pass its tag:
       - run: npm stage publish --tag "$(node -p "require('./package.json').publishConfig.tag")"
+
+  # Creates the GitHub release with the version's section of the changelog as
+  # its notes. Only versions on the `latest` dist-tag become the latest release.
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          tag="$(node -p "require('./package.json').publishConfig.tag")"
+          # The section of the version, with the docs links made absolute:
+          awk -v heading="## ${version%%-*}" '
+            $0 == heading { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' doc/release-notes/changelog.md |
+            sed -E -e 's#\]\(/#](https://ditojs.github.io/objection/#g' \
+              -e 's#(ditojs\.github\.io/objection/[^)#]*)\.md#\1.html#g' > notes.md
+          if ! grep -q . notes.md; then
+            echo "No changelog section for ${version%%-*}" >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md --verify-tag \
+            $([ "$tag" = latest ] && echo --latest || echo --latest=false) \
+            $([[ "$version" == *-* ]] && echo --prerelease)
