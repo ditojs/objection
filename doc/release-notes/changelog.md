@@ -1,6 +1,10 @@
 # Changelog
 
-## 4.1.1
+## 4.2.0
+
+### Changes
+
+- `patchAndFetch()`, `patchAndFetchById()`, `updateAndFetch()` and `updateAndFetchById()` throw when the same query is executed a second time, e.g. awaited twice. Since at least 1.0.0, the second run wrote back the row that the first one fetched, undoing other writes in between [#519](https://github.com/ditojs/objection/issues/519)
 
 ### Fixes
 

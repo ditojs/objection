@@ -803,6 +803,8 @@ const promise = queryBuilder.execute();
 
 Executes the query and returns a Promise.
 
+A query can be executed again, e.g. by awaiting it twice, except for the `*AndFetch()` writes: they merge the fetched row into their patch, which a second run would write back, so it throws. Create a new query for each run instead. A run that fails before the fetch, e.g. on a deadlock, can be retried. Concurrent runs of the same query aren't detected.
+
 ##### Return value
 
 | Type      | Description                                                |
