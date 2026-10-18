@@ -1764,6 +1764,36 @@ export default (session) => {
               expect(Movie.afterUpdate.calls.length).toBe(1);
             });
         });
+
+        it('`asFindQuery` should run the onBuild hooks of the context once', async () => {
+          let found = null;
+          Movie.afterUpdate = createHookSpy(async ({ asFindQuery }) => {
+            found = await asFindQuery().select('movies.name');
+          });
+
+          await Movie.query()
+            .context({
+              onBuild: (query) => query.leftJoin('actorsMovies', 'actorsMovies.id', 'movies.id'),
+            })
+            .patch({ name: 'Hungergames 2' })
+            .where('movies.name', 'like', 'Hunger%');
+
+          expect(found).toEqual([{ name: 'Hungergames 2' }]);
+        });
+
+        it('`asFindQuery` should keep the filters of the query with withSchema()', async () => {
+          let found = null;
+          Movie.afterUpdate = createHookSpy(async ({ asFindQuery }) => {
+            found = await asFindQuery().select('movies.name');
+          });
+
+          await Movie.query()
+            .withSchema(session.defaultSchema())
+            .patch({ name: 'Hungergames 2' })
+            .where('movies.name', 'like', 'Hunger%');
+
+          expect(found).toEqual([{ name: 'Hungergames 2' }]);
+        });
       });
 
       describe('$query', () => {
@@ -2531,6 +2561,27 @@ export default (session) => {
               expect(Movie.afterDelete.calls.length).toBe(1);
             });
         });
+
+        it('`asFindQuery` should run the onBuild hooks of the context once', async () => {
+          // SQLite can't delete with joins.
+          if (session.isSqlite()) {
+            return;
+          }
+
+          let found = null;
+          Movie.afterDelete = createHookSpy(async ({ asFindQuery }) => {
+            found = await asFindQuery().select('movies.name');
+          });
+
+          await Movie.query()
+            .context({
+              onBuild: (query) => query.leftJoin('movies as other', 'other.id', 'movies.id'),
+            })
+            .delete()
+            .where('movies.name', 'Hungergames');
+
+          expect(found).toEqual([]);
+        });
       });
 
       describe('$query', () => {
@@ -3143,6 +3194,26 @@ export default (session) => {
             .then(() => {
               expect(Movie.afterInsert.calls.length).toBe(1);
             });
+        });
+
+        it('`asFindQuery` should run the onBuild hooks of the context once', async () => {
+          let found = null;
+          Movie.afterInsert = createHookSpy(async ({ asFindQuery }) => {
+            found = await asFindQuery().select('movies.name').orderBy('movies.name');
+          });
+
+          await Movie.query()
+            .context({
+              onBuild: (query) => query.leftJoin('actorsMovies', 'actorsMovies.id', 'movies.id'),
+            })
+            .insert({ name: 'Inserted' });
+
+          expect(found.map(({ name }) => name)).toEqual([
+            'A Star is Born',
+            'Hungergames',
+            'Inserted',
+            'Silver Linings Playbook',
+          ]);
         });
       });
 

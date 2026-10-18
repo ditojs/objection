@@ -642,6 +642,36 @@ export default (session) => {
             expectPartEql(rows[2], { id: 3, model1Prop1: 'hello 3' });
           });
       });
+
+      it('should fetch the unchanged model with an empty patch', async () => {
+        const fetchedModel = await Model1.query().patchAndFetchById(2, {});
+        expect(fetchedModel).toMatchObject({ id: 2, model1Prop1: 'hello 2' });
+      });
+
+      it('should run onBuild hooks of the context once with an empty patch', async () => {
+        const fetchedModel = await Model1.query()
+          .context({
+            onBuild: (query) => query.leftJoin('Model1 as parent', 'parent.id', 'Model1.model1Id'),
+          })
+          .patchAndFetchById(2, {});
+
+        expect(fetchedModel).toMatchObject({ id: 2, model1Prop1: 'hello 2' });
+      });
+
+      it('should keep the filters of an empty patch with withSchema()', async () => {
+        const query = () => Model1.query().withSchema(session.defaultSchema());
+
+        expect(await query().patchAndFetchById(2, {})).toMatchObject({
+          id: 2,
+          model1Prop1: 'hello 2',
+        });
+        expect(await query().patchAndFetchById(2, {}).where('id', -1)).toBeUndefined();
+      });
+
+      it('should fetch nothing with an empty patch if no row matches', async () => {
+        expect(await Model1.query().patchAndFetchById(4, {})).toBeUndefined();
+        expect(await Model1.query().patchAndFetchById(2, {}).where('id', -1)).toBeUndefined();
+      });
     });
 
     describe('.$query().patch()', () => {
@@ -901,6 +931,14 @@ export default (session) => {
             'select "model1Prop1" from "Model1" where "Model1"."id" = 1',
           ]);
         }
+      });
+
+      it('should fetch the unchanged model with an empty patch', async () => {
+        const model = ModelOne.fromJson({ id: 1 });
+        const updated = await model.$query().patchAndFetch({});
+
+        expect(updated).toMatchObject({ id: 1, model1Prop1: 'hello 1', model1Prop2: null });
+        expectPartEql(model, { id: 1, model1Prop1: 'hello 1', model1Prop2: null });
       });
     });
 
@@ -1262,6 +1300,22 @@ export default (session) => {
               expectPartEql(rows[7], { id: 8, model1Prop1: 'blaa 6' });
               expectPartEql(rows[8], { id: 9, model1Prop1: 'hoot' });
             });
+        });
+
+        it('should fetch a related object with an empty patch using patchAndFetchById', async () => {
+          const parent = await Model1.query().findById(1);
+
+          expect(
+            await parent.$relatedQuery('model1Relation3').patchAndFetchById(4, {}),
+          ).toMatchObject({
+            idCol: 4,
+            model2Prop1: 'foo 2',
+            extra1: 'extra 12',
+          });
+          // `idCol` 1 isn't related to the parent:
+          expect(
+            await parent.$relatedQuery('model1Relation3').patchAndFetchById(1, {}),
+          ).toBeUndefined();
         });
 
         it('should patch a related object with extras using patchAndFetchById', () => {

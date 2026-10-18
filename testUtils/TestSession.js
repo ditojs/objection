@@ -418,6 +418,17 @@ class TestSession {
     return knexUtils.isMsSql(this.knex);
   }
 
+  // The schema that the test tables are created in, e.g. for `withSchema()`:
+  defaultSchema() {
+    return this.isPostgres()
+      ? 'public'
+      : this.isMySql()
+        ? this.knex.client.config.connection.database
+        : this.isMsSql()
+          ? 'dbo'
+          : 'main';
+  }
+
   // The text that a number written into a text column reads back as:
   // better-sqlite3 binds numbers as REAL.
   numberAsText(number) {

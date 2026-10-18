@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.1
+
+### Fixes
+
+- `patchAndFetchById()`, `updateAndFetchById()`, `patchAndFetch()` and `updateAndFetch()` with an empty patch return the unchanged model if the row matches, and `undefined` only if it doesn't. Since 1.5.0 they always returned `undefined` [#517](https://github.com/ditojs/objection/issues/517)
+- `asFindQuery()` in static after hooks runs the `onBuild` hooks of the query's context once. Since 2.0.0 it ran them a second time on the built write query, e.g. adding a join twice
+
 ## 4.1.0
 
 ### Changes

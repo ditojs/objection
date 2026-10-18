@@ -435,6 +435,12 @@ export default (session) => {
         expect(fetchedModel).not.toHaveProperty('model1Prop2');
         expect(fetchedModel).not.toHaveProperty('model1Id');
       });
+
+      it('should fetch the unchanged model with an empty update', async () => {
+        const fetchedModel = await Model1.query().updateAndFetchById(2, {});
+        expect(fetchedModel).toMatchObject({ id: 2, model1Prop1: 'hello 2' });
+        expect(await Model1.query().updateAndFetchById(4, {})).toBeUndefined();
+      });
     });
 
     describe('.$query().update()', () => {
