@@ -9,6 +9,15 @@ Objection.js is an [ORM](https://en.wikipedia.org/wiki/Object-relational_mapping
 
 Even though ORM is the best commonly known acronym to describe objection, a more accurate description is to call it **a relational query builder**. You get all the benefits of an SQL query builder but also a powerful set of tools for working with relations.
 
+## About this repository
+
+objection.js was created by [@koskimas](https://github.com/koskimas) and has been maintained by [@lehni](https://github.com/lehni) since 2023. After Vincit removed @lehni's access to Vincit/objection.js in 2026, development continues here at ditojs/objection, published as the same npm package `objection`.
+
+- 4.x is the current version. See the [changelog](https://ditojs.github.io/objection/release-notes/changelog.html) and the [migration guide](https://ditojs.github.io/objection/release-notes/migration.html).
+- 3.x gets fixes on the [`3.x` branch](https://github.com/ditojs/objection/tree/3.x), published under the npm dist-tag `legacy`.
+- Releases are published from GitHub Actions with npm trusted publishing, so each version has a provenance statement that links it to its tag in this repository.
+- Issues and PRs are welcome here.
+
 Objection.js is built on an SQL query builder called [knex](http://knexjs.org). All databases supported by knex are supported by objection.js. **SQLite3**, **Postgres** and **MySQL** are [thoroughly tested](https://github.com/ditojs/objection/actions).
 
 What objection.js gives you:
