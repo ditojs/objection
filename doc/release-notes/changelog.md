@@ -4,7 +4,7 @@
 
 ### Changes
 
-- Add a `strict` option to `insertGraph()` and `upsertGraph()` that makes graphs say what they mean. Options are given per relation, as `root` and `relations` settings for the rows that a graph leaves out (`removed`), the rows with ids that aren't in their relation yet (`added`), the rows that stay (`kept`) and the new rows (`created`). They replace the per-path options like `relate`, `unrelate` and `noDelete`. See [strict mode](/guide/query-examples.md#strict-mode) [#429](https://github.com/ditojs/objection/issues/429)
+- Add a `strict` option to `insertGraph()` and `upsertGraph()` that makes graphs say what they mean. Options are given per relation, as `root` and `relations` settings for the rows that a graph leaves out (`removed`), the rows with ids that aren't in their relation yet (`added`), the rows that stay (`kept`) and the new rows (`created`). In strict mode, they replace the per-path options like `relate`, `unrelate` and `noDelete`. See [strict mode](/guide/query-examples.md#strict-mode) [#429](https://github.com/ditojs/objection/issues/429)
 - Strict graphs throw where other graphs skip or override data: for rows they don't write, for key props that contradict their relations, and for values they don't write that differ from the stored rows. Equal values pass, so fetched graphs can be sent back unchanged [#429](https://github.com/ditojs/objection/issues/429)
 - Strict `insertGraph()` and `upsertGraph()` are atomic: they run in a transaction, their own unless the query already runs in one, so a database error halfway leaves nothing written. Hooks that run queries need to use `context.transaction`, or they wait for the transaction, and deadlock on SQLite [#477](https://github.com/ditojs/objection/issues/477)
 
