@@ -13,7 +13,7 @@ import {
 
 import { compose, mixin } from '../../lib/utils/mixin.js';
 import { map } from '../../lib/utils/promiseUtils/index.js';
-import { cloneDeep, jsonEquals, uniqBy, union } from '../../lib/utils/objectUtils.js';
+import { cloneDeep, isSameValue, jsonEquals, uniqBy, union } from '../../lib/utils/objectUtils.js';
 
 describe('utils', () => {
   describe('mixin', () => {
@@ -797,6 +797,41 @@ describe('utils', () => {
       ).toBe(false);
     });
   });
+
+  describe('isSameValue', () => {
+    it('should compare values as databases return them', () => {
+      expect(isSameValue(1, '1')).toBe(true);
+      expect(isSameValue(true, 1)).toBe(true);
+      expect(isSameValue(1.5, '1.50')).toBe(true);
+      expect(isSameValue(null, undefined)).toBe(true);
+
+      expect(isSameValue(null, 0)).toBe(false);
+      expect(isSameValue('', null)).toBe(false);
+      expect(isSameValue(1, 2)).toBe(false);
+    });
+
+    it('should compare dates by time', () => {
+      expect(isSameValue(new Date(0), new Date(0))).toBe(true);
+      expect(isSameValue(new Date(0), '1970-01-01T00:00:00.000Z')).toBe(true);
+      expect(isSameValue('1970-01-01T00:00:00.000Z', new Date(0))).toBe(true);
+      expect(isSameValue(0, new Date(0))).toBe(true);
+
+      expect(isSameValue(new Date(0), new Date(1))).toBe(false);
+      expect(isSameValue(new Date(0), null)).toBe(false);
+      expect(isSameValue('foo', new Date(0))).toBe(false);
+    });
+
+    it('should compare arrays and objects deeply', () => {
+      expect(isSameValue({ a: [1] }, { a: ['1'] })).toBe(true);
+      expect(isSameValue([{ a: 1 }], [{ a: 1 }])).toBe(true);
+
+      expect(isSameValue({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+      expect(isSameValue([1], [1, 2])).toBe(false);
+      expect(isSameValue([1], { 0: 1 })).toBe(false);
+      expect(isSameValue({ a: 1 }, '{"a":1}')).toBe(false);
+    });
+  });
+
   describe('uniqBy', () => {
     const items = [
       [Buffer.from('00000000000000000000000000007AAD', 'hex')],

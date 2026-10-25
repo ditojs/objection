@@ -46,11 +46,13 @@ export function toStrictGraphOptions(modelClass, graph, options = {}, insertOnly
         settings.added = relate ? (insertMissing ? 'relateOrInsert' : 'relate') : 'insert';
       }
 
-      settings.kept = has(relationPath, 'noUpdate')
-        ? 'preserve'
-        : has(relationPath, 'update')
-          ? 'update'
-          : 'patch';
+      // Strict mode throws for the values that `noUpdate` leaves unwritten
+      // where they differ from the stored rows.
+      if (has(relationPath, 'noUpdate')) {
+        return null;
+      }
+
+      settings.kept = has(relationPath, 'update') ? 'update' : 'patch';
 
       if (!isRoot) {
         const unrelate = has(relationPath, 'unrelate');
