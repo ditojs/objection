@@ -2195,27 +2195,65 @@ export interface OnErrorMethod<out QB extends AnyQueryBuilder> {
 }
 
 export interface InsertGraphOptions {
+  strict?: false;
   relate?: boolean | string | string[];
   noRelate?: boolean | string | string[];
   noInsert?: boolean | string | string[];
   allowRefs?: boolean;
 }
 
+export interface StrictInsertGraphOptions {
+  strict: true;
+  root?: Pick<GraphRootSettings, 'added' | 'new'>;
+  relations?: Record<string, InsertGraphRelationSettings>;
+  allowRefs?: boolean;
+}
+
+/**
+ * What strict `upsertGraph()` and `insertGraph()` do with the rows of a
+ * relation, for each case of the diff between the graph and the stored
+ * relation.
+ */
+export interface GraphRelationSettings {
+  /** Stored rows that the graph leaves out. Defaults to `'delete'`. */
+  removed?: 'preserve' | 'unrelate' | 'delete';
+  /** Rows with an id that aren't in the stored relation. */
+  added?: 'relate' | 'insert' | 'relateOrInsert';
+  /** Rows with an id that end up in the relation. Defaults to `'patch'`. */
+  kept?: 'patch' | 'update' | 'preserve';
+  /** Rows without an id. Defaults to `'insert'`. */
+  new?: 'insert' | 'throw';
+}
+
+export interface InsertGraphRelationSettings {
+  /** Rows with an id. Defaults to `'insert'`. */
+  added?: 'relate' | 'insert';
+  /** Rows without an id. Defaults to `'insert'`. */
+  new?: 'insert' | 'throw';
+}
+
+export interface GraphRootSettings {
+  added?: 'insert';
+  kept?: GraphRelationSettings['kept'];
+  new?: GraphRelationSettings['new'];
+}
+
 export interface InsertGraphMethod<M extends Model> {
   <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>,
-    options?: InsertGraphOptions,
+    options?: InsertGraphOptions | StrictInsertGraphOptions,
   ): SingleQueryBuilder<QB>;
 
   <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>[],
-    options?: InsertGraphOptions,
+    options?: InsertGraphOptions | StrictInsertGraphOptions,
   ): ArrayQueryBuilder<QB>;
 }
 
 export interface UpsertGraphOptions {
+  strict?: false;
   relate?: boolean | string | string[];
   unrelate?: boolean | string | string[];
   insertMissing?: boolean | string | string[];
@@ -2229,17 +2267,26 @@ export interface UpsertGraphOptions {
   allowMarkers?: boolean;
 }
 
+export interface StrictUpsertGraphOptions {
+  strict: true;
+  root?: GraphRootSettings;
+  relations?: Record<string, GraphRelationSettings>;
+  allowRefs?: boolean;
+  allowMarkers?: boolean;
+  fetchStrategy?: 'OnlyIdentifiers' | 'Everything' | 'OnlyNeeded';
+}
+
 export interface UpsertGraphMethod<M extends Model> {
   <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>[],
-    options?: UpsertGraphOptions,
+    options?: UpsertGraphOptions | StrictUpsertGraphOptions,
   ): ArrayQueryBuilder<QB>;
 
   <QB extends AnyQueryBuilder>(
     this: QB,
     graph: PartialModelGraph<M>,
-    options?: UpsertGraphOptions,
+    options?: UpsertGraphOptions | StrictUpsertGraphOptions,
   ): SingleQueryBuilder<QB>;
 }
 

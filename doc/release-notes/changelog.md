@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.3.0
+
+### Changes
+
+- Add `strict` mode to `insertGraph()` and `upsertGraph()` with options per relation [#429](https://github.com/ditojs/objection/issues/429)
+
 ## 4.2.0
 
 ### Changes
