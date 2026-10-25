@@ -8,6 +8,8 @@ import find from './find.js';
 import insert from './insert.js';
 import insertGraph from './insertGraph.js';
 import upsertGraph from './upsertGraph.js';
+import upsertGraphStrict from './upsertGraphStrict.js';
+import { useStrictGraphOptions } from '../../testUtils/toStrictGraphOptions.js';
 import update from './update.js';
 import patch from './patch.js';
 import deleteTests from './delete.js';
@@ -159,6 +161,15 @@ describe('integration tests', () => {
       insert(session);
       insertGraph(session);
       upsertGraph(session);
+      upsertGraphStrict(session);
+
+      // The same tests again, with the options translated to strict mode:
+      describe('with strict options', () => {
+        useStrictGraphOptions();
+        insertGraph(session);
+        upsertGraph(session);
+      });
+
       update(session);
       patch(session);
       deleteTests(session);

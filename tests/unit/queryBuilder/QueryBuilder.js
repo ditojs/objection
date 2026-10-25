@@ -5492,10 +5492,11 @@ describe('QueryBuilder', () => {
       executedQueries = [];
     });
 
-    const validInsertGraphOptions = 'Valid options are: relate, noRelate, noInsert, allowRefs.';
+    const validInsertGraphOptions =
+      'Valid options are: relate, noRelate, noInsert, allowRefs, strict.';
     const validUpsertGraphOptions =
       'Valid options are: noRelate, noUnrelate, noInsert, noUpdate, noDelete, update, relate, ' +
-      'unrelate, insertMissing, fetchStrategy, allowRefs, allowMarkers.';
+      'unrelate, insertMissing, fetchStrategy, allowRefs, allowMarkers, strict.';
 
     it('insertGraph() should throw on an unknown option', async () => {
       await expect(

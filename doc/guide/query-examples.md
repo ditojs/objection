@@ -1524,3 +1524,36 @@ The special properties work like this:
 - Without the `allowMarkers` option, a `ValidationError` is thrown if a model is marked.
 - The special properties can't be used for the root models of the graph. A `ValidationError` is thrown if a root model is marked.
 - The special properties can only be used in [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph). [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) has nothing to unrelate or delete and throws a `ValidationError` if a model is marked.
+
+##### Strict mode
+
+In strict mode, enabled with `strict: true`, the options say per relation what happens in each case of the difference between the graph and the stored relation. The `root` option takes the settings of the root models, and the `relations` option the settings of the relations, by relation expression. `allowRefs`, `allowMarkers` and `fetchStrategy` apply to the whole graph as before. The other options throw in strict mode, and `root` and `relations` throw without it:
+
+```js
+await Person.query().upsertGraph(person, {
+  strict: true,
+  root: { kept: 'preserve' },
+  relations: {
+    '*': { removed: 'preserve' },
+    movies: { added: 'relate', kept: 'update' },
+    'movies.reviews': { removed: 'delete', new: 'throw' }
+  }
+});
+```
+
+| Setting   | Models                                                         | Values                                     | Default    | Replaces                             |
+| --------- | -------------------------------------------------------------- | ------------------------------------------ | ---------- | ------------------------------------ |
+| `removed` | in the stored relation, but not in the graph                   | `'preserve'`, `'unrelate'`, `'delete'`     | `'delete'` | `unrelate`, `noUnrelate`, `noDelete` |
+| `added`   | in the graph with an id, but not in the stored relation        | `'relate'`, `'insert'`, `'relateOrInsert'` | none       | `relate`, `insertMissing`            |
+| `kept`    | in the graph with an id, and in the relation once it's written | `'patch'`, `'update'`, `'preserve'`        | `'patch'`  | `update`, `noUpdate`                 |
+| `new`     | in the graph without an id                                     | `'insert'`, `'throw'`                      | `'insert'` | `noInsert`                           |
+
+`'preserve'` leaves the rows as they are. `added: 'relate'` relates existing rows, moving them from their current owner if needed, `'insert'` inserts them with their ids, and `'relateOrInsert'` relates the rows that exist and inserts the others. Without `added`, models with ids that aren't in the stored relation throw. `root` takes `kept`, `new`, and `added` with only `'insert'`, since root models are never removed or related. `noRelate` has no replacement.
+
+The keys of `relations` are relation expressions that match relation paths like the expressions of the other options above: `'*'` matches all relations at any depth, and the root models are never matched. The entries are applied in their order, and later entries override the settings of earlier ones, setting by setting. Above, `movies` has `removed: 'preserve'` from `'*'`, and the settings of its own entry. A relation named in a key that its model doesn't have throws a `ValidationError` of type `InvalidGraph`, so a misspelled relation doesn't fall back to the defaults.
+
+[insertGraph](/api/query-builder/mutate-methods.html#insertgraph) takes `strict`, `root` and `relations` too, with only the `added` and `new` settings, since it never loads, updates or removes rows. There, `added` defaults to `'insert'` and takes `'relate'` and `'insert'`.
+
+::: warning
+`added: 'relate'` and `'relateOrInsert'` let whoever provides the graph relate any row by its id, and move it away from its current owner, also when set through `'*'`. Set them only for the relations that need them when the graph comes from a request body, and use [allowGraph](/api/query-builder/eager-methods.html#allowgraph) to limit the relations the graph can contain.
+:::
