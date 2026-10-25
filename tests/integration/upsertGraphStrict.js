@@ -515,6 +515,37 @@ export default (session) => {
         expect(joinRows.map((row) => [row.model1Id, row.model2Id])).toEqual([[inserted.id, 1]]);
       });
 
+      for (const [relationName, related, dataPath] of [
+        ['model1Relation1', { id: 1000 }, ['model1Relation1']],
+        ['model1Relation3', [{ idCol: 1 }, { idCol: 1000 }], ['model1Relation3', 1]],
+      ]) {
+        it(`should throw before writing anything in insertGraph() if a model related through ${relationName} does not exist (#538)`, async () => {
+          const error = await Model1.query(session.knex)
+            .insertGraph(
+              { model1Prop1: 'new', [relationName]: related },
+              { strict: true, relations: { [relationName]: { added: 'relate' } } },
+            )
+            .catch((err) => err);
+
+          expect(error).toBeInstanceOf(NotFoundError);
+          expect(error.message).toBe(
+            `model (id=1000) does not exist. If you want to insert it with an id, set added: 'insert' for ${relationName} in the relations option`,
+          );
+          expect(error.data.dataPath).toEqual(dataPath);
+          expect(await getRows('Model1', 'id')).toEqual([1, 2, 3, 4]);
+        });
+      }
+
+      it('should not check the models below related models in insertGraph(), which it ignores (#538)', async () => {
+        const inserted = await Model1.query(session.knex).insertGraph(
+          { model1Prop1: 'new', model1Relation3: [{ idCol: 1, model2Relation1: [{ id: 1000 }] }] },
+          { strict: true, relations: { '*': { added: 'relate' } } },
+        );
+
+        const joinRows = await session.knex('Model1Model2');
+        expect(joinRows.map((row) => [row.model1Id, row.model2Id])).toEqual([[inserted.id, 1]]);
+      });
+
       it("should throw for rows with ids in insertGraph() with added: 'throw'", async () => {
         const insert = (graph, options) =>
           Model1.query(session.knex)

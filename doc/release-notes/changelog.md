@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.3.1
+
+### Fixes
+
+- Strict `insertGraph()` with `added: 'relate'` throws a `NotFoundError` for related models whose ids don't exist, before anything is written, like `upsertGraph()` does. Since 4.3.0, it related them unchecked, writing keys that point to no row unless a foreign key constraint rejected them [#538](https://github.com/ditojs/objection/issues/538)
+
 ## 4.3.0
 
 ### Changes
