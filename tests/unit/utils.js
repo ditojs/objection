@@ -799,15 +799,69 @@ describe('utils', () => {
   });
 
   describe('isSameValue', () => {
-    it('should compare values as databases return them', () => {
-      expect(isSameValue(1, '1')).toBe(true);
-      expect(isSameValue(true, 1)).toBe(true);
-      expect(isSameValue(1.5, '1.50')).toBe(true);
-      expect(isSameValue(null, undefined)).toBe(true);
+    it('should compare values of the same type with ===', () => {
+      expect(isSameValue('a', 'a')).toBe(true);
+      expect(isSameValue(1, 1)).toBe(true);
+      expect(isSameValue(10n, 10n)).toBe(true);
+      expect(isSameValue(null, null)).toBe(true);
 
+      expect(isSameValue('1.50', '1.5')).toBe(false);
+      expect(isSameValue('a', 'A')).toBe(false);
+      expect(isSameValue(1, 2)).toBe(false);
+    });
+
+    it('should compare numbers with numeric strings and bigints by value', () => {
+      expect(isSameValue(1, '1')).toBe(true);
+      expect(isSameValue('1', 1)).toBe(true);
+      expect(isSameValue(1.5, '1.50')).toBe(true);
+      expect(isSameValue(-0.5, '-.5')).toBe(true);
+      expect(isSameValue(1000, '1e3')).toBe(true);
+      expect(isSameValue(10n, 10)).toBe(true);
+      expect(isSameValue(10n, '10')).toBe(true);
+
+      expect(isSameValue('', 0)).toBe(false);
+      expect(isSameValue(' ', 0)).toBe(false);
+      expect(isSameValue(' 1', 1)).toBe(false);
+      expect(isSameValue('0x10', 16)).toBe(false);
+      expect(isSameValue('Infinity', Infinity)).toBe(false);
+      expect(isSameValue('1a', 1)).toBe(false);
+      expect(isSameValue(11n, 10)).toBe(false);
+      expect(isSameValue(10n, 10.5)).toBe(false);
+      expect(isSameValue(10n, '10.0')).toBe(false);
+      expect(isSameValue(10n, ' 10')).toBe(false);
+      expect(isSameValue(10n, '')).toBe(false);
+    });
+
+    it('should compare bigints exactly, also above 2^53', () => {
+      const big = 2n ** 53n + 1n;
+      expect(isSameValue(big, String(big))).toBe(true);
+      expect(isSameValue(String(big), big)).toBe(true);
+      expect(isSameValue(-big, `-${2n ** 53n + 1n}`)).toBe(true);
+
+      // `Number()` rounds both to 2^53:
+      expect(isSameValue(big, Number(big))).toBe(false);
+      expect(isSameValue(big, String(2n ** 53n))).toBe(false);
+      expect(isSameValue(2n ** 53n, 2 ** 53)).toBe(true);
+    });
+
+    it('should compare booleans with numbers as 1 and 0', () => {
+      expect(isSameValue(true, 1)).toBe(true);
+      expect(isSameValue(false, 0)).toBe(true);
+      expect(isSameValue(0, false)).toBe(true);
+
+      expect(isSameValue(true, 2)).toBe(false);
+      expect(isSameValue(false, '')).toBe(false);
+      expect(isSameValue(false, '0')).toBe(false);
+      expect(isSameValue(true, '1')).toBe(false);
+      expect(isSameValue(false, null)).toBe(false);
+    });
+
+    it('should compare null only with null', () => {
+      expect(isSameValue(null, undefined)).toBe(false);
       expect(isSameValue(null, 0)).toBe(false);
       expect(isSameValue('', null)).toBe(false);
-      expect(isSameValue(1, 2)).toBe(false);
+      expect(isSameValue(null, 'null')).toBe(false);
+      expect(isSameValue(null, false)).toBe(false);
     });
 
     it('should compare dates by time', () => {
@@ -819,6 +873,9 @@ describe('utils', () => {
       expect(isSameValue(new Date(0), new Date(1))).toBe(false);
       expect(isSameValue(new Date(0), null)).toBe(false);
       expect(isSameValue('foo', new Date(0))).toBe(false);
+      expect(isSameValue(null, new Date(0))).toBe(false);
+      expect(isSameValue(false, new Date(0))).toBe(false);
+      expect(isSameValue('', new Date(0))).toBe(false);
     });
 
     it('should compare arrays and objects deeply', () => {
@@ -829,6 +886,16 @@ describe('utils', () => {
       expect(isSameValue([1], [1, 2])).toBe(false);
       expect(isSameValue([1], { 0: 1 })).toBe(false);
       expect(isSameValue({ a: 1 }, '{"a":1}')).toBe(false);
+      expect(isSameValue({ a: '' }, { a: 0 })).toBe(false);
+      expect(isSameValue({ a: null }, { a: undefined })).toBe(false);
+      expect(isSameValue([false], [''])).toBe(false);
+    });
+
+    it('should compare buffers by their bytes', () => {
+      expect(isSameValue(Buffer.from('ab'), Buffer.from('ab'))).toBe(true);
+
+      expect(isSameValue(Buffer.from('ab'), Buffer.from('ac'))).toBe(false);
+      expect(isSameValue(Buffer.from('ab'), 'ab')).toBe(false);
     });
   });
 

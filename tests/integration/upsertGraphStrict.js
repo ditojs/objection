@@ -101,13 +101,13 @@ export default (session) => {
           'relate',
           { id: 1, model1Relation3: [{ idCol: 3 }, { idCol: 1 }] },
           { relate: 'model1Relation3' },
-          { model1Relation3: { added: 'relate' } },
+          { model1Relation3: { added: 'relate', removed: 'delete' } },
         ],
         [
           'update',
           { id: 2, model1Relation1: { id: 3, model1Prop1: 'updated' } },
           { update: 'model1Relation1' },
-          { model1Relation1: { kept: 'update' } },
+          { model1Relation1: { kept: 'update', removed: 'delete' } },
         ],
       ]) {
         it(`should write the same rows with ${description}`, async () => {
@@ -163,7 +163,10 @@ export default (session) => {
       it('should relate existing rows and insert missing ones with relateOrInsert', async () => {
         await Model1.query(session.knex).upsertGraph(
           { id: 1, model1Relation3: [{ idCol: 1 }, { idCol: 100, model2Prop1: 'new' }] },
-          { strict: true, relations: { model1Relation3: { added: 'relateOrInsert' } } },
+          {
+            strict: true,
+            relations: { model1Relation3: { added: 'relateOrInsert', removed: 'delete' } },
+          },
         );
 
         expect(await getRows('model2', 'id_col')).toEqual([1, 2, 100]);
@@ -213,7 +216,11 @@ export default (session) => {
         const upsert = (model1Prop1) =>
           Model1.query(session.knex).upsertGraph(
             { id: 1, model1Prop1, model1Relation3: [{ model2Prop1: 'new' }] },
-            { strict: true, root: { kept: 'preserve' } },
+            {
+              strict: true,
+              root: { kept: 'preserve' },
+              relations: { model1Relation3: { removed: 'delete' } },
+            },
           );
 
         const error = await upsert('changed').catch((err) => err);
@@ -254,7 +261,10 @@ export default (session) => {
         const error = await Model1.query(session.knex)
           .upsertGraph(
             { id: 1, model1Prop1: 'changed', model1Relation2: [{ model2Prop1: 'new' }] },
-            { strict: true, relations: { model1Relation2: { created: 'throw' } } },
+            {
+              strict: true,
+              relations: { model1Relation2: { removed: 'delete', created: 'throw' } },
+            },
           )
           .catch((err) => err);
 
@@ -294,7 +304,12 @@ export default (session) => {
       it('should insert rows with ids with added: insert and created: throw', async () => {
         await Model1.query(session.knex).upsertGraph(
           { id: 1, model1Relation2: [{ idCol: 100, model2Prop1: 'new' }] },
-          { strict: true, relations: { model1Relation2: { added: 'insert', created: 'throw' } } },
+          {
+            strict: true,
+            relations: {
+              model1Relation2: { removed: 'delete', added: 'insert', created: 'throw' },
+            },
+          },
         );
 
         expect(await getRows('model2', 'id_col')).toEqual([1, 2, 100]);
@@ -314,7 +329,7 @@ export default (session) => {
           'model (id=1) is not a child of model (id=1). If you want to relate it, use the relate option. If you want to insert it with an id, use the insertMissing option',
         );
 
-        const unrelatedError = await upsert(graph);
+        const unrelatedError = await upsert(graph, { model1Relation3: { removed: 'delete' } });
         expect(unrelatedError).toBeInstanceOf(NotFoundError);
         expect(unrelatedError.message).toContain(
           "set added: 'relate' for model1Relation3 in the relations option",
@@ -323,12 +338,148 @@ export default (session) => {
 
         const missingError = await upsert(
           { id: 1, model1Relation3: [{ idCol: 100 }] },
-          { model1Relation3: { added: 'relate' } },
+          { model1Relation3: { added: 'relate', removed: 'delete' } },
         );
         expect(missingError).toBeInstanceOf(NotFoundError);
         expect(missingError.message).toContain(
           "set added: 'relateOrInsert' for model1Relation3 in the relations option",
         );
+      });
+
+      it("should let added: 'throw' narrow an earlier added: 'relate'", async () => {
+        const error = await Model1.query(session.knex)
+          .upsertGraph(
+            { id: 1, model1Relation3: [{ idCol: 1, model2Relation1: [{ id: 2 }] }] },
+            {
+              strict: true,
+              relations: {
+                '*': { added: 'relate', removed: 'preserve' },
+                'model1Relation3.model2Relation1': { added: 'throw' },
+              },
+            },
+          )
+          .catch((err) => err);
+
+        expect(error).toBeInstanceOf(NotFoundError);
+        expect(error.message).toContain(
+          "set added: 'relate' for model1Relation3.model2Relation1 in the relations option",
+        );
+        expect(await session.knex('Model1Model2')).toEqual([]);
+      });
+
+      it('should throw for relations of the graph without removed, before any query', async () => {
+        const upsert = (relations) =>
+          Model1.query(session.knex)
+            .upsertGraph(
+              {
+                id: 2,
+                model1Relation1: null,
+                model1Relation2: [{ idCol: 1, model2Relation1: [] }],
+                model1Relation3: [],
+              },
+              { strict: true, relations },
+            )
+            .catch((err) => err);
+
+        const queries = [];
+        const onQuery = ({ sql }) => queries.push(sql);
+        session.knex.on('query', onQuery);
+        const error = await upsert({ model1Relation3: { removed: 'delete' } });
+        session.knex.off('query', onQuery);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toBe(
+          'the graph gives model1Relation1, model1Relation2, model1Relation2.model2Relation1 without a removed setting. Set removed for them in the relations option',
+        );
+        expect(queries).toEqual([]);
+
+        const result = await upsert({
+          '*': { removed: 'preserve' },
+          model1Relation2: { removed: 'delete' },
+        });
+        expect(result).not.toBeInstanceOf(Error);
+        expect(await getRows('model2', 'id_col')).toEqual([1]);
+      });
+
+      it('should require removed for relations of #ref and #dbRef models, which it writes', async () => {
+        const upsert = (graph, relations) =>
+          Model1.query(session.knex)
+            .upsertGraph(graph, {
+              strict: true,
+              allowRefs: true,
+              relations: {
+                model1Relation1: { added: 'relate', removed: 'unrelate' },
+                ...relations,
+              },
+            })
+            .catch((err) => err);
+        const refGraph = [
+          { '#id': 'row', id: 3 },
+          { id: 1, model1Relation1: { '#ref': 'row', model1Relation1: null } },
+        ];
+        const dbRefGraph = { id: 1, model1Relation1: { '#dbRef': 3, model1Relation1: null } };
+
+        for (const graph of [refGraph, dbRefGraph]) {
+          const error = await upsert(graph);
+          expect(error.type).toBe('InvalidGraph');
+          expect(error.message).toContain(
+            'the graph gives model1Relation1.model1Relation1 without',
+          );
+        }
+
+        const result = await upsert(dbRefGraph, {
+          'model1Relation1.model1Relation1': { removed: 'unrelate' },
+        });
+        expect(result).not.toBeInstanceOf(Error);
+        expect((await getModel1(1)).model1Id).toBe(3);
+        expect((await getModel1(3)).model1Id).toBe(null);
+      });
+
+      it('should not require removed for relations of #delete and #unrelate models, which it ignores', async () => {
+        // `#unrelate` finds nothing related once `#delete` has run:
+        for (const marker of ['#delete', '#unrelate']) {
+          const result = await Model1.query(session.knex)
+            .upsertGraph(
+              {
+                id: 2,
+                model1Relation1: { id: 3, [marker]: true, model1Relation1: null },
+                model1Relation2: [{ idCol: 1, [marker]: true, model2Relation1: [] }],
+              },
+              {
+                strict: true,
+                allowMarkers: true,
+                relations: { '[model1Relation1, model1Relation2]': { removed: 'preserve' } },
+              },
+            )
+            .catch((err) => err);
+
+          expect(result).not.toBeInstanceOf(Error);
+        }
+
+        expect((await getModel1(2)).model1Id).toBe(null);
+        expect(await getRows('Model1', 'id')).toEqual([1, 2, 4]);
+        expect(await getRows('model2', 'id_col')).toEqual([2]);
+      });
+
+      it('should check allowGraph() before removed', async () => {
+        const error = await Model1.query(session.knex)
+          .upsertGraph({ id: 2, model1Relation2: [{ idCol: 1 }] }, { strict: true })
+          .allowGraph('model1Relation1')
+          .catch((err) => err);
+
+        expect(error.type).toBe('UnallowedRelation');
+      });
+
+      it('should not require removed for relations that the graph does not give', async () => {
+        const result = await Model1.query(session.knex)
+          .upsertGraph(
+            { id: 2, model1Relation2: [{ idCol: 1 }] },
+            { strict: true, relations: { model1Relation2: { removed: 'delete' } } },
+          )
+          .catch((err) => err);
+
+        expect(result).not.toBeInstanceOf(Error);
+        expect((await getModel1(2)).model1Id).toBe(3);
       });
 
       it('should relate rows with #ref and #dbRef without added, also with created: throw', async () => {
@@ -337,7 +488,11 @@ export default (session) => {
             { id: 1, model1Relation2: [{ '#id': 'new', model2Prop1: 'new' }] },
             { id: 2, model1Relation3: [{ '#ref': 'new' }, { '#dbRef': 1 }] },
           ],
-          { strict: true, allowRefs: true, relations: { model1Relation3: { created: 'throw' } } },
+          {
+            strict: true,
+            allowRefs: true,
+            relations: { '*': { removed: 'delete' }, model1Relation3: { created: 'throw' } },
+          },
         );
 
         const [, , newId] = await getRows('model2', 'id_col');
@@ -359,6 +514,31 @@ export default (session) => {
         expect(joinRows.map((row) => [row.model1Id, row.model2Id])).toEqual([[inserted.id, 1]]);
       });
 
+      it("should throw for rows with ids in insertGraph() with added: 'throw'", async () => {
+        const insert = (graph, options) =>
+          Model1.query(session.knex)
+            .insertGraph(graph, { strict: true, ...options })
+            .catch((err) => err);
+
+        const rootError = await insert(
+          { id: 100, model1Prop1: 'new' },
+          { root: { added: 'throw' } },
+        );
+        expect(rootError).toBeInstanceOf(NotFoundError);
+        expect(rootError.message).toBe(
+          "model (id=100) is not inserted with added: 'throw'. If you want to insert it with an id, set root: { added: 'insert' }",
+        );
+
+        const error = await insert(
+          { model1Prop1: 'new', model1Relation3: [{ idCol: 100, model2Prop1: 'new' }] },
+          { relations: { model1Relation3: { added: 'throw' } } },
+        );
+        expect(error).toBeInstanceOf(NotFoundError);
+        expect(error.message).toContain("set added: 'insert' for model1Relation3");
+        expect(await getRows('Model1', 'id')).toEqual([1, 2, 3, 4]);
+        expect(await getRows('model2', 'id_col')).toEqual([1, 2]);
+      });
+
       it('should insert rows with ids in insertGraph() by default', async () => {
         await Model1.query(session.knex).insertGraph(
           { model1Prop1: 'new', model1Relation3: [{ idCol: 100, model2Prop1: 'new' }] },
@@ -378,12 +558,13 @@ export default (session) => {
       });
 
       const upsert = (graph, options) => Model1.query(session.knex).upsertGraph(graph, options);
+      const strict = { strict: true, relations: { '*': { removed: 'delete' } } };
       const getModel2 = (idCol) => session.knex('model2').where('id_col', idCol).first();
 
       it('should throw for a foreign key that contradicts its HasManyRelation', async () => {
         const error = await upsert(
           { id: 1, model1Relation2: [{ idCol: 1, model1Id: 2 }] },
-          { strict: true },
+          strict,
         ).catch((err) => err);
 
         expect(error.type).toBe('InvalidGraph');
@@ -401,14 +582,17 @@ export default (session) => {
         for (const model1Id of [1, '1']) {
           await upsert(
             { id: 1, model1Relation2: [{ idCol: 1, model1Id, model2Prop1: `${model1Id}` }] },
-            { strict: true },
+            strict,
           );
           expect((await getModel2(1)).model2_prop1).toBe(`${model1Id}`);
         }
       });
 
       it('should throw for a foreign key that contradicts its BelongsToOneRelation', async () => {
-        const options = { strict: true, relations: { model1Relation1: { added: 'relate' } } };
+        const options = {
+          strict: true,
+          relations: { '*': { removed: 'delete' }, model1Relation1: { added: 'relate' } },
+        };
         const error = await upsert(
           { id: 1, model1Id: 3, model1Relation1: { id: 2 } },
           options,
@@ -424,22 +608,21 @@ export default (session) => {
       });
 
       it('should throw for a foreign key that contradicts a cleared BelongsToOneRelation', async () => {
-        const error = await upsert(
-          { id: 1, model1Id: 2, model1Relation1: null },
-          { strict: true },
-        ).catch((err) => err);
+        const error = await upsert({ id: 1, model1Id: 2, model1Relation1: null }, strict).catch(
+          (err) => err,
+        );
 
         expect(error.type).toBe('InvalidGraph');
         expect(error.message).toContain("'model1Id'");
         expect(error.message).toContain("'model1Relation1'");
 
-        await upsert({ id: 1, model1Id: null, model1Relation1: null }, { strict: true });
+        await upsert({ id: 1, model1Id: null, model1Relation1: null }, strict);
       });
 
       it('should throw for a foreign key below a new model', async () => {
         const error = await upsert(
           { model1Prop1: 'new', model1Relation2: [{ model2Prop1: 'new', model1Id: 1 }] },
-          { strict: true },
+          strict,
         ).catch((err) => err);
 
         expect(error.type).toBe('InvalidGraph');
@@ -447,10 +630,35 @@ export default (session) => {
         expect(await session.knex('Model1').orderBy('id').pluck('id')).toEqual([1, 2]);
       });
 
+      it("should compare the values of repeated rows without the conversions of '=='", async () => {
+        const graph = (model1Prop2) => [
+          { id: 1, model1Prop2: 0 },
+          { id: 2, model1Relation1: { id: 1, model1Prop2 } },
+        ];
+        const options = {
+          strict: true,
+          relations: { model1Relation1: { added: 'relate', removed: 'delete' } },
+        };
+
+        const error = await upsert(graph(''), options).catch((err) => err);
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain('the graph gives model1Prop2 of one Model1 two values');
+
+        // Without strict mode, `''` equals `0`:
+        const nonStrictError = await upsert(graph(''), { relate: true }).catch((err) => err);
+        expect(nonStrictError?.type).not.toBe('InvalidGraph');
+
+        await upsert(graph('0'), options);
+        expect((await session.knex('Model1').where('id', 2).first()).model1Id).toBe(1);
+      });
+
       it('should accept the extras of join rows', async () => {
         await upsert(
           { id: 1, model1Relation3: [{ idCol: 1, extra1: 'extra' }] },
-          { strict: true, relations: { model1Relation3: { added: 'relate' } } },
+          {
+            strict: true,
+            relations: { model1Relation3: { added: 'relate', removed: 'delete' } },
+          },
         );
 
         const joinRow = await session.knex('Model1Model2').first();
@@ -482,9 +690,14 @@ export default (session) => {
         ]);
       });
 
+      // Rows that the graphs leave out are deleted, unless the tests say otherwise:
       const upsert = (graph, options) =>
         Model1.query(session.knex)
-          .upsertGraph(graph, { strict: true, ...options })
+          .upsertGraph(graph, {
+            strict: true,
+            ...options,
+            relations: { '*': { removed: 'delete' }, ...options?.relations },
+          })
           .catch((err) => err);
       const getTables = async () => {
         const tables = {};

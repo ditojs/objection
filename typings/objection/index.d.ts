@@ -2215,25 +2215,48 @@ export interface StrictInsertGraphOptions {
  * relation.
  */
 export interface GraphRelationSettings {
-  /** Stored rows that the graph leaves out. Defaults to `'delete'`. */
+  /**
+   * Stored rows that the graph leaves out. Has no default: every relation that
+   * the graph gives needs it, or `upsertGraph()` throws.
+   */
   removed?: 'preserve' | 'unrelate' | 'delete';
-  /** Rows with an id that aren't in the stored relation. */
-  added?: 'relate' | 'insert' | 'relateOrInsert';
-  /** Rows with an id that end up in the relation. Defaults to `'patch'`. */
+  /**
+   * Rows with an id, or given by the key of their relation, that aren't in the
+   * stored relation.
+   * @default 'throw'
+   */
+  added?: 'relate' | 'insert' | 'relateOrInsert' | 'throw';
+  /**
+   * Rows with an id that end up in the relation.
+   * @default 'patch'
+   */
   kept?: 'patch' | 'update' | 'preserve';
-  /** Rows without an id. Defaults to `'insert'`. */
+  /**
+   * Rows without an id.
+   * @default 'insert'
+   */
   created?: 'insert' | 'throw';
 }
 
 export interface InsertGraphRelationSettings {
-  /** Rows with an id. Defaults to `'insert'`. */
-  added?: 'relate' | 'insert';
-  /** Rows without an id. Defaults to `'insert'`. */
+  /**
+   * Rows with an id, or given by the key of their relation.
+   * @default 'insert'
+   */
+  added?: 'relate' | 'insert' | 'throw';
+  /**
+   * Rows without an id.
+   * @default 'insert'
+   */
   created?: 'insert' | 'throw';
 }
 
 export interface GraphRootSettings {
-  added?: 'insert';
+  /**
+   * Root rows with an id that don't exist.
+   * @default 'throw' in `upsertGraph()`, `'insert'` in `insertGraph()`
+   */
+  added?: 'insert' | 'throw';
   kept?: GraphRelationSettings['kept'];
   created?: GraphRelationSettings['created'];
 }
