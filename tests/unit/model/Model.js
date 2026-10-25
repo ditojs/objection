@@ -3057,6 +3057,80 @@ describe('Model', () => {
     JSON.stringify([p1, p2]);
   });
 
+  describe('getGraphSettings()', () => {
+    let Person;
+
+    beforeEach(() => {
+      Person = modelClass('Person');
+      Person.relationMappings = {
+        parent: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: Person,
+          join: { from: 'Person.parentId', to: 'Person.id' },
+        },
+        pets: {
+          relation: Model.HasManyRelation,
+          modelClass: modelClass('Animal'),
+          join: { from: 'Person.id', to: 'Animal.ownerId' },
+        },
+      };
+    });
+
+    it('should resolve the settings of a relation path like upsertGraph()', () => {
+      const options = {
+        strict: true,
+        root: { kept: 'preserve' },
+        relations: { '*': { removed: 'preserve' }, 'parent.^': { added: 'relate' } },
+      };
+
+      expect(Person.getGraphSettings('parent.parent', options, 'upsert')).toEqual({
+        removed: 'preserve',
+        added: 'relate',
+        kept: 'patch',
+        created: 'insert',
+      });
+      expect(Person.getGraphSettings(['pets'], options, 'upsert')).toEqual({
+        removed: 'preserve',
+        added: 'throw',
+        kept: 'patch',
+        created: 'insert',
+      });
+      expect(Person.getGraphSettings('', options, 'upsert')).toEqual({
+        removed: undefined,
+        added: 'throw',
+        kept: 'preserve',
+        created: 'insert',
+      });
+    });
+
+    it('should resolve the settings of a relation path like insertGraph()', () => {
+      const options = { strict: true, relations: { parent: { added: 'relate' } } };
+
+      expect(Person.getGraphSettings('parent', options, 'insert')).toEqual({
+        removed: 'preserve',
+        added: 'relate',
+        kept: 'preserve',
+        created: 'insert',
+      });
+      expect(Person.getGraphSettings([], options, 'insert').added).toBe('insert');
+    });
+
+    it('should throw for unknown relations, invalid options and operations', () => {
+      expect(() => Person.getGraphSettings('parent.toys', { strict: true }, 'upsert')).toThrow(
+        "doesn't have relation toys",
+      );
+      expect(() => Person.getGraphSettings('parent', { strict: true }, 'patch')).toThrow(
+        `expected operation to be 'insert' or 'upsert', got "patch"`,
+      );
+      expect(() => Person.getGraphSettings('parent', { relate: true }, 'upsert')).toThrow(
+        'getGraphSettings() only resolves the settings of strict mode',
+      );
+      expect(() =>
+        Person.getGraphSettings('parent', { strict: true, fetchStrategy: 'Everything' }, 'insert'),
+      ).toThrow('"fetchStrategy" is not an option of insertGraph() in strict mode');
+    });
+  });
+
   function modelClass(tableName) {
     return class TestModel extends Model {
       static get tableName() {
