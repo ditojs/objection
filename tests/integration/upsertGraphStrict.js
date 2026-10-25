@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { NotFoundError } from 'objection';
+import { NotFoundError, UniqueViolationError } from 'objection';
 import { FetchStrategy } from '../../lib/queryBuilder/graph/GraphOptions.js';
 
 export default (session) => {
@@ -381,8 +381,9 @@ export default (session) => {
             )
             .catch((err) => err);
 
+        // Leave out the statements of the transaction that the query runs in:
         const queries = [];
-        const onQuery = ({ sql }) => queries.push(sql);
+        const onQuery = ({ sql }) => !/^(begin|rollback)\b/i.test(sql) && queries.push(sql);
         session.knex.on('query', onQuery);
         const error = await upsert({ model1Relation3: { removed: 'delete' } });
         session.knex.off('query', onQuery);
@@ -998,6 +999,165 @@ export default (session) => {
         expect(result).not.toBeInstanceOf(Error);
         const joinRow = await session.knex('Model1Model2').where('model1Id', 1).first();
         expect(joinRow.extra1).toBe('changed');
+      });
+    });
+
+    describe('transactions', () => {
+      beforeEach(() => {
+        return session.populate([
+          { id: 1, model1Prop1: 'root 1' },
+          {
+            id: 2,
+            model1Prop1: 'root 2',
+            model1Relation2: [{ idCol: 1, model2Prop1: 'hasMany 1' }],
+          },
+        ]);
+      });
+
+      // The new Model1 rows are inserted before their hasMany rows, whose id is
+      // taken:
+      const insertGraph = (query, options) =>
+        query
+          .insertGraph(
+            { model1Prop1: 'new', model1Relation2: [{ idCol: 1, model2Prop1: 'taken' }] },
+            options,
+          )
+          .catch((err) => err);
+
+      const upsertGraph = (query, options) =>
+        query
+          .upsertGraph(
+            {
+              id: 1,
+              model1Relation1: {
+                model1Prop1: 'new',
+                model1Relation2: [{ idCol: 1, model2Prop1: 'taken' }],
+              },
+            },
+            options,
+          )
+          .catch((err) => err);
+
+      const getProps = async (knex = session.knex) =>
+        (await knex('Model1').orderBy('id')).map((row) => row.model1Prop1);
+
+      it('should roll back a strict insertGraph() that fails at the database', async () => {
+        const error = await insertGraph(Model1.query(session.knex), { strict: true });
+        expect(error).toBeInstanceOf(UniqueViolationError);
+        expect(await getProps()).toEqual(['root 1', 'root 2']);
+      });
+
+      it('should keep the rows of a non-strict insertGraph() that fails at the database', async () => {
+        const error = await insertGraph(Model1.query(session.knex));
+        expect(error).toBeInstanceOf(UniqueViolationError);
+        expect(await getProps()).toEqual(['root 1', 'root 2', 'new']);
+      });
+
+      it('should roll back a strict upsertGraph() that fails at the database', async () => {
+        const error = await upsertGraph(Model1.query(session.knex), {
+          strict: true,
+          relations: { '*': { added: 'insert', removed: 'preserve' } },
+        });
+        expect(error).toBeInstanceOf(UniqueViolationError);
+        expect(await getProps()).toEqual(['root 1', 'root 2']);
+      });
+
+      it('should keep the rows of a non-strict upsertGraph() that fails at the database', async () => {
+        const error = await upsertGraph(Model1.query(session.knex), { insertMissing: true });
+        expect(error).toBeInstanceOf(UniqueViolationError);
+        expect(await getProps()).toEqual(['root 1', 'root 2', 'new']);
+      });
+
+      it('should roll back a strict insertGraphAndFetch() that fails at the database', async () => {
+        const error = await Model1.query(session.knex)
+          .insertGraphAndFetch(
+            { model1Prop1: 'new', model1Relation2: [{ idCol: 1, model2Prop1: 'taken' }] },
+            { strict: true },
+          )
+          .catch((err) => err);
+        expect(error).toBeInstanceOf(UniqueViolationError);
+        expect(await getProps()).toEqual(['root 1', 'root 2']);
+      });
+
+      it('should call onError() after the rollback', async () => {
+        const result = await insertGraph(
+          Model1.query(session.knex).onError((error, builder) => getProps(builder.knex())),
+          { strict: true },
+        );
+        expect(result).toEqual(['root 1', 'root 2']);
+      });
+
+      it('should pass the transaction to the hooks', async () => {
+        const transactions = [];
+        class HookModel1 extends Model1 {
+          $beforeInsert(context) {
+            transactions.push(context.transaction);
+          }
+        }
+
+        await HookModel1.query(session.knex)
+          .runBefore((result, builder) => {
+            transactions.push(builder.context().transaction);
+          })
+          .insertGraph({ model1Prop1: 'new' }, { strict: true });
+
+        expect(transactions).toHaveLength(2);
+        expect(transactions[0].isTransaction).toBe(true);
+        expect(transactions[1]).toBe(transactions[0]);
+      });
+
+      // Run `callback` in a transaction that is rolled back, and return the
+      // transaction, the one in the context of the query that `callback`
+      // returns, and whether a savepoint was created:
+      async function rollBack(callback) {
+        let trx = null;
+        let contextTransaction = null;
+        let hasSavepoint = false;
+        const onQuery = (query) => {
+          hasSavepoint ||= /savepoint/i.test(query.sql);
+        };
+
+        session.knex.on('query', onQuery);
+
+        try {
+          const error = await session.knex
+            .transaction(async (transaction) => {
+              trx = transaction;
+              await callback(trx).runBefore((result, builder) => {
+                contextTransaction = builder.context().transaction;
+              });
+              throw new Error('rollback');
+            })
+            .catch((err) => err);
+
+          expect(error.message).toBe('rollback');
+        } finally {
+          session.knex.off('query', onQuery);
+        }
+
+        return { trx, contextTransaction, hasSavepoint };
+      }
+
+      it('should use the transaction that the query runs in', async () => {
+        const { trx, contextTransaction, hasSavepoint } = await rollBack((trx) =>
+          Model1.query(trx).insertGraph({ model1Prop1: 'new' }, { strict: true }),
+        );
+
+        expect(contextTransaction).toBe(trx);
+        expect(hasSavepoint).toBe(false);
+        expect(await getProps()).toEqual(['root 1', 'root 2']);
+      });
+
+      it('should use the transaction that the model is bound to', async () => {
+        const { trx, contextTransaction, hasSavepoint } = await rollBack((trx) =>
+          Model1.bindKnex(trx)
+            .query()
+            .upsertGraph({ id: 1, model1Prop1: 'changed' }, { strict: true }),
+        );
+
+        expect(contextTransaction).toBe(trx);
+        expect(hasSavepoint).toBe(false);
+        expect(await getProps()).toEqual(['root 1', 'root 2']);
       });
     });
   });

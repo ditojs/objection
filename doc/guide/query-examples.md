@@ -911,7 +911,7 @@ See the [allowGraph](/api/query-builder/eager-methods.html#allowgraph) method if
 
 If you are using Postgres the inserts are done in batches for maximum performance. On other databases the rows need to be inserted one at a time. This is because postgresql is the only database engine that returns the identifiers of all inserted rows and not just the first or the last one.
 
-[insertGraph](/api/query-builder/mutate-methods.html#insertgraph) operation is **not** atomic by default! You need to start a transaction and pass it to the query using any of the supported ways. See the section about [transactions](/guide/transactions.html) for more information.
+[insertGraph](/api/query-builder/mutate-methods.html#insertgraph) operation is **not** atomic by default, unless in [strict mode](#strict-mode)! You need to start a transaction and pass it to the query using any of the supported ways. See the section about [transactions](/guide/transactions.html) for more information.
 
 You can read more about graph inserts from [this blog post](https://www.vincit.fi/en/blog/nested-eager-loading-and-inserts-with-objection-js/).
 
@@ -1135,7 +1135,7 @@ The [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) method wor
 
 [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) uses [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) under the hood for inserts. That means that you can insert object graphs for relations and use all [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) features like `#ref` references.
 
-[upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) operation is **not** atomic by default! You need to start a transaction and pass it to the query using any of the supported ways. See the section about [transactions](/guide/transactions.html) for more information.
+[upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) operation is **not** atomic by default, unless in [strict mode](#strict-mode)! You need to start a transaction and pass it to the query using any of the supported ways. See the section about [transactions](/guide/transactions.html) for more information.
 
 See the [allowGraph](/api/query-builder/eager-methods.html#allowgraph) method if you need to limit which relations can be modified using [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) method to avoid security issues.
 
@@ -1559,6 +1559,8 @@ The values that a strict graph gives but doesn't write have to equal the stored 
 The keys of `relations` are relation expressions that match relation paths like the expressions of the other options above: `'*'` matches all relations at any depth, and the root models are never matched. The entries are applied in their order, and later entries override the settings of earlier ones, setting by setting. Above, `movies` has `removed: 'preserve'` from `'*'`, and the settings of its own entry. A relation named in a key that its model doesn't have throws a `ValidationError` of type `InvalidGraph`, so a misspelled relation doesn't fall back to the defaults.
 
 [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) takes `strict`, `root` and `relations` too, with only the `added` and `created` settings, since it never loads, updates or removes rows. There, `added` defaults to `'insert'` and takes `'relate'`, `'insert'` and `'throw'`, which makes models with ids throw a `NotFoundError` instead of inserting them. The props of the rows that it relates are neither written nor compared with the stored rows.
+
+Strict graphs are written atomically: strict `insertGraph` and `upsertGraph` calls, and their `AndFetch` variants, run in the transaction of the query, passed to it or bound to its model, or else in their own. The transaction covers the whole call, including the loads and the fetch, so that a database error halfway, e.g. a `UniqueViolationError`, leaves nothing written. Hooks that run queries need to run them in `context.transaction`: queries through another connection wait for the transaction, and on SQLite with its single connection, they deadlock.
 
 ::: warning
 `added: 'relate'` and `'relateOrInsert'` let whoever provides the graph relate any row by its id, and move it away from its current owner, also when set through `'*'`. Set them only for the relations that need them when the graph comes from a request body, and use [allowGraph](/api/query-builder/eager-methods.html#allowgraph) to limit the relations the graph can contain.
