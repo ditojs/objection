@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { Model } from 'objection';
+import { Model, NotFoundError } from 'objection';
 
 export default (session) => {
   describe('upsertGraph() relating a BelongsToOneRelation model by its key alone', () => {
@@ -98,7 +98,7 @@ export default (session) => {
       const upsert = (graph, added) =>
         Pet.query(knex).upsertGraph(graph, {
           strict: true,
-          relations: { owner: { added, created: 'throw' } },
+          relations: { owner: { added, removed: 'unrelate', created: 'throw' } },
         });
 
       await upsert({ id: 1, owner: { code: 'c1' } }, 'relate');
@@ -110,18 +110,26 @@ export default (session) => {
       });
     });
 
-    it('should take the model as a row without an id in strict mode without added', async () => {
-      await expect(
-        Pet.query(knex).upsertGraph(
-          { id: 1, owner: { code: 'c1' } },
-          { strict: true, relations: { owner: { created: 'throw' } } },
-        ),
-      ).rejects.toThrow("the Person at 'owner' has no id, and created: 'throw' doesn't insert it");
+    it("should throw for the model in strict mode by the default added: 'throw'", async () => {
+      for (const added of [undefined, 'throw']) {
+        const error = await Pet.query(knex)
+          .upsertGraph(
+            { id: 1, owner: { code: 'c1' } },
+            { strict: true, relations: { owner: { added, removed: 'unrelate' } } },
+          )
+          .catch((err) => err);
+
+        expect(error).toBeInstanceOf(NotFoundError);
+        expect(error.message).toBe(
+          "model (code=c1) is not a child of model (id=1). If you want to relate it, set added: 'relate' for owner in the relations option. If you want to insert it with its key, set added: 'insert' for owner in the relations option",
+        );
+      }
 
       expect(await fetchOwnerCodes()).toEqual([null, null]);
+      expect(await knex('relate_key_person').orderBy('id').pluck('id')).toEqual([1, 2]);
     });
 
-    it("should insert the model with insertGraph() and created: 'throw' by the default added", async () => {
+    it('should insert the model with insertGraph() by the default added, also with created: throw', async () => {
       await Pet.query(knex).insertGraph(
         { id: 3, owner: { code: 'c3' } },
         { strict: true, relations: { owner: { created: 'throw' } } },
@@ -133,6 +141,19 @@ export default (session) => {
       expect(await knex('relate_key_person').where('id', 3).first()).toMatchObject({
         code: 'c3',
       });
+    });
+
+    it("should throw for the model with insertGraph() and added: 'throw'", async () => {
+      const error = await Pet.query(knex)
+        .insertGraph(
+          { id: 3, owner: { code: 'c3' } },
+          { strict: true, relations: { owner: { added: 'throw' } } },
+        )
+        .catch((err) => err);
+
+      expect(error).toBeInstanceOf(NotFoundError);
+      expect(error.message).toContain("model (code=c3) is not inserted with added: 'throw'");
+      expect(await knex('relate_key_pet').orderBy('id').pluck('id')).toEqual([1, 2]);
     });
 
     it('should leave out the other props of the model under noUpdate', async () => {

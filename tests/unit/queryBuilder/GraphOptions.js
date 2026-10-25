@@ -85,6 +85,7 @@ describe('GraphOptions', () => {
       [{ added: 'relate' }, ['relate']],
       [{ added: 'insert' }, ['insertMissing']],
       [{ added: 'relateOrInsert' }, ['relate', 'insertMissing']],
+      [{ added: 'throw' }, []],
       [{ removed: 'unrelate' }, ['unrelate']],
       [{ removed: 'preserve' }, ['noDelete', 'noUnrelate']],
       [{ removed: 'delete' }, []],
@@ -113,13 +114,14 @@ describe('GraphOptions', () => {
       });
     }
 
-    it('should use the defaults for relations without settings', () => {
+    it('should use the defaults for relations without settings, and none for removed', () => {
       const graphOptions = new GraphOptions({ strict: true });
       const node = createNode('a');
-      expect(graphOptions.getSetting(node, 'removed')).toBe('delete');
-      expect(graphOptions.getSetting(node, 'added')).toBe(undefined);
-      expect(graphOptions.getSetting(node, 'kept')).toBe('patch');
-      expect(graphOptions.getSetting(node, 'created')).toBe('insert');
+      expect(graphOptions.getSetting(['a'], 'removed')).toBe(undefined);
+      expect(graphOptions.getSetting(['a'], 'added')).toBe('throw');
+      expect(graphOptions.getSetting([], 'added')).toBe('throw');
+      expect(graphOptions.getSetting(['a'], 'kept')).toBe('patch');
+      expect(graphOptions.getSetting(['a'], 'created')).toBe('insert');
       expect(graphOptions.shouldPatch(node)).toBe(true);
       expect(graphOptions.isStrict()).toBe(true);
       expect(new GraphOptions({}).isStrict()).toBe(false);
@@ -132,6 +134,14 @@ describe('GraphOptions', () => {
       expect(strictHas({ relations: preserveFirst }, 'b', 'noDelete')).toBe(true);
       const preserveLast = { a: { removed: 'delete' }, '*': { removed: 'preserve' } };
       expect(strictHas({ relations: preserveLast }, 'a', 'noDelete')).toBe(true);
+    });
+
+    it("should let added: 'throw' narrow an earlier added: 'relate'", () => {
+      const relations = { '*': { added: 'relate' }, 'a.b': { added: 'throw' } };
+      expect(strictHas({ relations }, 'a', 'relate')).toBe(true);
+      expect(strictHas({ relations }, 'a.b', 'relate')).toBe(false);
+      expect(strictHas({ relations }, 'a.b', 'relate', true)).toBe(false);
+      expect(strictHas({ relations }, 'a.b', 'insertMissing', true)).toBe(false);
     });
 
     it('should override the settings of earlier entries key by key', () => {
@@ -150,10 +160,9 @@ describe('GraphOptions', () => {
 
     it('should answer insertGraph() with added: insert by default and never update or remove', () => {
       const relations = { a: { added: 'relate' } };
-      expect(new GraphOptions({ strict: true }, true).getSetting(createNode(''), 'added')).toBe(
-        'insert',
-      );
+      expect(new GraphOptions({ strict: true }, true).getSetting([], 'added')).toBe('insert');
       expect(strictHas({}, '', 'insertMissing', true)).toBe(true);
+      expect(strictHas({ root: { added: 'throw' } }, '', 'insertMissing', true)).toBe(false);
       expect(strictHas({}, 'b', 'insertMissing', true)).toBe(true);
       expect(strictHas({}, 'b', 'relate', true)).toBe(false);
       expect(strictHas({ relations }, 'a', 'relate', true)).toBe(true);
@@ -198,7 +207,7 @@ describe('GraphOptions', () => {
       ],
       [
         { strict: true, root: { added: 'relate' } },
-        '"relate" is not a value of added in root of upsertGraph(). Valid values are: insert.',
+        '"relate" is not a value of added in root of upsertGraph(). Valid values are: insert, throw.',
       ],
       [
         { strict: true, relations: { 'a as b': { kept: 'update' } } },
@@ -225,7 +234,7 @@ describe('GraphOptions', () => {
       ],
       [
         { strict: true, relations: { a: { added: 'relateOrInsert' } } },
-        '"relateOrInsert" is not a value of added in relations["a"] of insertGraph(). Valid values are: relate, insert.',
+        '"relateOrInsert" is not a value of added in relations["a"] of insertGraph(). Valid values are: relate, insert, throw.',
         true,
       ],
     ]) {

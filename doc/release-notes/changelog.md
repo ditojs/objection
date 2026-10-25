@@ -4,10 +4,10 @@
 
 ### Changes
 
-- Add `strict` mode to `insertGraph()` and `upsertGraph()` with options per relation [#429](https://github.com/ditojs/objection/issues/429)
-- In strict mode, `created: 'throw'` throws for models without ids, where `noInsert` skips them, and the errors for models with ids that the graph can't write name the `added` setting to use [#429](https://github.com/ditojs/objection/issues/429)
+- Add `strict` mode to `insertGraph()` and `upsertGraph()` with options per relation. In `upsertGraph()`, every relation that the graph gives needs a `removed` setting, or it throws a `ValidationError` of type `InvalidGraph` before anything is loaded [#429](https://github.com/ditojs/objection/issues/429)
+- In strict mode, `created: 'throw'` throws for models without ids, where `noInsert` skips them, and `added: 'throw'`, the default of `upsertGraph()`, throws a `NotFoundError` for models with ids, or with the key that relates them, that aren't in their relation, naming the `added` setting to use [#429](https://github.com/ditojs/objection/issues/429)
 - In strict mode, a key prop that a relation of the same model sets throws a `ValidationError` of type `InvalidGraph` when it differs from the relation's value, except for `#ref{}` templates, which the relation's value still overrides. Without strict mode, the relation's value overrides all of them [#429](https://github.com/ditojs/objection/issues/429)
-- In strict mode, values that the graph gives but doesn't write, under `kept: 'preserve'`, including the extras of join rows and the rows that `added` relates, or at `#ref` models that only place their model, throw a `ValidationError` of type `InvalidGraph` when they differ from the stored rows, compared so that fetched graphs sent back unchanged pass on all databases [#429](https://github.com/ditojs/objection/issues/429)
+- In strict mode, values that the graph gives but doesn't write, under `kept: 'preserve'`, including the extras of join rows and the rows that `added` relates, or at `#ref` models that only place their model, throw a `ValidationError` of type `InvalidGraph` when they differ from the stored rows, compared so that fetched graphs sent back unchanged pass on all databases, but without the conversions of `==`: `''` and `false` don't equal `0`. Repeated models are compared the same way [#429](https://github.com/ditojs/objection/issues/429)
 
 ## 4.2.0
 

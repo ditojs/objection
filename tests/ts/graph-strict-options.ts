@@ -32,6 +32,18 @@ async function strictOptions() {
     { firstName: 'Jennifer' },
     { strict: true, root: { created: 'insert' }, relations: { pets: { added: 'relate' } } },
   );
+  await Person.query().insertGraph(
+    { id: 1 },
+    { strict: true, root: { added: 'throw' }, relations: { '*': { added: 'throw' } } },
+  );
+  await Person.query().upsertGraph(
+    { id: 1 },
+    {
+      strict: true,
+      root: { added: 'throw' },
+      relations: { '*': { added: 'relate', removed: 'unrelate' }, pets: { added: 'throw' } },
+    },
+  );
   await Person.query().upsertGraph({ id: 1 }, { strict: false, relate: true });
   await Person.query().upsertGraph({ id: 1 }, { fetchStrategy: 'OnlyIdentifiers' });
   await Person.query().insertGraph({ firstName: 'Jennifer' }, { relate: true });
