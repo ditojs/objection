@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NotFoundError } from 'objection';
+import { FetchStrategy } from '../../lib/queryBuilder/graph/GraphOptions.js';
 
 export default (session) => {
   const Model1 = session.unboundModels.Model1;
@@ -209,11 +210,17 @@ export default (session) => {
       });
 
       it('should not write the root with root: { kept: preserve }', async () => {
-        await Model1.query(session.knex).upsertGraph(
-          { id: 1, model1Prop1: 'changed', model1Relation3: [{ model2Prop1: 'new' }] },
-          { strict: true, root: { kept: 'preserve' } },
-        );
+        const upsert = (model1Prop1) =>
+          Model1.query(session.knex).upsertGraph(
+            { id: 1, model1Prop1, model1Relation3: [{ model2Prop1: 'new' }] },
+            { strict: true, root: { kept: 'preserve' } },
+          );
 
+        const error = await upsert('changed').catch((err) => err);
+        expect(error.type).toBe('InvalidGraph');
+        expect(await getRows('model2', 'id_col')).toHaveLength(2);
+
+        await upsert('root 1');
         expect((await getModel1(1)).model1Prop1).toBe('root 1');
         expect(await getRows('model2', 'id_col')).toHaveLength(3);
       });
@@ -448,6 +455,226 @@ export default (session) => {
 
         const joinRow = await session.knex('Model1Model2').first();
         expect(joinRow.extra1).toBe('extra');
+      });
+    });
+
+    describe('preserved values', () => {
+      beforeEach(() => {
+        return session.populate([
+          {
+            id: 1,
+            model1Prop1: 'root 1',
+            model1Prop2: 10,
+            model1Relation1: { id: 2, model1Prop1: 'belongsToOne' },
+            model1Relation2: [{ idCol: 1, model2Prop1: 'hasMany', model2Prop2: 1 }],
+            model1Relation3: [
+              {
+                idCol: 2,
+                model2Prop1: 'manyToMany',
+                extra1: 'extra',
+                model2Relation3: [
+                  { id: 1, model3Prop1: 'json', model3JsonProp: { a: [1, { b: true }], c: null } },
+                ],
+              },
+            ],
+          },
+          { id: 3, model1Prop1: 'root 3' },
+        ]);
+      });
+
+      const upsert = (graph, options) =>
+        Model1.query(session.knex)
+          .upsertGraph(graph, { strict: true, ...options })
+          .catch((err) => err);
+      const getTables = async () => {
+        const tables = {};
+        for (const [table, idColumn] of [
+          ['Model1', 'id'],
+          ['model2', 'id_col'],
+          ['model3', 'id'],
+          ['Model1Model2', 'id'],
+          ['Model2Model3ManyToMany', 'model2Id'],
+        ]) {
+          tables[table] = await session.knex(table).orderBy(idColumn);
+        }
+        return tables;
+      };
+
+      it('should throw for values that kept: preserve does not write and that differ', async () => {
+        const graph = (model2Prop1) => ({
+          id: 1,
+          model1Relation2: [{ idCol: 1, model2Prop1 }],
+        });
+        const options = { relations: { model1Relation2: { kept: 'preserve' } } };
+
+        for (const fetchStrategy of Object.keys(FetchStrategy)) {
+          const error = await upsert(graph('changed'), { ...options, fetchStrategy });
+          expect(error.type).toBe('InvalidGraph');
+          expect(error.message).toContain("'model1Relation2[0]'");
+          expect(error.message).toContain('model2Prop1');
+          expect(error.message).toContain('"changed"');
+          expect(error.message).toContain('"hasMany"');
+        }
+
+        const tables = await getTables();
+        const queries = [];
+        const onQuery = ({ sql }) => queries.push(sql);
+        session.knex.on('query', onQuery);
+        const result = await upsert(graph('hasMany'), options);
+        session.knex.off('query', onQuery);
+
+        expect(result).not.toBeInstanceOf(Error);
+        expect(queries.filter((sql) => /^(insert|update|delete)/i.test(sql))).toEqual([]);
+        expect(await getTables()).toEqual(tables);
+      });
+
+      it('should not compare #ref{} templates', async () => {
+        const result = await upsert(
+          [
+            { '#id': 'row', id: 3, model1Prop1: 'root 3' },
+            { id: 1, model1Prop1: '#ref{row.model1Prop1}' },
+          ],
+          { allowRefs: true, root: { kept: 'preserve' } },
+        );
+
+        expect(result).not.toBeInstanceOf(Error);
+        expect((await session.knex('Model1').where('id', 1).first()).model1Prop1).toBe('root 1');
+      });
+
+      it('should name values that JSON cannot represent', async () => {
+        const options = { root: { kept: 'preserve' } };
+        const error = await upsert({ id: 1, model1Prop2: 11n }, options);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain('the value 11,');
+        expect(error.message).toContain('the stored value 10');
+        expect(await upsert({ id: 1, model1Prop2: 10n }, options)).not.toBeInstanceOf(Error);
+      });
+
+      it('should not compare props that are not columns', async () => {
+        class LabeledModel1 extends Model1 {
+          $formatDatabaseJson(json) {
+            json = super.$formatDatabaseJson(json);
+            delete json.label;
+            return json;
+          }
+        }
+
+        const result = await LabeledModel1.query(session.knex)
+          .upsertGraph({ id: 1, label: 'x' }, { strict: true, root: { kept: 'preserve' } })
+          .catch((err) => err);
+
+        expect(result).not.toBeInstanceOf(Error);
+      });
+
+      it('should not compare values at #ref places that their model writes', async () => {
+        const result = await upsert(
+          [
+            { '#id': 'row', id: 2, model1Prop1: 'new' },
+            { id: 1, model1Relation1: { '#ref': 'row', model1Prop1: 'new' } },
+          ],
+          { allowRefs: true },
+        );
+
+        expect(result).not.toBeInstanceOf(Error);
+        expect((await session.knex('Model1').where('id', 2).first()).model1Prop1).toBe('new');
+      });
+
+      it('should not compare the values of removed rows', async () => {
+        const result = await upsert(
+          { id: 1, model1Relation2: [{ idCol: 1, model2Prop1: 'stale', '#delete': true }] },
+          { allowMarkers: true, relations: { model1Relation2: { kept: 'preserve' } } },
+        );
+
+        expect(result).not.toBeInstanceOf(Error);
+        expect(await session.knex('model2').where('id_col', 1)).toEqual([]);
+      });
+
+      it('should compare the rows that added: relate relates under kept: preserve', async () => {
+        const error = await upsert(
+          {
+            id: 3,
+            model1Relation3: [{ idCol: 2, model2Prop1: 'changed', model2Relation3: [{ id: 1 }] }],
+          },
+          { relations: { '*': { added: 'relate', kept: 'preserve', removed: 'preserve' } } },
+        );
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Relation3[0]'");
+        expect(await session.knex('Model1Model2').where('model1Id', 3)).toEqual([]);
+      });
+
+      it('should accept the keys that relations set under kept: preserve', async () => {
+        const result = await upsert(
+          { id: 3, model1Id: 2, model1Relation1: { id: 2 } },
+          { root: { kept: 'preserve' }, relations: { model1Relation1: { added: 'relate' } } },
+        );
+
+        expect(result).not.toBeInstanceOf(Error);
+        expect((await session.knex('Model1').where('id', 3).first()).model1Id).toBe(2);
+      });
+
+      for (const fetchStrategy of Object.keys(FetchStrategy)) {
+        it(`should send a fetched graph back unchanged (fetchStrategy: ${fetchStrategy})`, async () => {
+          const graph = await Model1.query(session.knex)
+            .findById(1)
+            .withGraphFetched(
+              '[model1Relation1, model1Relation2, model1Relation3.model2Relation3]',
+            );
+          const tables = await getTables();
+
+          const result = await upsert(graph, {
+            fetchStrategy,
+            root: { kept: 'preserve' },
+            relations: { '*': { kept: 'preserve', added: 'relate', removed: 'preserve' } },
+          });
+
+          expect(result).not.toBeInstanceOf(Error);
+          expect(await getTables()).toEqual(tables);
+        });
+      }
+
+      it('should throw for values at #ref places of BelongsToOneRelations that differ', async () => {
+        const graph = (model1Id) => [
+          { '#id': 'row', id: 2, model1Prop1: 'belongsToOne' },
+          { id: 1, model1Relation1: { '#ref': 'row', model1Id } },
+        ];
+
+        const error = await upsert(graph(3), { allowRefs: true });
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'[1].model1Relation1'");
+        expect(error.message).toContain('model1Id');
+
+        const result = await upsert(graph(null), { allowRefs: true });
+        expect(result).not.toBeInstanceOf(Error);
+
+        // A `#ref` place writes the row where its model doesn't:
+        await upsert(
+          [
+            { '#id': 'row', id: 2 },
+            { id: 1, model1Relation1: { '#ref': 'row', model1Prop1: 'changed' } },
+          ],
+          { allowRefs: true, root: { kept: 'preserve' } },
+        );
+        expect((await session.knex('Model1').where('id', 2).first()).model1Prop1).toBe('changed');
+      });
+
+      it('should throw for values at #ref places of many-to-many relations that differ', async () => {
+        const graph = (model2Prop1) => [
+          { id: 3, model1Relation3: [{ '#id': 'row', idCol: 2 }] },
+          { id: 1, model1Relation3: [{ '#ref': 'row', model2Prop1, extra1: 'changed' }] },
+        ];
+        const options = { allowRefs: true, relations: { model1Relation3: { added: 'relate' } } };
+
+        const error = await upsert(graph('changed'), options);
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'[1].model1Relation3[0]'");
+        expect(error.message).toContain('model2Prop1');
+
+        const result = await upsert(graph('manyToMany'), options);
+        expect(result).not.toBeInstanceOf(Error);
+        const joinRow = await session.knex('Model1Model2').where('model1Id', 1).first();
+        expect(joinRow.extra1).toBe('changed');
       });
     });
   });
