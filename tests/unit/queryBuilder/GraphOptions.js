@@ -91,8 +91,8 @@ describe('GraphOptions', () => {
       [{ kept: 'update' }, ['update']],
       [{ kept: 'preserve' }, ['noUpdate']],
       [{ kept: 'patch' }, []],
-      [{ new: 'throw' }, ['noInsert']],
-      [{ new: 'insert' }, []],
+      [{ created: 'throw' }, []],
+      [{ created: 'insert' }, []],
     ]) {
       it(`should translate ${JSON.stringify(settings)} to [${optionNames.join(', ')}]`, () => {
         const relations = { a: settings };
@@ -119,7 +119,7 @@ describe('GraphOptions', () => {
       expect(graphOptions.getSetting(node, 'removed')).toBe('delete');
       expect(graphOptions.getSetting(node, 'added')).toBe(undefined);
       expect(graphOptions.getSetting(node, 'kept')).toBe('patch');
-      expect(graphOptions.getSetting(node, 'new')).toBe('insert');
+      expect(graphOptions.getSetting(node, 'created')).toBe('insert');
       expect(graphOptions.shouldPatch(node)).toBe(true);
       expect(graphOptions.isStrict()).toBe(true);
       expect(new GraphOptions({}).isStrict()).toBe(false);
@@ -186,7 +186,7 @@ describe('GraphOptions', () => {
       ],
       [
         { strict: true, relations: { a: { gone: 'x' } } },
-        '"gone" is not a setting of relations["a"] in upsertGraph(). Valid settings are: removed, added, kept, new.',
+        '"gone" is not a setting of relations["a"] in upsertGraph(). Valid settings are: removed, added, kept, created.',
       ],
       [
         { strict: true, relations: { a: { removed: 'drop' } } },
@@ -194,7 +194,7 @@ describe('GraphOptions', () => {
       ],
       [
         { strict: true, root: { removed: 'delete' } },
-        '"removed" is not a setting of root in upsertGraph(). Valid settings are: added, kept, new.',
+        '"removed" is not a setting of root in upsertGraph(). Valid settings are: added, kept, created.',
       ],
       [
         { strict: true, root: { added: 'relate' } },
@@ -210,17 +210,17 @@ describe('GraphOptions', () => {
       ],
       [
         { strict: true, relations: { a: { kept: 'patch' } } },
-        '"kept" is not a setting of relations["a"] in insertGraph(). Valid settings are: added, new.',
+        '"kept" is not a setting of relations["a"] in insertGraph(). Valid settings are: added, created.',
         true,
       ],
       [
         { strict: true, relations: { a: { removed: 'delete' } } },
-        '"removed" is not a setting of relations["a"] in insertGraph(). Valid settings are: added, new.',
+        '"removed" is not a setting of relations["a"] in insertGraph(). Valid settings are: added, created.',
         true,
       ],
       [
         { strict: true, root: { kept: 'patch' } },
-        '"kept" is not a setting of root in insertGraph(). Valid settings are: added, new.',
+        '"kept" is not a setting of root in insertGraph(). Valid settings are: added, created.',
         true,
       ],
       [

@@ -3717,8 +3717,9 @@ export default (session) => {
           })
           .catch((err) => {
             expect(err instanceof Model1.NotFoundError).toBe(true);
-            expect(err.message).toBe(
-              'root model (id=1000) does not exist. If you want to insert it with an id, use the insertMissing option',
+            // The rest names the options, or the settings in strict mode:
+            expect(err.message).toContain(
+              'root model (id=1000) does not exist. If you want to insert it with an id, ',
             );
             expect(err.data.dataPath).toEqual([]);
             return session
@@ -3751,8 +3752,8 @@ export default (session) => {
           .catch((err) => {
             expect(err instanceof Model1.NotFoundError).toBe(true);
             expect(err.type).toBe('NotFound');
-            expect(err.message).toBe(
-              'model (id=1000) is not a child of model (id=2). If you want to relate it, use the relate option. If you want to insert it with an id, use the insertMissing option',
+            expect(err.message).toContain(
+              'model (id=1000) is not a child of model (id=2). If you want to relate it, ',
             );
             expect(err.data.dataPath).toEqual(['model1Relation1']);
             return session
@@ -4823,8 +4824,8 @@ export default (session) => {
             .catch((err) => err);
 
           expect(err).toBeInstanceOf(Model1.NotFoundError);
-          expect(err.message).toBe(
-            'model (id=1000) does not exist. If you want to insert it with an id, use the insertMissing option',
+          expect(err.message).toContain(
+            'model (id=1000) does not exist. If you want to insert it with an id, ',
           );
           expect(err.data.dataPath).toEqual(['model1Relation3', 0]);
           expect(await session.knex('Model1').where('model1Prop1', 'updated root 2')).toEqual([]);
@@ -4845,8 +4846,8 @@ export default (session) => {
               .catch((err) => err);
 
             expect(err).toBeInstanceOf(Model1.NotFoundError);
-            expect(err.message).toBe(
-              'model (id=1000) does not exist. If you want to insert it with an id, use the insertMissing option',
+            expect(err.message).toContain(
+              'model (id=1000) does not exist. If you want to insert it with an id, ',
             );
             expect(err.data.dataPath).toEqual(dataPath);
             expect(await session.knex('Model1').where('model1Prop1', 'updated root 2')).toEqual([]);

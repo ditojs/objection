@@ -5,6 +5,7 @@
 ### Changes
 
 - Add `strict` mode to `insertGraph()` and `upsertGraph()` with options per relation [#429](https://github.com/ditojs/objection/issues/429)
+- In strict mode, `created: 'throw'` throws for models without ids, where `noInsert` skips them, and the errors for models with ids that the graph can't write name the `added` setting to use [#429](https://github.com/ditojs/objection/issues/429)
 
 ## 4.2.0
 

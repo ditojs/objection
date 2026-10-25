@@ -21,7 +21,7 @@ async function strictOptions() {
       relations: {
         '*': { removed: 'preserve' },
         movies: { added: 'relateOrInsert', kept: 'update' },
-        'movies.reviews': { removed: 'delete', new: 'throw' },
+        'movies.reviews': { removed: 'delete', created: 'throw' },
       },
       allowRefs: true,
       allowMarkers: true,
@@ -30,7 +30,7 @@ async function strictOptions() {
   );
   await Person.query().insertGraph(
     { firstName: 'Jennifer' },
-    { strict: true, root: { new: 'insert' }, relations: { pets: { added: 'relate' } } },
+    { strict: true, root: { created: 'insert' }, relations: { pets: { added: 'relate' } } },
   );
   await Person.query().upsertGraph({ id: 1 }, { strict: false, relate: true });
   await Person.query().insertGraph({ firstName: 'Jennifer' }, { relate: true });

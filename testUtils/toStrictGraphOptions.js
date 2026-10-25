@@ -28,7 +28,8 @@ export function toStrictGraphOptions(modelClass, graph, options = {}, insertOnly
   const getSettings = (relationPath) => {
     const settings = {};
 
-    if (has(relationPath, 'noRelate')) {
+    // Strict mode throws for the rows that `noRelate` and `noInsert` skip.
+    if (has(relationPath, 'noRelate') || has(relationPath, 'noInsert')) {
       return null;
     }
 
@@ -67,7 +68,6 @@ export function toStrictGraphOptions(modelClass, graph, options = {}, insertOnly
       }
     }
 
-    settings.new = has(relationPath, 'noInsert') ? 'throw' : 'insert';
     return settings;
   };
 
