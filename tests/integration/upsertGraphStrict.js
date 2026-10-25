@@ -361,5 +361,94 @@ export default (session) => {
         expect(await getRows('model2', 'id_col')).toEqual([1, 2, 100]);
       });
     });
+
+    describe('key props', () => {
+      beforeEach(() => {
+        return session.populate([
+          { id: 1, model1Prop1: 'root 1', model1Relation2: [{ idCol: 1 }] },
+          { id: 2, model1Prop1: 'root 2' },
+        ]);
+      });
+
+      const upsert = (graph, options) => Model1.query(session.knex).upsertGraph(graph, options);
+      const getModel2 = (idCol) => session.knex('model2').where('id_col', idCol).first();
+
+      it('should throw for a foreign key that contradicts its HasManyRelation', async () => {
+        const error = await upsert(
+          { id: 1, model1Relation2: [{ idCol: 1, model1Id: 2 }] },
+          { strict: true },
+        ).catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Relation2[0].model1Id'");
+        expect(error.message).toContain("'model1Relation2[0]'");
+        expect((await getModel2(1)).model1_id).toBe(1);
+
+        // The relation overrides the prop without strict mode:
+        await upsert({ id: 1, model1Relation2: [{ idCol: 1, model1Id: 2, model2Prop1: 'x' }] });
+        const row = await getModel2(1);
+        expect([row.model1_id, row.model2_prop1]).toEqual([1, 'x']);
+      });
+
+      it('should accept a foreign key that equals its relation', async () => {
+        for (const model1Id of [1, '1']) {
+          await upsert(
+            { id: 1, model1Relation2: [{ idCol: 1, model1Id, model2Prop1: `${model1Id}` }] },
+            { strict: true },
+          );
+          expect((await getModel2(1)).model2_prop1).toBe(`${model1Id}`);
+        }
+      });
+
+      it('should throw for a foreign key that contradicts its BelongsToOneRelation', async () => {
+        const options = { strict: true, relations: { model1Relation1: { added: 'relate' } } };
+        const error = await upsert(
+          { id: 1, model1Id: 3, model1Relation1: { id: 2 } },
+          options,
+        ).catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Id'");
+        expect(error.message).toContain("'model1Relation1'");
+
+        await upsert({ id: 1, model1Id: 2, model1Relation1: { id: 2 } }, options);
+        const row = await session.knex('Model1').where('id', 1).first();
+        expect(row.model1Id).toBe(2);
+      });
+
+      it('should throw for a foreign key that contradicts a cleared BelongsToOneRelation', async () => {
+        const error = await upsert(
+          { id: 1, model1Id: 2, model1Relation1: null },
+          { strict: true },
+        ).catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Id'");
+        expect(error.message).toContain("'model1Relation1'");
+
+        await upsert({ id: 1, model1Id: null, model1Relation1: null }, { strict: true });
+      });
+
+      it('should throw for a foreign key below a new model', async () => {
+        const error = await upsert(
+          { model1Prop1: 'new', model1Relation2: [{ model2Prop1: 'new', model1Id: 1 }] },
+          { strict: true },
+        ).catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Relation2[0].model1Id'");
+        expect(await session.knex('Model1').orderBy('id').pluck('id')).toEqual([1, 2]);
+      });
+
+      it('should accept the extras of join rows', async () => {
+        await upsert(
+          { id: 1, model1Relation3: [{ idCol: 1, extra1: 'extra' }] },
+          { strict: true, relations: { model1Relation3: { added: 'relate' } } },
+        );
+
+        const joinRow = await session.knex('Model1Model2').first();
+        expect(joinRow.extra1).toBe('extra');
+      });
+    });
   });
 };
