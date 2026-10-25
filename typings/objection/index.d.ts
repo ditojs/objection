@@ -2261,6 +2261,24 @@ export interface GraphRootSettings {
   created?: GraphRelationSettings['created'];
 }
 
+/**
+ * The settings of strict `upsertGraph()` for the rows at a relation path, as
+ * `Model.getGraphSettings()` resolves them. `removed` is only set where the
+ * options set it.
+ */
+export interface GraphSettings extends Required<Omit<GraphRelationSettings, 'removed'>> {
+  removed: GraphRelationSettings['removed'];
+}
+
+/**
+ * The settings of strict `insertGraph()` for the rows at a relation path, as
+ * `Model.getGraphSettings()` resolves them.
+ */
+export interface InsertGraphSettings extends Required<InsertGraphRelationSettings> {
+  removed: 'preserve';
+  kept: 'preserve';
+}
+
 export interface InsertGraphMethod<M extends Model> {
   <QB extends AnyQueryBuilder>(
     this: QB,
@@ -3241,6 +3259,18 @@ export interface ModelClass<M extends Model> extends ModelConstructor<M> {
   getRelations(): Relations;
   getRelation(name: string): Relation;
 
+  getGraphSettings(
+    relationPath: string | readonly string[],
+    options: StrictInsertGraphOptions,
+    operation: 'insert',
+  ): InsertGraphSettings;
+
+  getGraphSettings(
+    relationPath: string | readonly string[],
+    options: StrictUpsertGraphOptions,
+    operation: 'upsert',
+  ): GraphSettings;
+
   traverse(models: Model | Model[], traverser: TraverserFunction): void;
   traverse(
     filterConstructor: ModelConstructor<Model>,
@@ -3377,6 +3407,18 @@ export class Model {
 
   static getRelations(): Relations;
   static getRelation(name: string): Relation;
+
+  static getGraphSettings(
+    relationPath: string | readonly string[],
+    options: StrictInsertGraphOptions,
+    operation: 'insert',
+  ): InsertGraphSettings;
+
+  static getGraphSettings(
+    relationPath: string | readonly string[],
+    options: StrictUpsertGraphOptions,
+    operation: 'upsert',
+  ): GraphSettings;
 
   static traverse(models: Model | Model[], traverser: TraverserFunction): void;
   static traverse(

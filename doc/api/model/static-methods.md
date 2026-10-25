@@ -1040,6 +1040,46 @@ This method is mainly useful for plugin developers and for other generic usages.
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Object&lt;string,&nbsp;[Relation](/api/types/#class-relation)&gt; | Object whose keys are relation names and values are [Relation](/api/types/#class-relation) instances. |
 
+## `static` getGraphSettings()
+
+```js
+const settings = Person.getGraphSettings(relationPath, options, operation);
+```
+
+Resolves the [strict mode](/guide/query-examples.html#strict-mode) settings of [insertGraph](/api/query-builder/mutate-methods.html#insertgraph) or [upsertGraph](/api/query-builder/mutate-methods.html#upsertgraph) for the rows at a relation path, from the `root` and `relations` options of a call, with the same rules and defaults as the call itself. This is useful for code that prepares graphs before writing them and needs to know what the call does with each relation.
+
+Relations that the model doesn't have throw, so a misspelled path doesn't get the defaults.
+
+##### Arguments
+
+| Argument     | Type                         | Description                                                                                                      |
+| ------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| relationPath | string&nbsp;\|&nbsp;string[] | The relation path, like `'movies.actors'` or `['movies', 'actors']`. An empty path gives the settings of `root`. |
+| options      | Object                       | The options of the strict `insertGraph` or `upsertGraph` call.                                                   |
+| operation    | string                       | `'insert'` or `'upsert'`: the method that the options are for, as their defaults differ.                         |
+
+##### Return value
+
+| Type   | Description                                                                                                                                                                              |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Object | The settings `removed`, `added`, `kept` and `created`. In `upsertGraph`, `removed` is `undefined` where the options don't set it. In `insertGraph`, `removed` and `kept` are `'preserve'`. |
+
+##### Examples
+
+```js
+const options = {
+  strict: true,
+  relations: {
+    '*': { removed: 'preserve' },
+    'movies.actors': { added: 'relate' },
+  },
+};
+
+const settings = Person.getGraphSettings('movies.actors', options, 'upsert');
+console.log(settings);
+// --> { removed: 'preserve', added: 'relate', kept: 'patch', created: 'insert' }
+```
+
 ## `static` columnNameToPropertyName()
 
 ```js

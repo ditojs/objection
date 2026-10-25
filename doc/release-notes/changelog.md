@@ -2,6 +2,10 @@
 
 ## 4.3.1
 
+### Changes
+
+- Add `Model.getGraphSettings()`, which resolves the strict mode settings of `insertGraph()` or `upsertGraph()` for a relation path from the options of a call, with the same rules and defaults as the call itself [#537](https://github.com/ditojs/objection/issues/537)
+
 ### Fixes
 
 - Strict `insertGraph()` with `added: 'relate'` throws a `NotFoundError` for related models whose ids don't exist, before anything is written, like `upsertGraph()` does. Since 4.3.0, it related them unchecked, writing keys that point to no row unless a foreign key constraint rejected them [#538](https://github.com/ditojs/objection/issues/538)

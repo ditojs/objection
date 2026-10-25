@@ -2,7 +2,9 @@
 // old options and the strict ones can't be mixed.
 
 import {
+  GraphSettings,
   InsertGraphOptions,
+  InsertGraphSettings,
   StrictInsertGraphOptions,
   StrictUpsertGraphOptions,
   UpsertGraphOptions,
@@ -71,3 +73,23 @@ async function strictOptions() {
 }
 
 strictOptions();
+
+function graphSettings() {
+  const upsert: GraphSettings = Person.getGraphSettings(
+    'pets',
+    { strict: true, relations: { pets: { removed: 'delete' } } },
+    'upsert',
+  );
+  const removed: 'preserve' | 'unrelate' | 'delete' | undefined = upsert.removed;
+  const added: 'relate' | 'insert' | 'relateOrInsert' | 'throw' = upsert.added;
+  const insert: InsertGraphSettings = Person.getGraphSettings(['pets'], { strict: true }, 'insert');
+  const kept: 'preserve' = insert.kept;
+  // @ts-expect-error insertGraph() doesn't take the options of upsertGraph().
+  Person.getGraphSettings('pets', { strict: true, fetchStrategy: 'OnlyNeeded' }, 'insert');
+  // @ts-expect-error The settings are only resolved for strict mode.
+  Person.getGraphSettings('pets', { relate: true }, 'upsert');
+
+  return [removed, added, kept];
+}
+
+graphSettings();
