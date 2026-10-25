@@ -4,11 +4,13 @@
 
 ### Changes
 
-- Add `strict` mode to `insertGraph()` and `upsertGraph()` with options per relation. In `upsertGraph()`, every relation that the graph gives needs a `removed` setting, or it throws a `ValidationError` of type `InvalidGraph` before anything is loaded [#429](https://github.com/ditojs/objection/issues/429)
-- In strict mode, `created: 'throw'` throws for models without ids, where `noInsert` skips them, and `added: 'throw'`, the default of `upsertGraph()`, throws a `NotFoundError` for models with ids, or with the key that relates them, that aren't in their relation, naming the `added` setting to use [#429](https://github.com/ditojs/objection/issues/429)
-- In strict mode, a key prop that a relation of the same model sets throws a `ValidationError` of type `InvalidGraph` when it differs from the relation's value, except for `#ref{}` templates, which the relation's value still overrides. Without strict mode, the relation's value overrides all of them [#429](https://github.com/ditojs/objection/issues/429)
-- In strict mode, values that the graph gives but doesn't write, under `kept: 'preserve'`, including the extras of join rows and the rows that `added` relates, or at `#ref` models that only place their model, throw a `ValidationError` of type `InvalidGraph` when they differ from the stored rows, compared so that fetched graphs sent back unchanged pass on all databases, but without the conversions of `==`: `''` and `false` don't equal `0`. Repeated models are compared the same way [#429](https://github.com/ditojs/objection/issues/429)
-- Strict `insertGraph()` and `upsertGraph()` are atomic: they run in the transaction of the query, or else in their own, which covers the whole call, including the loads and the fetch of the `AndFetch` variants. Hooks that run queries need to run them in `context.transaction` [#429](https://github.com/ditojs/objection/issues/429)
+- Add a `strict` option to `insertGraph()` and `upsertGraph()` that makes graphs say what they mean. Options are given per relation, as `root` and `relations` settings for the rows that a graph leaves out (`removed`), the rows with ids that aren't in their relation yet (`added`), the rows that stay (`kept`) and the new rows (`created`). They replace the per-path options like `relate`, `unrelate` and `noDelete`. See [strict mode](/guide/query-examples.md#strict-mode) [#429](https://github.com/ditojs/objection/issues/429)
+- Strict graphs throw where other graphs skip or override data: for rows they don't write, for key props that contradict their relations, and for values they don't write that differ from the stored rows. Equal values pass, so fetched graphs can be sent back unchanged [#429](https://github.com/ditojs/objection/issues/429)
+- Strict `insertGraph()` and `upsertGraph()` are atomic: they run in a transaction, their own unless the query already runs in one, so a database error halfway leaves nothing written. Hooks that run queries need to use `context.transaction`, or they wait for the transaction, and deadlock on SQLite [#477](https://github.com/ditojs/objection/issues/477)
+
+### Fixes
+
+- The typings of the `upsertGraph()` options declare `fetchStrategy`, which TypeScript rejected since 1.6.4 added the option [#531](https://github.com/ditojs/objection/pull/531)
 
 ## 4.2.0
 
