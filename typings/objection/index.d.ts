@@ -2265,6 +2265,7 @@ export interface UpsertGraphOptions {
   noUnrelate?: boolean | string | string[];
   allowRefs?: boolean;
   allowMarkers?: boolean;
+  fetchStrategy?: 'OnlyIdentifiers' | 'Everything' | 'OnlyNeeded';
 }
 
 export interface StrictUpsertGraphOptions {

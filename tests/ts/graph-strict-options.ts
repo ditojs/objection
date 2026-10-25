@@ -33,6 +33,7 @@ async function strictOptions() {
     { strict: true, root: { created: 'insert' }, relations: { pets: { added: 'relate' } } },
   );
   await Person.query().upsertGraph({ id: 1 }, { strict: false, relate: true });
+  await Person.query().upsertGraph({ id: 1 }, { fetchStrategy: 'OnlyIdentifiers' });
   await Person.query().insertGraph({ firstName: 'Jennifer' }, { relate: true });
 
   // @ts-expect-error The old options don't take strict: true.
