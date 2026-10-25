@@ -4,8 +4,9 @@ import { QueryBuilder } from '../lib/queryBuilder/QueryBuilder.js';
 import { isObject } from '../lib/utils/objectUtils.js';
 
 // Converts the options of a non-strict `upsertGraph()` or `insertGraph()` call
-// to strict options that give the same writes for `graph`, so that tests written for the old options can check the translation of strict
-// mode. The settings are derived per relation path of the graph from what
+// to strict options that give the same writes for `graph`, so that tests
+// written for the old options can check the translation of strict mode. The
+// settings are derived per relation path of the graph from what
 // `GraphOptions.has()` answers for the old options, one entry per path, since
 // combinations of the old options per path can't always be expressed by the
 // order of wildcard entries. Returns `null` for options that strict mode can't
