@@ -226,6 +226,14 @@ export default (session) => {
 
         expect(error).toBeInstanceOf(NotFoundError);
         expect(error.message).toContain('root model (id=50) does not exist');
+        expect(error.message).toContain("set root: { added: 'insert' }");
+
+        const nonStrictError = await Model1.query(session.knex)
+          .upsertGraph(graph)
+          .catch((err) => err);
+        expect(nonStrictError.message).toBe(
+          'root model (id=50) does not exist. If you want to insert it with an id, use the insertMissing option',
+        );
 
         await Model1.query(session.knex).upsertGraph(graph, {
           strict: true,
@@ -233,6 +241,104 @@ export default (session) => {
         });
 
         expect((await getModel1(50)).model1Prop1).toBe('new root');
+      });
+
+      it('should throw for rows without ids with created: throw, before writing', async () => {
+        const error = await Model1.query(session.knex)
+          .upsertGraph(
+            { id: 1, model1Prop1: 'changed', model1Relation2: [{ model2Prop1: 'new' }] },
+            { strict: true, relations: { model1Relation2: { created: 'throw' } } },
+          )
+          .catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Relation2[0]'");
+        expect(error.message).toContain("created: 'throw'");
+        expect((await getModel1(1)).model1Prop1).toBe('root 1');
+        expect(await getRows('model2', 'id_col')).toEqual([1, 2]);
+      });
+
+      it('should throw for root rows without ids with root: { created: throw }', async () => {
+        const error = await Model1.query(session.knex)
+          .upsertGraph([{ id: 1 }, { model1Prop1: 'new' }], {
+            strict: true,
+            root: { created: 'throw' },
+          })
+          .catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'[1]'");
+        expect(await getRows('Model1', 'id')).toEqual([1, 2, 3, 4]);
+      });
+
+      it('should throw for rows without ids in insertGraph() with created: throw', async () => {
+        const error = await Model1.query(session.knex)
+          .insertGraph(
+            { model1Prop1: 'new', model1Relation2: [{ model2Prop1: 'new' }] },
+            { strict: true, relations: { model1Relation2: { created: 'throw' } } },
+          )
+          .catch((err) => err);
+
+        expect(error.type).toBe('InvalidGraph');
+        expect(error.message).toContain("'model1Relation2[0]'");
+        expect(await getRows('Model1', 'id')).toEqual([1, 2, 3, 4]);
+      });
+
+      it('should insert rows with ids with added: insert and created: throw', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          { id: 1, model1Relation2: [{ idCol: 100, model2Prop1: 'new' }] },
+          { strict: true, relations: { model1Relation2: { added: 'insert', created: 'throw' } } },
+        );
+
+        expect(await getRows('model2', 'id_col')).toEqual([1, 2, 100]);
+      });
+
+      it('should name the added settings for rows with ids that the graph cannot write', async () => {
+        const upsert = (graph, relations) =>
+          Model1.query(session.knex)
+            .upsertGraph(graph, { strict: true, relations })
+            .catch((err) => err);
+
+        const graph = { id: 1, model1Relation3: [{ idCol: 1 }] };
+        const nonStrictError = await Model1.query(session.knex)
+          .upsertGraph(graph)
+          .catch((err) => err);
+        expect(nonStrictError.message).toBe(
+          'model (id=1) is not a child of model (id=1). If you want to relate it, use the relate option. If you want to insert it with an id, use the insertMissing option',
+        );
+
+        const unrelatedError = await upsert(graph);
+        expect(unrelatedError).toBeInstanceOf(NotFoundError);
+        expect(unrelatedError.message).toContain(
+          "set added: 'relate' for model1Relation3 in the relations option",
+        );
+        expect(unrelatedError.message).toContain("set added: 'insert' for model1Relation3");
+
+        const missingError = await upsert(
+          { id: 1, model1Relation3: [{ idCol: 100 }] },
+          { model1Relation3: { added: 'relate' } },
+        );
+        expect(missingError).toBeInstanceOf(NotFoundError);
+        expect(missingError.message).toContain(
+          "set added: 'relateOrInsert' for model1Relation3 in the relations option",
+        );
+      });
+
+      it('should relate rows with #ref and #dbRef without added, also with created: throw', async () => {
+        await Model1.query(session.knex).upsertGraph(
+          [
+            { id: 1, model1Relation2: [{ '#id': 'new', model2Prop1: 'new' }] },
+            { id: 2, model1Relation3: [{ '#ref': 'new' }, { '#dbRef': 1 }] },
+          ],
+          { strict: true, allowRefs: true, relations: { model1Relation3: { created: 'throw' } } },
+        );
+
+        const [, , newId] = await getRows('model2', 'id_col');
+        const joinRows = await session.knex('Model1Model2').orderBy(['model1Id', 'model2Id']);
+        expect(joinRows.map((row) => [row.model1Id, row.model2Id])).toEqual([
+          [2, 1],
+          [2, newId],
+        ]);
       });
 
       it('should relate rows in insertGraph() with added: relate', async () => {

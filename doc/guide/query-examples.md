@@ -1536,7 +1536,7 @@ await Person.query().upsertGraph(person, {
   relations: {
     '*': { removed: 'preserve' },
     movies: { added: 'relate', kept: 'update' },
-    'movies.reviews': { removed: 'delete', new: 'throw' }
+    'movies.reviews': { removed: 'delete', created: 'throw' }
   }
 });
 ```
@@ -1546,13 +1546,13 @@ await Person.query().upsertGraph(person, {
 | `removed` | in the stored relation, but not in the graph                   | `'preserve'`, `'unrelate'`, `'delete'`     | `'delete'` | `unrelate`, `noUnrelate`, `noDelete` |
 | `added`   | in the graph with an id, but not in the stored relation        | `'relate'`, `'insert'`, `'relateOrInsert'` | none       | `relate`, `insertMissing`            |
 | `kept`    | in the graph with an id, and in the relation once it's written | `'patch'`, `'update'`, `'preserve'`        | `'patch'`  | `update`, `noUpdate`                 |
-| `new`     | in the graph without an id                                     | `'insert'`, `'throw'`                      | `'insert'` | `noInsert`                           |
+| `created` | in the graph without an id                                     | `'insert'`, `'throw'`                      | `'insert'` | `noInsert`                           |
 
-`'preserve'` leaves the rows as they are. `added: 'relate'` relates existing rows, moving them from their current owner if needed, `'insert'` inserts them with their ids, and `'relateOrInsert'` relates the rows that exist and inserts the others. Without `added`, models with ids that aren't in the stored relation throw. `root` takes `kept`, `new`, and `added` with only `'insert'`, since root models are never removed or related. `noRelate` has no replacement.
+`'preserve'` leaves the rows as they are. `added: 'relate'` relates existing rows, moving them from their current owner if needed, `'insert'` inserts them with their ids, and `'relateOrInsert'` relates the rows that exist and inserts the others. Without `added`, models with ids that aren't in the stored relation throw a `NotFoundError`. `created: 'throw'` makes models without ids throw a `ValidationError` of type `InvalidGraph` before anything is written, where `noInsert` skips them. Models given only by the key of a `BelongsToOneRelation`, without an id, follow `added` if it's set for their relation, and `created` otherwise. `root` takes `kept`, `created`, and `added` with only `'insert'`, since root models are never removed or related. `noRelate` has no replacement.
 
 The keys of `relations` are relation expressions that match relation paths like the expressions of the other options above: `'*'` matches all relations at any depth, and the root models are never matched. The entries are applied in their order, and later entries override the settings of earlier ones, setting by setting. Above, `movies` has `removed: 'preserve'` from `'*'`, and the settings of its own entry. A relation named in a key that its model doesn't have throws a `ValidationError` of type `InvalidGraph`, so a misspelled relation doesn't fall back to the defaults.
 
-[insertGraph](/api/query-builder/mutate-methods.html#insertgraph) takes `strict`, `root` and `relations` too, with only the `added` and `new` settings, since it never loads, updates or removes rows. There, `added` defaults to `'insert'` and takes `'relate'` and `'insert'`.
+[insertGraph](/api/query-builder/mutate-methods.html#insertgraph) takes `strict`, `root` and `relations` too, with only the `added` and `created` settings, since it never loads, updates or removes rows. There, `added` defaults to `'insert'` and takes `'relate'` and `'insert'`.
 
 ::: warning
 `added: 'relate'` and `'relateOrInsert'` let whoever provides the graph relate any row by its id, and move it away from its current owner, also when set through `'*'`. Set them only for the relations that need them when the graph comes from a request body, and use [allowGraph](/api/query-builder/eager-methods.html#allowgraph) to limit the relations the graph can contain.

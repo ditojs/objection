@@ -10,6 +10,15 @@ export default (session) => {
         return 'relate_key_person';
       }
 
+      // The tests insert persons with fixed ids, which Postgres sequences don't
+      // follow, so the table can't auto-increment. Persons that a graph inserts
+      // get their id here:
+      $beforeInsert() {
+        if (this.id === undefined) {
+          this.id = 3;
+        }
+      }
+
       static get relationMappings() {
         return {
           parent: {
@@ -83,6 +92,47 @@ export default (session) => {
       await Pet.query(knex).upsertGraph({ id: 1, owner: { code: 'zz' } }, { relate: true });
 
       expect(await fetchOwnerCodes()).toEqual(['zz', null]);
+    });
+
+    it("should take the model as a row with an id in strict mode, also with created: 'throw'", async () => {
+      const upsert = (graph, added) =>
+        Pet.query(knex).upsertGraph(graph, {
+          strict: true,
+          relations: { owner: { added, created: 'throw' } },
+        });
+
+      await upsert({ id: 1, owner: { code: 'c1' } }, 'relate');
+      await upsert({ id: 2, owner: { code: 'c3' } }, 'insert');
+
+      expect(await fetchOwnerCodes()).toEqual(['c1', 'c3']);
+      expect(await knex('relate_key_person').where('id', 3).first()).toMatchObject({
+        code: 'c3',
+      });
+    });
+
+    it('should take the model as a row without an id in strict mode without added', async () => {
+      await expect(
+        Pet.query(knex).upsertGraph(
+          { id: 1, owner: { code: 'c1' } },
+          { strict: true, relations: { owner: { created: 'throw' } } },
+        ),
+      ).rejects.toThrow("the Person at 'owner' has no id, and created: 'throw' doesn't insert it");
+
+      expect(await fetchOwnerCodes()).toEqual([null, null]);
+    });
+
+    it("should insert the model with insertGraph() and created: 'throw' by the default added", async () => {
+      await Pet.query(knex).insertGraph(
+        { id: 3, owner: { code: 'c3' } },
+        { strict: true, relations: { owner: { created: 'throw' } } },
+      );
+
+      expect(await knex('relate_key_pet').where('id', 3).first()).toMatchObject({
+        ownerCode: 'c3',
+      });
+      expect(await knex('relate_key_person').where('id', 3).first()).toMatchObject({
+        code: 'c3',
+      });
     });
 
     it('should leave out the other props of the model under noUpdate', async () => {

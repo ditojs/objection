@@ -2204,7 +2204,7 @@ export interface InsertGraphOptions {
 
 export interface StrictInsertGraphOptions {
   strict: true;
-  root?: Pick<GraphRootSettings, 'added' | 'new'>;
+  root?: Pick<GraphRootSettings, 'added' | 'created'>;
   relations?: Record<string, InsertGraphRelationSettings>;
   allowRefs?: boolean;
 }
@@ -2222,20 +2222,20 @@ export interface GraphRelationSettings {
   /** Rows with an id that end up in the relation. Defaults to `'patch'`. */
   kept?: 'patch' | 'update' | 'preserve';
   /** Rows without an id. Defaults to `'insert'`. */
-  new?: 'insert' | 'throw';
+  created?: 'insert' | 'throw';
 }
 
 export interface InsertGraphRelationSettings {
   /** Rows with an id. Defaults to `'insert'`. */
   added?: 'relate' | 'insert';
   /** Rows without an id. Defaults to `'insert'`. */
-  new?: 'insert' | 'throw';
+  created?: 'insert' | 'throw';
 }
 
 export interface GraphRootSettings {
   added?: 'insert';
   kept?: GraphRelationSettings['kept'];
-  new?: GraphRelationSettings['new'];
+  created?: GraphRelationSettings['created'];
 }
 
 export interface InsertGraphMethod<M extends Model> {
