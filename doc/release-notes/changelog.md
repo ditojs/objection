@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.1
+
+### Changes
+
+- Strict `insertGraph()` and `upsertGraph()` resolve the settings of each relation path once instead of for every model and option, which speeds up large graphs with many `relations` entries
+
 ## 4.4.0
 
 ### Changes
