@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- `upsertGraph()` doesn't update models whose given props are unchanged apart from props that aren't written to the database, like props that `$formatDatabaseJson()` or `pickJsonSchemaProperties` leave out. They counted as changed, and the update ran the `$beforeUpdate()` hooks, which could still write e.g. timestamps
+- `upsertGraph()` doesn't update models whose given props are unchanged apart from props that aren't written to the database, like props that `$formatDatabaseJson()` or `pickJsonSchemaProperties` leave out. They counted as changed, and the update ran the `$beforeUpdate()` hooks, which could still write e.g. timestamps [#546](https://github.com/ditojs/objection/pull/546)
 
 ## 4.4.1
 
