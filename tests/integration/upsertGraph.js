@@ -5550,6 +5550,108 @@ module.exports = (session) => {
         });
       });
 
+      describe('props that are not written to the database', () => {
+        // `computed` is left out, `prop1Head` and `prop1Tail` are combined into
+        // `model1Prop1`:
+        class ComputedModel1 extends Model1 {
+          static get relationMappings() {
+            const { model1Relation2 } = super.relationMappings;
+            return { model1Relation2: { ...model1Relation2, modelClass: ComputedModel2 } };
+          }
+
+          $formatDatabaseJson(json) {
+            const { computed, prop1Head, prop1Tail, ...rest } = json;
+            if (prop1Head !== undefined) {
+              rest.model1Prop1 = `${prop1Head} ${prop1Tail}`;
+            }
+            return super.$formatDatabaseJson(rest);
+          }
+        }
+
+        class ComputedModel2 extends Model2 {
+          static get relationMappings() {
+            const { model2Relation1 } = super.relationMappings;
+            return { model2Relation1: { ...model2Relation1, modelClass: ComputedModel1 } };
+          }
+
+          $formatDatabaseJson(json) {
+            const { computed, ...rest } = json;
+            return super.$formatDatabaseJson(rest);
+          }
+        }
+
+        // Without the current values, all props may change:
+        if (fetchStrategy !== FetchStrategy.OnlyIdentifiers) {
+          it('should not update models whose written props are unchanged', async () => {
+            const queries = [];
+            const onQuery = ({ sql }) => queries.push(sql);
+            session.knex.on('query', onQuery);
+
+            let result;
+            try {
+              result = await ComputedModel1.query(session.knex).upsertGraph(
+                {
+                  id: 2,
+                  model1Prop1: 'root 2',
+                  computed: 'root',
+                  model1Relation2: [
+                    {
+                      idCol: 1,
+                      model2Prop1: 'hasMany 1',
+                      computed: 'hasMany',
+                      model2Relation1: [
+                        { id: 4, model1Prop1: 'manyToMany 1', computed: 'manyToMany' },
+                        { id: 5, model1Prop1: 'manyToMany 2', computed: 'manyToMany' },
+                      ],
+                    },
+                    {
+                      idCol: 2,
+                      model2Prop1: 'hasMany 2',
+                      computed: 'hasMany',
+                      model2Relation1: [
+                        { id: 6, model1Prop1: 'manyToMany 3', computed: 'manyToMany' },
+                        { id: 7, model1Prop1: 'manyToMany 4', computed: 'manyToMany' },
+                      ],
+                    },
+                  ],
+                },
+                { fetchStrategy },
+              );
+            } finally {
+              session.knex.removeListener('query', onQuery);
+            }
+
+            expect(queries.filter((sql) => /^\s*update/i.test(sql))).to.eql([]);
+            const models = [
+              result,
+              ...result.model1Relation2.flatMap((model) => [model, ...model.model2Relation1]),
+            ];
+            expect(models).to.have.length(7);
+            for (const model of models) {
+              expect(model.$beforeUpdateCalled).to.equal(undefined);
+            }
+          });
+        }
+
+        it('should update props that are renamed or combined into columns', async () => {
+          await ComputedModel1.query(session.knex).upsertGraph(
+            {
+              id: 2,
+              prop1Head: 'root',
+              prop1Tail: 'changed',
+              computed: 'root',
+              model1Relation2: [{ idCol: 1, model2Prop1: 'changed', computed: 'hasMany' }],
+            },
+            { noDelete: true, fetchStrategy },
+          );
+
+          const [root] = await session.knex('Model1').where('id', 2);
+          const [related] = await session.knex('model2').where('id_col', 1);
+          expect(root.model1Prop1).to.equal('root changed');
+          expect(related.model2_prop1).to.equal('changed');
+        });
+      });
+
       describe('should not call $beforeUpdate() on empty relates (#2605)', () => {
         it('should not call $beforeUpdate() on empty relates', async () => {
           const upsert = {
