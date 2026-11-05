@@ -6406,8 +6406,11 @@ export default (session) => {
         // `model1Prop1`:
         class ComputedModel1 extends Model1 {
           static get relationMappings() {
-            const { model1Relation2 } = super.relationMappings;
-            return { model1Relation2: { ...model1Relation2, modelClass: ComputedModel2 } };
+            const { model1Relation1, model1Relation2 } = super.relationMappings;
+            return {
+              model1Relation1: { ...model1Relation1, modelClass: ComputedModel1 },
+              model1Relation2: { ...model1Relation2, modelClass: ComputedModel2 },
+            };
           }
 
           $formatDatabaseJson(json) {
@@ -6500,6 +6503,24 @@ export default (session) => {
           const [related] = await session.knex('model2').where('id_col', 1);
           expect(root.model1Prop1).toBe('root changed');
           expect(related.model2_prop1).toBe('changed');
+        });
+
+        it('should not update models that are only related', async () => {
+          const result = await ComputedModel2.query(session.knex).upsertGraph(
+            { idCol: 1, model2Relation1: [{ id: 6, computed: 'manyToMany' }] },
+            { relate: true, noDelete: true, noUnrelate: true, fetchStrategy },
+          );
+          const root = await ComputedModel1.query(session.knex).upsertGraph(
+            { id: 2, model1Relation1: { id: 7, computed: 'belongsToOne' } },
+            { relate: true, noDelete: true, noUnrelate: true, fetchStrategy },
+          );
+
+          const rows = await session.knex('Model1Model2').where('model2Id', 1);
+          const [rootRow] = await session.knex('Model1').where('id', 2);
+          expect(result.model2Relation1[0].$beforeUpdateCalled).toBeUndefined();
+          expect(root.model1Relation1.$beforeUpdateCalled).toBeUndefined();
+          expect(rows.map((row) => row.model1Id).sort()).toEqual([4, 5, 6]);
+          expect(rootRow.model1Id).toBe(7);
         });
       });
 
