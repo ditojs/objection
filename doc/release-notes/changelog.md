@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.4
+
+### Fixes
+
+- `upsertGraph()` doesn't run the `$beforeUpdate()` hooks of existing models that it only relates, e.g. through a join table or a `BelongsToOneRelation`, if they have props that aren't written to the database, like props that `$formatDatabaseJson()` or `pickJsonSchemaProperties` leave out. Their ids counted as changed, as there is no current model to compare them with, although nothing is written to their rows
+
 ## 3.9.3
 
 ### Fixes
