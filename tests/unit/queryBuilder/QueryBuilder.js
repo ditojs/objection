@@ -364,6 +364,17 @@ describe('QueryBuilder', () => {
     });
   });
 
+  it('should build the operations after the ones that an onBuild hook removes (#2269)', () => {
+    expect(
+      QueryBuilder.forClass(TestModel)
+        .select('a')
+        .onBuild((builder) => builder.clearSelect().select('b'))
+        .findById(1)
+        .toKnexQuery()
+        .toString(),
+    ).toBe('select "b" from "Model" where "Model"."id" = 1');
+  });
+
   it('should have knex query builder methods', () => {
     // Doesn't test all the methods. Just enough to make sure the method calls are correctly
     // passed to the knex query builder.
