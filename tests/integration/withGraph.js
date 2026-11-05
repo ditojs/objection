@@ -3435,6 +3435,28 @@ export default (session) => {
         });
       });
 
+      it('should fetch the fetched relations when selecting all columns of the root table (#2269)', () => {
+        const cases = orders.flatMap((order) => [
+          ['*', order],
+          ['Model1.*', order],
+        ]);
+
+        return promiseMap(cases, ([selection, order]) => {
+          const query = callInOrder(
+            Model1.query().select(selection).where('Model1.id', 1),
+            order,
+            'model1Relation1',
+            'model1Relation2',
+          );
+
+          return query.then((models) => {
+            expect(models).toHaveLength(1);
+            expect(models[0].model1Relation1).toMatchObject({ id: 2 });
+            expect(models[0].model1Relation2.map((it) => it.idCol).sort()).toEqual([1, 2]);
+          });
+        });
+      });
+
       it('should filter by the joined relation while the fetched relation is complete', () => {
         return promiseMap(orders, (order) => {
           let query = Model1.query().where('model1Relation1.model1Prop1', 'hello 2');

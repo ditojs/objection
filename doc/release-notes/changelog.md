@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.4.3
+
+### Fixes
+
+- Queries that mix `withGraphJoined()` and `withGraphFetched()` and select all columns of the root table, e.g. with `select('*')` or `select('Person.*')`, load the fetched relations again. Since 3.8.0, `withGraphJoined()` replaces the `*` with the table's columns, which made the query skip the build step of `withGraphFetched()`, so its relations were missing from the result without an error [#2269](https://github.com/Vincit/objection.js/issues/2269)
+- An `onBuild()` hook that removes operations, e.g. with `clearSelect()`, no longer makes the query skip building the operation after them, e.g. the `where` of `findById()`, which made the query read, update or delete all rows
+
 ## 4.4.2
 
 ### Fixes
