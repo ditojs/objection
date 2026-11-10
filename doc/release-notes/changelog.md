@@ -5,6 +5,7 @@
 ### Fixes
 
 - `upsertGraph()` doesn't run the `$beforeUpdate()` hooks of existing models that it only relates, e.g. through a join table or a `BelongsToOneRelation`, if they have props that aren't written to the database, like props that `$formatDatabaseJson()` or `pickJsonSchemaProperties` leave out. Their ids counted as changed, as there is no current model to compare them with, although nothing is written to their rows
+- `distinct()` without columns makes the selected rows distinct, as in knex, e.g. in `Person.query().select('name').distinct()`. Objection dropped it without an error. The query still selects all columns of its table by default, e.g. `select distinct "persons".* from "persons"` [#557](https://github.com/ditojs/objection/issues/557)
 
 ## 3.9.3
 

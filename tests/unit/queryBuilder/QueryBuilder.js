@@ -5038,7 +5038,7 @@ describe('QueryBuilder', () => {
     });
   });
 
-  describe('distinctOn() with withGraphJoined() and withGraphFetched()', () => {
+  describe('distinct() and distinctOn() with withGraphJoined() and withGraphFetched()', () => {
     let Person;
     let Animal;
 
@@ -5119,6 +5119,42 @@ describe('QueryBuilder', () => {
           expect(executedQueries).to.eql([
             'select distinct on ("name") "Person".* from "Person"',
             'select distinct on ("name") "Animal".* from "Animal" where "Animal"."ownerId" in (1)',
+          ]);
+        });
+    });
+
+    it('should make the selected rows distinct with distinct() without columns (#557)', () => {
+      const toSql = (query) => query.toKnexQuery().toString();
+
+      expect(toSql(Person.query().select('name').distinct())).to.equal(
+        'select distinct "name" from "Person"',
+      );
+      expect(toSql(Person.query().distinct().select('name'))).to.equal(
+        'select distinct "name" from "Person"',
+      );
+      expect(toSql(Person.query().distinct())).to.equal('select distinct "Person".* from "Person"');
+      expect(toSql(Person.query().distinct().joinRelated('pets'))).to.equal(
+        'select distinct "Person".* from "Person" inner join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
+      );
+      expect(toSql(Person.query().distinct().withGraphJoined('pets'))).to.equal(
+        'select distinct "Person"."id" as "id", "Person"."name" as "name", "pets"."id" as "pets:id", "pets"."name" as "pets:name", "pets"."ownerId" as "pets:ownerId" ' +
+          'from "Person" left join "Animal" as "pets" on "pets"."ownerId" = "Person"."id"',
+      );
+    });
+
+    it('should make the fetched rows distinct with distinct() without columns (#557)', () => {
+      mockKnexQueryResults = [[{ id: 1, name: 'P1' }], [{ id: 10, name: 'A1', ownerId: 1 }]];
+
+      return Person.query()
+        .distinct()
+        .withGraphFetched('pets(distinctRows)')
+        .modifiers({
+          distinctRows: (query) => query.distinct(),
+        })
+        .then(() => {
+          expect(executedQueries).to.eql([
+            'select distinct "Person".* from "Person"',
+            'select distinct "Animal".* from "Animal" where "Animal"."ownerId" in (1)',
           ]);
         });
     });
