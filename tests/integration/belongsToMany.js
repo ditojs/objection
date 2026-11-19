@@ -411,6 +411,21 @@ export default (session) => {
         expect(await allTagIds()).toEqual([[3, 1], [1, 2, 4], [2, 1], null, [9]]);
       });
 
+      it('insert() and relate() should throw for owner models without an id (#568)', async () => {
+        const post = Post.fromJson({ tagIds: [1] });
+        const tags = await allTags();
+
+        await expect(post.$relatedQuery('tags').insert({ name: 'x' })).rejects.toThrow(
+          `can't insert() related rows, as the owner model has no value for "belongsToManyPost.id".`,
+        );
+        await expect(post.$relatedQuery('tags').relate(2)).rejects.toThrow(
+          `can't relate() related rows, as the owner model has no value for "belongsToManyPost.id".`,
+        );
+
+        expect(post.tagIds).toEqual([1]);
+        expect(await allTags()).toEqual(tags);
+      });
+
       it('relate() should add the keys to the arrays of owner ids and queries', async () => {
         expect(await Post.relatedQuery('tags').for([1, 2, 4]).relate({ id: 4 })).toBe(2);
         expect(

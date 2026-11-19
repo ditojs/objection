@@ -263,6 +263,19 @@ export default (session) => {
             .then((pets) => expect(pets.map((it) => it.name)).toEqual(['Cat', 'Freud', 'Stalin']));
         });
 
+        it('insert and relate should throw for an owner whose key is null (#568)', async () => {
+          const nameless = await Person.query().insert({ nickname: 'Nameless' });
+          const pets = await Animal.query().orderBy('id');
+
+          await expect(nameless.$relatedQuery('pets').insert({ name: 'Cat' })).rejects.toThrow(
+            `Person.relationMappings.pets: can't insert() related rows, as the owner model has no value for "person.name".`,
+          );
+          await expect(nameless.$relatedQuery('pets').relate(pets[0].id)).rejects.toThrow(
+            `Person.relationMappings.pets: can't relate() related rows, as the owner model has no value for "person.name".`,
+          );
+          expect(await Animal.query().orderBy('id')).toEqual(pets);
+        });
+
         it('relate', () => {
           return Promise.all([findArnold(), insertTerminator3()])
             .then(([arnold, terminator3]) => {
