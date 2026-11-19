@@ -21,6 +21,14 @@ export default (session) => {
               to: ['shared_keys_pets.tenantId', 'shared_keys_pets.ownerCode'],
             },
           },
+          favoritePet: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: Pet,
+            join: {
+              from: ['shared_keys_owners.tenantId', 'shared_keys_owners.favoritePetNo'],
+              to: ['shared_keys_pets.tenantId', 'shared_keys_pets.petNo'],
+            },
+          },
           // The key of the related rows is their id:
           profile: {
             relation: Model.HasOneRelation,
@@ -89,6 +97,7 @@ export default (session) => {
         .createTable('shared_keys_owners', (table) => {
           table.integer('tenantId').notNullable();
           table.string('code').notNullable();
+          table.integer('favoritePetNo');
           table.primary(['tenantId', 'code']);
         })
         .createTable('shared_keys_pets', (table) => {
@@ -191,6 +200,40 @@ export default (session) => {
 
       await owner.$relatedQuery('movies').unrelate();
       expect(await getMovieRows()).toEqual([]);
+    });
+
+    it('upsertGraph() should only clear the has-many key columns that are not part of the id', async () => {
+      await bindKnex(Owner)
+        .query()
+        .upsertGraph({ tenantId: 1, code: 'jennifer', pets: [] }, { unrelate: true });
+
+      expect(await getPets()).toEqual([{ tenantId: 1, petNo: 1, ownerCode: null }]);
+    });
+
+    it('upsertGraph() should keep the id columns of unrelated rows for other places that read them', async () => {
+      await bindKnex(Owner)
+        .query()
+        .upsertGraph(
+          { tenantId: 1, code: 'jennifer', pets: [], favoritePet: { tenantId: 1, petNo: 1 } },
+          { unrelate: true, relate: true },
+        );
+
+      expect(await getPets()).toEqual([{ tenantId: 1, petNo: 1, ownerCode: null }]);
+      expect(await knex('shared_keys_owners')).toEqual([
+        { tenantId: 1, code: 'jennifer', favoritePetNo: 1 },
+      ]);
+    });
+
+    it('upsertGraph() should only clear the belongs-to-one key columns that are not part of the id', async () => {
+      for (const owner of [null, { tenantId: 1, code: 'jennifer', '#unrelate': true }]) {
+        await knex('shared_keys_pets').update({ ownerCode: 'jennifer' });
+        await bindKnex(Pet)
+          .query()
+          .upsertGraph({ tenantId: 1, petNo: 1, owner }, { unrelate: true, allowMarkers: true });
+
+        expect(await getPets()).toEqual([{ tenantId: 1, petNo: 1, ownerCode: null }]);
+        expect(await knex('shared_keys_owners')).toHaveLength(1);
+      }
     });
 
     it('many-to-many patch() should only patch the join rows that match', async () => {
