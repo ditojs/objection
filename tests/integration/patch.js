@@ -225,6 +225,49 @@ export default (session) => {
         expect(rows.map((row) => row.model1Prop1)).toEqual([expected, 'hello 2', 'hello 3']);
       });
 
+      it('should accept subqueries that join the same table under an alias (#564)', async () => {
+        await session.knex('Model1Model2').insert({ model1Id: 3, model2Id: 1 });
+
+        for (const [model1Prop1, subquery] of [
+          ['string alias', Model2.query().join('Model1 as owner', 'owner.id', 'model2.model1_id')],
+          [
+            'object alias',
+            Model2.query().join({ owner: 'Model1' }, 'owner.id', 'model2.model1_id'),
+          ],
+          ['joinRelated', Model2.query().joinRelated('model2Relation1 as owner')],
+        ]) {
+          expect(
+            await Model1.query().patch({ model1Prop1 }).whereIn('id', subquery.select('owner.id')),
+          ).toBe(1);
+        }
+
+        const rows = await session.knex('Model1').orderBy('id');
+        expect(rows.map((row) => row.model1Prop1)).toEqual([
+          'object alias',
+          'hello 2',
+          'joinRelated',
+        ]);
+      });
+
+      it('should accept subqueries that join the same table in any branch of joinRelated() (#564)', async () => {
+        await session.knex('Model1').update({ model1Id: 2 }).where('id', 1);
+        await session.knex('model2').insert({ id_col: 3, model1_id: 2 });
+        await session.knex('model3').insert({ id: 1, model3Prop1: 'hello' });
+        await session.knex('Model2Model3ManyToMany').insert({ model2Id: 1, model3Id: 1 });
+
+        // `model1Relation2` comes up in both branches, `model3` only in the second:
+        const subquery = Model1.query()
+          .joinRelated('[model1Relation1.model1Relation2, model1Relation2.model2Relation3]')
+          .select('model1Relation2:model2Relation3.id');
+
+        expect(
+          await session.models.Model3.query()
+            .patch({ model3Prop1: 'patched' })
+            .whereIn('id', subquery),
+        ).toBe(1);
+        expect(await session.knex('model3').pluck('model3Prop1')).toEqual(['patched']);
+      });
+
       if (session.isPostgres()) {
         it('should patch multiple and return updated rows if returning is useed', () => {
           return Model1.query()

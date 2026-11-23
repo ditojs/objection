@@ -797,6 +797,9 @@ this sets the join columns to null.
 
 Note that, unlike for `relate`, you shouldn't pass arguments for the `unrelate` method.
 Use `unrelate` like `delete` and filter the rows using the returned query builder.
+Filters can also use joins, e.g. with [joinRelated](/api/query-builder/join-methods.html#joinrelated),
+except in has-many and has-one relations on databases other than MySQL, whose
+updates can't have joins.
 
 The return value of the query is the number of affected items. For BelongsToMany
 relations it's the number of owners whose arrays changed.
