@@ -1,6 +1,6 @@
 {
   "name": "objection",
-  "version": "4.4.3",
+  "version": "4.4.4",
   "description": "An SQL-friendly ORM for Node.js",
   "type": "module",
   "main": "lib/objection.js",
