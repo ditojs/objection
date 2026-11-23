@@ -64,6 +64,28 @@ class BaseModel extends Model {
 }
 ```
 
+Queries are cloned before they run, and by methods like [page()](/api/query-builder/other-methods.html#page) and [resultSize()](/api/query-builder/other-methods.html#resultsize). The clone is created with the constructor of your query builder, and objection only copies its own state to it. If your query builder keeps state in its own fields, override `clone()` to copy them too:
+
+```js
+export class SoftDeleteQueryBuilder extends QueryBuilder {
+  constructor(...args) {
+    super(...args);
+    this.includeDeleted = false;
+  }
+
+  withDeleted() {
+    this.includeDeleted = true;
+    return this;
+  }
+
+  clone() {
+    const clone = super.clone();
+    clone.includeDeleted = this.includeDeleted;
+    return clone;
+  }
+}
+```
+
 ::: tip
 TIP: Consider using [modifiers](/recipes/modifiers.html#usage-in-a-query) instead of extending the query builder. You can often achieve the same flexibility with both.
 :::

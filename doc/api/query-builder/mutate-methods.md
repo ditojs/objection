@@ -969,6 +969,8 @@ console.log(people[1].id); // the id of the inserted row
 
 See [knex documentation](https://knexjs.org/guide/query-builder.html#merge)
 
+On MySQL, a model without an id gets the id of the row only if the insert or the merge changed the row. If the merge leaves the existing row as it is, MySQL reports no id, and the model gets none. Fetch the row by the columns passed to `onConflict()` if you need its id.
+
 ##### Return value
 
 | Type                                | Description                        |
