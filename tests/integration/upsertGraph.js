@@ -4245,6 +4245,37 @@ export default (session) => {
         );
       });
 
+      it('should throw if `findByIds` is used', async () => {
+        const err = await Model1.bindKnex(session.knex)
+          .query()
+          .findByIds([1])
+          .upsertGraph({ id: 1 }, { fetchStrategy })
+          .catch((err) => err);
+
+        expect(err.message).toBe(
+          'upsertGraph query should contain no other query builder calls like `findById`, `where`, `$query` or `$relatedQuery` that would affect the SQL. They have no effect.',
+        );
+      });
+
+      it('should not throw for where clauses that `onBuild()` hooks add to all queries (#563)', async () => {
+        // Leaves out rows like a soft-delete filter would:
+        class SoftDeleteModel1 extends Model1 {
+          static query(...args) {
+            return super.query(...args).onBuild((builder) => {
+              if (builder.isFind()) {
+                builder.whereNot('Model1.model1Prop1', 'hidden');
+              }
+            });
+          }
+        }
+
+        await SoftDeleteModel1.bindKnex(session.knex)
+          .query()
+          .upsertGraph({ id: 1, model1Prop1: 'updated' }, { fetchStrategy });
+
+        expect((await session.knex('Model1').where('id', 1).first()).model1Prop1).toBe('updated');
+      });
+
       if (fetchStrategy !== FetchStrategy.OnlyIdentifiers) {
         describe('fetchStrategy != OnlyIdentifiers', () => {
           it('should fetch all properties and avoid useless update operations if fetchStrategy != OnlyIdentifiers', () => {
