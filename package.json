@@ -85,7 +85,7 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.20.5",
     "better-sqlite3": "^12.11.1",
     "eslint": "^8.54.0",
     "eslint-formatter-codeframe": "^7.32.2",
@@ -95,12 +95,12 @@
     "mysql2": "^3.24.6",
     "peggy": "5.1.1",
     "pg": "^8.15.6",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "sqlite3": "^6.0.1",
-    "tedious": "^20.3.8",
+    "tedious": "^20.4.3",
     "typescript": "^7.0.0",
     "typescript-5": "npm:typescript@5.8.3",
     "vitepress": "1.6.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }
