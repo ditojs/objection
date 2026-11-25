@@ -69,21 +69,21 @@
     "knex": ">=2.3.0 <4"
   },
   "devDependencies": {
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.20.5",
     "chai": "^4.3.10",
     "chai-subset": "^1.6.0",
     "eslint": "^8.54.0",
-    "eslint-formatter-codeframe": "^7.32.1",
-    "eslint-plugin-prettier": "^5.3.1",
+    "eslint-formatter-codeframe": "^7.32.2",
+    "eslint-plugin-prettier": "^5.5.7",
     "expect.js": "^0.3.1",
     "knex": "^3.3.0",
     "mocha": "^11.2.2",
     "mysql": "^2.18.1",
     "pg": "^8.15.6",
-    "prettier": "3.9.9",
+    "prettier": "3.10.1",
     "sqlite3": "^5.1.7",
-    "tedious": "^20.3.7",
-    "typescript": "^5.8.3",
+    "tedious": "^20.4.3",
+    "typescript": "^5.9.3",
     "vitepress": "1.6.4"
   }
 }
