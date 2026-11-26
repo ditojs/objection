@@ -7,6 +7,15 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: 'development'
+    # These need Node 22, or allow APIs that Node 20 lacks. Remove them once
+    # the next major drops Node 20.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'better-sqlite3'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'vitest'
+        update-types: ['version-update:semver-major']
   # 3.x still supports old Node versions, so it only gets minor and patch
   # updates.
   - package-ecosystem: 'npm'
