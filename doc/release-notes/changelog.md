@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.5
+
+### Fixes
+
+- The caches of parsed relation expressions and field expressions, and of the identifier mappers like `knexSnakeCaseMappers()`, are bounded. They kept every distinct string, so apps that pass client input as expressions, e.g. `withGraphFetched(ctx.query.withGraph)` with `allowGraph()`, let the memory of the process grow without limit [#2817](https://github.com/Vincit/objection.js/pull/2817)
+
 ## 3.9.4
 
 ### Fixes
