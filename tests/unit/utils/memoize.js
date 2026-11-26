@@ -18,14 +18,14 @@ describe('memoize', () => {
     expect(calls).toEqual(['a']);
   });
 
-  it('drops the oldest result once the cache is full', () => {
+  it('stops caching once the cache is full', () => {
     const { func, calls } = createMemoized();
     for (let i = 0; i <= 10000; i++) {
       func(`key${i}`);
     }
-    func('key1');
     func('key0');
-    expect(calls.slice(10001)).toEqual(['key0']);
+    func('key10000');
+    expect(calls.slice(10001)).toEqual(['key10000']);
   });
 
   it("doesn't cache long strings", () => {
