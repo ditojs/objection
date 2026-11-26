@@ -7,6 +7,19 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: 'development'
+  # 3.x still supports old Node versions, so it only gets minor and patch
+  # updates.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    target-branch: '3.x'
+    schedule:
+      interval: 'weekly'
+    groups:
+      dev-dependencies:
+        dependency-type: 'development'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
